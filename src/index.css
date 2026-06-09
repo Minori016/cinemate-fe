@@ -1,0 +1,48 @@
+/* SỬA DÒNG NÀY: Bỏ dấu ./ và chữ .css đi, dùng chuẩn của Tailwind v4 */
+@import "tailwindcss";
+
+/* LƯU Ý: Nếu bạn KHÔNG có file theme.css trong thư mục src, hãy xóa hoặc comment dòng dưới lại */
+/* @import './theme.css'; */
+
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@300;400;500;600;700&display=swap');
+
+/* Ép font icon hoạt động trên mọi mặt trận */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined' !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --color-bg: #0a0a0f;
+  --color-surface: #12121a;
+  --color-surface-2: #1c1c2e;
+  --color-primary: #e63946;
+  --color-primary-dark: #c1121f;
+  --color-gold: #ffd60a;
+  --color-text: #f1faee;
+  --color-text-muted: #8d99ae;
+  --color-border: #2d2d44;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+h1, h2, h3 {
+  font-family: 'Bebas Neue', cursive;
+  letter-spacing: 0.05em;
+}
