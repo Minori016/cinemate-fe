@@ -238,8 +238,7 @@ export default function ProfilePage() {
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
               Quản lý thông tin cá nhân của bạn
             </p>
-          <div
-            className="rounded-xl overflow-hidden mt-5 w-full md:w-[48%]"
+          </div>
 
         <div className="flex flex-wrap justify-center gap-6 w-full">
 
