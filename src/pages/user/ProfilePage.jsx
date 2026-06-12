@@ -218,7 +218,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--color-background)' }}>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto px-6">
 
         {/* Page Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -258,11 +258,11 @@ export default function ProfilePage() {
             {/* Avatar */}
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <div
-                className={`w-[88px] h-[88px] rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 transition-opacity ${uploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
+                className={`w-28 h-28 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 transition-opacity ${uploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
                 style={{
                   background: 'linear-gradient(135deg, var(--color-primary-container), #b3070f)',
-                  border: '3px solid rgba(255,255,255,0.15)',
-                  boxShadow: '0 0 25px rgba(229,9,20,0.25)',
+                  border: '3px solid rgba(255,255,255,0.12)',
+                  boxShadow: '0 6px 30px rgba(0,0,0,0.45)',
                 }}
               >
                 {profile?.image ? (
@@ -294,14 +294,14 @@ export default function ProfilePage() {
             </div>
 
             {/* Name + Verified */}
-            <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-[200px]">
               <div className="flex items-center gap-2 mb-1">
-                <span style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '22px', fontWeight: 700, color: 'var(--color-on-surface)' }}>
+                <span style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '20px', fontWeight: 700, color: 'var(--color-on-surface)' }}>
                   {profile?.fullName || profile?.username || 'Chưa đặt tên'}
                 </span>
                 <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#22c55e', fontVariationSettings: "'FILL' 1" }}>verified</span>
               </div>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '14px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
                 {profile?.email}
               </p>
               {profile?.score !== undefined && profile?.score !== null && (
@@ -318,18 +318,18 @@ export default function ProfilePage() {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 py-2 px-5 rounded-lg transition-all duration-200 active:scale-[0.98]"
+                className="flex items-center gap-2 py-2 px-4 rounded-lg transition-all duration-200 active:scale-[0.98]"
                 style={{
                   background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
                   color: 'var(--color-on-primary-container)',
                   fontFamily: 'Montserrat, sans-serif',
-                  fontSize: '14px',
+                  fontSize: '13px',
                   fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 26px rgba(0,0,0,0.5)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.45)' }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                 Chỉnh sửa
