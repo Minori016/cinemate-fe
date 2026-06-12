@@ -141,11 +141,7 @@ export default function ProfilePage() {
     try {
       await userService.changePassword(pwdForm)
       setPwdSuccess('Đổi mật khẩu thành công!')
-      setPwdForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      })
+      setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
     } catch (err) {
       const msg = err.response?.data?.message
       setPwdError(msg || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại độ mạnh mật khẩu và mật khẩu hiện tại!')
@@ -158,7 +154,6 @@ export default function ProfilePage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Limit file size to 5MB
     if (file.size > 5 * 1024 * 1024) {
       setError('Kích thước ảnh không được vượt quá 5MB')
       return
@@ -181,7 +176,6 @@ export default function ProfilePage() {
       setError(msg || 'Lỗi khi tải ảnh lên. Vui lòng thử lại!')
     } finally {
       setUploading(false)
-      // Reset input value to allow uploading the same file again if it failed
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -220,7 +214,7 @@ export default function ProfilePage() {
     <main className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--color-background)' }}>
       <div className="w-full max-w-6xl mx-auto px-6">
 
-        {/* Page Header */}
+        {/* ── Page Header ── */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={() => navigate(-1)}
@@ -239,104 +233,135 @@ export default function ProfilePage() {
               Quản lý thông tin cá nhân của bạn
             </p>
           </div>
+        </div>
+        {/* ── End Page Header ── */}
 
-        <div className="flex flex-wrap justify-center gap-6 w-full">
-
-        {/* ── Profile Card (Avatar + Name + Edit Btn) ── */}
-        <div
-          className="rounded-xl overflow-hidden mb-5 w-full md:w-[48%]"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
+        {/* ── Alerts (toàn cục) ── */}
+        {error && (
           <div
-            className="px-8 py-6 flex items-center gap-5 flex-wrap"
+            className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
             style={{
-              background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary-container) 15%, transparent), transparent)',
+              backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
+              border: '1px solid var(--color-error)',
+              color: 'var(--color-error)',
             }}
           >
-            {/* Avatar */}
-            <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-              <div
-                className={`w-28 h-28 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 transition-opacity ${uploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
-                style={{
-                  background: 'linear-gradient(135deg, var(--color-primary-container), #b3070f)',
-                  border: '3px solid rgba(255,255,255,0.12)',
-                  boxShadow: '0 6px 30px rgba(0,0,0,0.45)',
-                }}
-              >
-                {profile?.image ? (
-                  <img src={profile.image} alt="Avatar" className="w-full h-full object-cover" />
-                ) : (
-                  <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: '32px', color: '#fff' }}>
-                    {initials}
-                  </span>
-                )}
-              </div>
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+            {error}
+          </div>
+        )}
+        {success && (
+          <div
+            className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
+            style={{
+              backgroundColor: 'rgba(34,197,94,0.1)',
+              border: '1px solid #22c55e',
+              color: '#22c55e',
+              animation: 'fadeInScale 0.3s ease-out',
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
+            {success}
+          </div>
+        )}
 
-              {/* Camera Icon Overlay */}
-              <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                {uploading ? (
-                  <span className="material-symbols-outlined animate-spin text-white">progress_activity</span>
-                ) : (
-                  <span className="material-symbols-outlined text-white">photo_camera</span>
-                )}
-              </div>
+        {/* ── Card Grid ── */}
+        <div className="flex flex-wrap gap-6">
 
-              {/* Hidden File Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarChange}
-                accept="image/*"
-                className="hidden"
-              />
-            </div>
-
-            {/* Name + Verified */}
-              <div className="flex-1 min-w-[200px]">
-              <div className="flex items-center gap-2 mb-1">
-                <span style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '20px', fontWeight: 700, color: 'var(--color-on-surface)' }}>
-                  {profile?.fullName || profile?.username || 'Chưa đặt tên'}
-                </span>
-                <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#22c55e', fontVariationSettings: "'FILL' 1" }}>verified</span>
-              </div>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
-                {profile?.email}
-              </p>
-              {profile?.score !== undefined && profile?.score !== null && (
-                <div className="flex items-center gap-1 mt-1.5">
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>star</span>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-primary)', fontWeight: 600 }}>
-                    {profile.score} điểm thành viên
-                  </span>
+          {/* ── Profile Card (Avatar + Name + Edit Btn) ── */}
+          <div
+            className="rounded-xl overflow-hidden w-full"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div
+              className="px-8 py-6 flex items-center gap-5 flex-wrap"
+              style={{
+                background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary-container) 15%, transparent), transparent)',
+              }}
+            >
+              {/* Avatar */}
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div
+                  className={`w-28 h-28 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 transition-opacity ${uploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
+                  style={{
+                    background: 'linear-gradient(135deg, var(--color-primary-container), #b3070f)',
+                    border: '3px solid rgba(255,255,255,0.12)',
+                    boxShadow: '0 6px 30px rgba(0,0,0,0.45)',
+                  }}
+                >
+                  {profile?.image ? (
+                    <img src={profile.image} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: '32px', color: '#fff' }}>
+                      {initials}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Edit / Cancel+Save Buttons */}
-            {!isEditing ? (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 py-2 px-4 rounded-lg transition-all duration-200 active:scale-[0.98]"
-                style={{
-                  background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
-                  color: 'var(--color-on-primary-container)',
-                  fontFamily: 'Montserrat, sans-serif',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 26px rgba(0,0,0,0.5)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.45)' }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                Chỉnh sửa
-              </button>
-            ) : (
-              <div className="flex items-center gap-2">
+                {/* Camera Icon Overlay */}
+                <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {uploading ? (
+                    <span className="material-symbols-outlined animate-spin text-white">progress_activity</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-white">photo_camera</span>
+                  )}
+                </div>
+
+                {/* Hidden File Input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleAvatarChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+              </div>
+
+              {/* Name + Verified */}
+              <div className="flex-1 min-w-[200px]">
+                <div className="flex items-center gap-2 mb-1">
+                  <span style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '20px', fontWeight: 700, color: 'var(--color-on-surface)' }}>
+                    {profile?.fullName || profile?.username || 'Chưa đặt tên'}
+                  </span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#22c55e', fontVariationSettings: "'FILL' 1" }}>verified</span>
+                </div>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
+                  {profile?.email}
+                </p>
+                {profile?.score !== undefined && profile?.score !== null && (
+                  <div className="flex items-center gap-1 mt-1.5">
+                    <span className="material-symbols-outlined" style={{ fontSize: '16px', color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>star</span>
+                    <span style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-primary)', fontWeight: 600 }}>
+                      {profile.score} điểm thành viên
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Edit / Cancel Buttons */}
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 py-2 px-4 rounded-lg transition-all duration-200 active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                    color: 'var(--color-on-primary-container)',
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 26px rgba(0,0,0,0.5)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.45)' }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                  Chỉnh sửa
+                </button>
+              ) : (
                 <button
                   onClick={handleCancel}
                   className="py-2 px-4 rounded-lg transition-all duration-200"
@@ -353,381 +378,356 @@ export default function ProfilePage() {
                 >
                   Hủy
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+          {/* ── End Profile Card ── */}
 
-        {/* Alerts */}
-        {error && (
+          {/* ── Personal Information Card ── */}
           <div
-            className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
+            className="rounded-xl overflow-hidden w-full md:w-[calc(50%-12px)]"
             style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
-              border: '1px solid var(--color-error)',
-              color: 'var(--color-error)',
+              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
+              border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
-            {error}
-          </div>
-        )}
+            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                Thông tin cá nhân
+              </h2>
+            </div>
 
-        {success && (
-          <div
-            className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
-            style={{
-              backgroundColor: 'rgba(34,197,94,0.1)',
-              border: '1px solid #22c55e',
-              color: '#22c55e',
-              animation: 'fadeInScale 0.3s ease-out',
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
-            {success}
-          </div>
-        )}
-
-        {/* ── Personal Information Card ── */}
-        <div
-          className="rounded-xl overflow-hidden mb-5 w-full md:w-[48%]"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-              Thông tin cá nhân
-            </h2>
-          </div>
-
-          <form className="px-8 py-6" onSubmit={handleSubmit}>
-            {isEditing ? (
+            <form className="px-8 py-6" onSubmit={handleSubmit}>
+              {isEditing ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-                <Input label="Tài khoản *" name="username" value={form.username} onChange={handleChange} required />
-                <Input label="Email (Không thể thay đổi)" name="email" type="email" value={form.email} onChange={handleChange} disabled required />
-                <Input label="Họ và tên (Không thể thay đổi)" name="fullName" value={form.fullName} onChange={handleChange} disabled required />
-                <Input label="Ngày sinh *" name="dayOfBirth" type="date" value={form.dayOfBirth} onChange={handleChange} required />
+                  <Input label="Tài khoản *" name="username" value={form.username} onChange={handleChange} required />
+                  <Input label="Email (Không thể thay đổi)" name="email" type="email" value={form.email} onChange={handleChange} disabled required />
+                  <Input label="Họ và tên (Không thể thay đổi)" name="fullName" value={form.fullName} onChange={handleChange} disabled required />
+                  <Input label="Ngày sinh *" name="dayOfBirth" type="date" value={form.dayOfBirth} onChange={handleChange} required />
 
-                <div className="flex flex-col gap-2">
-                  <label className="uppercase font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
-                    Giới tính (Không thể thay đổi)
-                  </label>
-                  <select
-                    name="gender"
-                    value={form.gender}
-                    onChange={handleChange}
-                    disabled
-                    className="w-full rounded-lg px-4 py-3 transition-all outline-none appearance-none cursor-pointer opacity-60"
-                    style={selectStyle}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                  >
-                    <option value="Male" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
-                    <option value="Female" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
-                    <option value="Other" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
-                  </select>
-                </div>
-
-                <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
-                <Input label="CMND / CCCD (Không thể thay đổi)" name="identityCard" value={form.identityCard} onChange={handleChange} disabled required />
-
-                <div className="md:col-span-2">
-                  <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
-                </div>
-
-                {/* Password confirmation */}
-                <div className="md:col-span-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', marginTop: '8px' }}>
-                  <div className="flex items-start gap-3 mb-3">
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-primary)', marginTop: '2px' }}>info</span>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: '1.5' }}>
-                      Nhập mật khẩu hiện tại để xác nhận. Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
-                    </p>
+                  <div className="flex flex-col gap-2">
+                    <label className="uppercase font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
+                      Giới tính (Không thể thay đổi)
+                    </label>
+                    <select
+                      name="gender"
+                      value={form.gender}
+                      onChange={handleChange}
+                      disabled
+                      className="w-full rounded-lg px-4 py-3 transition-all outline-none appearance-none cursor-pointer opacity-60"
+                      style={selectStyle}
+                      onFocus={handleFocus}
+                      onBlur={handleBlur}
+                    >
+                      <option value="Male" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
+                      <option value="Female" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
+                      <option value="Other" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
+                    </select>
                   </div>
-                  <Input label="Mật khẩu xác nhận *" name="password" type="password" placeholder="Nhập mật khẩu hiện tại" value={form.password} onChange={handleChange} required />
-                </div>
 
-                {/* Save Button */}
-                <div className="md:col-span-2 mt-2 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="py-2.5 px-6 rounded-lg transition-all duration-200"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.06)',
-                      color: 'var(--color-on-surface-variant)',
-                      fontFamily: 'Inter, sans-serif',
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      border: '1px solid rgba(255,255,255,0.10)',
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)' }}
-                  >
-                    Hủy bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                    style={{
-                      background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
-                      color: 'var(--color-on-primary-container)',
-                      fontFamily: 'Montserrat, sans-serif',
-                      fontSize: '15px',
-                      fontWeight: 600,
-                      border: '1px solid rgba(255,255,255,0.10)',
-                      boxShadow: '0 4px 14px rgba(229,9,20,0.4)',
-                    }}
-                    onMouseEnter={(e) => { if (!saving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.6)' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.4)' }}
-                  >
-                    {saving ? (
-                      <>
-                        <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
-                        Đang lưu...
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
-                        Lưu thay đổi
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-                {[
-                  { label: 'Tài khoản', value: profile?.username, icon: 'person' },
-                  { label: 'Email', value: profile?.email, icon: 'mail' },
-                  { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
-                  { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
-                  { label: 'Giới tính', value: profile?.gender === 'Male' ? 'Nam' : profile?.gender === 'Female' ? 'Nữ' : profile?.gender === 'Other' ? 'Khác' : profile?.gender, icon: 'wc' },
-                  { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
-                  { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
-                  { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },
-                ].map(({ label, value, icon }) => (
-                  <div key={label} className="flex items-start gap-3">
-                    <span
-                      className="material-symbols-outlined mt-0.5"
-                      style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
-                    >{icon}</span>
-                    <div>
-                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                        {label}
-                      </p>
-                      <p style={{
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '15px',
-                        margin: 0,
-                        color: isEmpty(value) ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
-                        fontStyle: isEmpty(value) ? 'italic' : 'normal',
-                      }}>
-                        {displayValue(value)}
+                  <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
+                  <Input label="CMND / CCCD (Không thể thay đổi)" name="identityCard" value={form.identityCard} onChange={handleChange} disabled required />
+
+                  <div className="md:col-span-2">
+                    <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
+                  </div>
+
+                  {/* Password confirmation */}
+                  <div className="md:col-span-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', marginTop: '8px' }}>
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-primary)', marginTop: '2px' }}>info</span>
+                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: '1.5' }}>
+                        Nhập mật khẩu hiện tại để xác nhận. Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
                       </p>
                     </div>
+                    <Input label="Mật khẩu xác nhận *" name="password" type="password" placeholder="Nhập mật khẩu hiện tại" value={form.password} onChange={handleChange} required />
                   </div>
-                ))}
-              </div>
-            )}
-          </form>
-        </div>
 
-        {/* ── Account Details Card ── */}
-        <div
-          className="rounded-xl overflow-hidden"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-              Thông tin tài khoản
-            </h2>
-          </div>
-          <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>shield</span>
-              <div>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                  Vai trò
-                </p>
-                <div className="flex gap-1.5 flex-wrap">
-                  {(profile?.roles || []).map((role) => (
-                    <span
-                      key={role}
-                      className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                  {/* Save Button */}
+                  <div className="md:col-span-2 mt-2 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={handleCancel}
+                      className="py-2.5 px-6 rounded-lg transition-all duration-200"
                       style={{
-                        backgroundColor: role === 'ADMIN' ? 'rgba(229,9,20,0.15)' : 'rgba(34,197,94,0.15)',
-                        color: role === 'ADMIN' ? 'var(--color-primary)' : '#22c55e',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        color: 'var(--color-on-surface-variant)',
                         fontFamily: 'Inter, sans-serif',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        border: '1px solid rgba(255,255,255,0.10)',
                       }}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)' }}
                     >
-                      {role === 'ADMIN' ? 'Quản trị viên' : role === 'MEMBER' ? 'Thành viên' : role}
-                    </span>
+                      Hủy bỏ
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={{
+                        background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                        color: 'var(--color-on-primary-container)',
+                        fontFamily: 'Montserrat, sans-serif',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        boxShadow: '0 4px 14px rgba(229,9,20,0.4)',
+                      }}
+                      onMouseEnter={(e) => { if (!saving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.6)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.4)' }}
+                    >
+                      {saving ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
+                          Lưu thay đổi
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                  {[
+                    { label: 'Tài khoản', value: profile?.username, icon: 'person' },
+                    { label: 'Email', value: profile?.email, icon: 'mail' },
+                    { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
+                    { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
+                    { label: 'Giới tính', value: profile?.gender === 'Male' ? 'Nam' : profile?.gender === 'Female' ? 'Nữ' : profile?.gender === 'Other' ? 'Khác' : profile?.gender, icon: 'wc' },
+                    { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
+                    { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
+                    { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },
+                  ].map(({ label, value, icon }) => (
+                    <div key={label} className="flex items-start gap-3">
+                      <span
+                        className="material-symbols-outlined mt-0.5"
+                        style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
+                      >{icon}</span>
+                      <div>
+                        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                          {label}
+                        </p>
+                        <p style={{
+                          fontFamily: 'Inter, sans-serif',
+                          fontSize: '15px',
+                          margin: 0,
+                          color: isEmpty(value) ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
+                          fontStyle: isEmpty(value) ? 'italic' : 'normal',
+                        }}>
+                          {displayValue(value)}
+                        </p>
+                      </div>
+                    </div>
                   ))}
                 </div>
+              )}
+            </form>
+          </div>
+          {/* ── End Personal Information Card ── */}
+
+          {/* ── Account Details Card ── */}
+          <div
+            className="rounded-xl overflow-hidden w-full md:w-[calc(50%-12px)]"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                Thông tin tài khoản
+              </h2>
+            </div>
+            <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>shield</span>
+                <div>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                    Vai trò
+                  </p>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(profile?.roles || []).map((role) => (
+                      <span
+                        key={role}
+                        className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                        style={{
+                          backgroundColor: role === 'ADMIN' ? 'rgba(229,9,20,0.15)' : 'rgba(34,197,94,0.15)',
+                          color: role === 'ADMIN' ? 'var(--color-primary)' : '#22c55e',
+                          fontFamily: 'Inter, sans-serif',
+                        }}
+                      >
+                        {role === 'ADMIN' ? 'Quản trị viên' : role === 'MEMBER' ? 'Thành viên' : role}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
+
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>toggle_on</span>
+                <div>
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                    Trạng thái
+                  </p>
+                  <span
+                    className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                    style={{
+                      backgroundColor: profile?.status === 'ACTIVE' ? 'rgba(34,197,94,0.15)' : 'rgba(229,9,20,0.15)',
+                      color: profile?.status === 'ACTIVE' ? '#22c55e' : 'var(--color-primary)',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    {profile?.status === 'ACTIVE' ? 'Đang hoạt động' : profile?.status}
+                  </span>
+                </div>
+              </div>
+
+              {profile?.createdAt && (
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>calendar_today</span>
+                  <div>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                      Ngày tạo tài khoản
+                    </p>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-on-surface)', margin: 0 }}>
+                      {new Date(profile.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {profile?.score !== undefined && profile?.score !== null && (
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7, fontVariationSettings: "'FILL' 1" }}>star</span>
+                  <div>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                      Điểm thành viên
+                    </p>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-primary)', margin: 0, fontWeight: 700 }}>
+                      {profile.score}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* ── End Account Details Card ── */}
+
+          {/* ── Change Password Card ── */}
+          <div
+            className="rounded-xl overflow-hidden w-full"
+            style={{
+              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                Đổi mật khẩu
+              </h2>
             </div>
 
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>toggle_on</span>
-              <div>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                  Trạng thái
-                </p>
-                <span
-                  className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+            <form className="px-8 py-6 space-y-4" onSubmit={handlePwdSubmit}>
+              {pwdError && (
+                <div
+                  className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
                   style={{
-                    backgroundColor: profile?.status === 'ACTIVE' ? 'rgba(34,197,94,0.15)' : 'rgba(229,9,20,0.15)',
-                    color: profile?.status === 'ACTIVE' ? '#22c55e' : 'var(--color-primary)',
-                    fontFamily: 'Inter, sans-serif',
+                    backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
+                    border: '1px solid var(--color-error)',
+                    color: 'var(--color-error)',
                   }}
                 >
-                  {profile?.status === 'ACTIVE' ? 'Đang hoạt động' : profile?.status}
-                </span>
-              </div>
-            </div>
-
-            {profile?.createdAt && (
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>calendar_today</span>
-                <div>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                    Ngày tạo tài khoản
-                  </p>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-on-surface)', margin: 0 }}>
-                    {new Date(profile.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </p>
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                  {pwdError}
                 </div>
-              </div>
-            )}
+              )}
 
-            {profile?.score !== undefined && profile?.score !== null && (
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7, fontVariationSettings: "'FILL' 1" }}>star</span>
-                <div>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                    Điểm thành viên
-                  </p>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-primary)', margin: 0, fontWeight: 700 }}>
-                    {profile.score}
-                  </p>
+              {pwdSuccess && (
+                <div
+                  className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
+                  style={{
+                    backgroundColor: 'rgba(34,197,94,0.1)',
+                    border: '1px solid #22c55e',
+                    color: '#22c55e',
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
+                  {pwdSuccess}
                 </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Input
+                  label="Mật khẩu hiện tại *"
+                  name="currentPassword"
+                  type="password"
+                  placeholder="Nhập mật khẩu hiện tại"
+                  value={pwdForm.currentPassword}
+                  onChange={handlePwdChange}
+                  required
+                />
+                <Input
+                  label="Mật khẩu mới *"
+                  name="newPassword"
+                  type="password"
+                  placeholder="Tối thiểu 8 kí tự, hoa, thường, số, ký tự đặc biệt"
+                  value={pwdForm.newPassword}
+                  onChange={handlePwdChange}
+                  required
+                />
+                <Input
+                  label="Xác nhận mật khẩu mới *"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Nhập lại mật khẩu mới"
+                  value={pwdForm.confirmPassword}
+                  onChange={handlePwdChange}
+                  required
+                />
               </div>
-            )}
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={pwdSaving}
+                  className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                    color: 'var(--color-on-primary-container)',
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    border: '1px solid rgba(255,255,255,0.10)',
+                    boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
+                  }}
+                  onMouseEnter={(e) => { if (!pwdSaving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
+                >
+                  {pwdSaving ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
+                      Đang thay đổi...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>key</span>
+                      Cập nhật mật khẩu
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
+          {/* ── End Change Password Card ── */}
+
         </div>
-
-        {/* ── Change Password Card ── */}
-        <div
-          className="rounded-xl overflow-hidden mt-5"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-              Đổi mật khẩu
-            </h2>
-          </div>
-          
-          <form className="px-8 py-6 space-y-4" onSubmit={handlePwdSubmit}>
-            {pwdError && (
-              <div
-                className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
-                  border: '1px solid var(--color-error)',
-                  color: 'var(--color-error)',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
-                {pwdError}
-              </div>
-            )}
-
-            {pwdSuccess && (
-              <div
-                className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
-                style={{
-                  backgroundColor: 'rgba(34,197,94,0.1)',
-                  border: '1px solid #22c55e',
-                  color: '#22c55e',
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
-                {pwdSuccess}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                label="Mật khẩu hiện tại *"
-                name="currentPassword"
-                type="password"
-                placeholder="Nhập mật khẩu hiện tại"
-                value={pwdForm.currentPassword}
-                onChange={handlePwdChange}
-                required
-              />
-              <Input
-                label="Mật khẩu mới *"
-                name="newPassword"
-                type="password"
-                placeholder="Tối thiểu 8 kí tự, hoa, thường, số, ký tự đặc biệt"
-                value={pwdForm.newPassword}
-                onChange={handlePwdChange}
-                required
-              />
-              <Input
-                label="Xác nhận mật khẩu mới *"
-                name="confirmPassword"
-                type="password"
-                placeholder="Nhập lại mật khẩu mới"
-                value={pwdForm.confirmPassword}
-                onChange={handlePwdChange}
-                required
-              />
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="submit"
-                disabled={pwdSaving}
-                className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{
-                  background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
-                  color: 'var(--color-on-primary-container)',
-                  fontFamily: 'Montserrat, sans-serif',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
-                }}
-                onMouseEnter={(e) => { if (!pwdSaving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
-              >
-                {pwdSaving ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
-                    Đang thay đổi...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>key</span>
-                    Cập nhật mật khẩu
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-        </div>
+        {/* ── End Card Grid ── */}
 
       </div>
 
