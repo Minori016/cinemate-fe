@@ -404,7 +404,7 @@ export default function ProfilePage() {
 
           <form className="px-8 py-6" onSubmit={handleSubmit}>
             {isEditing ? (
-              /* ── Editing Mode ── */
+              {/* ── Editing Mode ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
                 <Input label="Tài khoản *" name="username" value={form.username} onChange={handleChange} required />
                 <Input label="Email (Không thể thay đổi)" name="email" type="email" value={form.email} onChange={handleChange} disabled required />
@@ -499,7 +499,7 @@ export default function ProfilePage() {
                 </div>
               </div>
             ) : (
-              /* ── View Mode (Read-only) ── */
+              {/* ── View Mode (Read-only) ── */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
                 {[
                   { label: 'Tài khoản', value: profile?.username, icon: 'person' },
