@@ -218,7 +218,7 @@ export default function ProfilePage() {
 
   return (
     <main className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--color-background)' }}>
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-4xl mx-auto px-6 flex flex-col items-center gap-6">
 
         {/* Page Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -243,10 +243,11 @@ export default function ProfilePage() {
 
         {/* ── Profile Card (Avatar + Name + Edit Btn) ── */}
         <div
-          className="rounded-xl overflow-hidden mb-5"
+          className="rounded-xl overflow-hidden mb-5 w-full max-w-2xl mx-auto shadow-lg"
           style={{
             backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.45)',
           }}
         >
           <div
@@ -389,10 +390,11 @@ export default function ProfilePage() {
 
         {/* ── Personal Information Card ── */}
         <div
-          className="rounded-xl overflow-hidden mb-5"
+          className="rounded-xl overflow-hidden mb-5 w-full max-w-2xl mx-auto shadow-lg"
           style={{
             backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.35)',
           }}
         >
           <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -538,10 +540,10 @@ export default function ProfilePage() {
 
         {/* ── Account Details Card ── */}
         <div
-          className="rounded-xl overflow-hidden"
+          className="rounded-xl overflow-hidden w-full max-w-2xl mx-auto"
           style={{
             backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
           <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
@@ -625,10 +627,10 @@ export default function ProfilePage() {
 
         {/* ── Change Password Card ── */}
         <div
-          className="rounded-xl overflow-hidden mt-5"
+          className="rounded-xl overflow-hidden mt-5 w-full max-w-2xl mx-auto"
           style={{
             backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
           <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
