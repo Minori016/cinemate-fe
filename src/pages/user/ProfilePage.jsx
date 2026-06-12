@@ -212,8 +212,8 @@ export default function ProfilePage() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-background)' }}>
         <span className="material-symbols-outlined animate-spin" style={{ fontSize: '40px', color: 'var(--color-primary)' }}>progress_activity</span>
-        <div
-          className="rounded-xl overflow-hidden w-full md:w-[48%]"
+      </div>
+    )
   }
 
   return (
