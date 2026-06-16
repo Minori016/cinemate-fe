@@ -2,6 +2,63 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 
+import maxo from '../../assets/maxo.png'
+import lophocamsat from '../../assets/lophocamsat.png'
+import kumathong from '../../assets/kumathong.png'
+import amazing from '../../assets/amazing.png'
+import xacsong from '../../assets/xacsong.png'
+import spiderNoir from '../../assets/z7926548056551_31ba8c85180d00c18c1d766965b7f0d5.jpg'
+import spiderman from '../../assets/z7926548206262_069a2a65c451a5d7f795d731f2371e47.jpg'
+import backrooms from '../../assets/z7926549211322_474665675a42a9e64a53f3c58f96ca9f.jpg'
+
+const MOCK_SHOWTIMES = [
+  {
+    id: 1,
+    movieNameVn: 'MA XÓ (T18)',
+    movieNameEnglish: 'MA XÓ',
+    duration: 102,
+    version: '2D phụ đề',
+    smallImage: maxo,
+    schedules: ['10:15', '13:00', '16:45', '19:30', '22:15']
+  },
+  {
+    id: 2,
+    movieNameVn: 'LỚP HỌC ÁM SÁT: GIỜ CỦA CHÚNG TA (T16)',
+    movieNameEnglish: 'Lớp Học Ám Sát',
+    duration: 110,
+    version: '2D phụ đề',
+    smallImage: lophocamsat,
+    schedules: ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30']
+  },
+  {
+    id: 3,
+    movieNameVn: 'KUMANTHONG ÁC QUỶ DẪN ĐƯỜNG (T18)',
+    movieNameEnglish: 'Kumanthong',
+    duration: 95,
+    version: '2D lồng tiếng',
+    smallImage: kumathong,
+    schedules: ['11:00', '14:30', '18:00', '20:30', '22:30']
+  },
+  {
+    id: 7,
+    movieNameVn: 'SPIDER-MAN: BRAND NEW DAY (K)',
+    movieNameEnglish: 'Spider-man: Brand New Day',
+    duration: 135,
+    version: '2D lồng tiếng',
+    smallImage: spiderman,
+    schedules: ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15']
+  },
+  {
+    id: 8,
+    movieNameVn: 'THE BACKROOMS (T16)',
+    movieNameEnglish: 'The Backrooms',
+    duration: 90,
+    version: '2D phụ đề',
+    smallImage: backrooms,
+    schedules: ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30']
+  }
+]
+
 // Khởi tạo mảng 7 ngày tới
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
@@ -20,8 +77,16 @@ export default function ShowtimesPage() {
 
   useEffect(() => { 
     movieService.getShowtimes()
-      .then(r => setMovies(r.data))
-      .catch(() => {}) 
+      .then(r => {
+        if (r.data && r.data.length > 0) {
+          setMovies(r.data)
+        } else {
+          setMovies(MOCK_SHOWTIMES)
+        }
+      })
+      .catch(() => {
+        setMovies(MOCK_SHOWTIMES)
+      }) 
   }, [])
 
   return (

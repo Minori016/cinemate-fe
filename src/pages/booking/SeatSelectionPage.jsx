@@ -6,12 +6,19 @@ import { movieService } from '../../services/movieService'
 const SEAT_ROWS = [
   { row: 'A', type: 'standard', price: 90000 },
   { row: 'B', type: 'standard', price: 90000 },
-  { row: 'C', type: 'vip', price: 110000 },
+  { row: 'C', type: 'standard', price: 90000 },
   { row: 'D', type: 'vip', price: 110000 },
+  { row: 'E', type: 'vip', price: 110000 },
+  { row: 'F', type: 'vip', price: 110000 },
 ]
 
 // Các ghế đã bán cố định để tăng tính sinh động
-const OCCUPIED_SEATS = ['A2', 'A3', 'A4', 'C3', 'C4', 'C5', 'E3']
+const OCCUPIED_SEATS = [
+  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
+  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
+  'E4', 'E8', 'E9', 'F6', 'F7',
+  'G1', 'H3', 'H5'
+]
 
 export default function SeatSelectionPage() {
   const [params] = useSearchParams()
@@ -53,9 +60,9 @@ export default function SeatSelectionPage() {
   // Giá của từng loại ghế
   const getSeatPrice = (seatId) => {
     const row = seatId.charAt(0)
-    if (row === 'A' || row === 'B') return 90000
-    if (row === 'C' || row === 'D') return 110000
-    if (row === 'E') return 130000 // Ghế đôi Couple
+    if (row === 'A' || row === 'B' || row === 'C') return 90000
+    if (row === 'D' || row === 'E' || row === 'F') return 110000
+    if (row === 'G' || row === 'H') return 130000 // Ghế đôi Couple
     return 0
   }
 
@@ -146,7 +153,9 @@ export default function SeatSelectionPage() {
           <span>Quay lại</span>
         </button>
         <div className="text-center">
-          <h1 className="custom-font-title text-2xl md:text-3xl text-[#F3EA28] tracking-widest uppercase">CineStar</h1>
+          <h1 className="custom-font-title text-2xl md:text-3xl tracking-widest uppercase" style={{ fontWeight: 900 }}>
+            <span className="text-white">Cine</span><span className="text-red-500">mate</span>
+          </h1>
         </div>
         <div className="w-20"></div> {/* Spacer to keep title centered */}
       </header>
@@ -211,16 +220,17 @@ export default function SeatSelectionPage() {
 
           {/* Seat Rows Grid Container */}
           <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
-            <div className="min-w-[650px] flex flex-col gap-3.5 items-center">
+            <div className="min-w-[850px] flex flex-col gap-3.5 items-center">
               
               {/* Render Standard & VIP Rows */}
               {SEAT_ROWS.map(r => renderRow(r.row, r.type))}
 
               {/* Spacer between VIP and Couple rows */}
-              <div className="h-2" />
+              <div className="h-4" />
 
-              {/* Render Couple Row (Row E) */}
-              {renderCoupleRow()}
+              {/* Render Couple Rows (Row G & H) */}
+              {renderCoupleRow('G')}
+              {renderCoupleRow('H')}
             </div>
           </div>
         </div>
@@ -320,98 +330,155 @@ export default function SeatSelectionPage() {
     </div>
   )
 
-  // Render Row Standard hoặc VIP (A, B, C, D)
+  // Sub-component button for single seats
+  function renderSeatButton(seat, type) {
+    const isOccupied = OCCUPIED_SEATS.includes(seat.id)
+    const isSelected = selected.includes(seat.id)
+    const isVip = type === 'vip'
+
+    return (
+      <button
+        key={seat.id}
+        disabled={isOccupied}
+        onClick={() => toggleSeat(seat.id)}
+        className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold ${
+          isOccupied ? 'occupied' :
+          isSelected ? 'selected' :
+          isVip ? 'vip border-purple-600/60 text-purple-400 hover:bg-purple-600/10' :
+          'border-gray-600 text-gray-300 hover:bg-white/5'
+        }`}
+        title={seat.id}
+      >
+        {isVip && !isSelected && !isOccupied ? 'V' : seat.label}
+      </button>
+    )
+  }
+
+  // Sub-component button for couple seats
+  function renderCoupleButton(seat) {
+    const isOccupied = OCCUPIED_SEATS.includes(seat.id)
+    const isSelected = selected.includes(seat.id)
+
+    return (
+      <button
+        key={seat.id}
+        disabled={isOccupied}
+        onClick={() => toggleSeat(seat.id)}
+        className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold ${
+          isOccupied ? 'occupied' :
+          isSelected ? 'selected' :
+          'border-red-600/60 text-red-500 hover:bg-red-600/10'
+        }`}
+        title={seat.id}
+      >
+        {seat.label}
+      </button>
+    )
+  }
+
+  // Render Row Standard hoặc VIP (A -> F)
   function renderRow(rowLabel, type) {
-    const seats = [
+    const isVip = type === 'vip'
+    const leftSeats = [
       { id: `${rowLabel}1`, label: '1' },
       { id: `${rowLabel}2`, label: '2' },
-      { type: 'aisle' },
       { id: `${rowLabel}3`, label: '3' },
+    ]
+    const centerSeats = [
       { id: `${rowLabel}4`, label: '4' },
       { id: `${rowLabel}5`, label: '5' },
       { id: `${rowLabel}6`, label: '6' },
-      { type: 'aisle' },
       { id: `${rowLabel}7`, label: '7' },
       { id: `${rowLabel}8`, label: '8' },
+      { id: `${rowLabel}9`, label: '9' },
+    ]
+    const rightSeats = [
+      { id: `${rowLabel}10`, label: '10' },
+      { id: `${rowLabel}11`, label: '11' },
+      { id: `${rowLabel}12`, label: '12' },
     ]
 
     return (
       <div key={rowLabel} className="flex items-center justify-center gap-3.5 w-full">
         <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{rowLabel}</span>
-        <div className="flex gap-2">
-          {seats.map((seat, index) => {
-            if (seat.type === 'aisle') {
-              return <div key={`aisle-${index}`} className="w-8 h-8" />
-            }
+        
+        <div className="flex items-center gap-3">
+          {/* Nhóm ghế trái */}
+          <div className="flex gap-2">
+            {leftSeats.map(seat => renderSeatButton(seat, type))}
+          </div>
 
-            const isOccupied = OCCUPIED_SEATS.includes(seat.id)
-            const isSelected = selected.includes(seat.id)
-            const isVip = type === 'vip'
+          {/* Lối đi 1 */}
+          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
 
-            return (
-              <button
-                key={seat.id}
-                disabled={isOccupied}
-                onClick={() => toggleSeat(seat.id)}
-                className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold ${
-                  isOccupied ? 'occupied' :
-                  isSelected ? 'selected' :
-                  isVip ? 'vip border-purple-600/60 text-purple-400 hover:bg-purple-600/10' :
-                  'border-gray-600 text-gray-300 hover:bg-white/5'
-                }`}
-                title={seat.id}
-              >
-                {isVip && !isSelected && !isOccupied ? 'V' : seat.label}
-              </button>
-            )
-          })}
+          {/* Nhóm ghế trung tâm */}
+          <div 
+            className={`flex gap-2 p-1 rounded-xl transition-all ${
+              isVip 
+                ? 'border border-dashed border-purple-500/40 bg-purple-950/10 shadow-[inset_0_0_10px_rgba(139,29,208,0.1)] relative' 
+                : 'border border-transparent'
+            }`}
+          >
+            {isVip && rowLabel === 'D' && (
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-purple-400 bg-[#06080F] px-1.5 tracking-widest whitespace-nowrap border border-purple-500/20 rounded-full select-none">
+                VÙNG TRUNG TÂM (BEST VIEW)
+              </span>
+            )}
+            {centerSeats.map(seat => renderSeatButton(seat, type))}
+          </div>
+
+          {/* Lối đi 2 */}
+          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
+
+          {/* Nhóm ghế phải */}
+          <div className="flex gap-2">
+            {rightSeats.map(seat => renderSeatButton(seat, type))}
+          </div>
         </div>
+
         <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{rowLabel}</span>
       </div>
     )
   }
 
-  // Render Row Couple (E)
-  function renderCoupleRow() {
-    const seats = [
-      { id: 'E1', label: 'E1' },
-      { type: 'aisle' },
-      { id: 'E2', label: 'E2' },
-      { id: 'E3', label: 'E3' },
-      { type: 'aisle' },
-      { id: 'E4', label: 'E4' },
+  // Render Row Couple (G, H)
+  function renderCoupleRow(rowLabel) {
+    const leftCouple = [{ id: `${rowLabel}1`, label: `${rowLabel}1` }]
+    const centerCouples = [
+      { id: `${rowLabel}2`, label: `${rowLabel}2` },
+      { id: `${rowLabel}3`, label: `${rowLabel}3` },
+      { id: `${rowLabel}4`, label: `${rowLabel}4` },
     ]
+    const rightCouple = [{ id: `${rowLabel}5`, label: `${rowLabel}5` }]
 
     return (
-      <div className="flex items-center justify-center gap-3.5 w-full">
-        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">E</span>
-        <div className="flex gap-2">
-          {seats.map((seat, index) => {
-            if (seat.type === 'aisle') {
-              return <div key={`aisle-${index}`} className="w-8 h-8" />
-            }
+      <div key={rowLabel} className="flex items-center justify-center gap-3.5 w-full">
+        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">{rowLabel}</span>
+        
+        <div className="flex items-center gap-3">
+          {/* Nhóm trái (1 ghế đôi) */}
+          <div className="flex gap-2 w-[112px] justify-end">
+            {leftCouple.map(seat => renderCoupleButton(seat))}
+          </div>
 
-            const isOccupied = OCCUPIED_SEATS.includes(seat.id)
-            const isSelected = selected.includes(seat.id)
+          {/* Lối đi 1 */}
+          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
 
-            return (
-              <button
-                key={seat.id}
-                disabled={isOccupied}
-                onClick={() => toggleSeat(seat.id)}
-                className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold ${
-                  isOccupied ? 'occupied' :
-                  isSelected ? 'selected' :
-                  'border-red-600/60 text-red-500 hover:bg-red-600/10'
-                }`}
-                title={seat.id}
-              >
-                {seat.label}
-              </button>
-            )
-          })}
+          {/* Nhóm giữa (3 ghế đôi) */}
+          <div className="flex gap-2 p-1 rounded-xl border border-dashed border-red-500/20 bg-red-950/5">
+            {centerCouples.map(seat => renderCoupleButton(seat))}
+          </div>
+
+          {/* Lối đi 2 */}
+          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
+
+          {/* Nhóm phải (1 ghế đôi) */}
+          <div className="flex gap-2 w-[112px] justify-start">
+            {rightCouple.map(seat => renderCoupleButton(seat))}
+          </div>
         </div>
-        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">E</span>
+
+        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">{rowLabel}</span>
       </div>
     )
   }

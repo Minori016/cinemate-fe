@@ -17,7 +17,9 @@ export default function Sidebar() {
   return (
     <aside className="w-60 min-h-screen flex flex-col bg-[var(--color-surface)] border-r border-[var(--color-border)]">
       <div className="px-6 py-5 border-b border-[var(--color-border)]">
-        <h1 className="text-2xl text-red-500" style={{fontFamily:'Montserrat, sans-serif', fontWeight: 900}}>🎬 CineStar</h1>
+        <h1 className="text-2xl" style={{fontFamily:'Montserrat, sans-serif', fontWeight: 900}}>
+          🎬 <span className="text-white">Cine</span><span className="text-red-500">mate</span>
+        </h1>
         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Management System</p>
       </div>
       <nav className="flex-1 py-4 px-3 flex flex-col gap-1">
