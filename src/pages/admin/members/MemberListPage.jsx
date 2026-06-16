@@ -26,7 +26,7 @@ export default function MemberListPage() {
     confirmPassword: '',
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     phoneNumber: '',
   })
 
@@ -34,10 +34,9 @@ export default function MemberListPage() {
     id: '',
     username: '',
     email: '',
-    password: '', // ProfileUpdateRequest requires password
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     identityCard: '',
     phoneNumber: '',
     address: '',
@@ -95,7 +94,7 @@ export default function MemberListPage() {
         confirmPassword: '',
         fullName: '',
         dayOfBirth: '',
-        gender: 'Male',
+        gender: 'MALE',
         phoneNumber: '',
       })
       loadMembers()
@@ -109,10 +108,9 @@ export default function MemberListPage() {
       id: row.uuid || row.id,
       username: row.username || '',
       email: row.email || '',
-      password: '', // Admin must supply password to update due to BE requirements, or type a new one
       fullName: row.fullName || '',
       dayOfBirth: row.dayOfBirth || '',
-      gender: row.gender || 'Male',
+      gender: row.gender ? row.gender.toUpperCase() : 'MALE',
       identityCard: row.identityCard || '',
       phoneNumber: row.phoneNumber || '',
       address: row.address || '',
@@ -125,21 +123,17 @@ export default function MemberListPage() {
     setError('')
     setSuccess('')
 
-    if (!editForm.password) {
-      setError('Vui lòng nhập mật khẩu xác nhận (hoặc nhập mật khẩu mới của thành viên). Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.')
-      return
-    }
-
     const isConfirmed = window.confirm(`Bạn có chắc chắn muốn CẬP NHẬT thông tin cho thành viên "${editForm.fullName}"?`)
-      if (!isConfirmed) return
+    if (!isConfirmed) return
 
-      try {
-        await userService.update(editForm.id, editForm)
+    try {
+      const { password, ...payload } = editForm
+      await userService.update(editForm.id, payload)
       setSuccess('Cập nhật thông tin thành viên thành công!')
       setEditOpen(false)
       loadMembers()
     } catch (err) {
-      setError(err.response?.data?.message || 'Cập nhật thất bại. Vui lòng kiểm tra lại độ mạnh mật khẩu và thông tin.')
+      setError(err.response?.data?.message || 'Cập nhật thất bại. Vui lòng kiểm tra lại thông tin.')
     }
   }
 
@@ -259,9 +253,9 @@ export default function MemberListPage() {
                 className="w-full rounded-lg px-3 py-2.5 transition-colors outline-none cursor-pointer border focus:border-red-500"
                 style={selectStyle}
               >
-                <option value="Male">Nam</option>
-                <option value="Female">Nữ</option>
-                <option value="Other">Khác</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
               </select>
             </div>
             <Input label="Số điện thoại *" name="phoneNumber" value={addForm.phoneNumber} onChange={handleAddChange} required />
@@ -291,24 +285,16 @@ export default function MemberListPage() {
                 className="w-full rounded-lg px-3 py-2.5 transition-colors outline-none cursor-pointer border focus:border-red-500 opacity-60"
                 style={selectStyle}
               >
-                <option value="Male">Nam</option>
-                <option value="Female">Nữ</option>
-                <option value="Other">Khác</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
               </select>
             </div>
             <Input label="Số điện thoại *" name="phoneNumber" value={editForm.phoneNumber} onChange={handleEditChange} required />
-            <Input label="CMND / CCCD * (Không thể thay đổi)" name="identityCard" value={editForm.identityCard} onChange={handleEditChange} disabled required />
+            <Input label={members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard ? "CMND / CCCD * (Không thể thay đổi)" : "CMND / CCCD *"} name="identityCard" value={editForm.identityCard} onChange={handleEditChange} disabled={!!members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard} required />
             <Input label="Địa chỉ *" name="address" value={editForm.address} onChange={handleEditChange} required />
           </div>
-          <div className="border-t border-[var(--color-border)] pt-4 mt-2">
-            <div className="flex items-start gap-2 mb-3">
-              <Shield size={16} className="text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-[var(--color-text-muted)]">
-                Yêu cầu mật khẩu của thành viên (hoặc mật khẩu mới) để xác nhận cập nhật lên Backend theo ràng buộc nghiệp vụ.
-              </p>
-            </div>
-            <Input label="Mật khẩu xác nhận / Mới *" name="password" type="password" placeholder="Nhập mật khẩu của thành viên" value={editForm.password} onChange={handleEditChange} required />
-          </div>
+          {/* Password confirmation removed */}
           <div className="flex gap-2 justify-end pt-4 border-t border-[var(--color-border)]">
             <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>Hủy</Button>
             <Button type="submit">Lưu thay đổi</Button>

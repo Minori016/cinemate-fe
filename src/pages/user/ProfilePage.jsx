@@ -13,10 +13,9 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     username: '',
     email: '',
-    password: '',
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     identityCard: '',
     phoneNumber: '',
     address: '',
@@ -57,10 +56,9 @@ export default function ProfilePage() {
       setForm({
         username: data.username || '',
         email: data.email || '',
-        password: '',
         fullName: data.fullName || '',
         dayOfBirth: data.dayOfBirth || '',
-        gender: data.gender || 'Male',
+        gender: data.gender ? data.gender.toUpperCase() : 'MALE',
         identityCard: data.identityCard || '',
         phoneNumber: data.phoneNumber || '',
         address: data.address || '',
@@ -82,10 +80,9 @@ export default function ProfilePage() {
       setForm({
         username: profile.username || '',
         email: profile.email || '',
-        password: '',
         fullName: profile.fullName || '',
         dayOfBirth: profile.dayOfBirth || '',
-        gender: profile.gender || 'Male',
+        gender: profile.gender ? profile.gender.toUpperCase() : 'MALE',
         identityCard: profile.identityCard || '',
         phoneNumber: profile.phoneNumber || '',
         address: profile.address || '',
@@ -100,17 +97,23 @@ export default function ProfilePage() {
     setError('')
     setSuccess('')
 
-    if (!form.password) {
-      return setError('Vui lòng nhập mật khẩu để xác nhận cập nhật.')
-    }
-
     setSaving(true)
     try {
-      const res = await userService.updateMyProfile(form)
+      const payload = {
+        username: form.username || profile?.username || '',
+        email: form.email || profile?.email || '',
+        fullName: form.fullName || profile?.fullName || '',
+        dayOfBirth: form.dayOfBirth || profile?.dayOfBirth || null,
+        gender: form.gender || profile?.gender || '',
+        identityCard: form.identityCard || profile?.identityCard || '',
+        phoneNumber: form.phoneNumber || profile?.phoneNumber || '',
+        address: form.address || profile?.address || '',
+      }
+
+      const res = await userService.updateMyProfile(payload)
       const data = res.data?.result ?? res.data
       setProfile(data)
       updateUser({ image: data.image, fullName: data.fullName })
-      setForm((f) => ({ ...f, password: '' }))
       setSuccess('Cập nhật hồ sơ thành công!')
       setIsEditing(false)
       setTimeout(() => setSuccess(''), 4000)
@@ -419,29 +422,27 @@ export default function ProfilePage() {
                       onFocus={handleFocus}
                       onBlur={handleBlur}
                     >
-                      <option value="Male" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
-                      <option value="Female" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
-                      <option value="Other" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
+                      <option value="MALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
+                      <option value="FEMALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
+                      <option value="OTHER" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
                     </select>
                   </div>
 
                   <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
-                  <Input label="CMND / CCCD (Không thể thay đổi)" name="identityCard" value={form.identityCard} onChange={handleChange} disabled required />
+                  <Input 
+                    label={profile?.identityCard ? "CMND / CCCD (Không thể thay đổi)" : "CMND / CCCD *"} 
+                    name="identityCard" 
+                    value={form.identityCard} 
+                    onChange={handleChange} 
+                    disabled={!!profile?.identityCard} 
+                    required 
+                  />
 
                   <div className="md:col-span-2">
                     <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
                   </div>
 
-                  {/* Password confirmation */}
-                  <div className="md:col-span-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', marginTop: '8px' }}>
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-primary)', marginTop: '2px' }}>info</span>
-                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: '1.5' }}>
-                        Nhập mật khẩu hiện tại để xác nhận. Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
-                      </p>
-                    </div>
-                    <Input label="Mật khẩu xác nhận *" name="password" type="password" placeholder="Nhập mật khẩu hiện tại" value={form.password} onChange={handleChange} required />
-                  </div>
+                  {/* Password confirmation removed */}
 
                   {/* Save Button */}
                   <div className="md:col-span-2 mt-2 flex justify-end gap-3">
@@ -499,7 +500,7 @@ export default function ProfilePage() {
                     { label: 'Email', value: profile?.email, icon: 'mail' },
                     { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
                     { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
-                    { label: 'Giới tính', value: profile?.gender === 'Male' ? 'Nam' : profile?.gender === 'Female' ? 'Nữ' : profile?.gender === 'Other' ? 'Khác' : profile?.gender, icon: 'wc' },
+                    { label: 'Giới tính', value: profile?.gender?.toUpperCase() === 'MALE' ? 'Nam' : profile?.gender?.toUpperCase() === 'FEMALE' ? 'Nữ' : profile?.gender?.toUpperCase() === 'OTHER' ? 'Khác' : profile?.gender, icon: 'wc' },
                     { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
                     { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
                     { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },
