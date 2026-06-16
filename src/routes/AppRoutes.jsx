@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import UserLayout from '../components/layout/UserLayout'
 import AdminLayout from '../components/layout/AdminLayout'
+import StaffLayout from '../components/layout/StaffLayout'
+import ManagerLayout from '../components/layout/ManagerLayout'
 import ProtectedRoute from './ProtectedRoute'
 
 import LoginPage from '../pages/auth/LoginPage'
@@ -17,11 +19,16 @@ import PromotionsPage from '../pages/user/PromotionsPage'
 import AboutPage from '../pages/user/AboutPage'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
+import BookingConfirmationPage from '../pages/booking/BookingConfirmationPage'
+import BookingSuccessPage from '../pages/booking/BookingSuccessPage'
 import DashboardPage from '../pages/admin/DashboardPage'
 import MovieListPage from '../pages/admin/movies/MovieListPage'
 import EmployeeListPage from '../pages/admin/employees/EmployeeListPage'
 import MemberListPage from '../pages/admin/members/MemberListPage'
 import TicketManagementPage from '../pages/admin/tickets/TicketManagementPage'
+import StaffDashboardPage from '../pages/staff/StaffDashboardPage'
+import ManagerDashboardPage from '../pages/manager/ManagerDashboardPage'
+import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 export default function AppRoutes() {
   return (
@@ -46,6 +53,23 @@ export default function AppRoutes() {
 
       {/* Booking Layout: Tách biệt khỏi UserLayout để hiển thị Header giao dịch rút gọn */}
       <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
+      <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
+      <Route path="/booking/success" element={<ProtectedRoute><BookingSuccessPage /></ProtectedRoute>} />
+      <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
+
+      {/* Staff */}
+      <Route path="/staff" element={<ProtectedRoute role="STAFF"><StaffLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<StaffDashboardPage />} />
+        <Route path="tickets" element={<TicketManagementPage />} />
+      </Route>
+
+      {/* Manager */}
+      <Route path="/manager" element={<ProtectedRoute role="MANAGER"><ManagerLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<ManagerDashboardPage />} />
+        <Route path="tickets" element={<TicketManagementPage />} />
+      </Route>
 
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminLayout /></ProtectedRoute>}>

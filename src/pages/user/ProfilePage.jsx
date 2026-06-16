@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
 import Input from '../../components/common/Input'
@@ -56,29 +56,50 @@ const MOCK_POINT_HISTORY = [
     id: 'TX1004',
     type: 'EARN',
     amount: 22,
-    description: 'Tích lũy từ vé xem phim Spider-man: Brand New Day (BK92384)',
+    movieName: 'Spider-man: Brand New Day',
     date: '2026-06-15T12:30:00Z',
   },
   {
     id: 'TX1003',
     type: 'SPEND',
     amount: 50,
-    description: 'Đổi Combo Bắp Nước Sweet Combo',
+    movieName: 'Sweet Combo (Bắp nước)',
     date: '2026-06-14T09:15:00Z',
   },
   {
     id: 'TX1002',
     type: 'EARN',
     amount: 18,
-    description: 'Tích lũy từ vé xem phim Lớp Học Ám Sát (BK91048)',
+    movieName: 'Lớp Học Ám Sát: Giờ Của Chúng Ta',
     date: '2026-06-13T10:15:00Z',
   },
   {
     id: 'TX1001',
     type: 'EARN',
     amount: 13,
-    description: 'Tích lũy từ vé xem phim Kumanthong Ác Quỷ Dẫn Đường (BK88402)',
+    movieName: 'Kumanthong Ác Quỷ Dẫn Đường',
     date: '2026-06-08T14:00:00Z',
+  },
+  {
+    id: 'TX1005',
+    type: 'SPEND',
+    amount: 100,
+    movieName: 'Vé 2D Doraemon: Bản Tình Ca Đất Nước',
+    date: '2026-06-05T16:45:00Z',
+  },
+  {
+    id: 'TX1006',
+    type: 'EARN',
+    amount: 25,
+    movieName: 'Lật Mặt 7: Một Điều Ước',
+    date: '2026-05-28T19:00:00Z',
+  },
+  {
+    id: 'TX1007',
+    type: 'SPEND',
+    amount: 40,
+    movieName: 'Bắp ngọt vừa (M)',
+    date: '2026-05-25T11:30:00Z',
   }
 ]
 
@@ -119,10 +140,96 @@ const getMembershipTier = (score) => {
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [profile, setProfile] = useState(null)
-  const [activeTab, setActiveTab] = useState('info')
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
   const [bookings, setBookings] = useState(MOCK_BOOKINGS)
+
+  const [fromDateStr, setFromDateStr] = useState('01/05/2026')
+  const [toDateStr, setToDateStr] = useState('30/06/2026')
+  const [scoreFilterType, setScoreFilterType] = useState('EARN') // 'EARN' = Adding, 'SPEND' = Using
+  const [filteredScoreHistory, setFilteredScoreHistory] = useState([])
+  const [scoreFilterError, setScoreFilterError] = useState('')
+  const [hasViewedScore, setHasViewedScore] = useState(false)
+
+  // Helper to parse DD/MM/YYYY to Date object
+  const parseDateDMY = (str) => {
+    if (!str) return null
+    const parts = str.trim().split('/')
+    if (parts.length !== 3) return null
+    const day = parseInt(parts[0], 10)
+    const month = parseInt(parts[1], 10) - 1
+    const year = parseInt(parts[2], 10)
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return null
+    const date = new Date(year, month, day)
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+      return null
+    }
+    return date
+  }
+
+  const handleViewScore = (e) => {
+    if (e) e.preventDefault()
+    setScoreFilterError('')
+    setHasViewedScore(true)
+
+    if (!fromDateStr.trim() || !toDateStr.trim()) {
+      setScoreFilterError('Vui lòng nhập đầy đủ Từ ngày và Đến ngày.')
+      setFilteredScoreHistory([])
+      return
+    }
+
+    const fromDate = parseDateDMY(fromDateStr)
+    const toDate = parseDateDMY(toDateStr)
+
+    if (!fromDate) {
+      setScoreFilterError('Từ ngày không hợp lệ. Định dạng yêu cầu: DD/MM/YYYY (ví dụ: 01/05/2026).')
+      setFilteredScoreHistory([])
+      return
+    }
+
+    if (!toDate) {
+      setScoreFilterError('Đến ngày không hợp lệ. Định dạng yêu cầu: DD/MM/YYYY (ví dụ: 30/06/2026).')
+      setFilteredScoreHistory([])
+      return
+    }
+
+    if (fromDate > toDate) {
+      setScoreFilterError('Từ ngày không được sau Đến ngày.')
+      setFilteredScoreHistory([])
+      return
+    }
+
+    const toDateEnd = new Date(toDate)
+    toDateEnd.setHours(23, 59, 59, 999)
+
+    const results = MOCK_POINT_HISTORY.filter(item => {
+      const matchType = item.type === scoreFilterType
+      const itemDate = new Date(item.date)
+      return matchType && itemDate >= fromDate && itemDate <= toDateEnd
+    })
+
+    setFilteredScoreHistory(results)
+  }
+
+  // Load initial score history when switching to 'history' tab
+  useEffect(() => {
+    if (activeTab === 'history') {
+      const fromDate = parseDateDMY(fromDateStr)
+      const toDate = parseDateDMY(toDateStr)
+      if (fromDate && toDate && fromDate <= toDate) {
+        const toDateEnd = new Date(toDate)
+        toDateEnd.setHours(23, 59, 59, 999)
+        const results = MOCK_POINT_HISTORY.filter(item => {
+          return item.type === scoreFilterType && new Date(item.date) >= fromDate && new Date(item.date) <= toDateEnd
+        })
+        setFilteredScoreHistory(results)
+        setHasViewedScore(true)
+      }
+    }
+  }, [activeTab])
+
 
   const handleCancelTicket = (ticketId) => {
     const confirmCancel = window.confirm(`Bạn có chắc chắn muốn hủy vé ${ticketId} không? Hoạt động này không thể hoàn tác.`);
@@ -465,7 +572,7 @@ export default function ProfilePage() {
                 </p>
                 {profile?.score !== undefined && profile?.score !== null && (
                   <button
-                    onClick={() => setActiveTab('score')}
+                    onClick={() => setActiveTab('history')}
                     className="flex items-center gap-1 mt-1.5 cursor-pointer hover:opacity-80 transition-opacity bg-transparent border-none p-0 text-left align-middle group outline-none"
                   >
                     <span className="material-symbols-outlined group-hover:scale-110 transition-transform duration-200" style={{ fontSize: '16px', color: 'var(--color-primary)', fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -563,17 +670,6 @@ export default function ProfilePage() {
               style={{ fontFamily: 'Montserrat, sans-serif' }}
             >
               Vé đã hủy (Canceled)
-            </button>
-            <button
-              onClick={() => setActiveTab('score')}
-              className={`pb-3 text-sm font-bold tracking-wider uppercase transition-all border-b-2 px-1 cursor-pointer shrink-0 ${
-                activeTab === 'score' 
-                  ? 'border-red-500 text-white' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Điểm thành viên
             </button>
           </div>
 
@@ -923,103 +1019,335 @@ export default function ProfilePage() {
           )}
 
           {/* ── Tab History (Lịch sử đặt vé chung) ── */}
-          {activeTab === 'history' && (
-            <div className="w-full space-y-4 animate-fade-in-up">
-              {bookings.length === 0 ? (
-                <div 
-                  className="text-center py-20 bg-white/5 rounded-xl border border-white/5 w-full"
-                  style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
-                >
-                  <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">confirmation_number</span>
-                  <p className="text-gray-400 font-medium">No booked tickets found.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                  {bookings.map((booking) => (
-                    <div 
-                      key={booking.id}
-                      className="rounded-xl overflow-hidden border border-white/10 shadow-lg flex flex-col relative w-full transition-all duration-300 hover:scale-[1.01] hover:border-white/20"
-                      style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
-                    >
-                      <div 
-                        className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 md:block hidden"
-                        style={{ backgroundColor: 'var(--color-background)' }}
-                      ></div>
-                      <div 
-                        className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 md:block hidden"
-                        style={{ backgroundColor: 'var(--color-background)' }}
-                      ></div>
+          {activeTab === 'history' && (() => {
+            const score = profile?.score ?? 0
+            const tier = getMembershipTier(score)
+            let progressPercent = 0
+            if (score >= 300) {
+              progressPercent = 100
+            } else if (score >= 100) {
+              progressPercent = ((score - 100) / 200) * 100
+            } else {
+              progressPercent = (score / 100) * 100
+            }
 
-                      <div className="p-6 flex-grow flex flex-col justify-between">
-                        <div>
-                          <div className="flex justify-between items-start gap-2 mb-2">
-                            <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                              {booking.movieName}
-                            </h3>
-                            {booking.status === 'CANCELED' ? (
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20 shrink-0 uppercase tracking-wider">
-                                ĐÃ HỦY
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-green-500/15 text-green-400 border border-green-500/20 shrink-0 uppercase tracking-wider">
-                                ĐÃ THANH TOÁN
-                              </span>
-                            )}
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs text-gray-400 mt-4">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Mã vé</p>
-                              <p className="text-white font-mono font-bold mt-0.5">{booking.id}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</p>
-                              <p className="text-white font-medium mt-0.5">{booking.room}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
-                              <p className="text-white font-medium mt-0.5">
-                                {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ghế ngồi</p>
-                              <p className="text-red-500 font-black mt-0.5 tracking-wider">{booking.seats.join(', ')}</p>
-                            </div>
-                          </div>
+            return (
+              <div className="w-full flex flex-col lg:flex-row gap-8 animate-fade-in-up">
+                {/* Left Column: Membership Card & Rules */}
+                <div className="w-full lg:w-5/12 flex flex-col gap-6">
+                  {/* Membership Card */}
+                  <div 
+                    className="relative rounded-2xl p-6 overflow-hidden border border-white/10 shadow-2xl flex flex-col justify-between aspect-[1.586/1] w-full max-w-[420px] mx-auto select-none group"
+                    style={{ 
+                      background: tier.gradient,
+                      boxShadow: '0 15px 35px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)'
+                    }}
+                  >
+                    <div className="flex justify-between items-start text-white">
+                      <div className="flex flex-col">
+                        <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, fontSize: '20px', letterSpacing: '1px' }}>
+                          <span className="text-white">Cine</span><span className="text-red-500">Mate</span>
+                        </span>
+                        <span className="text-[10px] text-white/60 font-semibold tracking-widest uppercase mt-0.5">Membership Card</span>
+                      </div>
+                      <span className="material-symbols-outlined text-4xl text-white/30 font-light">contactless</span>
+                    </div>
+
+                    <div className="w-12 h-9 rounded-md bg-gradient-to-br from-yellow-300/80 via-yellow-500/80 to-amber-700/80 border border-yellow-200/20 relative overflow-hidden mt-4">
+                      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20 border border-black/20">
+                        {Array.from({length: 9}).map((_, i) => (
+                          <div key={i} className="border-t border-l border-black/30"></div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-between items-end text-white">
+                      <div>
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Tên thành viên</p>
+                        <p className="font-bold tracking-wide mt-0.5 truncate max-w-[200px]" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '15px' }}>
+                          {profile?.fullName || profile?.username || 'Chưa đặt tên'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Hạng thẻ</p>
+                        <p className="font-extrabold tracking-widest mt-0.5 uppercase" style={{ color: tier.color, textShadow: '0 2px 4px rgba(0,0,0,0.3)', fontSize: '15px' }}>
+                          {tier.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out pointer-events-none"></div>
+                  </div>
+
+                  {/* Points Progress */}
+                  <div 
+                    className="p-5 rounded-xl border border-white/5 flex flex-col gap-4 text-white"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  >
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400 font-medium">Hạng hiện tại:</span>
+                      <span className="font-bold uppercase tracking-wider text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10" style={{ color: tier.color }}>
+                        {tier.name}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400 font-medium">Điểm tích lũy:</span>
+                      <span className="font-bold text-white text-base">{score} điểm</span>
+                    </div>
+
+                    {tier.nextTier ? (
+                      <div className="flex flex-col gap-2 mt-1">
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>Tiến trình lên hạng <strong>{tier.nextTier}</strong></span>
+                          <span>Còn <strong>{tier.pointsToNext}</strong> điểm</span>
                         </div>
+                        <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
+                          <div 
+                            className="h-full rounded-full transition-all duration-500 ease-out" 
+                            style={{ 
+                              width: `${progressPercent}%`,
+                              background: 'linear-gradient(to right, var(--color-primary), #f87171)'
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-green-400 font-bold bg-green-500/10 border border-green-500/20 rounded-lg p-2.5 flex items-center gap-2 mt-1">
+                        <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                        Chúc mừng! Bạn đã đạt hạng thẻ cao nhất (KIM CƯƠNG)
+                      </div>
+                    )}
 
-                        <div className="border-t border-dashed border-white/10 mt-5 pt-4 flex justify-between items-end">
-                          <div>
-                            <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 text-right">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                              <p className="text-lg font-black text-[#F3EA28] font-mono mt-0.5">
-                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
-                              </p>
-                            </div>
-                            {booking.status === 'COMPLETED' && (
-                              <button
-                                onClick={() => handleCancelTicket(booking.id)}
-                                className="mt-1.5 px-3 py-1 text-[11px] font-bold text-red-500 hover:text-white hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded transition-all duration-200 cursor-pointer active:scale-95"
-                              >
-                                Hủy vé
-                              </button>
-                            )}
-                          </div>
+                    <div className="border-t border-white/5 pt-3 mt-1 text-xs text-gray-400 leading-relaxed text-left">
+                      <span className="font-semibold text-white block mb-1">Quyền lợi của bạn:</span>
+                      {tier.benefit}
+                    </div>
+                  </div>
+
+                  {/* Rules Card */}
+                  <div 
+                    className="p-5 rounded-xl border border-white/5 flex flex-col gap-4 text-white text-left"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  >
+                    <h3 className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      Quy tắc tích lũy & Đổi quà
+                    </h3>
+                    <div className="flex flex-col gap-4 text-xs text-gray-400">
+                      <div className="space-y-1.5">
+                        <h4 className="text-white font-semibold flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">payments</span>
+                          Cách tích điểm
+                        </h4>
+                        <ul className="list-disc pl-4 space-y-1">
+                          <li>Mỗi <strong>10.000 VND</strong> chi tiêu mua vé hoặc bắp nước tích <strong>1 điểm</strong>.</li>
+                          <li>Không áp dụng tích điểm khi thanh toán bằng voucher hoặc điểm thưởng.</li>
+                          <li>Điểm thành viên có giá trị sử dụng trong vòng 1 năm kể từ ngày tích lũy.</li>
+                        </ul>
+                      </div>
+                      <div className="space-y-1.5">
+                        <h4 className="text-white font-semibold flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">featured_play_list</span>
+                          Bảng đổi quà
+                        </h4>
+                        <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden">
+                          <table className="w-full border-collapse text-left">
+                            <thead>
+                              <tr className="border-b border-white/5 bg-white/5 text-[10px] font-bold text-gray-300 uppercase tracking-wider">
+                                <th className="p-2">Quà tặng</th>
+                                <th className="p-2 text-right">Điểm đổi</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              <tr>
+                                <td className="p-2">1 Nước ngọt lớn (L)</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">30 pts</td>
+                              </tr>
+                              <tr>
+                                <td className="p-2">1 Bắp ngọt vừa (M)</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">40 pts</td>
+                              </tr>
+                              <tr>
+                                <td className="p-2">1 Combo ngọt (1 Bắp M + 1 Nước L)</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">60 pts</td>
+                              </tr>
+                              <tr>
+                                <td className="p-2">1 Vé xem phim 2D miễn phí</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">100 pts</td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Right Column: Score History Filter and Table */}
+                <div className="flex-1 flex flex-col gap-6">
+                  {/* Filters Card */}
+                  <div 
+                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-5 text-white"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  >
+                    <h3 className="text-base font-bold text-white tracking-wide text-left" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      Bộ lọc lịch sử điểm thành viên
+                    </h3>
+
+                    {scoreFilterError && (
+                      <div className="p-3 text-xs rounded border bg-red-500/15 border-red-500/20 text-red-400 flex items-center gap-2 text-left">
+                        <span className="material-symbols-outlined text-base">error</span>
+                        {scoreFilterError}
+                      </div>
+                    )}
+
+                    <form onSubmit={handleViewScore} className="space-y-4">
+                      {/* Date Range Inputs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                            Từ ngày (DD/MM/YYYY)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="DD/MM/YYYY"
+                            value={fromDateStr}
+                            onChange={(e) => setFromDateStr(e.target.value)}
+                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full"
+                          />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                            Đến ngày (DD/MM/YYYY)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="DD/MM/YYYY"
+                            value={toDateStr}
+                            onChange={(e) => setToDateStr(e.target.value)}
+                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Filter Type Radio Buttons */}
+                      <div className="flex flex-col gap-2 text-left">
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                          Loại giao dịch
+                        </label>
+                        <div className="flex flex-col gap-2.5 sm:flex-row sm:gap-6 mt-1">
+                          <label className="flex items-center gap-2 cursor-pointer text-sm text-white hover:text-gray-200">
+                            <input
+                              type="radio"
+                              name="scoreFilterType"
+                              value="EARN"
+                              checked={scoreFilterType === 'EARN'}
+                              onChange={() => setScoreFilterType('EARN')}
+                              className="accent-red-600 w-4 h-4 cursor-pointer"
+                            />
+                            Lịch sử nhận điểm (History of Score Adding)
+                          </label>
+
+                          <label className="flex items-center gap-2 cursor-pointer text-sm text-white hover:text-gray-200">
+                            <input
+                              type="radio"
+                              name="scoreFilterType"
+                              value="SPEND"
+                              checked={scoreFilterType === 'SPEND'}
+                              onChange={() => setScoreFilterType('SPEND')}
+                              className="accent-red-600 w-4 h-4 cursor-pointer"
+                            />
+                            Lịch sử dùng điểm (History of Score Using)
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* View Score Button */}
+                      <div className="flex justify-end pt-2">
+                        <button
+                          type="submit"
+                          className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                          style={{
+                            background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                            color: 'var(--color-on-primary-container)',
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            border: '1px solid rgba(255,255,255,0.10)',
+                            boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
+                        >
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>search</span>
+                          Xem điểm (View Score)
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Results Card */}
+                  <div 
+                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-4 flex-grow text-white"
+                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  >
+                    <h3 className="text-base font-bold text-white tracking-wide border-b border-white/10 pb-3 text-left" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      {scoreFilterType === 'EARN' ? 'Lịch sử tích lũy điểm' : 'Lịch sử sử dụng điểm'}
+                    </h3>
+
+                    {!hasViewedScore ? (
+                      <div className="text-center py-10 text-gray-500">
+                        <span className="material-symbols-outlined text-4xl block mb-2">info</span>
+                        Nhấn "Xem điểm" để hiển thị lịch sử giao dịch.
+                      </div>
+                    ) : filteredScoreHistory.length === 0 ? (
+                      <div className="text-center py-12 text-gray-400 font-medium">
+                        <span className="material-symbols-outlined text-4xl block mb-2 text-gray-600">history_toggle_off</span>
+                        No score history found for the selected period.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[500px]">
+                          <thead>
+                            <tr className="border-b border-white/10 text-xs text-gray-400 font-bold uppercase tracking-wider">
+                              <th className="py-3 px-4">Ngày tạo (Date Created)</th>
+                              <th className="py-3 px-4">Tên phim (Movie Name)</th>
+                              <th className="py-3 px-4 text-right">
+                                {scoreFilterType === 'EARN' ? 'Điểm nhận (Added Score)' : 'Điểm dùng (Used Score)'}
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 text-sm">
+                            {filteredScoreHistory.map((item) => {
+                              const dateStr = new Date(item.date).toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                              })
+                              return (
+                                <tr key={item.id} className="hover:bg-white/5 transition-colors">
+                                  <td className="py-3.5 px-4 text-gray-300 font-medium">{dateStr}</td>
+                                  <td className="py-3.5 px-4 text-white font-semibold">{item.movieName}</td>
+                                  <td className="py-3.5 px-4 text-right font-mono font-bold text-base">
+                                    <span 
+                                      className={item.type === 'EARN' ? 'text-green-400' : 'text-red-400'}
+                                    >
+                                      {item.type === 'EARN' ? `+${item.amount}` : `-${item.amount}`}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* ── Tab Booked (Vé đã đặt hoạt động) ── */}
           {activeTab === 'booked' && (() => {
@@ -1201,228 +1529,7 @@ export default function ProfilePage() {
             )
           })()}
 
-          {activeTab === 'score' && (() => {
-            const score = profile?.score ?? 0
-            const tier = getMembershipTier(score)
-            let progressPercent = 0
-            if (score >= 300) {
-              progressPercent = 100
-            } else if (score >= 100) {
-              progressPercent = ((score - 100) / 200) * 100
-            } else {
-              progressPercent = (score / 100) * 100
-            }
 
-            return (
-              <div className="w-full flex flex-col lg:flex-row gap-8 animate-fade-in-up">
-                {/* Membership Card Column */}
-                <div className="w-full lg:w-5/12 flex flex-col gap-6">
-                  <div 
-                    className="relative rounded-2xl p-6 overflow-hidden border border-white/10 shadow-2xl flex flex-col justify-between aspect-[1.586/1] w-full max-w-[420px] mx-auto select-none group"
-                    style={{ 
-                      background: tier.gradient,
-                      boxShadow: '0 15px 35px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)'
-                    }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, fontSize: '20px', letterSpacing: '1px' }}>
-                          <span className="text-white">Cine</span><span className="text-red-500">Mate</span>
-                        </span>
-                        <span className="text-[10px] text-white/60 font-semibold tracking-widest uppercase mt-0.5">Membership Card</span>
-                      </div>
-                      <span className="material-symbols-outlined text-4xl text-white/30 font-light">contactless</span>
-                    </div>
-
-                    <div className="w-12 h-9 rounded-md bg-gradient-to-br from-yellow-300/80 via-yellow-500/80 to-amber-700/80 border border-yellow-200/20 relative overflow-hidden mt-4">
-                      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-20 border border-black/20">
-                        {Array.from({length: 9}).map((_, i) => (
-                          <div key={i} className="border-t border-l border-black/30"></div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-between items-end text-white">
-                      <div>
-                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Tên thành viên</p>
-                        <p className="font-bold tracking-wide mt-0.5 truncate max-w-[200px]" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '15px' }}>
-                          {profile?.fullName || profile?.username || 'Chưa đặt tên'}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">Hạng thẻ</p>
-                        <p className="font-extrabold tracking-widest mt-0.5 uppercase" style={{ color: tier.color, textShadow: '0 2px 4px rgba(0,0,0,0.3)', fontSize: '15px' }}>
-                          {tier.name}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out pointer-events-none"></div>
-                  </div>
-
-                  <div 
-                    className="p-5 rounded-xl border border-white/5 flex flex-col gap-4 text-white"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
-                  >
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400 font-medium">Hạng hiện tại:</span>
-                      <span className="font-bold uppercase tracking-wider text-xs px-2 py-0.5 rounded bg-white/5 border border-white/10" style={{ color: tier.color }}>
-                        {tier.name}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400 font-medium">Điểm tích lũy:</span>
-                      <span className="font-bold text-white text-base">{score} điểm</span>
-                    </div>
-
-                    {tier.nextTier ? (
-                      <div className="flex flex-col gap-2 mt-1">
-                        <div className="flex justify-between text-xs text-gray-400">
-                          <span>Tiến trình lên hạng <strong>{tier.nextTier}</strong></span>
-                          <span>Còn <strong>{tier.pointsToNext}</strong> điểm</span>
-                        </div>
-                        <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500 ease-out" 
-                            style={{ 
-                              width: `${progressPercent}%`,
-                              background: 'linear-gradient(to right, var(--color-primary), #f87171)'
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-green-400 font-bold bg-green-500/10 border border-green-500/20 rounded-lg p-2.5 flex items-center gap-2 mt-1">
-                        <span className="material-symbols-outlined text-sm">workspace_premium</span>
-                        Chúc mừng! Bạn đã đạt hạng thẻ cao nhất (KIM CƯƠNG)
-                      </div>
-                    )}
-
-                    <div className="border-t border-white/5 pt-3 mt-1 text-xs text-gray-400 leading-relaxed">
-                      <span className="font-semibold text-white block mb-1">Quyền lợi của bạn:</span>
-                      {tier.benefit}
-                    </div>
-                  </div>
-                </div>
-
-                {/* History & Rules Column */}
-                <div className="flex-1 flex flex-col gap-6">
-                  <div 
-                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-4 flex-grow"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
-                  >
-                    <h3 className="text-base font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                      Lịch sử giao dịch điểm
-                    </h3>
-                    
-                    {MOCK_POINT_HISTORY.length === 0 ? (
-                      <div className="text-center py-10 text-gray-500">
-                        <span className="material-symbols-outlined text-4xl block mb-2">history</span>
-                        Chưa có lịch sử giao dịch điểm.
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-1">
-                        {MOCK_POINT_HISTORY.map((item) => (
-                          <div 
-                            key={item.id} 
-                            className="flex justify-between items-center p-3 rounded-lg bg-white/5 border border-white/5 hover:border-white/10 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div 
-                                className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                                style={{ 
-                                  backgroundColor: item.type === 'EARN' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                                  border: item.type === 'EARN' ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(239,68,68,0.2)'
-                                }}
-                              >
-                                <span 
-                                  className="material-symbols-outlined text-base"
-                                  style={{ color: item.type === 'EARN' ? '#22c55e' : '#ef4444' }}
-                                >
-                                  {item.type === 'EARN' ? 'trending_up' : 'redeem'}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-white leading-normal">{item.description}</p>
-                                <span className="text-[10px] text-gray-500 font-medium mt-0.5 block">
-                                  {new Date(item.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span 
-                                className="font-mono font-bold text-sm"
-                                style={{ color: item.type === 'EARN' ? '#22c55e' : '#ef4444' }}
-                              >
-                                {item.type === 'EARN' ? `+${item.amount}` : `-${item.amount}`} pts
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div 
-                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-4 text-white"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
-                  >
-                    <h3 className="text-base font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                      Quy tắc tích lũy & Đổi quà
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs text-gray-400">
-                      <div className="space-y-2">
-                        <h4 className="text-white font-semibold flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">payments</span>
-                          Cách tích điểm
-                        </h4>
-                        <ul className="list-disc pl-4 space-y-1">
-                          <li>Mỗi <strong>10.000 VND</strong> chi tiêu mua vé hoặc bắp nước tích <strong>1 điểm</strong>.</li>
-                          <li>Không áp dụng tích điểm khi thanh toán bằng voucher hoặc điểm thưởng.</li>
-                          <li>Điểm thành viên có giá trị sử dụng trong vòng 1 năm kể từ ngày tích lũy.</li>
-                        </ul>
-                      </div>
-                      <div className="space-y-2">
-                        <h4 className="text-white font-semibold flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">featured_play_list</span>
-                          Bảng đổi quà
-                        </h4>
-                        <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden">
-                          <table className="w-full border-collapse text-left">
-                            <thead>
-                              <tr className="border-b border-white/5 bg-white/5 text-[10px] font-bold text-gray-300 uppercase tracking-wider">
-                                <th className="p-2">Quà tặng</th>
-                                <th className="p-2 text-right">Điểm đổi</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                              <tr>
-                                <td className="p-2">1 Nước ngọt lớn (L)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">30 pts</td>
-                              </tr>
-                              <tr>
-                                <td className="p-2">1 Bắp ngọt vừa (M)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">40 pts</td>
-                              </tr>
-                              <tr>
-                                <td className="p-2">1 Combo ngọt (1 Bắp M + 1 Nước L)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">60 pts</td>
-                              </tr>
-                              <tr>
-                                <td className="p-2">1 Vé xem phim 2D miễn phí</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">100 pts</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })()}
 
         </div>
         {/* ── End Card Grid ── */}

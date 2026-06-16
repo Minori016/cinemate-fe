@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import { useAuth } from '../../contexts/AuthContext'
 
 // Cấu trúc sơ đồ ghế mặc định
 const SEAT_ROWS = [
@@ -23,6 +24,7 @@ const OCCUPIED_SEATS = [
 export default function SeatSelectionPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   
   const movieId = params.get('movie')
   const time = params.get('time') || '19:30'
@@ -32,6 +34,22 @@ export default function SeatSelectionPage() {
   const [selected, setSelected] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // Seat quantity selection states (AC-01)
+  const [seatQuantity, setSeatQuantity] = useState(0)
+
+  // Selection warnings and guide logic (AC-03)
+  const getSelectionMessage = () => {
+    if (seatQuantity === 0) return 'Vui lòng chọn số lượng ghế để bắt đầu.'
+    const diff = seatQuantity - selected.length
+    if (diff > 0) {
+      return `Please select ${diff} seat more`
+    } else if (diff < 0) {
+      return `Please select only ${seatQuantity} seat`
+    }
+    return 'Số lượng ghế đã chọn hợp lệ. Sẵn sàng tiếp tục!'
+  }
+
 
   // Fetch thông tin phim từ API
   useEffect(() => {
@@ -186,60 +204,108 @@ export default function SeatSelectionPage() {
           </p>
         </div>
 
-        {/* Legend */}
-        <div className="w-full max-w-2xl bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 flex flex-wrap justify-center gap-5 md:gap-7 mb-10">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded border border-gray-500 bg-transparent"></div>
-            <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Thường</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded border border-[#8b1dd0] bg-transparent text-[#8b1dd0] flex items-center justify-center text-[10px] font-black">V</div>
-            <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">VIP</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-6 rounded border border-[#E02020] bg-transparent text-[#E02020] flex items-center justify-center text-[10px] font-black">COUPLE</div>
-            <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đôi</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-[#F3EA28] shadow-[0_0_8px_rgba(243,234,40,0.5)]"></div>
-            <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đang Chọn</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded bg-[#282a2b] border border-[#4e4353] opacity-40"></div>
-            <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đã Bán</span>
-          </div>
-        </div>
+        {/* Seat Quantity Selector (AC-01) */}
+        <div className="w-full max-w-sm bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 flex flex-col items-start gap-2.5 mb-8">
+          <label className="text-xs font-bold tracking-wider text-gray-400 uppercase">
+            Số lượng ghế muốn đặt (Select Seat Quantity)
+          </label>
+          <select
+            value={seatQuantity}
+            onChange={(e) => {
+              const qty = parseInt(e.target.value, 10)
+              setSeatQuantity(qty)
+              setSelected([]) // Reset selection when quantity changes
+            }}
+            className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors cursor-pointer"
+          >
+            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(qty => (
+              <option key={qty} value={qty} className="bg-[#06080F] text-white">
+                {qty} ghế
+              </option>
+            ))}
+          </select>
 
-        {/* Seating Layout Area */}
-        <div className="w-full flex flex-col items-center select-none">
-          {/* Screen curve graphic */}
-          <div className="w-4/5 h-16 mb-12 relative flex flex-col items-center justify-start">
-            <div className="w-full h-8 screen-curve rounded-[100%] border-t-2 border-purple-500/50"></div>
-            <p className="text-[10px] text-purple-400/50 font-bold uppercase tracking-[0.25em] mt-3">Màn Hình Chiếu</p>
-          </div>
-
-          {/* Seat Rows Grid Container */}
-          <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
-            <div className="min-w-[850px] flex flex-col gap-3.5 items-center">
-              
-              {/* Render Standard & VIP Rows */}
-              {SEAT_ROWS.map(r => renderRow(r.row, r.type))}
-
-              {/* Spacer between VIP and Couple rows */}
-              <div className="h-4" />
-
-              {/* Render Couple Rows (Row G & H) */}
-              {renderCoupleRow('G')}
-              {renderCoupleRow('H')}
+          {/* Selection guide message (AC-03) */}
+          {seatQuantity > 0 && (
+            <div 
+              className={`w-full text-xs font-bold px-3 py-1.5 rounded-lg border text-center mt-1 transition-all ${
+                selected.length === seatQuantity 
+                  ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+              }`}
+            >
+              {getSelectionMessage()}
             </div>
-          </div>
+          )}
         </div>
+
+        {/* Seat Map Area conditional rendering (AC-02) */}
+        {seatQuantity === 0 ? (
+          <div 
+            className="w-full max-w-2xl text-center py-16 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center justify-center gap-3.5 mb-10"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+          >
+            <span className="material-symbols-outlined text-5xl text-purple-400/50">event_seat</span>
+            <p className="text-gray-400 font-medium">Vui lòng chọn số lượng ghế ngồi (từ 1 đến 8) để hiển thị sơ đồ ghế.</p>
+          </div>
+        ) : (
+          <>
+            {/* Legend */}
+            <div className="w-full max-w-2xl bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 flex flex-wrap justify-center gap-5 md:gap-7 mb-10">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded border border-gray-500 bg-transparent"></div>
+                <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Thường</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded border border-[#8b1dd0] bg-transparent text-[#8b1dd0] flex items-center justify-center text-[10px] font-black">V</div>
+                <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">VIP</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-6 rounded border border-[#E02020] bg-transparent text-[#E02020] flex items-center justify-center text-[10px] font-black">COUPLE</div>
+                <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đôi</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-[#F3EA28] shadow-[0_0_8px_rgba(243,234,40,0.5)]"></div>
+                <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đang Chọn</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded bg-[#282a2b] border border-[#4e4353] opacity-40"></div>
+                <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đã Bán</span>
+              </div>
+            </div>
+
+            {/* Seating Layout Area */}
+            <div className="w-full flex flex-col items-center select-none">
+              {/* Screen curve graphic */}
+              <div className="w-4/5 h-16 mb-12 relative flex flex-col items-center justify-start">
+                <div className="w-full h-8 screen-curve rounded-[100%] border-t-2 border-purple-500/50"></div>
+                <p className="text-[10px] text-purple-400/50 font-bold uppercase tracking-[0.25em] mt-3">Màn Hình Chiếu</p>
+              </div>
+
+              {/* Seat Rows Grid Container */}
+              <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
+                <div className="min-w-[850px] flex flex-col gap-3.5 items-center">
+                  
+                  {/* Render Standard & VIP Rows */}
+                  {SEAT_ROWS.map(r => renderRow(r.row, r.type))}
+
+                  {/* Spacer between VIP and Couple rows */}
+                  <div className="h-4" />
+
+                  {/* Render Couple Rows (Row G & H) */}
+                  {renderCoupleRow('G')}
+                  {renderCoupleRow('H')}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       {/* Floating Bottom Action/Checkout Bar */}
       <div className="fixed bottom-0 left-0 w-full z-30 p-4 md:p-6 pointer-events-none flex justify-center">
         <div className="pointer-events-auto w-full max-w-4xl bg-[#1a1c1c]/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_-10px_45px_rgba(139,29,208,0.25)] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex flex-col items-center md:items-start flex-grow">
+          <div className="flex flex-col items-center md:items-start flex-grow text-left">
             <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1.5">Ghế đã chọn</span>
             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
               {selected.length === 0 ? (
@@ -255,6 +321,11 @@ export default function SeatSelectionPage() {
                 ))
               )}
             </div>
+            {seatQuantity > 0 && selected.length !== seatQuantity && (
+              <span className="text-xs font-bold text-yellow-400 mt-2 text-left block">
+                {getSelectionMessage()}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
@@ -266,11 +337,25 @@ export default function SeatSelectionPage() {
             </div>
             
             <button
-              onClick={() => setShowModal(true)}
-              disabled={selected.length === 0}
+              onClick={() => {
+                const isManagerOrAdmin = user?.roles?.includes('MANAGER') || user?.roles?.includes('ADMIN')
+                const redirectPath = isManagerOrAdmin ? '/manager/booking/confirm' : '/booking/confirm'
+                navigate(redirectPath, {
+                  state: {
+                    movie: movie,
+                    movieId: movieId,
+                    time: time,
+                    date: dateStr,
+                    seats: selected,
+                    totalPrice: totalPrice,
+                    screen: 'Phòng Chiếu 03 (IMAX)'
+                  }
+                })
+              }}
+              disabled={selected.length !== seatQuantity || seatQuantity === 0}
               className="bg-[#F3EA28] text-[#06080F] font-bold text-base px-8 py-3.5 rounded-xl shadow-[0_0_20px_rgba(243,234,40,0.25)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer"
             >
-              <span>Thanh toán</span>
+              <span>Tiếp tục (Continue)</span>
               <span className="material-symbols-outlined text-lg font-black group-hover:translate-x-1 transition-transform">arrow_forward</span>
             </button>
           </div>
@@ -337,20 +422,25 @@ export default function SeatSelectionPage() {
     const isVip = type === 'vip'
 
     return (
-      <button
+      <label
         key={seat.id}
-        disabled={isOccupied}
-        onClick={() => toggleSeat(seat.id)}
-        className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold ${
-          isOccupied ? 'occupied' :
-          isSelected ? 'selected' :
-          isVip ? 'vip border-purple-600/60 text-purple-400 hover:bg-purple-600/10' :
-          'border-gray-600 text-gray-300 hover:bg-white/5'
+        className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${
+          isOccupied ? 'occupied cursor-not-allowed opacity-40' :
+          isSelected ? 'selected cursor-pointer' :
+          isVip ? 'vip border-purple-600/60 text-purple-400 hover:bg-purple-600/10 cursor-pointer' :
+          'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'
         }`}
         title={seat.id}
       >
+        <input
+          type="checkbox"
+          checked={isSelected}
+          disabled={isOccupied}
+          onChange={() => toggleSeat(seat.id)}
+          className="sr-only"
+        />
         {isVip && !isSelected && !isOccupied ? 'V' : seat.label}
-      </button>
+      </label>
     )
   }
 
@@ -360,19 +450,24 @@ export default function SeatSelectionPage() {
     const isSelected = selected.includes(seat.id)
 
     return (
-      <button
+      <label
         key={seat.id}
-        disabled={isOccupied}
-        onClick={() => toggleSeat(seat.id)}
-        className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold ${
-          isOccupied ? 'occupied' :
-          isSelected ? 'selected' :
-          'border-red-600/60 text-red-500 hover:bg-red-600/10'
+        className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${
+          isOccupied ? 'occupied cursor-not-allowed opacity-40' :
+          isSelected ? 'selected cursor-pointer' :
+          'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'
         }`}
         title={seat.id}
       >
+        <input
+          type="checkbox"
+          checked={isSelected}
+          disabled={isOccupied}
+          onChange={() => toggleSeat(seat.id)}
+          className="sr-only"
+        />
         {seat.label}
-      </button>
+      </label>
     )
   }
 

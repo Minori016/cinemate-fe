@@ -70,10 +70,25 @@ const DAYS = Array.from({ length: 7 }, (_, i) => {
   }
 })
 
+// Mapping of valid show dates for each mock movie to verify dynamic options populating (AC-02 & AC-03)
+const MOVIE_DATES_MAP = {
+  1: [DAYS[0].date, DAYS[1].date], // Ma Xó - Today, Tomorrow
+  2: [DAYS[0].date, DAYS[1].date, DAYS[2].date], // Lớp học ám sát - 3 days
+  3: [], // Kumanthong - Empty dates to test AC-02 fallback requirement
+  7: [DAYS[0].date, DAYS[1].date, DAYS[2].date, DAYS[3].date, DAYS[4].date, DAYS[5].date, DAYS[6].date], // Spiderman - All 7 days
+  8: [DAYS[0].date] // Backrooms - Today only
+}
+
 export default function ShowtimesPage() {
   const [movies, setMovies] = useState([])
   const [selectedDay, setSelectedDay] = useState(DAYS[0].date)
   const navigate = useNavigate()
+
+  // Quick booking state variables (AC-01)
+  const [bookingMovieId, setBookingMovieId] = useState('')
+  const [bookingDate, setBookingDate] = useState('')
+  const [bookingTime, setBookingTime] = useState('')
+  const [errors, setErrors] = useState({ movie: '', date: '', time: '' })
 
   useEffect(() => { 
     movieService.getShowtimes()
@@ -89,6 +104,48 @@ export default function ShowtimesPage() {
       }) 
   }, [])
 
+  // Retrieve valid show dates for the selected movie (AC-02)
+  const getAvailableDates = () => {
+    if (!bookingMovieId) return []
+    return MOVIE_DATES_MAP[bookingMovieId] || []
+  }
+
+  // Retrieve available times based on movie and date selections (AC-03)
+  const getAvailableTimes = () => {
+    if (!bookingMovieId || !bookingDate) return []
+    const availableDates = getAvailableDates()
+    if (!availableDates.includes(bookingDate)) return []
+    
+    const movie = movies.find(m => m.id.toString() === bookingMovieId)
+    return movie ? (movie.schedules || []) : []
+  }
+
+  // Handle Quick Booking Validation and Redirect (AC-04)
+  const handleQuickBook = (e) => {
+    e.preventDefault()
+    const newErrors = { movie: '', date: '', time: '' }
+    let valid = true
+
+    if (!bookingMovieId) {
+      newErrors.movie = 'Please select a movie'
+      valid = false
+    }
+    if (!bookingDate) {
+      newErrors.date = 'Please select the show date'
+      valid = false
+    }
+    if (!bookingTime) {
+      newErrors.time = 'Please select showtime'
+      valid = false
+    }
+
+    setErrors(newErrors)
+
+    if (valid) {
+      navigate(`/booking?movie=${bookingMovieId}&time=${bookingTime}&date=${bookingDate}`)
+    }
+  }
+
   return (
     <div className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10 animate-fade-in">
       
@@ -103,6 +160,93 @@ export default function ShowtimesPage() {
         <p style={{ fontFamily: 'Inter', color: 'var(--color-on-surface-variant)' }}>
           Chọn ngày và suất chiếu phù hợp với bạn
         </p>
+      </div>
+
+      {/* Quick Booking Widget (AC-01 to AC-04) */}
+      <div 
+        className="p-6 rounded-2xl mb-12 backdrop-blur-xl shadow-2xl relative text-left"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 45%, transparent)',
+          border: '1px solid rgba(255,255,255,0.08)'
+        }}
+      >
+        <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          ⚡ Đặt Vé Nhanh (Quick Booking)
+        </h3>
+        
+        <form onSubmit={handleQuickBook} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+          {/* Select Movie Combobox (AC-01) */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn phim (Select Movie)</label>
+            <select
+              value={bookingMovieId}
+              onChange={(e) => {
+                setBookingMovieId(e.target.value)
+                setBookingDate('')
+                setBookingTime('')
+                setErrors({ movie: '', date: '', time: '' })
+              }}
+              className={`w-full bg-[var(--color-surface)] border ${errors.movie ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500`}
+            >
+              <option value="">-- Chọn phim --</option>
+              {movies.map(m => (
+                <option key={m.id} value={m.id}>{m.movieNameVn}</option>
+              ))}
+            </select>
+            {errors.movie && <span className="text-[10px] text-red-500 font-semibold">{errors.movie}</span>}
+          </div>
+
+          {/* Select Date Combobox (AC-02) */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn ngày chiếu (Select Date)</label>
+            <select
+              value={bookingDate}
+              disabled={!bookingMovieId}
+              onChange={(e) => {
+                setBookingDate(e.target.value)
+                setBookingTime('')
+                setErrors(prev => ({ ...prev, date: '', time: '' }))
+              }}
+              className={`w-full bg-[var(--color-surface)] border ${errors.date ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <option value="">-- Chọn ngày --</option>
+              {getAvailableDates().map(d => {
+                const dateObj = new Date(d)
+                const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
+                return <option key={d} value={d}>{label}</option>
+              })}
+            </select>
+            {errors.date && <span className="text-[10px] text-red-500 font-semibold">{errors.date}</span>}
+          </div>
+
+          {/* Select Time Combobox (AC-03) */}
+          <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn suất chiếu (Select Time)</label>
+            <select
+              value={bookingTime}
+              disabled={!bookingDate}
+              onChange={(e) => {
+                setBookingTime(e.target.value)
+                setErrors(prev => ({ ...prev, time: '' }))
+              }}
+              className={`w-full bg-[var(--color-surface)] border ${errors.time ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 disabled:opacity-40 disabled:cursor-not-allowed`}
+            >
+              <option value="">-- Chọn giờ --</option>
+              {getAvailableTimes().map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            {errors.time && <span className="text-[10px] text-red-500 font-semibold">{errors.time}</span>}
+          </div>
+
+          {/* Book Ticket Button (AC-04) */}
+          <button
+            type="submit"
+            className="w-full py-3 px-6 bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider active:scale-[0.98] transition-all shadow-lg shadow-[rgba(229,9,20,0.25)] h-[42px] cursor-pointer"
+          >
+            Book Ticket
+          </button>
+        </form>
       </div>
 
       {/* Thanh chọn ngày (Day selector) */}
