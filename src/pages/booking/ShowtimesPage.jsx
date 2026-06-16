@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 
 // Khởi tạo mảng 7 ngày tới
@@ -94,7 +94,10 @@ export default function ShowtimesPage() {
             }}
           >
             {/* Poster phim */}
-            <div className="w-28 sm:w-36 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden bg-black/20 shadow-lg">
+            <Link 
+              to={`/movies/${movie.id}`}
+              className="w-28 sm:w-36 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden bg-black/20 shadow-lg block hover:scale-[1.03] transition-transform duration-300"
+            >
               {movie.smallImage ? (
                 <img src={movie.smallImage} alt={movie.movieNameVn} className="w-full h-full object-cover" />
               ) : (
@@ -102,16 +105,18 @@ export default function ShowtimesPage() {
                   <span className="material-symbols-outlined text-4xl" style={{ color: 'var(--color-on-surface-variant)' }}>movie</span>
                 </div>
               )}
-            </div>
+            </Link>
 
             {/* Thông tin & Giờ chiếu */}
             <div className="flex-1 flex flex-col justify-center">
-              <h3 
-                className="text-2xl font-bold mb-1" 
-                style={{ fontFamily: 'Montserrat, sans-serif', color: 'var(--color-on-surface)' }}
-              >
-                {movie.movieNameVn}
-              </h3>
+              <Link to={`/movies/${movie.id}`} className="hover:text-[var(--color-primary)] transition-colors w-fit block">
+                <h3 
+                  className="text-2xl font-bold mb-1" 
+                  style={{ fontFamily: 'Montserrat, sans-serif', color: 'inherit' }}
+                >
+                  {movie.movieNameVn}
+                </h3>
+              </Link>
               
               <div className="flex items-center gap-2 mb-6 text-sm" style={{ fontFamily: 'Inter', color: 'var(--color-on-surface-variant)' }}>
                 <span>{movie.movieNameEnglish}</span>

@@ -74,56 +74,60 @@ export default function MoviesPage() {
       {/* Movies Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {currentMovies.map((movie) => (
-          <div key={movie.id} className="flex flex-col group cursor-pointer">
-            <div className="relative aspect-[2/3] overflow-hidden border border-white/10 shadow-lg mb-4">
-              {/* Badge */}
-              <div className="absolute top-0 left-0 z-30 flex">
-                <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 border-r border-b border-white/5">{movie.format}</span>
-                <span className="bg-red-600 text-white text-xs font-bold px-2 py-1">{movie.rating}</span>
-              </div>
-              <img
-                src={movie.img}
-                alt={movie.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              {/* Overlay details */}
-              <div className="absolute inset-0 bg-black/85 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-center px-4">
-                <h3 className="text-white font-bold text-base mb-4 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  {movie.title}
-                </h3>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <Tag size={14} className="text-red-500" />
-                    <span className="text-white text-xs font-semibold">{movie.genre}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock size={14} className="text-red-500" />
-                    <span className="text-white text-xs font-semibold">{movie.duration}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Globe size={14} className="text-red-500" />
-                    <span className="text-white text-xs font-semibold">{movie.country}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MessageSquare size={14} className="text-red-500" />
-                    <span className="text-white text-xs font-semibold">{movie.subtitle}</span>
+          <div key={movie.id} className="flex flex-col cursor-pointer">
+            
+            {/* Click card leads to details */}
+            <Link to={`/movies/${movie.id}`} className="group flex flex-col flex-grow">
+              <div className="relative aspect-[2/3] overflow-hidden border border-white/10 shadow-lg mb-4">
+                {/* Badge */}
+                <div className="absolute top-0 left-0 z-30 flex">
+                  <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 border-r border-b border-white/5">{movie.format}</span>
+                  <span className="bg-red-600 text-white text-xs font-bold px-2 py-1">{movie.rating}</span>
+                </div>
+                <img
+                  src={movie.img}
+                  alt={movie.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                {/* Overlay details */}
+                <div className="absolute inset-0 bg-black/85 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-center px-4">
+                  <h3 className="text-white font-bold text-base mb-4 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                    {movie.title}
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Tag size={14} className="text-red-500" />
+                      <span className="text-white text-xs font-semibold">{movie.genre}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-red-500" />
+                      <span className="text-white text-xs font-semibold">{movie.duration}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Globe size={14} className="text-red-500" />
+                      <span className="text-white text-xs font-semibold">{movie.country}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare size={14} className="text-red-500" />
+                      <span className="text-white text-xs font-semibold">{movie.subtitle}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <h3 className="text-white text-center font-bold text-xs mb-3 uppercase line-clamp-2 min-h-[36px] flex items-center justify-center">
-              {movie.title}
-            </h3>
+              <h3 className="text-white text-center font-bold text-xs mb-3 uppercase line-clamp-2 min-h-[36px] flex items-center justify-center group-hover:text-red-500 transition-colors">
+                {movie.title}
+              </h3>
+            </Link>
 
             {activeTab === 'now' ? (
               <div className="flex items-center justify-between mt-auto px-1">
-                <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
+                <Link to={`/movies/${movie.id}`} className="flex items-center gap-1 text-xs text-gray-400 hover:text-white transition-colors">
                   <span className="material-symbols-outlined text-base text-red-500">play_circle</span>
-                  <span className="underline decoration-1 underline-offset-2 text-[10px] font-semibold">Trailer</span>
-                </button>
+                  <span className="underline decoration-1 underline-offset-2 text-[10px] font-semibold">Chi Tiết</span>
+                </Link>
                 <Link 
-                  to={movie.link} 
+                  to={`/movies/${movie.id}`} 
                   className="text-white text-[10px] font-black px-4 py-2 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
                   style={{
                     background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
@@ -135,9 +139,9 @@ export default function MoviesPage() {
                 </Link>
               </div>
             ) : (
-              <div className="text-center mt-auto">
-                <span className="text-[11px] text-red-500 font-semibold uppercase tracking-wider">SẮP CHIẾU CHI TIẾT</span>
-              </div>
+              <Link to={`/movies/${movie.id}`} className="text-center mt-auto block py-2 hover:opacity-80">
+                <span className="text-[11px] text-red-500 font-semibold uppercase tracking-wider">Xem Chi Tiết</span>
+              </Link>
             )}
           </div>
         ))}

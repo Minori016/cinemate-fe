@@ -11,6 +11,7 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 import HomePage from '../pages/user/HomePage'
 import ProfilePage from '../pages/user/ProfilePage'
 import MoviesPage from '../pages/user/MoviesPage'
+import MovieDetailPage from '../pages/user/MovieDetailPage'
 import CinemasPage from '../pages/user/CinemasPage'
 import PromotionsPage from '../pages/user/PromotionsPage'
 import AboutPage from '../pages/user/AboutPage'
@@ -35,13 +36,16 @@ export default function AppRoutes() {
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} /> {/* Sử dụng index cho trang chủ của layout */}
         <Route path="/movies" element={<MoviesPage />} />
+        <Route path="/movies/:movieId" element={<MovieDetailPage />} />
         <Route path="/showtimes" element={<ShowtimesPage />} />
         <Route path="/cinemas" element={<CinemasPage />} />
         <Route path="/promotions" element={<PromotionsPage />} />
         <Route path="/about" element={<AboutPage />} />
-        <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Route>
+
+      {/* Booking Layout: Tách biệt khỏi UserLayout để hiển thị Header giao dịch rút gọn */}
+      <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminLayout /></ProtectedRoute>}>

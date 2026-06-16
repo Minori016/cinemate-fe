@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut } from 'lucide-react'
+import { NavLink, Link } from 'react-router-dom'
+import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const adminLinks = [
@@ -32,6 +32,17 @@ export default function Sidebar() {
             <Icon size={16} /> {label}
           </NavLink>
         ))}
+        
+        {/* Đường phân cách */}
+        <div className="h-px bg-[var(--color-border)] my-2" />
+        
+        {/* Nút quay lại trang chủ */}
+        <Link 
+          to="/" 
+          className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-white transition-all"
+        >
+          <Home size={16} /> Quay lại trang chủ
+        </Link>
       </nav>
       <div className="px-3 py-4 border-t border-[var(--color-border)]">
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
