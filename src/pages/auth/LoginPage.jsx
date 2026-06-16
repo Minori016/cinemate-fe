@@ -7,12 +7,13 @@ import Footer from '../../components/layout/Footer'
 // ─── Điều hướng theo role (giữ nguyên logic cũ) ───────────────────────────────
 const ROLE_ROUTES = {
   ADMIN: '/admin',
+  MANAGER: '/manager/dashboard',
   STAFF: '/staff/dashboard',
   MEMBER: '/',
 }
 
 function getRedirectPath(roles = []) {
-  for (const role of ['ADMIN', 'STAFF', 'MEMBER']) {
+  for (const role of ['ADMIN', 'MANAGER', 'STAFF', 'MEMBER']) {
     if (roles.includes(role)) return ROLE_ROUTES[role]
   }
   return '/'

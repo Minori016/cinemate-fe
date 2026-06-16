@@ -307,6 +307,20 @@ export default function Navbar() {
                       <UserIcon size={16} />
                       Thông tin cá nhân
                     </Link>
+
+                    {user.roles?.includes('ADMIN') && (
+                      <Link
+                        to="/admin"
+                        onClick={() => setDropdownOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors duration-150"
+                        style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--color-on-surface)' }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--color-on-surface-variant)' }}
+                      >
+                        <Settings size={16} />
+                        Trang quản trị
+                      </Link>
+                    )}
                   </div>
 
                   {/* Logout */}

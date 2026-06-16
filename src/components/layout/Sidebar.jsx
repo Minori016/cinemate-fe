@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut } from 'lucide-react'
+import { NavLink, Link } from 'react-router-dom'
+import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
 const adminLinks = [
@@ -17,7 +17,9 @@ export default function Sidebar() {
   return (
     <aside className="w-60 min-h-screen flex flex-col bg-[var(--color-surface)] border-r border-[var(--color-border)]">
       <div className="px-6 py-5 border-b border-[var(--color-border)]">
-        <h1 className="text-2xl text-red-500" style={{fontFamily:'Montserrat, sans-serif', fontWeight: 900}}>🎬 CineStar</h1>
+        <h1 className="text-2xl" style={{fontFamily:'Montserrat, sans-serif', fontWeight: 900}}>
+          🎬 <span className="text-white">Cine</span><span className="text-red-500">mate</span>
+        </h1>
         <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Management System</p>
       </div>
       <nav className="flex-1 py-4 px-3 flex flex-col gap-1">
@@ -32,6 +34,17 @@ export default function Sidebar() {
             <Icon size={16} /> {label}
           </NavLink>
         ))}
+        
+        {/* Đường phân cách */}
+        <div className="h-px bg-[var(--color-border)] my-2" />
+        
+        {/* Nút quay lại trang chủ */}
+        <Link 
+          to="/" 
+          className="flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-white transition-all"
+        >
+          <Home size={16} /> Quay lại trang chủ
+        </Link>
       </nav>
       <div className="px-3 py-4 border-t border-[var(--color-border)]">
         <div className="flex items-center gap-3 px-3 py-2 mb-2">
