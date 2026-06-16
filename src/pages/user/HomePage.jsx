@@ -267,8 +267,8 @@ export default function HomePage() {
                     <div key={slide.id} className="w-[240px] flex-shrink-0 snap-center flex flex-col h-full group cursor-pointer">
                       <div className="relative w-full aspect-[2/3] flex-shrink-0 overflow-hidden border border-white/10 shadow-lg mb-4">
                         <div className="absolute top-0 left-0 z-30 flex">
-                          <span className="bg-[#fdef22] text-black text-xs font-bold px-2 py-1 flex items-center justify-center">{slide.format}</span>
-                          <span className="bg-[#e50914] text-white text-xs font-bold px-2 py-1 flex items-center justify-center">{slide.rating}</span>
+                          <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 flex items-center justify-center border-r border-b border-white/5">{slide.format}</span>
+                          <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 flex items-center justify-center">{slide.rating}</span>
                         </div>
                         <img
                           src={slide.img}
@@ -278,10 +278,10 @@ export default function HomePage() {
                         <div className="absolute inset-0 bg-black/85 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-center px-6">
                           <h3 className="text-white font-bold text-xl mb-6 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>{slide.title}</h3>
                           <div className="flex flex-col gap-4">
-                            <div className="flex items-center gap-3"><Tag size={18} className="text-[#fdef22]" /><span className="text-white text-sm font-semibold">{slide.genre}</span></div>
-                            <div className="flex items-center gap-3"><Clock size={18} className="text-[#fdef22]" /><span className="text-white text-sm font-semibold">{slide.duration}</span></div>
-                            <div className="flex items-center gap-3"><Globe size={18} className="text-[#fdef22]" /><span className="text-white text-sm font-semibold">{slide.country}</span></div>
-                            <div className="flex items-center gap-3"><MessageSquare size={18} className="text-[#fdef22]" /><span className="text-white text-sm font-semibold">{slide.subtitle}</span></div>
+                            <div className="flex items-center gap-3"><Tag size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{slide.genre}</span></div>
+                            <div className="flex items-center gap-3"><Clock size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{slide.duration}</span></div>
+                            <div className="flex items-center gap-3"><Globe size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{slide.country}</span></div>
+                            <div className="flex items-center gap-3"><MessageSquare size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{slide.subtitle}</span></div>
                           </div>
                         </div>
                       </div>
@@ -292,10 +292,18 @@ export default function HomePage() {
 
                       <div className="flex items-center justify-between mt-auto px-1">
                         <button className="flex items-center gap-1 text-sm text-gray-300 hover:text-white transition-colors">
-                          <span className="material-symbols-outlined text-lg text-[#e50914]">play_circle</span>
+                          <span className="material-symbols-outlined text-lg text-red-500">play_circle</span>
                           <span className="underline decoration-1 underline-offset-2 text-xs font-semibold">Xem Trailer</span>
                         </button>
-                        <Link to={slide.link} className="bg-[#fdef22] hover:bg-yellow-400 text-black text-xs font-extrabold px-5 py-2 transition-colors uppercase">
+                        <Link 
+                          to={slide.link} 
+                          className="text-white text-xs font-black px-5 py-2.5 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
+                          style={{
+                            background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                            boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                          }}
+                        >
                           ĐẶT VÉ
                         </Link>
                       </div>
@@ -317,11 +325,11 @@ export default function HomePage() {
             {/* Pagination Dấu chấm */}
             <div className="flex justify-center gap-2 mt-2 w-full">
               <button
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentIndex === 0 ? 'bg-[#fdef22] scale-125' : 'bg-white/30 hover:bg-white/50'}`}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentIndex === 0 ? 'bg-red-600 scale-125' : 'bg-white/30 hover:bg-white/50'}`}
                 onClick={() => setCurrentIndex(0)}
               />
               <button
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentIndex === 4 ? 'bg-[#fdef22] scale-125' : 'bg-white/30 hover:bg-white/50'}`}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentIndex === 4 ? 'bg-red-600 scale-125' : 'bg-white/30 hover:bg-white/50'}`}
                 onClick={() => setCurrentIndex(4)}
               />
             </div>
@@ -330,7 +338,7 @@ export default function HomePage() {
             <div className="flex justify-center mt-8 w-full">
               <Link
                 to="/movies"
-                className="border border-[#fdef22] text-[#fdef22] hover:bg-[#fdef22] hover:text-black transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
+                className="border border-red-600 text-red-500 hover:bg-red-600 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm rounded-sm"
               >
                 XEM THÊM
               </Link>

@@ -10,6 +10,10 @@ import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 
 import HomePage from '../pages/user/HomePage'
 import ProfilePage from '../pages/user/ProfilePage'
+import MoviesPage from '../pages/user/MoviesPage'
+import CinemasPage from '../pages/user/CinemasPage'
+import PromotionsPage from '../pages/user/PromotionsPage'
+import AboutPage from '../pages/user/AboutPage'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
 import DashboardPage from '../pages/admin/DashboardPage'
@@ -30,7 +34,11 @@ export default function AppRoutes() {
       {/* User Layout: Để "/" làm trang chủ chính thức tại đây */}
       <Route element={<UserLayout />}>
         <Route index element={<HomePage />} /> {/* Sử dụng index cho trang chủ của layout */}
+        <Route path="/movies" element={<MoviesPage />} />
         <Route path="/showtimes" element={<ShowtimesPage />} />
+        <Route path="/cinemas" element={<CinemasPage />} />
+        <Route path="/promotions" element={<PromotionsPage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Route>

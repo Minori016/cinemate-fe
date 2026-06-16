@@ -13,7 +13,6 @@ export default function ProfilePage() {
   const [form, setForm] = useState({
     username: '',
     email: '',
-    password: '',
     fullName: '',
     dayOfBirth: '',
     gender: 'MALE',
@@ -57,7 +56,6 @@ export default function ProfilePage() {
       setForm({
         username: data.username || '',
         email: data.email || '',
-        password: '',
         fullName: data.fullName || '',
         dayOfBirth: data.dayOfBirth || '',
         gender: data.gender ? data.gender.toUpperCase() : 'MALE',
@@ -82,7 +80,6 @@ export default function ProfilePage() {
       setForm({
         username: profile.username || '',
         email: profile.email || '',
-        password: '',
         fullName: profile.fullName || '',
         dayOfBirth: profile.dayOfBirth || '',
         gender: profile.gender ? profile.gender.toUpperCase() : 'MALE',
@@ -100,10 +97,6 @@ export default function ProfilePage() {
     setError('')
     setSuccess('')
 
-    if (!form.password) {
-      return setError('Vui lòng nhập mật khẩu để xác nhận cập nhật.')
-    }
-
     setSaving(true)
     try {
       const payload = {
@@ -115,14 +108,12 @@ export default function ProfilePage() {
         identityCard: form.identityCard || profile?.identityCard || '',
         phoneNumber: form.phoneNumber || profile?.phoneNumber || '',
         address: form.address || profile?.address || '',
-        password: form.password,
       }
 
       const res = await userService.updateMyProfile(payload)
       const data = res.data?.result ?? res.data
       setProfile(data)
       updateUser({ image: data.image, fullName: data.fullName })
-      setForm((f) => ({ ...f, password: '' }))
       setSuccess('Cập nhật hồ sơ thành công!')
       setIsEditing(false)
       setTimeout(() => setSuccess(''), 4000)
@@ -451,16 +442,7 @@ export default function ProfilePage() {
                     <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
                   </div>
 
-                  {/* Password confirmation */}
-                  <div className="md:col-span-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', marginTop: '8px' }}>
-                    <div className="flex items-start gap-3 mb-3">
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-primary)', marginTop: '2px' }}>info</span>
-                      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: '1.5' }}>
-                        Nhập mật khẩu hiện tại để xác nhận. Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
-                      </p>
-                    </div>
-                    <Input label="Mật khẩu xác nhận *" name="password" type="password" placeholder="Nhập mật khẩu hiện tại" value={form.password} onChange={handleChange} required />
-                  </div>
+                  {/* Password confirmation removed */}
 
                   {/* Save Button */}
                   <div className="md:col-span-2 mt-2 flex justify-end gap-3">

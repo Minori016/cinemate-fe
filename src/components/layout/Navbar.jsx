@@ -88,6 +88,17 @@ export default function Navbar() {
               Phim
             </NavLink>
             <NavLink 
+              to="/showtimes" 
+              className={({ isActive }) => 
+                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+                }`
+              }
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Lịch Chiếu
+            </NavLink>
+            <NavLink 
               to="/cinemas" 
               className={({ isActive }) => 
                 `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
