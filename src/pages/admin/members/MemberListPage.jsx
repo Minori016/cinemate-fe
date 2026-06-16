@@ -26,7 +26,7 @@ export default function MemberListPage() {
     confirmPassword: '',
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     phoneNumber: '',
   })
 
@@ -37,7 +37,7 @@ export default function MemberListPage() {
     password: '', // ProfileUpdateRequest requires password
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     identityCard: '',
     phoneNumber: '',
     address: '',
@@ -95,7 +95,7 @@ export default function MemberListPage() {
         confirmPassword: '',
         fullName: '',
         dayOfBirth: '',
-        gender: 'Male',
+        gender: 'MALE',
         phoneNumber: '',
       })
       loadMembers()
@@ -112,7 +112,7 @@ export default function MemberListPage() {
       password: '', // Admin must supply password to update due to BE requirements, or type a new one
       fullName: row.fullName || '',
       dayOfBirth: row.dayOfBirth || '',
-      gender: row.gender || 'Male',
+      gender: row.gender ? row.gender.toUpperCase() : 'MALE',
       identityCard: row.identityCard || '',
       phoneNumber: row.phoneNumber || '',
       address: row.address || '',
@@ -259,9 +259,9 @@ export default function MemberListPage() {
                 className="w-full rounded-lg px-3 py-2.5 transition-colors outline-none cursor-pointer border focus:border-red-500"
                 style={selectStyle}
               >
-                <option value="Male">Nam</option>
-                <option value="Female">Nữ</option>
-                <option value="Other">Khác</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
               </select>
             </div>
             <Input label="Số điện thoại *" name="phoneNumber" value={addForm.phoneNumber} onChange={handleAddChange} required />
@@ -291,13 +291,13 @@ export default function MemberListPage() {
                 className="w-full rounded-lg px-3 py-2.5 transition-colors outline-none cursor-pointer border focus:border-red-500 opacity-60"
                 style={selectStyle}
               >
-                <option value="Male">Nam</option>
-                <option value="Female">Nữ</option>
-                <option value="Other">Khác</option>
+                <option value="MALE">Nam</option>
+                <option value="FEMALE">Nữ</option>
+                <option value="OTHER">Khác</option>
               </select>
             </div>
             <Input label="Số điện thoại *" name="phoneNumber" value={editForm.phoneNumber} onChange={handleEditChange} required />
-            <Input label="CMND / CCCD * (Không thể thay đổi)" name="identityCard" value={editForm.identityCard} onChange={handleEditChange} disabled required />
+            <Input label={members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard ? "CMND / CCCD * (Không thể thay đổi)" : "CMND / CCCD *"} name="identityCard" value={editForm.identityCard} onChange={handleEditChange} disabled={!!members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard} required />
             <Input label="Địa chỉ *" name="address" value={editForm.address} onChange={handleEditChange} required />
           </div>
           <div className="border-t border-[var(--color-border)] pt-4 mt-2">

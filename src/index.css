@@ -1,10 +1,12 @@
+/* Fonts phải đứng TRƯỚC @import tailwindcss (yêu cầu của Tailwind v4 / PostCSS) */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@300;400;500;600;700&display=swap');
+
 /* SỬA DÒNG NÀY: Bỏ dấu ./ và chữ .css đi, dùng chuẩn của Tailwind v4 */
 @import "tailwindcss";
 
 /* LƯU Ý: Nếu bạn KHÔNG có file theme.css trong thư mục src, hãy xóa hoặc comment dòng dưới lại */
 /* @import './theme.css'; */
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@300;400;500;600;700&display=swap');
 
 /* Ép font icon hoạt động trên mọi mặt trận */
 .material-symbols-outlined {
@@ -24,13 +26,23 @@
 
 :root {
   --color-bg: #0a0a0f;
+  --color-background: #0a0a0f;
   --color-surface: #12121a;
   --color-surface-2: #1c1c2e;
+  --color-surface-container: #1c1c2e;
+  --color-surface-container-highest: #252537;
   --color-primary: #e63946;
   --color-primary-dark: #c1121f;
+  --color-primary-container: #e50914;
+  --color-primary-fixed-dim: #ff5f67;
+  --color-on-primary-container: #ffffff;
   --color-gold: #ffd60a;
   --color-text: #f1faee;
   --color-text-muted: #8d99ae;
+  --color-on-surface: #f1faee;
+  --color-on-surface-variant: #8d99ae;
+  --color-error: #ff6b6b;
+  --color-error-container: #3b1218;
   --color-border: #2d2d44;
 }
 

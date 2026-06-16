@@ -16,7 +16,7 @@ export default function ProfilePage() {
     password: '',
     fullName: '',
     dayOfBirth: '',
-    gender: 'Male',
+    gender: 'MALE',
     identityCard: '',
     phoneNumber: '',
     address: '',
@@ -60,7 +60,7 @@ export default function ProfilePage() {
         password: '',
         fullName: data.fullName || '',
         dayOfBirth: data.dayOfBirth || '',
-        gender: data.gender || 'Male',
+        gender: data.gender ? data.gender.toUpperCase() : 'MALE',
         identityCard: data.identityCard || '',
         phoneNumber: data.phoneNumber || '',
         address: data.address || '',
@@ -85,7 +85,7 @@ export default function ProfilePage() {
         password: '',
         fullName: profile.fullName || '',
         dayOfBirth: profile.dayOfBirth || '',
-        gender: profile.gender || 'Male',
+        gender: profile.gender ? profile.gender.toUpperCase() : 'MALE',
         identityCard: profile.identityCard || '',
         phoneNumber: profile.phoneNumber || '',
         address: profile.address || '',
@@ -106,7 +106,19 @@ export default function ProfilePage() {
 
     setSaving(true)
     try {
-      const res = await userService.updateMyProfile(form)
+      const payload = {
+        username: form.username || profile?.username || '',
+        email: form.email || profile?.email || '',
+        fullName: form.fullName || profile?.fullName || '',
+        dayOfBirth: form.dayOfBirth || profile?.dayOfBirth || null,
+        gender: form.gender || profile?.gender || '',
+        identityCard: form.identityCard || profile?.identityCard || '',
+        phoneNumber: form.phoneNumber || profile?.phoneNumber || '',
+        address: form.address || profile?.address || '',
+        password: form.password,
+      }
+
+      const res = await userService.updateMyProfile(payload)
       const data = res.data?.result ?? res.data
       setProfile(data)
       updateUser({ image: data.image, fullName: data.fullName })
@@ -419,14 +431,21 @@ export default function ProfilePage() {
                       onFocus={handleFocus}
                       onBlur={handleBlur}
                     >
-                      <option value="Male" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
-                      <option value="Female" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
-                      <option value="Other" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
+                      <option value="MALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
+                      <option value="FEMALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
+                      <option value="OTHER" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
                     </select>
                   </div>
 
                   <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
-                  <Input label="CMND / CCCD (Không thể thay đổi)" name="identityCard" value={form.identityCard} onChange={handleChange} disabled required />
+                  <Input 
+                    label={profile?.identityCard ? "CMND / CCCD (Không thể thay đổi)" : "CMND / CCCD *"} 
+                    name="identityCard" 
+                    value={form.identityCard} 
+                    onChange={handleChange} 
+                    disabled={!!profile?.identityCard} 
+                    required 
+                  />
 
                   <div className="md:col-span-2">
                     <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
@@ -499,7 +518,7 @@ export default function ProfilePage() {
                     { label: 'Email', value: profile?.email, icon: 'mail' },
                     { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
                     { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
-                    { label: 'Giới tính', value: profile?.gender === 'Male' ? 'Nam' : profile?.gender === 'Female' ? 'Nữ' : profile?.gender === 'Other' ? 'Khác' : profile?.gender, icon: 'wc' },
+                    { label: 'Giới tính', value: profile?.gender?.toUpperCase() === 'MALE' ? 'Nam' : profile?.gender?.toUpperCase() === 'FEMALE' ? 'Nữ' : profile?.gender?.toUpperCase() === 'OTHER' ? 'Khác' : profile?.gender, icon: 'wc' },
                     { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
                     { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
                     { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },

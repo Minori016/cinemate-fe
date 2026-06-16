@@ -45,7 +45,14 @@ export default function Navbar() {
         borderBottom: '1px solid rgba(255,255,255,0.08)'
       }}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div 
+        className="w-full mx-auto h-16 flex items-center justify-between"
+        style={{ 
+          maxWidth: '1400px', 
+          paddingLeft: 'clamp(2rem, 6vw, 8rem)', 
+          paddingRight: 'clamp(2rem, 6vw, 8rem)' 
+        }}
+      >
         
         {/* Logo Cinemate */}
         <Link 
