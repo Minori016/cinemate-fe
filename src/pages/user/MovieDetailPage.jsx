@@ -3,218 +3,16 @@ import { useParams, Link } from 'react-router-dom'
 import { Tag, Clock, Globe, MessageSquare, Star, Play, X, User, Calendar, DollarSign } from 'lucide-react'
 import { movieService } from '../../services/movieService'
 
-// Import assets for mock data
-import maxo from '../../assets/maxo.png'
-import lophocamsat from '../../assets/lophocamsat.png'
-import kumathong from '../../assets/kumathong.png'
-import amazing from '../../assets/amazing.png'
-import xacsong from '../../assets/xacsong.png'
-import spiderNoir from '../../assets/z7926548056551_31ba8c85180d00c18c1d766965b7f0d5.jpg'
-import spiderman from '../../assets/z7926548206262_069a2a65c451a5d7f795d731f2371e47.jpg'
-import backrooms from '../../assets/z7926549211322_474665675a42a9e64a53f3c58f96ca9f.jpg'
-
-const MOCK_MOVIES = {
-  1: {
-    title: 'MA XÓ',
-    rating: 'T18',
-    format: '2D',
-    genre: 'Kinh Dị',
-    duration: '102 phút',
-    country: 'Khác',
-    subtitle: 'VN',
-    backdrop: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1200',
-    poster: maxo,
-    synopsis: 'Câu chuyện rùng rợn xoay quanh những bí ẩn cổ xưa và linh hồn lang thang trong ngôi làng hẻo lánh, nơi một thế lực đen tối đang trỗi dậy khiến bất kỳ ai đặt chân đến đều phải đối mặt với nỗi khiếp sợ tột cùng.',
-    cast: [
-      { name: 'Hoàng Yến Chibi', role: 'Mẫn', img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150' },
-      { name: 'Quang Tuấn', role: 'Thầy Huỳnh', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150' }
-    ],
-    score: '90%',
-    scoreValue: 90,
-    director: 'Hoàng Nam',
-    releaseDate: '13 Tháng 10, 2023',
-    budget: '15 Tỷ VND',
-    language: 'Tiếng Việt',
-    trailerUrl: 'https://www.youtube.com/embed/BTo23ZCJu6E'
-  },
-  2: {
-    title: 'LỚP HỌC ÁM SÁT: GIỜ CỦA CHÚNG TA',
-    rating: 'T16',
-    format: '2D',
-    genre: 'Học Đường',
-    duration: '110 phút',
-    country: 'Nhật Bản',
-    subtitle: 'Phụ đề',
-    backdrop: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200',
-    poster: lophocamsat,
-    synopsis: 'Trận chiến cuối cùng giữa các học sinh lớp 3-E và người thầy bạch tuộc Koro-sensei ngoài hành tinh nhằm giải cứu Trái Đất khỏi nguy cơ bị hủy diệt, đồng thời là lời chia tay đầy xúc động tuổi học trò.',
-    cast: [
-      { name: 'Ryosuke Yamada', role: 'Nagisa Shiota', img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=150' },
-      { name: 'Masaki Suda', role: 'Karma Akabane', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150' }
-    ],
-    score: '93%',
-    scoreValue: 93,
-    director: 'Seiji Kishi',
-    releaseDate: '21 Tháng 3, 2015',
-    budget: '$10M',
-    language: 'Nhật Bản (Phụ đề)',
-    trailerUrl: 'https://www.youtube.com/embed/bjkwRzGSe-E'
-  },
-  3: {
-    title: 'KUMANTHONG ÁC QUỶ DẪN ĐƯỜNG',
-    rating: 'T18',
-    format: '2D',
-    genre: 'Kinh Dị',
-    duration: '95 phút',
-    country: 'Thái Lan',
-    subtitle: 'Lồng Tiếng',
-    backdrop: 'https://images.unsplash.com/photo-1505635339356-d18d3f447f51?q=80&w=1200',
-    poster: kumathong,
-    synopsis: 'Những bùa ngải Kumanthong bí ẩn dẫn dắt một gia đình vào chuỗi thảm kịch kinh hoàng đầy oán hận không lời giải, phơi bày những góc khuất đen tối trong lòng tham của con người.',
-    cast: [
-      { name: 'Ploy Sornarin', role: 'Nội', img: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=150' }
-    ],
-    score: '88%',
-    scoreValue: 88,
-    director: 'Thitipan Raksasat',
-    releaseDate: '28 Tháng 12, 2023',
-    budget: '$5M',
-    language: 'Thái Lan (Lồng Tiếng)',
-    trailerUrl: 'https://www.youtube.com/embed/sL9Q0r8z5iI'
-  },
-  4: {
-    title: 'THE AMAZING DIGITAL CIRCUS: HỒI KẾT',
-    rating: 'K',
-    format: '2D',
-    genre: 'Hoạt Hình',
-    duration: '85 phút',
-    country: 'Mỹ',
-    subtitle: 'Lồng tiếng',
-    backdrop: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1200',
-    poster: amazing,
-    synopsis: 'Chuyến phiêu lưu kỳ thú trong thế giới xiếc ảo kỹ thuật số đầy màu sắc nhưng cũng đầy cạm bẫy trớ trêu, nơi các nhân vật phải tìm mọi cách giữ lấy sự tỉnh táo để thoát khỏi vòng lặp vô tận.',
-    cast: [
-      { name: 'Lizzie Freeman', role: 'Pomni (Voice)', img: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150' }
-    ],
-    score: '96%',
-    scoreValue: 96,
-    director: 'Gooseworx',
-    releaseDate: '13 Tháng 10, 2023',
-    budget: '$1.5M',
-    language: 'Tiếng Anh (Lồng Tiếng)',
-    trailerUrl: 'https://www.youtube.com/embed/HwAPLk_sQ3w'
-  },
-  5: {
-    title: 'BẦY XÁC SỐNG',
-    rating: 'T16',
-    format: '2D',
-    genre: 'Hành Động, Kinh Dị',
-    duration: '122 phút',
-    country: 'Hàn Quốc',
-    subtitle: 'Phụ Đề',
-    backdrop: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1200',
-    poster: xacsong,
-    synopsis: 'Đại dịch xác sống bùng phát dữ dội, một nhóm người sống sót phải tìm cách vượt qua vùng tử địa đầy rẫy nguy hiểm để đến căn cứ quân sự cuối cùng, thử thách tình người trước ranh giới sinh tử.',
-    cast: [
-      { name: 'Gong Yoo', role: 'Seok-woo', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150' }
-    ],
-    score: '91%',
-    scoreValue: 91,
-    director: 'Yeon Sang-ho',
-    releaseDate: '20 Tháng 7, 2016',
-    budget: '$8.5M',
-    language: 'Hàn Quốc (Phụ đề)',
-    trailerUrl: 'https://www.youtube.com/embed/2zQ2e1ySpxs'
-  },
-  6: {
-    title: 'SPIDER NOIR',
-    rating: 'T13',
-    format: '2D',
-    genre: 'Hành Động, Viễn Tưởng',
-    duration: '120 phút',
-    country: 'Mỹ',
-    subtitle: 'Phụ Đề',
-    backdrop: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=1200',
-    poster: spiderNoir,
-    synopsis: 'Người Nhện Noir chiến đấu chống lại bọn tội phạm phát xít trong thế giới đen trắng đầy rẫy nguy hiểm của những năm 1930, mang lại một góc nhìn mới lạ, u tối và đầy tính nghệ thuật của thế giới Marvel.',
-    cast: [
-      { name: 'Nicolas Cage', role: 'Spider-Man Noir', img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=150' }
-    ],
-    score: '94%',
-    scoreValue: 94,
-    director: 'Steve Lightfoot',
-    releaseDate: 'Tháng 11, 2024',
-    budget: '$90M',
-    language: 'Tiếng Anh (Phụ đề)',
-    trailerUrl: 'https://www.youtube.com/embed/YZe5438c-S4'
-  },
-  7: {
-    title: 'SPIDER-MAN: BRAND NEW DAY',
-    rating: 'K',
-    format: '2D',
-    genre: 'Hành Động, Phiêu Lưu',
-    duration: '135 phút',
-    country: 'Mỹ',
-    subtitle: 'Lồng Tiếng',
-    backdrop: 'https://images.unsplash.com/photo-1608889175123-8ec330b86f84?q=80&w=1200',
-    poster: spiderman,
-    synopsis: 'Kỷ nguyên mới mở ra cho Peter Parker khi anh đối mặt với những kẻ thù mới và cố gắng cân bằng cuộc sống cá nhân, cùng các đồng minh mới bảo vệ thành phố New York yên bình.',
-    cast: [
-      { name: 'Tom Holland', role: 'Peter Parker', img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=150' }
-    ],
-    score: '95%',
-    scoreValue: 95,
-    director: 'Jon Watts',
-    releaseDate: '17 Tháng 12, 2021',
-    budget: '$200M',
-    language: 'Tiếng Anh (Lồng Tiếng)',
-    trailerUrl: 'https://www.youtube.com/embed/JfVOs4VSpmA'
-  },
-  8: {
-    title: 'THE BACKROOMS',
-    rating: 'T16',
-    format: '2D',
-    genre: 'Kinh Dị, Bí Ẩn',
-    duration: '90 phút',
-    country: 'Canada',
-    subtitle: 'Phụ Đề',
-    backdrop: 'https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1200',
-    poster: backrooms,
-    synopsis: 'Vô tình lạc vào không gian vô tận của các căn phòng màu vàng ám ảnh, nhóm bạn trẻ phải tìm cách thoát thân trước khi sinh vật ẩn nấp tìm ra họ và tiêu diệt từng người một.',
-    cast: [
-      { name: 'Kane Pixels', role: 'Đạo diễn/Diễn viên', img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150' }
-    ],
-    score: '89%',
-    scoreValue: 89,
-    director: 'Kane Parsons',
-    releaseDate: '7 Tháng 1, 2022',
-    budget: '$50,000',
-    language: 'Tiếng Anh (Phụ đề)',
-    trailerUrl: 'https://www.youtube.com/embed/H4dGvqNjT1M'
-  },
-  default: {
-    title: 'Dune: Part Two',
-    rating: 'T13',
-    format: '2D/IMAX',
-    genre: 'Sci-Fi, Adventure',
-    duration: '2h 46m',
-    country: 'Mỹ',
-    subtitle: 'Phụ Đề',
-    backdrop: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBpKoeoRMxg66gCjHmMlPV6rUwCZNTmFX4mWnQGJaskDSp4_5Ubf-LV3AchwyZxN_OsBp0m2MSYbJ-W_5np_C_RuOAZqHidzP2V3tR9Gpmz6eCSAJPY3174xWqYyOfsb_pnkaE48QfHc-OphsH5kM6c0Y9aJecqz5vUtez5E16a7cRHzs2q9vqO5DH9uXjbXMaidi6rOBiHcCvlVQAQfoHknCJnld__Z4DM3dGtLcPTss7oGYVVripwqbhOEFF-3sA0wXIXP-Qj9pRJ',
-    poster: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCRg68exdL5IAca9CTt3nM16izlhD-AkBdrHAuSFRK-C6IV0_15lyb2JwC5r6NkIYB4xCbNmE8DBE66kWndwAmeuPGS38VKAvnV3kMoGQhAXdfMuBEIULbdfJhHV2IPp5rsJTq9DXfXHf_STi5sbjiXLVvn0aT5-7_TVeatSdOHZO_hpKqQrpCgYd1bdkFusYNJPntkV9iWwGG7n7Y-CQQNL5-iWgV4atgxf04SwFs9V_0i7nrTDHNFKWpoy0QWByGBn8Kp4izoY2ud',
-    synopsis: 'Paul Atreides unites with Chani and the Fremen while on a warpath of revenge against the conspirators who destroyed his family. Facing a choice between the love of his life and the fate of the known universe, he endeavors to prevent a terrible future only he can foresee.',
-    cast: [
-      { name: 'Timothée Chalamet', role: 'Paul Atreides', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtZvuv3U0PHbEC9y425M9pQzA_46zoDav7klCZsOI5PpVHdNwPPfJuMhJVsWzZbEy78sxML0DppmcxvgC5-HbLHMFB3tM6yEYUXtXH0-1PWZGZeNLcNJaYlrukBzTbl0XtGuYToe7DOsS3j2_tl03Po_pnnNTABRLabS8CfjW5o0-6yGOj69RVIoFB0WPrA6-rDORL8jnv171BVZOsK_ZMGk8LFGm0kwIcDVsXV72dN0gS10tSfvsrgGFswKpsVhp22J6c79Dhc_-y' },
-      { name: 'Zendaya', role: 'Chani', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAp3Zu_XJG3p-OvSCivtrTNBzC-t3tMf-X5Ymq3ASsI78nTYwa0jY0ADBzCPLLrQLvQjZxkzJcYV59bVClGKXLLrM6xB_HrvCP7w1HrGiAp2pino9F0GmTc-MihmsXiV1yDl6oWi0dP004gKynzNBEBt3KZHstqp-Y3axbMnTJ9q0Ft-CI9aQ4P4fZQk7Wsn_RAq2PAxgBFNqcN3tHvEeBQAF9Kt5UINJ7_Cwu1_kCHKPk__hrmaUQKA9RHcp3wY59eXkdOjtt0LiLg' }
-    ],
-    score: '95%',
-    scoreValue: 95,
-    director: 'Denis Villeneuve',
-    releaseDate: '1 Tháng 3, 2024',
-    budget: '$190M',
-    language: 'Tiếng Anh (Phụ đề)',
-    trailerUrl: 'https://www.youtube.com/embed/Way9Dexny3w'
+// Helper to format YouTube URLs into Embed URLs
+const getEmbedUrl = (url) => {
+  if (!url) return ''
+  if (url.includes('youtube.com/embed/')) return url
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
+  const match = url.match(regExp)
+  if (match && match[2].length === 11) {
+    return `https://www.youtube.com/embed/${match[2]}`
   }
+  return url
 }
 
 // Sub-components matching user design system
@@ -264,32 +62,46 @@ export default function MovieDetailPage() {
         const res = await movieService.getById(movieId)
         const data = res.data?.result ?? res.data
         if (data) {
+          // Fetch cast/actors
+          let cast = []
+          try {
+            const actorsRes = await movieService.getActors(movieId)
+            const actorsData = actorsRes.data?.result || actorsRes.data || []
+            cast = actorsData.map(a => ({
+              name: a.fullName,
+              role: a.characterName || 'Diễn viên',
+              img: a.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150'
+            }))
+          } catch (err) {
+            console.error("Failed to fetch actors", err)
+          }
+
           setMovie({
-            title: data.title,
+            title: data.titleVn || data.titleEn || 'Phim Chưa Đặt Tên',
             rating: data.rating || 'K',
-            format: data.format || '2D',
-            genre: data.genre || 'Chưa phân loại',
-            duration: data.duration ? `${data.duration}'` : 'N/A',
-            country: data.country || 'N/A',
-            subtitle: data.subtitle || 'Phụ Đề',
-            backdrop: data.backdrop || MOCK_MOVIES.default.backdrop,
-            poster: data.image || MOCK_MOVIES.default.poster,
-            synopsis: data.description || 'Chưa có tóm tắt.',
-            cast: MOCK_MOVIES[movieId]?.cast || MOCK_MOVIES.default.cast,
-            score: MOCK_MOVIES[movieId]?.score || '95%',
-            scoreValue: MOCK_MOVIES[movieId]?.scoreValue || 95,
-            director: data.director || MOCK_MOVIES[movieId]?.director || MOCK_MOVIES.default.director,
-            releaseDate: data.releaseDate || MOCK_MOVIES[movieId]?.releaseDate || MOCK_MOVIES.default.releaseDate,
-            budget: data.budget || MOCK_MOVIES[movieId]?.budget || MOCK_MOVIES.default.budget,
-            language: data.subtitle || MOCK_MOVIES[movieId]?.language || MOCK_MOVIES.default.language,
-            trailerUrl: data.trailerUrl || MOCK_MOVIES[movieId]?.trailerUrl || MOCK_MOVIES.default.trailerUrl
+            format: data.version || '2D',
+            genre: data.genres?.map(g => g.name).join(', ') || 'Chưa phân loại',
+            duration: data.durationMinutes ? `${data.durationMinutes} phút` : 'N/A',
+            country: data.countries?.map(c => c.name).join(', ') || 'N/A',
+            subtitle: data.language || 'Phụ Đề',
+            backdrop: data.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200',
+            poster: data.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300',
+            synopsis: data.description || 'Chi tiết phim hiện chưa được cập nhật đầy đủ từ hệ thống.',
+            cast: cast,
+            score: '95%',
+            scoreValue: 95,
+            director: data.director || 'Đang cập nhật',
+            releaseDate: data.fromDate ? new Date(data.fromDate).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Đang cập nhật',
+            budget: 'N/A',
+            language: data.language || 'Đang cập nhật',
+            trailerUrl: getEmbedUrl(data.trailerUrl)
           })
         } else {
-          setMovie(MOCK_MOVIES[movieId] || MOCK_MOVIES.default)
+          setMovie(null)
         }
-      } catch {
-        // Fallback to mocks if BE api fails
-        setMovie(MOCK_MOVIES[movieId] || MOCK_MOVIES.default)
+      } catch (err) {
+        console.error("Failed to fetch movie details", err)
+        setMovie(null)
       } finally {
         setLoading(false)
       }
