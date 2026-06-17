@@ -78,7 +78,7 @@ export default function BookingSuccessPage() {
       <main className="flex-grow pt-28 px-4 md:px-8 max-w-xl mx-auto w-full flex flex-col items-center">
         
         {/* Step Progress Tracker */}
-        <div className="w-full max-w-sm flex items-center justify-between mb-10 select-none">
+        <div className="w-full max-w-md flex items-center justify-between mb-10 select-none">
           <div className="flex flex-col items-center gap-1.5">
             <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold step-done bg-[#06080F]">
               <span className="material-symbols-outlined text-xs font-black">done</span>
@@ -93,6 +93,15 @@ export default function BookingSuccessPage() {
               <span className="material-symbols-outlined text-xs font-black">done</span>
             </div>
             <span className="text-[9px] uppercase font-bold tracking-wider text-green-500">Xác nhận</span>
+          </div>
+          
+          <div className="h-0.5 flex-1 bg-green-500 mx-2 self-start mt-3.5"></div>
+          
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold step-done bg-[#06080F]">
+              <span className="material-symbols-outlined text-xs font-black">done</span>
+            </div>
+            <span className="text-[9px] uppercase font-bold tracking-wider text-green-500">Thanh toán</span>
           </div>
           
           <div className="h-0.5 flex-1 bg-green-500 mx-2 self-start mt-3.5"></div>
@@ -166,10 +175,16 @@ export default function BookingSuccessPage() {
               </div>
             </div>
 
-            <div className="border-t border-white/5 pt-4">
-              <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Người đặt vé</span>
-              <p className="text-white font-medium mt-0.5">{bookingInfo.profile?.fullName || 'Thành viên CineMate'}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{bookingInfo.profile?.email}</p>
+            <div className="border-t border-white/5 pt-4 grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Người đặt vé</span>
+                <p className="text-white font-medium mt-0.5">{bookingInfo.profile?.fullName || 'Thành viên CineMate'}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{bookingInfo.profile?.email}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phương thức thanh toán</span>
+                <p className="text-white font-medium mt-0.5">{bookingInfo.paymentMethodLabel || 'Thẻ Tín dụng / Ghi nợ'}</p>
+              </div>
             </div>
 
             <div className="border-t border-dashed border-white/10 pt-4 flex justify-between items-end">
@@ -177,7 +192,7 @@ export default function BookingSuccessPage() {
                 <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Trạng thái</span>
                 <span className="flex items-center gap-1 text-green-400 text-xs font-bold mt-1">
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
-                  Đã thanh toán
+                  Đã xác nhận (Confirmed)
                 </span>
               </div>
               <div className="text-right">

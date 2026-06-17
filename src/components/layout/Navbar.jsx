@@ -4,12 +4,60 @@ import { useAuth } from '../../contexts/AuthContext'
 import { Search, LogOut, User as UserIcon, Settings, ChevronDown, Bell } from 'lucide-react'
 import logoImg from '../../assets/logo.jpg'
 
+const MOVIE_TITLES = [
+  { id: 1, title: 'MA XÓ (T18)', route: '/movies/1' },
+  { id: 2, title: 'LỚP HỌC ÁM SÁT (T16)', route: '/movies/2' },
+  { id: 3, title: 'KUMANTHONG (T18)', route: '/movies/3' },
+  { id: 4, title: 'THE AMAZING DIGITAL CIRCUS (K)', route: '/movies/4' },
+  { id: 5, title: 'BẦY XÁC SỐNG (T16)', route: '/movies/5' },
+  { id: 6, title: 'SPIDER NOIR (T13)', route: '/movies/6' },
+  { id: 7, title: 'SPIDER-MAN: BRAND NEW DAY (K)', route: '/movies/7' },
+  { id: 8, title: 'THE BACKROOMS (T16)', route: '/movies/8' },
+  { id: 9, title: 'AVATAR: THE SEED BEARER (T13)', route: '/movies/9' },
+  { id: 10, title: 'THÁM TỬ LỪNG DANH CONAN (K)', route: '/movies/10' }
+]
+
 export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
+
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const notificationRef = useRef(null)
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'Vé đặt thành công 🎟️', message: 'Mã đặt vé của bạn đã được xác nhận. Kiểm tra vé tại trang cá nhân.', time: 'Vừa xong', read: false },
+    { id: 2, title: 'Khuyến mãi hot 🔥', message: 'Giảm ngay 20% khi mua Combo Solo tại quầy bắp nước hôm nay.', time: '1 giờ trước', read: false },
+    { id: 3, title: 'Suất chiếu đặc biệt 🎬', message: 'Dune: Hành Tinh Cát - Phần 2 đã mở bán vé suất chiếu IMAX.', time: '1 ngày trước', read: true }
+  ])
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+  }
+
+  const toggleRead = (id) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
+  }
+
+  const [suggestions, setSuggestions] = useState([])
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const searchRef = useRef(null)
+
+  const handleSearchChange = (e) => {
+    const value = e.target.value
+    setSearchTerm(value)
+    if (value.trim().length >= 1) {
+      const filtered = MOVIE_TITLES.filter(movie => 
+        movie.title.toLowerCase().includes(value.toLowerCase())
+      )
+      setSuggestions(filtered)
+      setSuggestionsOpen(true)
+    } else {
+      setSuggestions([])
+      setSuggestionsOpen(false)
+    }
+  }
 
   const handleLogout = () => { 
     logout()
@@ -22,6 +70,12 @@ export default function Navbar() {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false)
+      }
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setNotificationsOpen(false)
+      }
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSuggestionsOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -134,33 +188,82 @@ export default function Navbar() {
           </div>
 
           {/* Ô Tìm Kiếm chuẩn UI (Sửa triệt để lỗi đè chữ) */}
-          <div className="relative flex items-center w-36 md:w-44 transition-all duration-300">
-            <Search 
-              size={14} 
-              className="absolute left-3 z-20 pointer-events-none transition-colors" 
-              style={{ color: 'var(--color-on-surface-variant)' }}
-            />
+          <div className="relative flex items-center w-36 md:w-44 transition-all duration-300" ref={searchRef}>
+            <button
+              type="button"
+              onClick={() => {
+                if (searchTerm.trim()) {
+                  navigate(`/movies?search=${encodeURIComponent(searchTerm.trim())}`)
+                  setSuggestionsOpen(false)
+                }
+              }}
+              className="absolute left-3 z-20 transition-colors bg-transparent border-none outline-none cursor-pointer flex items-center justify-center p-0"
+            >
+              <Search 
+                size={14} 
+                className="transition-colors" 
+                style={{ color: 'var(--color-on-surface-variant)' }}
+              />
+            </button>
             <input 
               type="text"
               placeholder="Tìm phim..." 
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={handleSearchChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  navigate(`/movies?search=${encodeURIComponent(searchTerm.trim())}`)
+                  setSuggestionsOpen(false)
+                }
+              }}
               className="w-full rounded-full py-1.5 transition-all outline-none"
               style={{ ...searchInputStyle, paddingLeft: '32px', paddingRight: '12px', fontSize: '13px' }}
               onFocus={(e) => {
                 e.target.style.border = '1px solid var(--color-primary)'
                 e.target.style.boxShadow = '0 0 10px rgba(229,9,20,0.2)'
+                if (searchTerm.trim().length >= 1) {
+                  setSuggestionsOpen(true)
+                }
               }}
               onBlur={(e) => {
                 e.target.style.border = '1px solid rgba(255,255,255,0.10)'
                 e.target.style.boxShadow = 'none'
+                // Delay so suggestion selection registers correctly before closing
+                setTimeout(() => setSuggestionsOpen(false), 200)
               }}
             />
+
+            {/* Suggestions list popup */}
+            {suggestionsOpen && suggestions.length > 0 && (
+              <div
+                className="absolute left-0 top-full mt-2 w-56 bg-[var(--color-surface-container)] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-hidden z-50 animate-fade-in text-left text-xs"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <div className="py-1.5">
+                  <div className="px-3 py-1 text-[9px] uppercase tracking-wider text-gray-500 font-bold border-b border-white/5 pb-1 mb-1">Gợi ý tìm kiếm</div>
+                  {suggestions.map((movie) => (
+                    <button
+                      key={movie.id}
+                      type="button"
+                      onClick={() => {
+                        setSearchTerm('')
+                        setSuggestionsOpen(false)
+                        navigate(movie.route)
+                      }}
+                      className="w-full text-left px-3 py-2 text-white hover:bg-white/10 transition-colors border-none outline-none bg-transparent cursor-pointer block font-semibold truncate"
+                    >
+                      {movie.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Nút MUA VÉ (Thiết kế dạng Vé xem phim) */}
           <button 
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 shrink-0"
+            onClick={() => navigate('/showtimes')}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
             style={{
               background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
               color: '#ffffff',
@@ -177,16 +280,77 @@ export default function Navbar() {
           </button>
 
           {/* Nút Notification Chuông màu đỏ */}
-          <button 
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-[0_4px_8px_rgba(229,9,20,0.2)] shrink-0"
-            style={{
-              backgroundColor: '#e50914',
-              color: '#ffffff',
-              border: 'none',
-            }}
-          >
-            <Bell size={14} />
-          </button>
+          <div className="relative" ref={notificationRef}>
+            <button 
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen)
+                setDropdownOpen(false)
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-[0_4px_8px_rgba(229,9,20,0.2)] shrink-0 relative cursor-pointer"
+              style={{
+                backgroundColor: '#e50914',
+                color: '#ffffff',
+                border: 'none',
+              }}
+            >
+              <Bell size={14} />
+              {notifications.some(n => !n.read) && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-yellow-400 text-[#06080F] text-[8px] font-black rounded-full flex items-center justify-center border border-[#06080F] select-none scale-95">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications Dropdown Panel */}
+            {notificationsOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50 text-left"
+                style={{
+                  backgroundColor: 'var(--color-surface-container)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(229,9,20,0.1)',
+                  animation: 'dropdownFadeIn 0.2s ease-out',
+                }}
+              >
+                {/* Header */}
+                <div className="px-4 py-3 flex justify-between items-center bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="font-bold text-[10px] uppercase text-white tracking-wider">Thông báo của bạn</span>
+                  {notifications.some(n => !n.read) && (
+                    <button 
+                      onClick={markAllAsRead}
+                      className="text-[10px] text-yellow-400 hover:underline font-semibold bg-transparent border-none outline-none cursor-pointer"
+                    >
+                      Đánh dấu đã đọc
+                    </button>
+                  )}
+                </div>
+
+                {/* List */}
+                <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
+                  {notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.id} 
+                        onClick={() => toggleRead(n.id)}
+                        className={`p-3.5 transition-colors duration-150 cursor-pointer ${!n.read ? 'bg-white/5' : 'hover:bg-white/5'}`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className={`text-xs font-bold ${!n.read ? 'text-[#F3EA28]' : 'text-white'}`}>{n.title}</span>
+                          <span className="text-[9px] text-gray-500 font-medium">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 leading-normal mt-1">{n.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-xs text-gray-500 font-semibold flex flex-col items-center gap-1.5">
+                      <span className="material-symbols-outlined text-3xl">notifications_off</span>
+                      <span>Không có thông báo mới!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Khối User Profile / Nút Đăng nhập */}
           {user ? (

@@ -5,7 +5,7 @@ import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import Input from '../../../components/common/Input'
-import { Plus, Pencil, Trash2, Shield } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 export default function MemberListPage() {
   const [members, setMembers] = useState([])
@@ -40,6 +40,7 @@ export default function MemberListPage() {
     identityCard: '',
     phoneNumber: '',
     address: '',
+    password: '',
   })
 
   const loadMembers = async () => {
@@ -51,7 +52,7 @@ export default function MemberListPage() {
       // Filter for users with MEMBER role
       const memberList = allUsers.filter(u => u.roles?.includes('MEMBER'))
       setMembers(memberList)
-    } catch (err) {
+    } catch {
       setError('Không thể tải danh sách thành viên.')
     } finally {
       setLoading(false)
@@ -59,7 +60,9 @@ export default function MemberListPage() {
   }
 
   useEffect(() => {
-    loadMembers()
+    Promise.resolve().then(() => {
+      loadMembers()
+    })
   }, [])
 
   const handleAddChange = (e) => {
@@ -74,6 +77,12 @@ export default function MemberListPage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+
+    if (addForm.password.length < 8) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự!')
+      return
+    }
+
     if (addForm.password !== addForm.confirmPassword) {
       setError('Mật khẩu xác nhận không khớp!')
       return
@@ -99,7 +108,42 @@ export default function MemberListPage() {
       })
       loadMembers()
     } catch (err) {
-      setError(err.response?.data?.message || 'Không thể thêm thành viên. Vui lòng kiểm tra lại mật khẩu (cần 8 kí tự, chữ hoa, thường, số, ký tự đặc biệt).')
+      let errMsg = ''
+      const responseData = err.response?.data
+      if (responseData) {
+        if (typeof responseData === 'object') {
+          if (responseData.code === 1004 || responseData.message?.includes('at least 8 characters')) {
+            errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+          } else if (responseData.message) {
+            let msgStr = responseData.message
+            if (typeof msgStr === 'string' && msgStr.startsWith('{')) {
+              try {
+                const parsedMsg = JSON.parse(msgStr)
+                if (parsedMsg.message) {
+                  msgStr = parsedMsg.message
+                }
+              } catch {
+                // Ignore
+              }
+            }
+            errMsg = msgStr
+          } else {
+            errMsg = JSON.stringify(responseData)
+          }
+        } else if (typeof responseData === 'string') {
+          try {
+            const parsedData = JSON.parse(responseData)
+            if (parsedData.code === 1004 || parsedData.message?.includes('at least 8 characters')) {
+              errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+            } else {
+              errMsg = parsedData.message || responseData
+            }
+          } catch {
+            errMsg = responseData
+          }
+        }
+      }
+      setError(errMsg || 'Không thể thêm thành viên. Vui lòng kiểm tra lại mật khẩu (cần 8 kí tự, chữ hoa, thường, số, ký tự đặc biệt).')
     }
   }
 
@@ -114,6 +158,7 @@ export default function MemberListPage() {
       identityCard: row.identityCard || '',
       phoneNumber: row.phoneNumber || '',
       address: row.address || '',
+      password: '',
     })
     setEditOpen(true)
   }
@@ -123,17 +168,57 @@ export default function MemberListPage() {
     setError('')
     setSuccess('')
 
+    if (editForm.password && editForm.password.length < 8) {
+      setError('Mật khẩu phải có ít nhất 8 ký tự!')
+      return
+    }
+
     const isConfirmed = window.confirm(`Bạn có chắc chắn muốn CẬP NHẬT thông tin cho thành viên "${editForm.fullName}"?`)
     if (!isConfirmed) return
 
     try {
-      const { password, ...payload } = editForm
+      const payload = { ...editForm }
       await userService.update(editForm.id, payload)
       setSuccess('Cập nhật thông tin thành viên thành công!')
       setEditOpen(false)
       loadMembers()
     } catch (err) {
-      setError(err.response?.data?.message || 'Cập nhật thất bại. Vui lòng kiểm tra lại thông tin.')
+      let errMsg = ''
+      const responseData = err.response?.data
+      if (responseData) {
+        if (typeof responseData === 'object') {
+          if (responseData.code === 1004 || responseData.message?.includes('at least 8 characters')) {
+            errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+          } else if (responseData.message) {
+            let msgStr = responseData.message
+            if (typeof msgStr === 'string' && msgStr.startsWith('{')) {
+              try {
+                const parsedMsg = JSON.parse(msgStr)
+                if (parsedMsg.message) {
+                  msgStr = parsedMsg.message
+                }
+              } catch {
+                // Ignore
+              }
+            }
+            errMsg = msgStr
+          } else {
+            errMsg = JSON.stringify(responseData)
+          }
+        } else if (typeof responseData === 'string') {
+          try {
+            const parsedData = JSON.parse(responseData)
+            if (parsedData.code === 1004 || parsedData.message?.includes('at least 8 characters')) {
+              errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+            } else {
+              errMsg = parsedData.message || responseData
+            }
+          } catch {
+            errMsg = responseData
+          }
+        }
+      }
+      setError(errMsg || 'Cập nhật thất bại. Vui lòng kiểm tra lại thông tin.')
     }
   }
 
@@ -146,7 +231,7 @@ export default function MemberListPage() {
       setSuccess('Xóa thành viên thành công!')
       setDeleteTarget(null)
       loadMembers()
-    } catch (err) {
+    } catch {
       setError('Không thể xóa thành viên.')
       setDeleteTarget(null)
     }
@@ -240,8 +325,8 @@ export default function MemberListPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Tài khoản *" name="username" value={addForm.username} onChange={handleAddChange} required />
             <Input label="Email *" name="email" type="email" value={addForm.email} onChange={handleAddChange} required />
-            <Input label="Mật khẩu *" name="password" type="password" placeholder="Tối thiểu 8 kí tự, hoa, thường, số, kí tự đặc biệt" value={addForm.password} onChange={handleAddChange} required />
-            <Input label="Xác nhận mật khẩu *" name="confirmPassword" type="password" value={addForm.confirmPassword} onChange={handleAddChange} required />
+            <Input label="Mật khẩu *" name="password" type="password" placeholder="Tối thiểu 8 kí tự, hoa, thường, số, kí tự đặc biệt" value={addForm.password} onChange={handleAddChange} minLength={8} required />
+            <Input label="Xác nhận mật khẩu *" name="confirmPassword" type="password" value={addForm.confirmPassword} onChange={handleAddChange} minLength={8} required />
             <Input label="Họ tên *" name="fullName" value={addForm.fullName} onChange={handleAddChange} required />
             <Input label="Ngày sinh *" name="dayOfBirth" type="date" value={addForm.dayOfBirth} onChange={handleAddChange} required />
             <div className="flex flex-col gap-1 w-full text-left">
@@ -294,7 +379,15 @@ export default function MemberListPage() {
             <Input label={members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard ? "CMND / CCCD * (Không thể thay đổi)" : "CMND / CCCD *"} name="identityCard" value={editForm.identityCard} onChange={handleEditChange} disabled={!!members.find(u => u.uuid === editForm.id || u.id === editForm.id)?.identityCard} required />
             <Input label="Địa chỉ *" name="address" value={editForm.address} onChange={handleEditChange} required />
           </div>
-          {/* Password confirmation removed */}
+          <div className="border-t border-[var(--color-border)] pt-4 mt-2">
+            <div className="flex items-start gap-2 mb-3">
+              <span className="material-symbols-outlined text-red-500 mt-0.5 flex-shrink-0 text-base select-none">shield</span>
+              <p className="text-xs text-[var(--color-text-muted)] text-left">
+                Yêu cầu nhập lại mật khẩu của thành viên (hoặc mật khẩu mới) để xác nhận cập nhật thông tin lên hệ thống.
+              </p>
+            </div>
+            <Input label="Mật khẩu xác nhận / Mới *" name="password" type="password" placeholder="Nhập mật khẩu của thành viên" value={editForm.password || ''} onChange={handleEditChange} minLength={8} required />
+          </div>
           <div className="flex gap-2 justify-end pt-4 border-t border-[var(--color-border)]">
             <Button type="button" variant="secondary" onClick={() => setEditOpen(false)}>Hủy</Button>
             <Button type="submit">Lưu thay đổi</Button>

@@ -36,6 +36,9 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (form.password.length < 8) {
+      return setError('Mật khẩu phải có ít nhất 8 ký tự!')
+    }
     if (form.password !== form.confirmPassword) {
       return setError('Mật khẩu xác nhận không khớp!')
     }
@@ -45,7 +48,42 @@ export default function RegisterPage() {
       await authService.register(form)
       setShowSuccess(true)
     } catch (err) {
-      setError(err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại!')
+      let errMsg = ''
+      const responseData = err.response?.data
+      if (responseData) {
+        if (typeof responseData === 'object') {
+          if (responseData.code === 1004 || responseData.message?.includes('at least 8 characters')) {
+            errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+          } else if (responseData.message) {
+            let msgStr = responseData.message
+            if (typeof msgStr === 'string' && msgStr.startsWith('{')) {
+              try {
+                const parsedMsg = JSON.parse(msgStr)
+                if (parsedMsg.message) {
+                  msgStr = parsedMsg.message
+                }
+              } catch {
+                // Ignore
+              }
+            }
+            errMsg = msgStr
+          } else {
+            errMsg = JSON.stringify(responseData)
+          }
+        } else if (typeof responseData === 'string') {
+          try {
+            const parsedData = JSON.parse(responseData)
+            if (parsedData.code === 1004 || parsedData.message?.includes('at least 8 characters')) {
+              errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+            } else {
+              errMsg = parsedData.message || responseData
+            }
+          } catch {
+            errMsg = responseData
+          }
+        }
+      }
+      setError(errMsg || 'Đăng ký thất bại. Vui lòng thử lại!')
     } finally {
       setLoading(false)
     }
@@ -465,7 +503,7 @@ export default function RegisterPage() {
                       <label htmlFor="reg-password" style={labelStyle}>Mật khẩu</label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
-                        <input id="reg-password" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange} required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
+                        <input id="reg-password" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
                         <button type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showPassword ? 'visibility' : 'visibility_off'}</span>
                         </button>
@@ -477,7 +515,7 @@ export default function RegisterPage() {
                       <label htmlFor="reg-confirm-password" style={labelStyle}>Xác nhận mật khẩu</label>
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
-                        <input id="reg-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
+                        <input id="reg-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
                         <button type="button" aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowConfirmPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
                           <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showConfirmPassword ? 'visibility' : 'visibility_off'}</span>
                         </button>

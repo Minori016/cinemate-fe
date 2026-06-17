@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
-import { bookingService } from '../../services/bookingService'
 
 export default function BookingConfirmationPage() {
   const navigate = useNavigate()
@@ -17,9 +16,6 @@ export default function BookingConfirmationPage() {
 
   const [profile, setProfile] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState('')
-  const [incompleteError, setIncompleteError] = useState('')
 
   // Lấy thông tin cá nhân của Member từ backend API
   useEffect(() => {
@@ -40,11 +36,9 @@ export default function BookingConfirmationPage() {
   }, [user])
 
   // Kiểm tra tính đầy đủ của dữ liệu đặt vé (AC-04)
-  useEffect(() => {
-    if (!bookingInfo.movie || !bookingInfo.seats || bookingInfo.seats.length === 0 || !bookingId) {
-      setIncompleteError('Incomplete booking data. Please return and complete seat selection.')
-    }
-  }, [bookingInfo, bookingId])
+  const incompleteError = (!bookingInfo.movie || !bookingInfo.seats || bookingInfo.seats.length === 0 || !bookingId)
+    ? 'Incomplete booking data. Please return and complete seat selection.'
+    : ''
 
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
@@ -98,96 +92,18 @@ export default function BookingConfirmationPage() {
     return `${parts.join(' + ')} = ${formatCurrency(bookingInfo.totalPrice)}`
   }
 
-  const handleConfirmBooking = async (e) => {
+  const handleConfirmBooking = (e) => {
     if (e) e.preventDefault()
     if (incompleteError) return // Ngăn chặn tiến trình nếu thiếu dữ liệu (AC-04)
     
-    setSubmitting(true)
-    setSubmitError('')
-
-    const payload = {
-      bookingId: bookingId,
-      movieId: bookingInfo.movieId,
-      movieName: bookingInfo.movie?.movieNameVn || bookingInfo.movie?.movieName || '',
-      showTime: bookingInfo.time,
-      showDate: bookingInfo.date,
-      seats: bookingInfo.seats,
-      totalPrice: bookingInfo.totalPrice,
-      room: bookingInfo.screen || 'Phòng Chiếu 03 (IMAX)',
-      fullName: profile?.fullName || '',
-      email: profile?.email || '',
-      identityCard: profile?.identityCard || '',
-      phoneNumber: profile?.phoneNumber || ''
-    }
-
-    try {
-      await bookingService.create(payload)
-      
-      // Lưu vào database giả lập trong localStorage để hiển thị trong Danh sách đặt vé (AC-05)
-      const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
-      const newBooking = {
-        id: bookingId,
-        movie: bookingInfo.movie?.movieNameVn || bookingInfo.movie?.movieName || '',
-        screen: bookingInfo.screen || 'Phòng Chiếu 03 (IMAX)',
-        date: bookingInfo.date ? (bookingInfo.date === 'Hôm nay'
-          ? new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-          : new Date(bookingInfo.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-        ) : '17/06/2026',
-        time: bookingInfo.time,
-        seats: bookingInfo.seats?.join(', ') || '',
-        price: getSeatPrice(bookingInfo.seats?.[0] || 'A1'),
-        total: bookingInfo.totalPrice,
-        convertTickets: bookingInfo.convertTickets || 0,
-        scoreUsed: bookingInfo.scoreUsed || 0,
-        memberId: profile?.memberId || 'MEM-' + Math.floor(100000 + Math.random() * 900000),
-        customerName: profile?.fullName || '',
-        phone: profile?.phoneNumber || '',
-        email: profile?.email || '',
-        idCard: profile?.identityCard || '012345678901',
-        status: 'Đã thanh toán',
-        checkedIn: false,
-        checkInTime: null
-      }
-      localStorage.setItem('staff_bookings_db', JSON.stringify([newBooking, ...localBookings]))
-
-      // Chuyển hướng tới trang thành công kèm theo bookingId tự sinh
-      navigate('/booking/success', { state: { ...bookingInfo, profile, bookingId } })
-    } catch (err) {
-      setSubmitError('Booking failed. Please try again later.')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleBypassSubmit = () => {
-    // Lưu vào database giả lập trong localStorage để hiển thị trong Danh sách đặt vé (AC-05)
-    const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
-    const newBooking = {
-      id: bookingId,
-      movie: bookingInfo.movie?.movieNameVn || bookingInfo.movie?.movieName || '',
-      screen: bookingInfo.screen || 'Phòng Chiếu 03 (IMAX)',
-      date: bookingInfo.date ? (bookingInfo.date === 'Hôm nay'
-        ? new Date().toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-        : new Date(bookingInfo.date).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-      ) : '17/06/2026',
-      time: bookingInfo.time,
-      seats: bookingInfo.seats?.join(', ') || '',
-      price: getSeatPrice(bookingInfo.seats?.[0] || 'A1'),
-      total: bookingInfo.totalPrice,
-      convertTickets: bookingInfo.convertTickets || 0,
-      scoreUsed: bookingInfo.scoreUsed || 0,
-      memberId: profile?.memberId || 'MEM-' + Math.floor(100000 + Math.random() * 900000),
-      customerName: profile?.fullName || '',
-      phone: profile?.phoneNumber || '',
-      email: profile?.email || '',
-      idCard: profile?.identityCard || '012345678901',
-      status: 'Đã thanh toán',
-      checkedIn: false,
-      checkInTime: null
-    }
-    localStorage.setItem('staff_bookings_db', JSON.stringify([newBooking, ...localBookings]))
-
-    navigate('/booking/success', { state: { ...bookingInfo, profile, bookingId } })
+    // Chuyển sang trang thanh toán kèm theo thông tin đặt vé và thông tin cá nhân
+    navigate('/booking/payment', { 
+      state: { 
+        bookingInfo, 
+        profile, 
+        bookingId 
+      } 
+    })
   }
 
   if (loadingProfile && !incompleteError) {
@@ -266,6 +182,15 @@ export default function BookingConfirmationPage() {
             <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold step-inactive bg-[#06080F]">
               3
             </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Thanh toán</span>
+          </div>
+          
+          <div className="h-0.5 flex-1 bg-gray-700 mx-2 self-start mt-4"></div>
+          
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold step-inactive bg-[#06080F]">
+              4
+            </div>
             <span className="text-[10px] uppercase font-bold tracking-wider text-gray-500">Thành công</span>
           </div>
         </div>
@@ -289,24 +214,7 @@ export default function BookingConfirmationPage() {
           </div>
         )}
 
-        {/* Submission Failure alert (AC-05) */}
-        {submitError && !incompleteError && (
-          <div className="w-full mb-6 p-4 rounded-xl border bg-red-500/10 border-red-500/20 text-red-400 flex flex-col sm:flex-row items-center sm:justify-between gap-3 shadow-lg animate-fade-in text-left">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-2xl font-bold shrink-0">error</span>
-              <div>
-                <p className="font-bold text-base">{submitError}</p>
-                <p className="text-xs text-red-400/80 mt-0.5">Đặt vé thất bại vì server không phản hồi. Vui lòng bấm bypass bên phải để kiểm tra màn hình thành công.</p>
-              </div>
-            </div>
-            <button
-              onClick={handleBypassSubmit}
-              className="py-1.5 px-3 bg-white/10 hover:bg-white/15 border border-white/20 text-xs font-bold text-white rounded-lg transition-colors cursor-pointer whitespace-nowrap"
-            >
-              Xem trang thành công (Bypass Demo)
-            </button>
-          </div>
-        )}
+
 
         <div className="w-full flex flex-col lg:flex-row gap-8 items-start text-left">
           
@@ -444,27 +352,18 @@ export default function BookingConfirmationPage() {
                 </div>
               </div>
 
-              {/* Confirm booking button (AC-03, AC-04) */}
+              {/* Proceed to payment button */}
               <div className="border-t border-white/10 pt-4 mt-2">
                 <button
                   onClick={handleConfirmBooking}
-                  disabled={submitting || !!incompleteError}
+                  disabled={!!incompleteError}
                   className="w-full bg-[#F3EA28] hover:bg-[#dcd424] text-[#06080F] font-black text-base py-4 rounded-xl shadow-[0_4px_20px_rgba(243,234,40,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
                 >
-                  {submitting ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                      Đang xử lý đặt vé...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-lg font-black">lock_open</span>
-                      Xác nhận đặt vé (Confirm Booking)
-                    </>
-                  )}
+                  <span className="material-symbols-outlined text-lg font-black">payments</span>
+                  Tiếp tục thanh toán (Proceed to Payment)
                 </button>
                 <p className="text-[10px] text-gray-500 text-center mt-3 leading-relaxed">
-                  Bằng việc bấm xác nhận, bạn đồng ý với các điều khoản mua vé trực tuyến của Cinemate. Vé đã đặt không thể hoàn tác trực tuyến.
+                  Bằng việc bấm tiếp tục thanh toán, bạn đồng ý với các điều khoản mua vé trực tuyến của Cinemate. Vé đã đặt không thể hoàn tác trực tuyến.
                 </p>
               </div>
             </div>

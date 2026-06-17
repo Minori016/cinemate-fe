@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
@@ -224,11 +224,13 @@ export default function ProfilePage() {
         const results = MOCK_POINT_HISTORY.filter(item => {
           return item.type === scoreFilterType && new Date(item.date) >= fromDate && new Date(item.date) <= toDateEnd
         })
-        setFilteredScoreHistory(results)
-        setHasViewedScore(true)
+        Promise.resolve().then(() => {
+          setFilteredScoreHistory(results)
+          setHasViewedScore(true)
+        })
       }
     }
-  }, [activeTab])
+  }, [activeTab, fromDateStr, toDateStr, scoreFilterType])
 
 
   const handleCancelTicket = (ticketId) => {
@@ -272,18 +274,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null)
   const hasFetchedRef = useRef(false)
 
-  useEffect(() => {
-    if (!user) {
-      navigate('/login')
-      return
-    }
-    if (!hasFetchedRef.current) {
-      hasFetchedRef.current = true
-      fetchProfile()
-    }
-  }, [user, navigate])
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await userService.getMyInfo()
       const data = res.data?.result ?? res.data
@@ -304,7 +295,18 @@ export default function ProfilePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [updateUser])
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true
+      fetchProfile()
+    }
+  }, [user, navigate, fetchProfile])
 
   const handleChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
@@ -372,6 +374,10 @@ export default function ProfilePage() {
     setPwdError('')
     setPwdSuccess('')
 
+    if (pwdForm.newPassword.length < 8) {
+      return setPwdError('Mật khẩu mới phải có ít nhất 8 ký tự!')
+    }
+
     if (pwdForm.newPassword !== pwdForm.confirmPassword) {
       return setPwdError('Mật khẩu xác nhận mới không khớp!')
     }
@@ -382,8 +388,42 @@ export default function ProfilePage() {
       setPwdSuccess('Đổi mật khẩu thành công!')
       setPwdForm({ currentPassword: '', newPassword: '', confirmPassword: '' })
     } catch (err) {
-      const msg = err.response?.data?.message
-      setPwdError(msg || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại độ mạnh mật khẩu và mật khẩu hiện tại!')
+      let errMsg = ''
+      const responseData = err.response?.data
+      if (responseData) {
+        if (typeof responseData === 'object') {
+          if (responseData.code === 1004 || responseData.message?.includes('at least 8 characters')) {
+            errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+          } else if (responseData.message) {
+            let msgStr = responseData.message
+            if (typeof msgStr === 'string' && msgStr.startsWith('{')) {
+              try {
+                const parsedMsg = JSON.parse(msgStr)
+                if (parsedMsg.message) {
+                  msgStr = parsedMsg.message
+                }
+              } catch {
+                // Ignore
+              }
+            }
+            errMsg = msgStr
+          } else {
+            errMsg = JSON.stringify(responseData)
+          }
+        } else if (typeof responseData === 'string') {
+          try {
+            const parsedData = JSON.parse(responseData)
+            if (parsedData.code === 1004 || parsedData.message?.includes('at least 8 characters')) {
+              errMsg = 'Mật khẩu phải có ít nhất 8 ký tự!'
+            } else {
+              errMsg = parsedData.message || responseData
+            }
+          } catch {
+            errMsg = responseData
+          }
+        }
+      }
+      setPwdError(errMsg || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại độ mạnh mật khẩu và mật khẩu hiện tại!')
     } finally {
       setPwdSaving(false)
     }
@@ -969,6 +1009,7 @@ export default function ProfilePage() {
                   placeholder="Tối thiểu 8 kí tự, hoa, thường, số, ký tự đặc biệt"
                   value={pwdForm.newPassword}
                   onChange={handlePwdChange}
+                  minLength={8}
                   required
                 />
                 <Input
@@ -978,6 +1019,7 @@ export default function ProfilePage() {
                   placeholder="Nhập lại mật khẩu mới"
                   value={pwdForm.confirmPassword}
                   onChange={handlePwdChange}
+                  minLength={8}
                   required
                 />
               </div>
@@ -1022,14 +1064,11 @@ export default function ProfilePage() {
           {activeTab === 'history' && (() => {
             const score = profile?.score ?? 0
             const tier = getMembershipTier(score)
-            let progressPercent = 0
-            if (score >= 300) {
-              progressPercent = 100
-            } else if (score >= 100) {
-              progressPercent = ((score - 100) / 200) * 100
-            } else {
-              progressPercent = (score / 100) * 100
-            }
+            const progressPercent = score >= 300 
+              ? 100 
+              : score >= 100 
+                ? ((score - 100) / 200) * 100 
+                : (score / 100) * 100
 
             return (
               <div className="w-full flex flex-col lg:flex-row gap-8 animate-fade-in-up">

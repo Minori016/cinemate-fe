@@ -1,4 +1,4 @@
-import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate, Outlet } from 'react-router-dom'
 import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -103,7 +103,7 @@ export default function StaffLayout({ children }) {
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 p-8 overflow-y-auto" style={{ backgroundColor: 'var(--color-background)' }}>
-        {children}
+        {children || <Outlet />}
       </main>
     </div>
   )
