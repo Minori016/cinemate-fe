@@ -11,7 +11,7 @@ export default function MovieListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const navigate = useNavigate()
 
-  const load = () => movieService.getAll().then(r => setMovies(r.data)).catch(() => {})
+  const load = () => movieService.getAll().then(r => setMovies(r.data?.result?.content || r.data?.result || [])).catch(() => {})
   useEffect(() => { load() }, [])
 
   const handleDelete = async () => {
@@ -21,10 +21,10 @@ export default function MovieListPage() {
   }
 
   const columns = [
-    { key: 'movieNameEnglish', label: 'Tên (ENG)' },
-    { key: 'movieNameVn', label: 'Tên (VN)' },
+    { key: 'titleEn', label: 'Tên (ENG)' },
+    { key: 'titleVn', label: 'Tên (VN)' },
     { key: 'fromDate', label: 'Từ ngày' },
-    { key: 'duration', label: 'Thời lượng', render: r => `${r.duration} phút` },
+    { key: 'durationMinutes', label: 'Thời lượng', render: r => `${r.durationMinutes || 120} phút` },
     { key: 'version', label: 'Phiên bản' },
   ]
 
@@ -53,7 +53,7 @@ export default function MovieListPage() {
         </div>
       )} />
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa">
-        <p className="text-[var(--color-text-muted)] text-sm mb-4">Bạn có chắc muốn xóa phim <span className="text-white font-semibold">"{deleteTarget?.movieNameVn}"</span>?</p>
+        <p className="text-[var(--color-text-muted)] text-sm mb-4">Bạn có chắc muốn xóa phim <span className="text-white font-semibold">"{deleteTarget?.titleVn}"</span>?</p>
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy</Button>
           <Button variant="danger" onClick={handleDelete}>Xóa</Button>

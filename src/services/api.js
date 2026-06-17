@@ -6,14 +6,20 @@ const api = axios.create({
 })
 
 // Danh sách các URL không cần đính kèm token
-const PUBLIC_URLS = ['/auth/login', '/auth/register', '/auth/forgot-password', '/auth/reset-password', '/auth/introspect'];
+const PUBLIC_URLS = [
+  '/api/v1/auth/login',
+  '/api/v1/auth/register',
+  '/api/v1/auth/forgot-password',
+  '/api/v1/auth/reset-password',
+  '/api/v1/auth/introspect'
+];
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  
+
   // Chỉ gắn token nếu không phải là các URL public
   const isPublic = PUBLIC_URLS.some(url => config.url.includes(url));
-  
+
   if (token && !isPublic) {
     config.headers.Authorization = `Bearer ${token}`
   }
