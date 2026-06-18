@@ -24,6 +24,7 @@ import PaymentPage from '../pages/booking/PaymentPage'
 import BookingSuccessPage from '../pages/booking/BookingSuccessPage'
 import DashboardPage from '../pages/admin/DashboardPage'
 import MovieListPage from '../pages/admin/movies/MovieListPage'
+import MovieFormPage from '../pages/admin/movies/MovieFormPage'
 import EmployeeListPage from '../pages/admin/employees/EmployeeListPage'
 import MemberListPage from '../pages/admin/members/MemberListPage'
 import TicketManagementPage from '../pages/admin/tickets/TicketManagementPage'
@@ -80,6 +81,7 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="movies" element={<MovieListPage />} />
+        <Route path="movies/add" element={<MovieFormPage />} />
         <Route path="employees" element={<EmployeeListPage />} />
         <Route path="members" element={<MemberListPage />} />
         <Route path="tickets" element={<TicketManagementPage />} />
