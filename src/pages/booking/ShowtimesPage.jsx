@@ -1,16 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { motion } from 'motion/react'
-
-import maxo from '../../assets/maxo.png'
-import lophocamsat from '../../assets/lophocamsat.png'
-import kumathong from '../../assets/kumathong.png'
-import amazing from '../../assets/amazing.png'
-import xacsong from '../../assets/xacsong.png'
-import spiderNoir from '../../assets/z7926548056551_31ba8c85180d00c18c1d766965b7f0d5.jpg'
-import spiderman from '../../assets/z7926548206262_069a2a65c451a5d7f795d731f2371e47.jpg'
-import backrooms from '../../assets/z7926549211322_474665675a42a9e64a53f3c58f96ca9f.jpg'
 
 const MOCK_SHOWTIMES = [
   {
@@ -19,7 +10,7 @@ const MOCK_SHOWTIMES = [
     movieNameEnglish: 'MA XÓ',
     duration: 102,
     version: '2D phụ đề',
-    smallImage: maxo,
+    smallImage: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=600&fit=crop',
     schedules: ['10:15', '13:00', '16:45', '19:30', '22:15']
   },
   {
@@ -28,7 +19,7 @@ const MOCK_SHOWTIMES = [
     movieNameEnglish: 'Lớp Học Ám Sát',
     duration: 110,
     version: '2D phụ đề',
-    smallImage: lophocamsat,
+    smallImage: 'https://images.unsplash.com/photo-1594908900066-3f47337549d8?w=400&h=600&fit=crop',
     schedules: ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30']
   },
   {
@@ -37,7 +28,7 @@ const MOCK_SHOWTIMES = [
     movieNameEnglish: 'Kumanthong',
     duration: 95,
     version: '2D lồng tiếng',
-    smallImage: kumathong,
+    smallImage: 'https://images.unsplash.com/photo-1509347528160-9a9e33742cdb?w=400&h=600&fit=crop',
     schedules: ['11:00', '14:30', '18:00', '20:30', '22:30']
   },
   {
@@ -46,7 +37,7 @@ const MOCK_SHOWTIMES = [
     movieNameEnglish: 'Spider-man: Brand New Day',
     duration: 135,
     version: '2D lồng tiếng',
-    smallImage: spiderman,
+    smallImage: 'https://images.unsplash.com/photo-1574267432644-f74f8ec45dbd?w=400&h=600&fit=crop',
     schedules: ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15']
   },
   {
@@ -55,7 +46,7 @@ const MOCK_SHOWTIMES = [
     movieNameEnglish: 'The Backrooms',
     duration: 90,
     version: '2D phụ đề',
-    smallImage: backrooms,
+    smallImage: 'https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=400&h=600&fit=crop',
     schedules: ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30']
   }
 ]
@@ -80,6 +71,96 @@ const MOVIE_DATES_MAP = {
   8: [DAYS[0].date] // Backrooms - Today only
 }
 
+/* ── Custom Select Component ── */
+function CustomSelect({ value, onChange, options, placeholder, disabled, error, label }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(opt => opt.value === value)
+
+  return (
+    <div className="flex flex-col gap-2 relative w-full text-left" ref={containerRef}>
+      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
+        {label}
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-[var(--color-surface)] border rounded-xl py-3 px-4 outline-none text-xs text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[42px]"
+        style={{
+          borderColor: error ? 'var(--color-error)' : isOpen ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.1)',
+          boxShadow: isOpen ? '0 0 10px rgba(229, 9, 20, 0.2)' : 'none',
+        }}
+      >
+        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        <span 
+          className="material-symbols-outlined transition-transform duration-200 text-gray-400 text-sm select-none"
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}
+        >
+          keyboard_arrow_down
+        </span>
+      </button>
+
+      {error && <span className="text-[10px] text-red-500 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
+
+      {isOpen && !disabled && (
+        <div
+          className="absolute left-0 top-[calc(100%+4px)] w-full rounded-xl border z-50 max-h-60 overflow-y-auto"
+          style={{
+            backgroundColor: 'var(--color-surface-container)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+            padding: '6px 0',
+          }}
+        >
+          {options.length === 0 ? (
+            <div className="px-4 py-2.5 text-xs text-gray-500 italic select-none">
+              Không có lựa chọn nào
+            </div>
+          ) : (
+            options.map(opt => {
+              const isSelected = opt.value === value
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value)
+                    setIsOpen(false)
+                  }}
+                  className="px-4 py-2.5 text-xs text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(229, 9, 20, 0.15)' : 'transparent',
+                    color: isSelected ? 'var(--color-primary)' : 'inherit',
+                  }}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && (
+                    <span className="material-symbols-outlined text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ShowtimesPage() {
   const [movies, setMovies] = useState([])
   const [selectedDay, setSelectedDay] = useState(DAYS[0].date)
@@ -92,10 +173,27 @@ export default function ShowtimesPage() {
   const [errors, setErrors] = useState({ movie: '', date: '', time: '' })
 
   useEffect(() => { 
-    movieService.getShowtimes()
+    movieService.getAll({ size: 100 })
       .then(r => {
-        if (r.data && r.data.length > 0) {
-          setMovies(r.data)
+        const apiMovies = r.data?.result?.content || r.data?.result || []
+        if (apiMovies && apiMovies.length > 0) {
+          const SCHEDULE_TEMPLATES = [
+            ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15'],
+            ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30'],
+            ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30'],
+            ['10:15', '13:00', '16:45', '19:30', '22:15'],
+            ['11:00', '14:30', '18:00', '20:30', '22:30']
+          ]
+          const mapped = apiMovies.map((movie, index) => ({
+            id: movie.id,
+            movieNameVn: movie.titleVn || movie.movieNameVn || 'Chưa rõ tên',
+            movieNameEnglish: movie.titleEn || movie.movieNameEnglish || '',
+            duration: movie.durationMinutes || movie.duration || 120,
+            version: movie.version || '2D phụ đề',
+            smallImage: movie.posterUrl || movie.smallImage || '',
+            schedules: movie.schedules || SCHEDULE_TEMPLATES[index % SCHEDULE_TEMPLATES.length]
+          }))
+          setMovies(mapped)
         } else {
           setMovies(MOCK_SHOWTIMES)
         }
@@ -108,7 +206,19 @@ export default function ShowtimesPage() {
   // Retrieve valid show dates for the selected movie (AC-02)
   const getAvailableDates = () => {
     if (!bookingMovieId) return []
-    return MOVIE_DATES_MAP[bookingMovieId] || []
+    
+    // Fallback if it matches mock IDs
+    if (MOVIE_DATES_MAP[bookingMovieId]) {
+      return MOVIE_DATES_MAP[bookingMovieId]
+    }
+    
+    const movie = movies.find(m => m.id.toString() === bookingMovieId)
+    if (!movie) return []
+    
+    // Generate deterministic available dates for API UUID movies
+    const charCodeSum = movie.id.toString().split('').reduce((sum, c) => sum + c.charCodeAt(0), 0)
+    const numDays = (charCodeSum % 5) + 3 // between 3 and 7 days
+    return DAYS.slice(0, numDays).map(d => d.date)
   }
 
   // Retrieve available times based on movie and date selections (AC-03)
@@ -175,7 +285,7 @@ export default function ShowtimesPage() {
 
       {/* Quick Booking Widget (AC-01 to AC-04) */}
       <div 
-        className="p-6 rounded-2xl mb-12 backdrop-blur-xl shadow-2xl relative text-left"
+        className="p-6 rounded-2xl mb-12 backdrop-blur-xl shadow-2xl relative z-30 text-left"
         style={{
           backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 45%, transparent)',
           border: '1px solid rgba(255,255,255,0.08)'
@@ -185,78 +295,65 @@ export default function ShowtimesPage() {
           ⚡ Đặt Vé Nhanh (Quick Booking)
         </h3>
         
-        <form onSubmit={handleQuickBook} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+        <form onSubmit={handleQuickBook} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start pb-4">
           {/* Select Movie Combobox (AC-01) */}
-          <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn phim (Select Movie)</label>
-            <select
-              value={bookingMovieId}
-              onChange={(e) => {
-                setBookingMovieId(e.target.value)
-                setBookingDate('')
-                setBookingTime('')
-                setErrors({ movie: '', date: '', time: '' })
-              }}
-              className={`w-full bg-[var(--color-surface)] border ${errors.movie ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500`}
-            >
-              <option value="">-- Chọn phim --</option>
-              {movies.map(m => (
-                <option key={m.id} value={m.id}>{m.movieNameVn}</option>
-              ))}
-            </select>
-            {errors.movie && <span className="text-[10px] text-red-500 font-semibold">{errors.movie}</span>}
-          </div>
+          <CustomSelect
+            label="Chọn phim (Select Movie)"
+            placeholder="-- Chọn phim --"
+            value={bookingMovieId}
+            options={movies.map(m => ({ value: m.id.toString(), label: m.movieNameVn }))}
+            error={errors.movie}
+            onChange={(val) => {
+              setBookingMovieId(val)
+              setBookingDate('')
+              setBookingTime('')
+              setErrors({ movie: '', date: '', time: '' })
+            }}
+          />
 
           {/* Select Date Combobox (AC-02) */}
-          <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn ngày chiếu (Select Date)</label>
-            <select
-              value={bookingDate}
-              disabled={!bookingMovieId}
-              onChange={(e) => {
-                setBookingDate(e.target.value)
-                setBookingTime('')
-                setErrors(prev => ({ ...prev, date: '', time: '' }))
-              }}
-              className={`w-full bg-[var(--color-surface)] border ${errors.date ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              <option value="">-- Chọn ngày --</option>
-              {getAvailableDates().map(d => {
-                const dateObj = new Date(d)
-                const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
-                return <option key={d} value={d}>{label}</option>
-              })}
-            </select>
-            {errors.date && <span className="text-[10px] text-red-500 font-semibold">{errors.date}</span>}
-          </div>
+          <CustomSelect
+            label="Chọn ngày chiếu (Select Date)"
+            placeholder="-- Chọn ngày --"
+            value={bookingDate}
+            disabled={!bookingMovieId}
+            options={getAvailableDates().map(d => {
+              const dateObj = new Date(d)
+              const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
+              return { value: d, label }
+            })}
+            error={errors.date}
+            onChange={(val) => {
+              setBookingDate(val)
+              setBookingTime('')
+              setErrors(prev => ({ ...prev, date: '', time: '' }))
+            }}
+          />
 
           {/* Select Time Combobox (AC-03) */}
-          <div className="flex flex-col gap-2">
-            <label className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">Chọn suất chiếu (Select Time)</label>
-            <select
-              value={bookingTime}
-              disabled={!bookingDate}
-              onChange={(e) => {
-                setBookingTime(e.target.value)
-                setErrors(prev => ({ ...prev, time: '' }))
-              }}
-              className={`w-full bg-[var(--color-surface)] border ${errors.time ? 'border-red-500' : 'border-[var(--color-border)]'} rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 disabled:opacity-40 disabled:cursor-not-allowed`}
-            >
-              <option value="">-- Chọn giờ --</option>
-              {getAvailableTimes().map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            {errors.time && <span className="text-[10px] text-red-500 font-semibold">{errors.time}</span>}
-          </div>
+          <CustomSelect
+            label="Chọn suất chiếu (Select Time)"
+            placeholder="-- Chọn giờ --"
+            value={bookingTime}
+            disabled={!bookingDate}
+            options={getAvailableTimes().map(t => ({ value: t, label: t }))}
+            error={errors.time}
+            onChange={(val) => {
+              setBookingTime(val)
+              setErrors(prev => ({ ...prev, time: '' }))
+            }}
+          />
 
           {/* Book Ticket Button (AC-04) */}
-          <button
-            type="submit"
-            className="w-full py-3 px-6 bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider active:scale-[0.98] transition-all shadow-lg shadow-[rgba(229,9,20,0.25)] h-[42px] cursor-pointer"
-          >
-            Book Ticket
-          </button>
+          <div className="flex flex-col gap-2 w-full">
+            <span className="hidden md:block text-[10px] uppercase font-bold text-transparent tracking-wider">Đặt vé</span>
+            <button
+              type="submit"
+              className="w-full py-3 px-6 bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider active:scale-[0.98] transition-all shadow-lg shadow-[rgba(229,9,20,0.25)] h-[42px] cursor-pointer"
+            >
+              Book Ticket
+            </button>
+          </div>
         </form>
       </div>
 

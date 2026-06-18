@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -272,8 +272,8 @@ export default function CinemaRoomDetailPage() {
           box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
         }
         .screen-glow {
-          background: linear-gradient(to bottom, rgba(139, 29, 208, 0.25) 0%, transparent 100%);
-          box-shadow: 0 10px 25px rgba(139, 29, 208, 0.1);
+          background: linear-gradient(to bottom, rgba(229, 9, 20, 0.3) 0%, transparent 100%);
+          box-shadow: 0 15px 35px rgba(229, 9, 20, 0.15);
         }
       `}</style>
 
@@ -363,8 +363,8 @@ export default function CinemaRoomDetailPage() {
             
             {/* Screen layout graphic */}
             <div className="w-4/5 h-12 mb-14 relative flex flex-col items-center justify-start">
-              <div className="w-full h-6 screen-glow rounded-[100%] border-t-2 border-purple-500/40"></div>
-              <p className="text-[9px] text-purple-400/40 font-bold uppercase tracking-[0.3em] mt-2.5">Màn Hình Chiếu</p>
+              <div className="w-full h-6 screen-glow rounded-[100%] border-t-2 border-red-500/50"></div>
+              <p className="text-[9px] text-red-500/50 font-bold uppercase tracking-[0.3em] mt-2.5">Màn Hình Chiếu</p>
             </div>
 
             {/* Grid Container with scroll wrap */}

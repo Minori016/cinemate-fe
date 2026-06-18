@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { authService } from '../../services/authService'
 import Navbar from '../../components/layout/Navbar'
@@ -32,6 +32,7 @@ export default function RegisterPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [countdown, setCountdown] = useState(3)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
 
@@ -94,12 +95,12 @@ export default function RegisterPage() {
   useEffect(() => {
     if (!showSuccess) return
     if (countdown <= 0) {
-      navigate('/login')
+      navigate('/login', { state: { from: location.state?.from } })
       return
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
     return () => clearTimeout(timer)
-  }, [showSuccess, countdown, navigate])
+  }, [showSuccess, countdown, navigate, location.state])
 
   // Reusable input field style helpers
   const inputStyle = {
@@ -244,7 +245,7 @@ export default function RegisterPage() {
                   </div>
 
                   <button
-                    onClick={() => navigate('/login')}
+                    onClick={() => navigate('/login', { state: { from: location.state?.from } })}
                     className="w-full py-[14px] px-6 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98]"
                     style={{
                       background: 'linear-gradient(160deg, #e50914 0%, #b3070f 60%, #7a0409 100%)',
@@ -638,6 +639,7 @@ export default function RegisterPage() {
                     Đã có tài khoản?{' '}
                     <Link
                       to="/login"
+                      state={{ from: location.state?.from }}
                       className="font-bold ml-1 hover:opacity-75 transition-opacity"
                       style={{ color: 'var(--color-primary)' }}
                     >

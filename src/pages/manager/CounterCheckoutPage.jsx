@@ -76,10 +76,12 @@ export default function CounterCheckoutPage() {
   }, [convertCount, foundMember])
 
   const totalSeats = bookingInfo.seats || []
-  const singlePrice = totalSeats.length > 0 ? (bookingInfo.totalPrice / totalSeats.length) : 0
+  const ticketPrice = bookingInfo.ticketPrice || bookingInfo.totalPrice
+  const comboPrice = bookingInfo.comboPrice || 0
+  const singlePrice = totalSeats.length > 0 ? (ticketPrice / totalSeats.length) : 0
   
   // Deduct price based on points conversion
-  const discountedTotal = Math.max(0, bookingInfo.totalPrice - (convertCount * singlePrice))
+  const discountedTotal = Math.max(0, ticketPrice - (convertCount * singlePrice)) + comboPrice
 
   // Handle booking confirmation and submission (AC-07)
   const handleConfirmBooking = async () => {
@@ -298,6 +300,21 @@ export default function CounterCheckoutPage() {
                   <span className="text-[10px] uppercase font-bold text-gray-500 block">Ghế Ngồi (Seat)</span>
                   <span className="text-xs font-black text-red-500 mt-1 block">{totalSeats.join(', ')}</span>
                 </div>
+
+                {/* Combos list details */}
+                {bookingInfo.combos && bookingInfo.combos.length > 0 && (
+                  <div className="bg-white/5 border border-white/10 rounded-xl p-3 col-span-2">
+                    <span className="text-[10px] uppercase font-bold text-gray-500 block">Bắp Nước (Popcorn & Drinks)</span>
+                    <div className="flex flex-col gap-1.5 mt-1 text-xs font-semibold text-white">
+                      {bookingInfo.combos.map((combo, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs text-gray-300">
+                          <span>{combo.name} (×{combo.qty})</span>
+                          <span className="font-mono font-medium">{formatCurrency(combo.price * combo.qty)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-4">

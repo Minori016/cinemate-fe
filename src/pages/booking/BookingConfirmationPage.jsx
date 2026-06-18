@@ -90,6 +90,11 @@ export default function BookingConfirmationPage() {
       return `${data.count} vé ${type} × ${formatCurrency(data.price)}`
     })
 
+    const combos = bookingInfo.combos || []
+    combos.forEach(combo => {
+      parts.push(`${combo.qty} × ${combo.name} (${formatCurrency(combo.price)})`)
+    })
+
     return `${parts.join(' + ')} = ${formatCurrency(bookingInfo.totalPrice)}`
   }
 
@@ -311,6 +316,21 @@ export default function BookingConfirmationPage() {
                   </div>
                 </div>
 
+                {/* Combos list details */}
+                {bookingInfo.combos && bookingInfo.combos.length > 0 && (
+                  <div className="border-b border-white/5 pb-3">
+                    <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Bắp nước (Popcorn & Drinks)</span>
+                    <div className="flex flex-col gap-1.5 mt-1">
+                      {bookingInfo.combos.map((combo, index) => (
+                        <div key={index} className="flex justify-between items-center text-xs text-gray-300">
+                          <span>{combo.name} (×{combo.qty})</span>
+                          <span className="font-mono font-medium">{formatCurrency(combo.price * combo.qty)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+ 
                 {/* Total Price formula & math (AC-01) */}
                 <div className="pt-2 flex justify-between items-end">
                   <div>

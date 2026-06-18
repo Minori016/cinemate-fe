@@ -116,7 +116,7 @@ export default function Navbar() {
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 900,
             letterSpacing: '-0.03em',
-            marginLeft: '-20px',
+            marginLeft: '-60px',
           }}
         >
           <img src={logoImg} alt="Logo" className="w-11 h-11 object-contain" />

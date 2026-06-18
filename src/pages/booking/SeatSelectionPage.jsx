@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { movieService } from '../../services/movieService'
@@ -22,6 +22,218 @@ const OCCUPIED_SEATS = [
   'G1', 'H3', 'H5'
 ]
 
+const COMBOS = [
+  {
+    id: 1,
+    name: 'Combo Solo',
+    desc: '1 bắp ngọt 60oz + 1 nước ngọt 22oz (Coca-Cola/Sprite/Fanta)',
+    price: 75000,
+    img: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?q=80&w=600'
+  },
+  {
+    id: 2,
+    name: 'Combo Couple',
+    desc: '1 bắp ngọt 60oz + 2 nước ngọt 22oz (Coca-Cola/Sprite/Fanta)',
+    price: 95000,
+    img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=600'
+  },
+  {
+    id: 3,
+    name: 'Combo Party',
+    desc: '2 bắp ngọt 60oz (tự chọn vị) + 4 nước ngọt 22oz',
+    price: 165000,
+    img: 'https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=600'
+  }
+]
+
+/* ── Custom Select Component ── */
+function CustomSelect({ value, onChange, options, placeholder, disabled, error, label }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(opt => opt.value === value)
+
+  return (
+    <div className="flex flex-col gap-2 relative w-full text-left z-50" ref={containerRef}>
+      {label && (
+        <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">
+          {label}
+        </span>
+      )}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[46px]"
+        style={{
+          borderColor: error ? 'var(--color-error)' : isOpen ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.1)',
+          boxShadow: isOpen ? '0 0 10px rgba(229, 9, 20, 0.2)' : 'none',
+        }}
+      >
+        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+        <span 
+          className="material-symbols-outlined transition-transform duration-200 text-gray-400 text-sm select-none"
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}
+        >
+          keyboard_arrow_down
+        </span>
+      </button>
+
+      {error && <span className="text-[10px] text-red-500 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
+
+      {isOpen && !disabled && (
+        <div
+          className="absolute left-0 top-[calc(100%+4px)] w-full rounded-xl border z-[60] max-h-60 overflow-y-auto"
+          style={{
+            backgroundColor: 'var(--color-surface-container)',
+            borderColor: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+            padding: '6px 0',
+          }}
+        >
+          {options.length === 0 ? (
+            <div className="px-4 py-2.5 text-xs text-gray-500 italic select-none">
+              Không có lựa chọn nào
+            </div>
+          ) : (
+            options.map(opt => {
+              const isSelected = opt.value === value
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value)
+                    setIsOpen(false)
+                  }}
+                  className="px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(229, 9, 20, 0.15)' : 'transparent',
+                    color: isSelected ? 'var(--color-primary)' : 'inherit',
+                  }}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && (
+                    <span className="material-symbols-outlined text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
+                      check
+                    </span>
+                  )}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Seat Single Empty Validator ── */
+const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
+  const rows = ['A', 'B', 'C', 'D', 'E', 'F']
+  const coupleRows = ['G', 'H']
+
+  const getRowSections = (rowLabel) => {
+    if (rows.includes(rowLabel)) {
+      return [
+        ['1', '2', '3'],
+        ['4', '5', '6', '7', '8', '9'],
+        ['10', '11', '12']
+      ]
+    }
+    if (coupleRows.includes(rowLabel)) {
+      return [
+        ['1'],
+        ['2', '3', '4'],
+        ['5']
+      ]
+    }
+    return []
+  }
+
+  const allRows = [...rows, ...coupleRows]
+  const violations = []
+
+  for (const row of allRows) {
+    const sections = getRowSections(row)
+    for (let s = 0; s < sections.length; s++) {
+      const section = sections[s]
+      if (section.length <= 1) continue
+
+      const initialStates = section.map(num => occupiedSeats.includes(`${row}${num}`) ? 1 : 0)
+      const finalStates = section.map(num => (occupiedSeats.includes(`${row}${num}`) || selectedSeats.includes(`${row}${num}`)) ? 1 : 0)
+
+      const countSingleEmpty = (states) => {
+        let count = 0
+        let i = 0
+        while (i < states.length) {
+          if (states[i] === 0) {
+            let len = 0
+            while (i < states.length && states[i] === 0) {
+              len++
+              i++
+            }
+            if (len === 1) {
+              count++
+            }
+          } else {
+            i++
+          }
+        }
+        return count
+      }
+
+      const initSingleCount = countSingleEmpty(initialStates)
+      const finalSingleCount = countSingleEmpty(finalStates)
+
+      if (finalSingleCount > initSingleCount) {
+        let i = 0
+        while (i < finalStates.length) {
+          if (finalStates[i] === 0) {
+            let start = i
+            let len = 0
+            while (i < finalStates.length && finalStates[i] === 0) {
+              len++
+              i++
+            }
+            if (len === 1) {
+              let initLen = 0
+              let j = start
+              while (j >= 0 && initialStates[j] === 0) {
+                initLen++
+                j--
+              }
+              j = start + 1
+              while (j < initialStates.length && initialStates[j] === 0) {
+                initLen++
+                j++
+              }
+
+              if (initLen !== 1) {
+                violations.push(`${row}${section[start]}`)
+              }
+            }
+          } else {
+            i++
+          }
+        }
+      }
+    }
+  }
+
+  return violations
+}
+
 export default function SeatSelectionPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -38,6 +250,21 @@ export default function SeatSelectionPage() {
 
   // Seat quantity selection states (AC-01)
   const [seatQuantity, setSeatQuantity] = useState(0)
+
+  // Calculate single empty seat violations
+  const violations = seatQuantity > 0 && selected.length === seatQuantity
+    ? checkSingleEmptySeats(selected, OCCUPIED_SEATS)
+    : []
+
+  // Combo selection states
+  const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+
+  const handleUpdateComboQty = (id, delta) => {
+    setSelectedCombos(prev => ({
+      ...prev,
+      [id]: Math.max(0, (prev[id] || 0) + delta)
+    }))
+  }
 
   // Selection warnings and guide logic (AC-03)
   const getSelectionMessage = () => {
@@ -85,8 +312,17 @@ export default function SeatSelectionPage() {
     return 0
   }
 
-  // Tính tổng tiền
-  const totalPrice = selected.reduce((sum, id) => sum + getSeatPrice(id), 0)
+  // Tính tổng tiền vé
+  const ticketPrice = selected.reduce((sum, id) => sum + getSeatPrice(id), 0)
+
+  // Tính tổng tiền bắp nước
+  const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
+    const combo = COMBOS.find(c => c.id === parseInt(id, 10))
+    return sum + (combo ? combo.price * qty : 0)
+  }, 0)
+
+  // Tổng tiền thanh toán
+  const totalPrice = ticketPrice + comboPrice
 
   // Định dạng tiền tệ VNĐ
   const formatCurrency = (val) => {
@@ -211,36 +447,33 @@ export default function SeatSelectionPage() {
         </div>
 
         {/* Seat Quantity Selector (AC-01) */}
-        <div className="w-full max-w-sm bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 flex flex-col items-start gap-2.5 mb-8">
-          <label className="text-xs font-bold tracking-wider text-gray-400 uppercase">
-            Số lượng ghế muốn đặt (Select Seat Quantity)
-          </label>
-          <select
+        <div className="w-full max-w-sm bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 flex flex-col items-start gap-2.5 mb-8 relative z-30">
+          <CustomSelect
+            label="Số lượng ghế muốn đặt (Select Seat Quantity)"
             value={seatQuantity}
-            onChange={(e) => {
-              const qty = parseInt(e.target.value, 10)
+            onChange={(qty) => {
               setSeatQuantity(qty)
               setSelected([]) // Reset selection when quantity changes
             }}
-            className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors cursor-pointer"
-          >
-            {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(qty => (
-              <option key={qty} value={qty} className="bg-[#06080F] text-white">
-                {qty} ghế
-              </option>
-            ))}
-          </select>
+            options={[0, 1, 2, 3, 4, 5, 6, 7, 8].map(qty => ({ value: qty, label: `${qty} ghế` }))}
+            placeholder="Chọn số lượng ghế"
+          />
 
           {/* Selection guide message (AC-03) */}
           {seatQuantity > 0 && (
             <div 
               className={`w-full text-xs font-bold px-3 py-1.5 rounded-lg border text-center mt-1 transition-all ${
-                selected.length === seatQuantity 
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400' 
-                  : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                violations.length > 0
+                  ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                  : selected.length === seatQuantity 
+                    ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+                    : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
               }`}
             >
-              {getSelectionMessage()}
+              {violations.length > 0 
+                ? `Không thể để lại ghế trống đơn lẻ: ${violations.join(', ')}`
+                : getSelectionMessage()
+              }
             </div>
           )}
         </div>
@@ -301,6 +534,75 @@ export default function SeatSelectionPage() {
                   {/* Render Couple Rows (Row G & H) */}
                   {renderCoupleRow('G')}
                   {renderCoupleRow('H')}
+
+                  {/* Entrance / Exit Indicators */}
+                  <div className="w-full max-w-[620px] flex justify-between items-center mt-6 px-2">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-[0_2px_10px_rgba(16,185,129,0.05)]">
+                      <span className="material-symbols-outlined text-sm font-bold">login</span>
+                      <span>Lối vào / Entrance</span>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-[0_2px_10px_rgba(239,68,68,0.05)]">
+                      <span className="material-symbols-outlined text-sm font-bold">logout</span>
+                      <span>Lối ra / Exit</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add-on Combos Selection Section */}
+              <div className="w-full max-w-[620px] bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 mt-10 mb-8 space-y-4">
+                <h3 className="text-sm font-extrabold uppercase text-white tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
+                  <span className="material-symbols-outlined text-[var(--color-primary)] text-sm">restaurant</span>
+                  Chọn Thêm Bắp & Nước (Add Combos)
+                </h3>
+                <div className="flex flex-col gap-4">
+                  {COMBOS.map(combo => {
+                    const qty = selectedCombos[combo.id] || 0
+                    return (
+                      <div 
+                        key={combo.id} 
+                        className="flex items-center justify-between p-3.5 rounded-xl border transition-all"
+                        style={{
+                          backgroundColor: qty > 0 ? 'rgba(229, 9, 20, 0.04)' : 'transparent',
+                          borderColor: qty > 0 ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.08)'
+                        }}
+                      >
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <img 
+                            src={combo.img} 
+                            alt={combo.name} 
+                            className="w-16 h-16 object-cover rounded-lg border border-white/10 shrink-0" 
+                          />
+                          <div className="text-left min-w-0">
+                            <h4 className="text-sm font-bold text-white truncate">{combo.name}</h4>
+                            <p className="text-[10px] text-gray-400 mt-1 leading-relaxed line-clamp-2">{combo.desc}</p>
+                            <span className="text-xs font-extrabold text-red-500 mt-1.5 block font-mono">
+                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.price)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Quantity Controls */}
+                        <div className="flex items-center gap-3.5 bg-black/40 border border-white/10 px-3 py-1.5 rounded-xl shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateComboQty(combo.id, -1)}
+                            className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 active:scale-90 transition-all text-white text-base font-black border-none cursor-pointer"
+                          >
+                            -
+                          </button>
+                          <span className="text-sm font-extrabold text-white w-4 text-center font-mono">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateComboQty(combo.id, 1)}
+                            className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center hover:opacity-90 active:scale-90 transition-all text-white text-base font-black border-none cursor-pointer"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -332,6 +634,12 @@ export default function SeatSelectionPage() {
                 {getSelectionMessage()}
               </span>
             )}
+            {violations.length > 0 && (
+              <span className="text-xs font-bold text-red-500 mt-2 text-left block flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm font-bold">warning</span>
+                Không thể để lại ghế trống đơn lẻ ở vị trí: {violations.join(', ')}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
@@ -346,6 +654,14 @@ export default function SeatSelectionPage() {
               onClick={() => {
                 const isManagerOrAdmin = user?.roles?.includes('MANAGER') || user?.roles?.includes('ADMIN')
                 const redirectPath = isManagerOrAdmin ? '/manager/booking/confirm' : '/booking/confirm'
+                
+                const combosToSend = COMBOS.map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  qty: selectedCombos[c.id] || 0,
+                  price: c.price
+                })).filter(c => c.qty > 0)
+
                 navigate(redirectPath, {
                   state: {
                     movie: movie,
@@ -353,12 +669,15 @@ export default function SeatSelectionPage() {
                     time: time,
                     date: dateStr,
                     seats: selected,
+                    ticketPrice: ticketPrice,
+                    comboPrice: comboPrice,
                     totalPrice: totalPrice,
+                    combos: combosToSend,
                     screen: 'Phòng Chiếu 03 (IMAX)'
                   }
                 })
               }}
-              disabled={selected.length !== seatQuantity || seatQuantity === 0}
+              disabled={selected.length !== seatQuantity || seatQuantity === 0 || violations.length > 0}
               className="bg-[var(--color-primary)] text-white font-bold text-base px-8 py-3.5 rounded-xl shadow-[0_0_20px_rgba(229,9,20,0.25)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none"
             >
               <span>Tiếp tục (Continue)</span>

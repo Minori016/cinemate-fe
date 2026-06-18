@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/layout/Navbar'
 import Footer from '../../components/layout/Footer'
@@ -38,6 +38,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -46,7 +47,11 @@ export default function LoginPage() {
     try {
       const user = await login(form.email, form.password)
       const roles = Array.isArray(user.roles) ? user.roles : [user.role].filter(Boolean)
-      navigate(getRedirectPath(roles))
+      
+      const from = location.state?.from
+        ? (location.state.from.pathname + (location.state.from.search || ''))
+        : getRedirectPath(roles)
+      navigate(from, { replace: true })
     } catch {
       setError('Tài khoản hoặc mật khẩu không đúng. Vui lòng thử lại!')
     } finally {
@@ -474,6 +479,7 @@ export default function LoginPage() {
                     Chưa có tài khoản?{' '}
                     <Link
                       to="/register"
+                      state={{ from: location.state?.from }}
                       className="font-bold ml-1 hover:opacity-75 transition-opacity"
                       style={{ color: 'var(--color-primary)' }}
                     >

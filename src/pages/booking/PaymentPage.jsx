@@ -658,6 +658,21 @@ export default function PaymentPage() {
                   </p>
                 </div>
 
+                {/* Combos list details */}
+                {bookingInfo.combos && bookingInfo.combos.length > 0 && (
+                  <div className="border-b border-white/5 pb-3">
+                    <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Bắp nước (Popcorn & Drinks)</span>
+                    <div className="flex flex-col gap-1 mt-0.5 font-semibold text-xs text-white">
+                      {bookingInfo.combos.map((combo, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs text-gray-300">
+                          <span>{combo.name} (×{combo.qty})</span>
+                          <span className="font-mono font-medium">{formatCurrency(combo.price * combo.qty)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Total Price & Security Verification */}
                 <div className="pt-2 flex justify-between items-end border-b border-white/5 pb-4">
                   <div>
