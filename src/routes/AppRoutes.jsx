@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { AnimatePresence } from 'motion/react'
 import UserLayout from '../components/layout/UserLayout'
 import AdminLayout from '../components/layout/AdminLayout'
 import StaffLayout from '../components/layout/StaffLayout'
@@ -17,6 +18,12 @@ import MovieDetailPage from '../pages/user/MovieDetailPage'
 import CinemasPage from '../pages/user/CinemasPage'
 import PromotionsPage from '../pages/user/PromotionsPage'
 import AboutPage from '../pages/user/AboutPage'
+import TermsPage from '../pages/user/TermsPage'
+import PrivacyPage from '../pages/user/PrivacyPage'
+import FaqPage from '../pages/user/FaqPage'
+import ContactPage from '../pages/user/ContactPage'
+import FeedbackPage from '../pages/user/FeedbackPage'
+import CareersPage from '../pages/user/CareersPage'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
 import BookingConfirmationPage from '../pages/booking/BookingConfirmationPage'
@@ -34,8 +41,10 @@ import ManagerDashboardPage from '../pages/manager/ManagerDashboardPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 export default function AppRoutes() {
+  const location = useLocation()
   return (
-    <Routes>
+    <AnimatePresence mode="wait">
+    <Routes location={location} key={location.pathname}>
       {/* Public: Đưa các trang không cần login lên đầu */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -51,6 +60,12 @@ export default function AppRoutes() {
         <Route path="/cinemas" element={<CinemasPage />} />
         <Route path="/promotions" element={<PromotionsPage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/faqs" element={<FaqPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/careers" element={<CareersPage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       </Route>
 
@@ -90,5 +105,6 @@ export default function AppRoutes() {
       {/* Wildcard */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </AnimatePresence>
   )
 }

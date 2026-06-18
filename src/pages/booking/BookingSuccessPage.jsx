@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import confetti from 'canvas-confetti'
+import { motion } from 'motion/react'
 
 export default function BookingSuccessPage() {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export default function BookingSuccessPage() {
         particleCount: 120,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ['#F3EA28', '#8b1dd0', '#ff0000', '#ffffff']
+        colors: ['#e50914', '#f59e0b', '#ef4444', '#ffffff']
       })
     } else {
       // Nếu không có dữ liệu đặt vé, tự động về trang chủ
@@ -44,7 +45,12 @@ export default function BookingSuccessPage() {
   }
 
   return (
-    <div className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24">
+    <motion.div
+      className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
         .custom-font-title {
@@ -115,20 +121,42 @@ export default function BookingSuccessPage() {
         </div>
 
         {/* Success Icon */}
-        <div className="w-20 h-20 bg-green-500/15 border border-green-500/30 rounded-full flex items-center justify-center text-green-400 mb-4 animate-pulse">
+        <motion.div
+          className="w-20 h-20 bg-green-500/15 border border-green-500/30 rounded-full flex items-center justify-center text-green-400 mb-4"
+          initial={{ scale: 0, rotate: -45 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 18, delay: 0.25 }}
+        >
           <span className="material-symbols-outlined text-5xl font-bold">check_circle</span>
-        </div>
+        </motion.div>
 
-        <h2 className="custom-font-title text-3xl text-[#F3EA28] uppercase tracking-wide mb-1">Đặt Vé Thành Công!</h2>
-        <p className="text-sm text-gray-400 text-center mb-8 max-w-sm">
-          Cảm ơn bạn đã lựa chọn CineStar. Giao dịch của bạn đã được ghi nhận thành công.
-        </p>
+        <motion.h2
+          className="custom-font-title text-3xl text-red-500 uppercase tracking-wide mb-1"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
+          Đặt Vé Thành Công!
+        </motion.h2>
+        <motion.p
+          className="text-sm text-gray-400 text-center mb-8 max-w-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+        >
+          Cảm ơn bạn đã lựa chọn CineMate. Giao dịch của bạn đã được ghi nhận thành công.
+        </motion.p>
 
         {/* Ticket Summary Card Layout */}
-        <div className="w-full bg-[#121414] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative">
+        <motion.div
+          className="w-full bg-[#121414] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col relative"
+          initial={{ opacity: 0, y: 36 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           
           {/* Ticket Header Graphic */}
-          <div className="p-5 bg-gradient-to-r from-purple-900/40 via-purple-950/40 to-red-950/30 border-b border-dashed border-white/10 flex gap-4 items-center">
+          <div className="p-5 bg-gradient-to-r from-red-950/40 via-black/30 to-red-950/30 border-b border-dashed border-white/10 flex gap-4 items-center">
             {bookingInfo.movie?.image && (
               <img 
                 src={bookingInfo.movie.image} 
@@ -197,16 +225,21 @@ export default function BookingSuccessPage() {
               </div>
               <div className="text-right">
                 <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng thanh toán</span>
-                <p className="text-xl font-black text-[#F3EA28] font-mono mt-0.5">
+                <p className="text-xl font-black text-red-500 font-mono mt-0.5">
                   {formatCurrency(bookingInfo.totalPrice)}
                 </p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Action Buttons */}
-        <div className="w-full mt-10 flex flex-col sm:flex-row gap-4">
+        <motion.div
+          className="w-full mt-10 flex flex-col sm:flex-row gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.75 }}
+        >
           <button
             onClick={() => navigate('/')}
             className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3.5 rounded-xl transition-all uppercase tracking-wider text-sm cursor-pointer"
@@ -216,13 +249,13 @@ export default function BookingSuccessPage() {
           
           <button
             onClick={() => navigate('/profile', { state: { activeTab: 'booked' } })}
-            className="flex-1 bg-[#F3EA28] hover:bg-[#dcd424] text-[#06080F] font-black py-3.5 rounded-xl shadow-[0_4px_15px_rgba(243,234,40,0.25)] hover:scale-[1.01] active:scale-[0.99] transition-all uppercase tracking-wider text-sm cursor-pointer"
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl shadow-[0_4px_15px_rgba(220,38,38,0.25)] hover:scale-[1.01] active:scale-[0.99] transition-all uppercase tracking-wider text-sm cursor-pointer"
           >
             Xem Vé Đã Đặt
           </button>
-        </div>
+        </motion.div>
 
       </main>
-    </div>
+    </motion.div>
   )
 }

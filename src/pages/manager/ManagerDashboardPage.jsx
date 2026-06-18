@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import {
   Users,
   Plus,
@@ -689,7 +690,12 @@ export default function ManagerDashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+    >
       {/* Toast Alert */}
       {toast && (
         <div
@@ -733,7 +739,7 @@ export default function ManagerDashboardPage() {
           triggerToast={triggerToast}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
 
@@ -854,7 +860,12 @@ function AnalyticsSection({ triggerToast }) {
   return (
     <div className="space-y-8">
       {/* Header with real-time countdown banner (AC-03) */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl text-left">
+      <motion.div
+        className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl text-left"
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+      >
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight uppercase text-purple-400" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Báo cáo doanh thu & Thống kê
@@ -891,10 +902,15 @@ function AnalyticsSection({ triggerToast }) {
             <Download size={14} /> Xuất báo cáo
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Filter Control Bar (AC-02) */}
-      <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg text-left">
+      <motion.div
+        className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg text-left"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.05 }}
+      >
         <h4 className="text-xs uppercase font-extrabold text-white tracking-widest mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-sm text-purple-400">filter_alt</span>
           Bộ lọc thống kê nâng cao (Advanced Filters)
@@ -961,12 +977,32 @@ function AnalyticsSection({ triggerToast }) {
             </select>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Metrics Row (AC-02) */}
-      <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-300 ${isRefreshing ? 'opacity-50' : 'opacity-100'}`}>
+      <motion.div
+        className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-300 ${isRefreshing ? 'opacity-50' : 'opacity-100'}`}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: {},
+          visible: {
+            transition: {
+              staggerChildren: 0.08,
+              delayChildren: 0.15
+            }
+          }
+        }}
+      >
         {/* Metric 1: Revenue */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left">
+        <motion.div
+          className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left"
+          variants={{
+            hidden: { opacity: 0, y: 15, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4 } }
+          }}
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Doanh thu bán vé</p>
             <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
@@ -977,10 +1013,17 @@ function AnalyticsSection({ triggerToast }) {
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +14.2% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
           </span>
-        </div>
+        </motion.div>
 
         {/* Metric 2: Ticket Sales */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left">
+        <motion.div
+          className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left"
+          variants={{
+            hidden: { opacity: 0, y: 15, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4 } }
+          }}
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tổng số lượng vé</p>
             <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
@@ -991,10 +1034,17 @@ function AnalyticsSection({ triggerToast }) {
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +8.7% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
           </span>
-        </div>
+        </motion.div>
 
         {/* Metric 3: Visitors */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left">
+        <motion.div
+          className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left"
+          variants={{
+            hidden: { opacity: 0, y: 15, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4 } }
+          }}
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Số lượng lượt khách</p>
             <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
@@ -1005,10 +1055,17 @@ function AnalyticsSection({ triggerToast }) {
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +12.3% <span className="text-[var(--color-text-muted)] font-normal">doanh số combo</span>
           </span>
-        </div>
+        </motion.div>
 
         {/* Metric 4: Occupancy */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left">
+        <motion.div
+          className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md text-left"
+          variants={{
+            hidden: { opacity: 0, y: 15, scale: 0.95 },
+            visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4 } }
+          }}
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+        >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tỷ lệ lấp đầy</p>
             <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
@@ -1019,13 +1076,21 @@ function AnalyticsSection({ triggerToast }) {
           <span className="text-[10px] text-yellow-500 font-bold mt-1.5 flex items-center gap-1">
             ● Ổn định <span className="text-[var(--color-text-muted)] font-normal">hiệu suất phòng</span>
           </span>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Recharts Graphs Section */}
-      <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-300 ${isRefreshing ? 'blur-[1px] opacity-75' : ''}`}>
+      <motion.div
+        className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-300 ${isRefreshing ? 'blur-[1px] opacity-75' : ''}`}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.25 }}
+      >
         {/* Main Chart: Revenue Trend (AC-02 & Day/Week/Month/Quarter/Year selection) */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6 text-left">
+        <motion.div
+          className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6 text-left"
+          whileHover={{ y: -2, transition: { duration: 0.2 } }}
+        >
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
@@ -1099,10 +1164,13 @@ function AnalyticsSection({ triggerToast }) {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </motion.div>
 
         {/* Side Chart: Movie Ranking (AC-02) */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-4 text-left">
+        <motion.div
+          className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-4 text-left"
+          whileHover={{ y: -2, transition: { duration: 0.2 } }}
+        >
           <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
             🎬 Xếp Hạng Doanh Thu Theo Phim
           </h3>
@@ -1118,8 +1186,8 @@ function AnalyticsSection({ triggerToast }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
       {/* Export Options Modal (AC-01, AC-02, AC-03) */}
       <ExportModal
         isOpen={exportModalOpen}
@@ -1186,7 +1254,12 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <motion.div
+        className="flex justify-between items-start"
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+      >
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Quản lý lịch chiếu phim
@@ -1201,10 +1274,15 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
         >
           <Plus size={16} /> Lên lịch suất chiếu
         </button>
-      </div>
+      </motion.div>
 
       {/* Showtimes Table List */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-lg">
+      <motion.div
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-lg"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
+      >
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-white/5 text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
@@ -1246,17 +1324,27 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
             )}
           </tbody>
         </table>
-      </div>
+      </motion.div>
 
       {/* Scheduler Form Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0f121d] border border-[var(--color-border)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in flex flex-col">
+        <motion.div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+        >
+          <motion.div
+            className="bg-[#0f121d] border border-[var(--color-border)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
             <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-white/5">
               <h4 className="font-extrabold uppercase tracking-wider text-sm text-white" style={{ fontFamily: 'Montserrat' }}>
                 🗓️ Lên lịch suất chiếu mới
               </h4>
-              <button onClick={() => setModalOpen(false)} className="text-[var(--color-text-muted)] hover:text-white">
+              <button onClick={() => setModalOpen(false)} className="text-[var(--color-text-muted)] hover:text-white bg-transparent border-none outline-none cursor-pointer">
                 <X size={18} />
               </button>
             </div>
@@ -1268,7 +1356,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 <select
                   value={form.movie}
                   onChange={(e) => setForm({ ...form, movie: e.target.value })}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
                 >
                   {AVAILABLE_MOVIES.map((mv) => (
                     <option key={mv} value={mv}>{mv}</option>
@@ -1282,7 +1370,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 <select
                   value={form.room}
                   onChange={(e) => setForm({ ...form, room: e.target.value })}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
                 >
                   {AVAILABLE_ROOMS.map((rm) => (
                     <option key={rm} value={rm}>{rm}</option>
@@ -1299,7 +1387,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
                   />
                 </div>
 
@@ -1311,7 +1399,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
                     required
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
                   />
                 </div>
               </div>
@@ -1336,20 +1424,20 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 py-3.5 text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-white/5 transition-all"
+                  className="flex-1 py-3.5 text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-white/5 transition-all cursor-pointer"
                 >
                   Hủy bỏ
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md transition-all"
+                  className="flex-1 py-3.5 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer border-none"
                 >
                   Xác nhận lên lịch
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
     </div>
   )
@@ -1389,17 +1477,26 @@ function ShiftSection({ shifts, setShifts, triggerToast }) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
+      <motion.div
+        initial={{ opacity: 0, y: -15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+      >
         <h2 className="text-3xl font-extrabold tracking-tight uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
           Quản lý ca trực & Điểm danh nhân viên
         </h2>
         <p className="text-sm text-[var(--color-text-muted)] mt-1">
           Điểm danh nhân sự đầu ca, phân bổ phòng chiếu và khu vực làm việc của các nhân sự trong ca làm việc.
         </p>
-      </div>
+      </motion.div>
 
       {/* Shifts Table */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-lg">
+      <motion.div
+        className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-lg"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
+      >
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-white/5 text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
@@ -1472,7 +1569,7 @@ function ShiftSection({ shifts, setShifts, triggerToast }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </motion.div>
     </div>
   )
 }

@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
+import { motion } from 'motion/react'
 import Table from '../../../components/common/Table'
 import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User } from 'lucide-react'
 

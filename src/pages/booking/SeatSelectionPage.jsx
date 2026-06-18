@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { movieService } from '../../services/movieService'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -112,7 +113,12 @@ export default function SeatSelectionPage() {
   }
 
   return (
-    <div className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans selection:bg-purple-900 selection:text-white pb-32">
+    <motion.div
+      className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans selection:bg-red-900 selection:text-white pb-32"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
         
@@ -125,10 +131,10 @@ export default function SeatSelectionPage() {
           box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
         }
         .seat-btn.selected {
-          background-color: #F3EA28 !important;
-          border-color: #F3EA28 !important;
-          color: #06080F !important;
-          box-shadow: 0 0 12px #F3EA28;
+          background-color: var(--color-primary) !important;
+          border-color: var(--color-primary) !important;
+          color: #fff !important;
+          box-shadow: 0 0 12px var(--color-primary);
         }
         .seat-btn.occupied {
           background-color: #282a2b !important;
@@ -138,8 +144,8 @@ export default function SeatSelectionPage() {
           opacity: 0.4;
         }
         .seat-btn.vip {
-          border-color: #8b1dd0;
-          color: #8b1dd0;
+          border-color: #f59e0b;
+          color: #f59e0b;
         }
         .seat-btn.couple {
           width: 76px; /* 32px * 2 + 12px gap = 76px */
@@ -147,13 +153,13 @@ export default function SeatSelectionPage() {
           color: #E02020;
         }
         .seat-btn.couple.selected {
-          background-color: #F3EA28 !important;
-          border-color: #F3EA28 !important;
-          color: #06080F !important;
+          background-color: var(--color-primary) !important;
+          border-color: var(--color-primary) !important;
+          color: #fff !important;
         }
         .screen-curve {
-          background: linear-gradient(to bottom, rgba(139, 29, 208, 0.3) 0%, transparent 100%);
-          box-shadow: 0 15px 35px rgba(139, 29, 208, 0.15);
+          background: linear-gradient(to bottom, rgba(229, 9, 20, 0.3) 0%, transparent 100%);
+          box-shadow: 0 15px 35px rgba(229, 9, 20, 0.15);
           transform: perspective(200px) rotateX(-5deg);
         }
         .custom-font-title {
@@ -183,7 +189,7 @@ export default function SeatSelectionPage() {
         
         {/* Booking Details Summary Header */}
         <div className="w-full text-center mb-10">
-          <h2 className="custom-font-title text-3xl md:text-5xl text-purple-400 mb-2 tracking-wide uppercase">
+          <h2 className="custom-font-title text-3xl md:text-5xl text-red-500 mb-2 tracking-wide uppercase">
             {movie ? movie.movieNameVn : 'Đang Tải Phim...'}
           </h2>
           <p className="text-sm text-gray-400 flex items-center justify-center flex-wrap gap-4 font-medium">
@@ -245,7 +251,7 @@ export default function SeatSelectionPage() {
             className="w-full max-w-2xl text-center py-16 bg-white/5 rounded-2xl border border-white/5 flex flex-col items-center justify-center gap-3.5 mb-10"
             style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
           >
-            <span className="material-symbols-outlined text-5xl text-purple-400/50">event_seat</span>
+            <span className="material-symbols-outlined text-5xl text-red-500/30">event_seat</span>
             <p className="text-gray-400 font-medium">Vui lòng chọn số lượng ghế ngồi (từ 1 đến 8) để hiển thị sơ đồ ghế.</p>
           </div>
         ) : (
@@ -257,7 +263,7 @@ export default function SeatSelectionPage() {
                 <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Thường</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded border border-[#8b1dd0] bg-transparent text-[#8b1dd0] flex items-center justify-center text-[10px] font-black">V</div>
+                <div className="w-6 h-6 rounded border border-[#f59e0b] bg-transparent text-[#f59e0b] flex items-center justify-center text-[10px] font-black">V</div>
                 <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">VIP</span>
               </div>
               <div className="flex items-center gap-2">
@@ -265,7 +271,7 @@ export default function SeatSelectionPage() {
                 <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đôi</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded bg-[#F3EA28] shadow-[0_0_8px_rgba(243,234,40,0.5)]"></div>
+                <div className="w-6 h-6 rounded bg-[var(--color-primary)] shadow-[0_0_8px_rgba(229,9,20,0.5)]"></div>
                 <span className="text-xs font-semibold tracking-wider text-gray-400 uppercase">Đang Chọn</span>
               </div>
               <div className="flex items-center gap-2">
@@ -278,8 +284,8 @@ export default function SeatSelectionPage() {
             <div className="w-full flex flex-col items-center select-none">
               {/* Screen curve graphic */}
               <div className="w-4/5 h-16 mb-12 relative flex flex-col items-center justify-start">
-                <div className="w-full h-8 screen-curve rounded-[100%] border-t-2 border-purple-500/50"></div>
-                <p className="text-[10px] text-purple-400/50 font-bold uppercase tracking-[0.25em] mt-3">Màn Hình Chiếu</p>
+                <div className="w-full h-8 screen-curve rounded-[100%] border-t-2 border-red-500/50"></div>
+                <p className="text-[10px] text-red-500/50 font-bold uppercase tracking-[0.25em] mt-3">Màn Hình Chiếu</p>
               </div>
 
               {/* Seat Rows Grid Container */}
@@ -304,7 +310,7 @@ export default function SeatSelectionPage() {
 
       {/* Floating Bottom Action/Checkout Bar */}
       <div className="fixed bottom-0 left-0 w-full z-30 p-4 md:p-6 pointer-events-none flex justify-center">
-        <div className="pointer-events-auto w-full max-w-4xl bg-[#1a1c1c]/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_-10px_45px_rgba(139,29,208,0.25)] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="pointer-events-auto w-full max-w-4xl bg-[#1a1c1c]/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_-10px_45px_rgba(229,9,20,0.25)] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex flex-col items-center md:items-start flex-grow text-left">
             <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1.5">Ghế đã chọn</span>
             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
@@ -331,7 +337,7 @@ export default function SeatSelectionPage() {
           <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
             <div className="flex flex-col items-end shrink-0">
               <span className="text-[10px] font-bold tracking-widest text-gray-500 uppercase mb-1">Tổng tiền thanh toán</span>
-              <span className="text-xl md:text-2xl font-black text-[#F3EA28] font-mono tracking-tight">
+              <span className="text-xl md:text-2xl font-black text-red-500 font-mono tracking-tight">
                 {formatCurrency(totalPrice)}
               </span>
             </div>
@@ -353,7 +359,7 @@ export default function SeatSelectionPage() {
                 })
               }}
               disabled={selected.length !== seatQuantity || seatQuantity === 0}
-              className="bg-[#F3EA28] text-[#06080F] font-bold text-base px-8 py-3.5 rounded-xl shadow-[0_0_20px_rgba(243,234,40,0.25)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer"
+              className="bg-[var(--color-primary)] text-white font-bold text-base px-8 py-3.5 rounded-xl shadow-[0_0_20px_rgba(229,9,20,0.25)] hover:scale-105 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none"
             >
               <span>Tiếp tục (Continue)</span>
               <span className="material-symbols-outlined text-lg font-black group-hover:translate-x-1 transition-transform">arrow_forward</span>
@@ -365,16 +371,16 @@ export default function SeatSelectionPage() {
       {/* Success Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-[#121414] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-[0_20px_50px_rgba(139,29,208,0.3)] animate-fade-in text-center relative overflow-hidden">
+          <div className="bg-[#121414] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-[0_20px_50px_rgba(229,9,20,0.3)] animate-fade-in text-center relative overflow-hidden">
             {/* Background design glow */}
-            <div className="absolute -top-20 -left-20 w-40 h-40 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -top-20 -left-20 w-40 h-40 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute -bottom-20 -right-20 w-40 h-40 bg-yellow-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="w-16 h-16 bg-green-500/15 border border-green-500/30 rounded-full flex items-center justify-center text-green-400 mx-auto mb-4">
               <span className="material-symbols-outlined text-3xl font-bold">check_circle</span>
             </div>
             
-            <h3 className="custom-font-title text-2xl text-[#F3EA28] uppercase tracking-wide mb-2">Đặt Vé Thành Công!</h3>
+            <h3 className="custom-font-title text-2xl text-[var(--color-primary)] uppercase tracking-wide mb-2">Đặt Vé Thành Công!</h3>
             <p className="text-sm text-gray-400 mb-6">Cảm ơn bạn đã lựa chọn dịch vụ của CineStar. Chi tiết vé của bạn:</p>
 
             <div className="bg-white/5 rounded-xl border border-white/5 p-4 text-left space-y-3 mb-6 text-sm">
@@ -396,7 +402,7 @@ export default function SeatSelectionPage() {
               </div>
               <div className="flex justify-between pt-1">
                 <span className="text-gray-400 font-semibold">Tổng thanh toán:</span>
-                <span className="font-extrabold text-[#F3EA28] text-base">{formatCurrency(totalPrice)}</span>
+                <span className="font-extrabold text-[var(--color-primary)] text-base">{formatCurrency(totalPrice)}</span>
               </div>
             </div>
 
@@ -405,14 +411,14 @@ export default function SeatSelectionPage() {
                 setShowModal(false)
                 navigate('/')
               }}
-              className="w-full bg-[#F3EA28] text-[#06080F] font-bold py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all uppercase tracking-wider text-sm cursor-pointer"
+              className="w-full bg-[var(--color-primary)] text-white font-bold py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all uppercase tracking-wider text-sm cursor-pointer border-none"
             >
               Về Trang Chủ
             </button>
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 
   // Sub-component button for single seats
@@ -427,7 +433,7 @@ export default function SeatSelectionPage() {
         className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${
           isOccupied ? 'occupied cursor-not-allowed opacity-40' :
           isSelected ? 'selected cursor-pointer' :
-          isVip ? 'vip border-purple-600/60 text-purple-400 hover:bg-purple-600/10 cursor-pointer' :
+          isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' :
           'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'
         }`}
         title={seat.id}
@@ -510,12 +516,12 @@ export default function SeatSelectionPage() {
           <div 
             className={`flex gap-2 p-1 rounded-xl transition-all ${
               isVip 
-                ? 'border border-dashed border-purple-500/40 bg-purple-950/10 shadow-[inset_0_0_10px_rgba(139,29,208,0.1)] relative' 
+                ? 'border border-dashed border-[#f59e0b]/40 bg-[#f59e0b]/5 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)] relative' 
                 : 'border border-transparent'
             }`}
           >
             {isVip && rowLabel === 'D' && (
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-purple-400 bg-[#06080F] px-1.5 tracking-widest whitespace-nowrap border border-purple-500/20 rounded-full select-none">
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#06080F] px-1.5 tracking-widest whitespace-nowrap border border-[#f59e0b]/20 rounded-full select-none">
                 VÙNG TRUNG TÂM (BEST VIEW)
               </span>
             )}

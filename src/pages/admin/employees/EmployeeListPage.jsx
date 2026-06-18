@@ -5,6 +5,7 @@ import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { motion } from 'motion/react'
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState([])
@@ -24,11 +25,21 @@ export default function EmployeeListPage() {
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start mb-2">
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
+      <motion.div
+        className="flex justify-between items-start mb-2"
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
         <div>
-          <h1 
-            className="text-4xl text-white font-bold tracking-wider uppercase" 
+          <h1
+            className="text-4xl text-white font-bold tracking-wider uppercase"
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Quản lý nhân viên
@@ -40,13 +51,21 @@ export default function EmployeeListPage() {
         <Button onClick={() => navigate('/admin/employees/add')}>
           <Plus size={16} className="mr-1" /> Thêm nhân viên
         </Button>
-      </div>
-      <Table columns={columns} data={employees} actions={row => (
-        <div className="flex gap-2 justify-end">
-          <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/employees/edit/${row.id}`)}><Pencil size={12}/></Button>
-          <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
-        </div>
-      )} />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <Table columns={columns} data={employees} actions={row => (
+          <div className="flex gap-2 justify-end">
+            <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/employees/edit/${row.id}`)}><Pencil size={12}/></Button>
+            <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
+          </div>
+        )} />
+      </motion.div>
+
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa">
         <p className="text-[var(--color-text-muted)] text-sm mb-4">Xóa nhân viên <span className="text-white font-semibold">"{deleteTarget?.fullName}"</span>?</p>
         <div className="flex gap-2 justify-end">
@@ -54,6 +73,6 @@ export default function EmployeeListPage() {
           <Button variant="danger" onClick={async () => { await employeeService.delete(deleteTarget.id); setDeleteTarget(null); load() }}>Xóa</Button>
         </div>
       </Modal>
-    </div>
+    </motion.div>
   )
 }

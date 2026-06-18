@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import { motion } from 'motion/react'
 
 import maxo from '../../assets/maxo.png'
 import lophocamsat from '../../assets/lophocamsat.png'
@@ -147,10 +148,20 @@ export default function ShowtimesPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10 animate-fade-in">
+    <motion.div
+      className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       
       {/* Tiêu đề */}
-      <div className="text-center mb-10">
+      <motion.div
+        className="text-center mb-10"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
         <h1 
           className="text-4xl md:text-5xl uppercase tracking-tighter mb-3"
           style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, color: 'var(--color-on-surface)' }}
@@ -160,7 +171,7 @@ export default function ShowtimesPage() {
         <p style={{ fontFamily: 'Inter', color: 'var(--color-on-surface-variant)' }}>
           Chọn ngày và suất chiếu phù hợp với bạn
         </p>
-      </div>
+      </motion.div>
 
       {/* Quick Booking Widget (AC-01 to AC-04) */}
       <div 
@@ -283,7 +294,12 @@ export default function ShowtimesPage() {
       </div>
 
       {/* Danh sách phim & Suất chiếu */}
-      <div className="flex flex-col gap-6">
+      <motion.div
+        className="flex flex-col gap-6"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.2 } } }}
+      >
         {movies.length === 0 && (
           <div className="text-center py-20 rounded-2xl backdrop-blur-md" style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 40%, transparent)', border: '1px solid rgba(255,255,255,0.05)' }}>
             <span className="material-symbols-outlined text-6xl mb-4" style={{ color: 'var(--color-surface-container-highest)' }}>event_busy</span>
@@ -294,13 +310,15 @@ export default function ShowtimesPage() {
         )}
 
         {movies.map(movie => (
-          <div 
-            key={movie.id} 
+          <motion.div
+            key={movie.id}
             className="flex flex-col sm:flex-row gap-6 p-5 sm:p-6 rounded-2xl backdrop-blur-xl transition-colors duration-300"
-            style={{ 
+            style={{
               backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 50%, transparent)',
               border: '1px solid rgba(255,255,255,0.08)'
             }}
+            variants={{ hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+            whileHover={{ y: -3, transition: { duration: 0.2 } }}
           >
             {/* Poster phim */}
             <Link 
@@ -373,9 +391,9 @@ export default function ShowtimesPage() {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }

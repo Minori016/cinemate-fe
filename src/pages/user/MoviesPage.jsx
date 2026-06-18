@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Tag, Clock, Globe, MessageSquare, Search } from 'lucide-react'
 import { movieService } from '../../services/movieService'
+import { motion } from 'motion/react'
 
 export default function MoviesPage() {
   const [activeTab, setActiveTab] = useState('now') // 'now' or 'soon'
@@ -46,16 +47,27 @@ export default function MoviesPage() {
   })
 
   return (
-    <div className="min-h-screen py-10 px-4 md:px-8 max-w-7xl mx-auto" style={{ backgroundColor: 'var(--color-background)' }}>
+    <motion.div
+      className="min-h-screen py-10 px-4 md:px-8 max-w-7xl mx-auto"
+      style={{ backgroundColor: 'var(--color-background)' }}
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
       {/* Page Title */}
-      <div className="text-center mb-8">
+      <motion.div
+        className="text-center mb-8"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
         <h1 className="text-4xl text-white tracking-widest uppercase font-extrabold mb-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
           Danh Sách Phim
         </h1>
         <p className="text-[var(--color-on-surface-variant)] text-sm max-w-md mx-auto">
           Cập nhật lịch chiếu phim mới nhất, các bom tấn điện ảnh hấp dẫn không thể bỏ lỡ tại CineMate.
         </p>
-      </div>
+      </motion.div>
 
       {/* Search Bar (AC-01 & AC-02) */}
       <form onSubmit={handleSearchSubmit} className="flex gap-3 max-w-md mx-auto mb-10">
@@ -113,14 +125,30 @@ export default function MoviesPage() {
           <span className="text-base text-gray-400">Đang tải danh sách phim...</span>
         </div>
       ) : sortedMovies.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.06, delayChildren: 0.35 } },
+          }}
+        >
           {sortedMovies.map((movie) => {
             const genresStr = movie.genres?.map(g => g.name).join(', ') || 'Chưa phân loại'
             const countriesStr = movie.countries?.map(c => c.name).join(', ') || 'N/A'
             const titleStr = movie.titleVn || movie.titleEn || ''
 
             return (
-              <div key={movie.id} className="flex flex-col cursor-pointer">
+              <motion.div
+                key={movie.id}
+                className="flex flex-col cursor-pointer"
+                variants={{
+                  hidden: { opacity: 0, y: 32, scale: 0.95 },
+                  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } },
+                }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+              >
                 
                 {/* Click card leads to details */}
                 <Link to={`/movies/${movie.id}`} className="group flex flex-col flex-grow">
@@ -189,16 +217,16 @@ export default function MoviesPage() {
                     <span className="text-[11px] text-red-500 font-semibold uppercase tracking-wider">Xem Chi Tiết</span>
                   </Link>
                 )}
-              </div>
+              </motion.div>
             )
           })}
-        </div>
+        </motion.div>
       ) : (
         <div className="text-center py-20 text-gray-500 font-semibold flex flex-col items-center justify-center gap-2.5">
           <span className="material-symbols-outlined text-5xl text-gray-600">search_off</span>
           <span className="text-base text-gray-400">Không tìm thấy bộ phim nào</span>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
+import { motion } from 'motion/react'
 
 export default function BookingConfirmationPage() {
   const navigate = useNavigate()
@@ -117,7 +118,12 @@ export default function BookingConfirmationPage() {
   const seatDetails = getSelectedSeatDetails()
 
   return (
-    <div className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24">
+    <motion.div
+      className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
         .custom-font-title {
@@ -128,9 +134,9 @@ export default function BookingConfirmationPage() {
           border-color: #374151;
         }
         .step-active {
-          color: #F3EA28;
-          border-color: #F3EA28;
-          box-shadow: 0 0 10px rgba(243, 234, 40, 0.2);
+          color: var(--color-primary);
+          border-color: var(--color-primary);
+          box-shadow: 0 0 10px rgba(229, 9, 20, 0.2);
         }
         .step-done {
           color: #10b981;
@@ -173,7 +179,7 @@ export default function BookingConfirmationPage() {
             <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold step-active bg-[#06080F]">
               2
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#F3EA28]">Xác nhận</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--color-primary)]">Xác nhận</span>
           </div>
           
           <div className="h-0.5 flex-1 bg-gray-700 mx-2 self-start mt-4"></div>
@@ -216,12 +222,20 @@ export default function BookingConfirmationPage() {
 
 
 
-        <div className="w-full flex flex-col lg:flex-row gap-8 items-start text-left">
+        <motion.div
+          className="w-full flex flex-col lg:flex-row gap-8 items-start text-left"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } } }}
+        >
           
-          {/* Left Column: Read-Only Ticket Booking Summary details (AC-01, AC-02) */}
-          <div className="w-full lg:w-7/12 flex flex-col gap-6">
+          {/* Left Column */}
+          <motion.div
+            className="w-full lg:w-7/12 flex flex-col gap-6"
+            variants={{ hidden: { opacity: 0, x: -30 }, visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+          >
             <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl flex flex-col gap-5 w-full">
-              <h3 className="custom-font-title text-xl text-[#F3EA28] uppercase tracking-wide border-b border-white/10 pb-3">
+              <h3 className="custom-font-title text-xl text-[var(--color-primary)] uppercase tracking-wide border-b border-white/10 pb-3">
                 Thông tin tóm tắt vé đặt (Booking Summary)
               </h3>
 
@@ -279,7 +293,7 @@ export default function BookingConfirmationPage() {
 
                 <div className="border-b border-white/5 pb-3">
                   <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Danh sách ghế ngồi (Seats)</span>
-                  <p className="text-[#F3EA28] font-black text-base mt-0.5 tracking-wider">
+                  <p className="text-[var(--color-primary)] font-black text-base mt-0.5 tracking-wider">
                     {bookingInfo.seats?.join(', ') || 'Chưa chọn ghế'}
                   </p>
                 </div>
@@ -305,19 +319,22 @@ export default function BookingConfirmationPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền (Total)</span>
-                    <p className="text-xl font-black text-[#F3EA28] font-mono mt-0.5">
+                    <p className="text-xl font-black text-[var(--color-primary)] font-mono mt-0.5">
                       {formatCurrency(bookingInfo.totalPrice || 0)}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right Column: Member Profile Details as Read-only labels (AC-01, AC-02, AC-03) */}
-          <div className="w-full lg:w-5/12 flex flex-col gap-6">
+          {/* Right Column */}
+          <motion.div
+            className="w-full lg:w-5/12 flex flex-col gap-6"
+            variants={{ hidden: { opacity: 0, x: 30 }, visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+          >
             <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl flex flex-col gap-5 w-full">
-              <h3 className="custom-font-title text-xl text-[#F3EA28] uppercase tracking-wide border-b border-white/10 pb-3">
+              <h3 className="custom-font-title text-xl text-[var(--color-primary)] uppercase tracking-wide border-b border-white/10 pb-3">
                 Thông tin tài khoản thành viên
               </h3>
 
@@ -346,7 +363,7 @@ export default function BookingConfirmationPage() {
 
                 <div className="flex flex-col gap-1 border-b border-white/5 pb-2">
                   <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Số điện thoại (Phone Number)</span>
-                  <span className="text-[#F3EA28] font-bold text-sm mt-0.5">
+                  <span className="text-[var(--color-primary)] font-bold text-sm mt-0.5">
                     {profile?.phoneNumber || 'Chưa cập nhật'}
                   </span>
                 </div>
@@ -357,7 +374,7 @@ export default function BookingConfirmationPage() {
                 <button
                   onClick={handleConfirmBooking}
                   disabled={!!incompleteError}
-                  className="w-full bg-[#F3EA28] hover:bg-[#dcd424] text-[#06080F] font-black text-base py-4 rounded-xl shadow-[0_4px_20px_rgba(243,234,40,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+                  className="w-full bg-[var(--color-primary)] hover:bg-red-700 text-white font-black text-base py-4 rounded-xl shadow-[0_4px_20px_rgba(229,9,20,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer border-none"
                 >
                   <span className="material-symbols-outlined text-lg font-black">payments</span>
                   Tiếp tục thanh toán (Proceed to Payment)
@@ -367,10 +384,10 @@ export default function BookingConfirmationPage() {
                 </p>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
       </main>
-    </div>
+    </motion.div>
   )
 }

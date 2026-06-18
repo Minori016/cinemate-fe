@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import logoImg from "../../assets/logo.jpg"
+import logoImg from "../../assets/Cinematelogo.png"
 
 export default function Footer() {
   const { pathname } = useLocation()
@@ -18,6 +18,32 @@ export default function Footer() {
             text-align: right !important;
           }
         }
+        .footer-link-custom {
+          position: relative;
+          width: fit-content;
+          transition: text-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
+        }
+        .footer-link-custom::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          width: 100%;
+          height: 1.5px;
+          background-color: var(--color-primary);
+          border-radius: 9999px;
+          transform: scaleX(0);
+          transform-origin: right;
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 0 6px var(--color-primary);
+        }
+        .footer-link-custom:hover::after {
+          transform: scaleX(1);
+          transform-origin: left;
+        }
+        .footer-link-custom:hover {
+          text-shadow: 0 0 6px rgba(229, 9, 20, 0.45);
+        }
       `}</style>
       <div
         className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-8 items-start"
@@ -34,10 +60,10 @@ export default function Footer() {
           <Link 
             to="/" 
             className="text-3xl tracking-tighter transition-opacity hover:opacity-90 flex items-center gap-2" 
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, letterSpacing: '-0.03em' }}
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, letterSpacing: '-0.03em', marginLeft: '-20px' }}
             onClick={handleScrollToTop}
           >
-            <img src={logoImg} alt="Logo" className="w-9 h-9 rounded-full object-cover border border-white/10" />
+            <img src={logoImg} alt="Logo" className="w-14 h-14 object-contain" />
             <div className="flex items-center">
               <span style={{ color: '#FFFFFF' }}>Cine</span>
               <span style={{ color: 'var(--color-primary)' }}>mate</span>
@@ -49,6 +75,7 @@ export default function Footer() {
           <div className="text-sm flex flex-col gap-1 mt-2" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
             <p><strong style={{ color: 'var(--color-on-surface)' }}>Hotline:</strong> 1900 6868</p>
             <p><strong style={{ color: 'var(--color-on-surface)' }}>Email:</strong> contact@cinemate.vn</p>
+            <p><strong style={{ color: 'var(--color-on-surface)' }}>Trụ sở chính:</strong> 135 Đồng Khởi, Q.1, TP.HCM</p>
           </div>
         </div>
 
@@ -56,9 +83,10 @@ export default function Footer() {
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Hệ Thống Rạp</h3>
           <div className="flex flex-col gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Cinemate TP.HCM</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Cinemate Hà Nội</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Cinemate Đà Nẵng</Link>
+            <Link to="/cinemas" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">CineMate Quận 1</Link>
+            <Link to="/cinemas" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">CineMate Bình Thạnh</Link>
+            <Link to="/cinemas" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">CineMate Gò Vấp</Link>
+            <Link to="/cinemas" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">CineMate Thủ Đức</Link>
           </div>
         </div>
 
@@ -66,10 +94,10 @@ export default function Footer() {
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Thông Tin</h3>
           <div className="flex flex-col gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Giới thiệu</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Điều khoản sử dụng</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Chính sách bảo mật</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Câu hỏi thường gặp</Link>
+            <Link to="/about" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Giới thiệu</Link>
+            <Link to="/terms" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Điều khoản sử dụng</Link>
+            <Link to="/privacy" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Chính sách bảo mật</Link>
+            <Link to="/faqs" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Câu hỏi thường gặp</Link>
           </div>
         </div>
 
@@ -77,9 +105,9 @@ export default function Footer() {
         <div className="flex flex-col md-cskh-align gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>CSKH</h3>
           <div className="flex flex-col md-cskh-align gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Liên hệ</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Góp ý</Link>
-            <Link to="/" onClick={handleScrollToTop} className="hover:text-[var(--color-primary)] transition-colors">Tuyển dụng</Link>
+            <Link to="/contact" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Liên hệ</Link>
+            <Link to="/feedback" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Góp ý</Link>
+            <Link to="/careers" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Tuyển dụng</Link>
           </div>
         </div>
 
@@ -91,9 +119,9 @@ export default function Footer() {
       >
         <p className="mx-auto max-w-2xl">© 2026 Cinemate. All rights reserved. Bằng việc sử dụng dịch vụ của Cinemate, bạn đồng ý với các <strong>Điều khoản sử dụng</strong> và <strong>Chính sách bảo mật</strong> của chúng tôi.</p>
         <div className="flex justify-center gap-4 mt-3">
-          <a href="#" className="text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Facebook</a>
-          <a href="#" className="text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Instagram</a>
-          <a href="#" className="text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Twitter</a>
+          <a href="#" className="footer-link-custom text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Facebook</a>
+          <a href="#" className="footer-link-custom text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Instagram</a>
+          <a href="#" className="footer-link-custom text-sm text-[var(--color-on-surface-variant)] hover:text-[var(--color-primary)] transition-colors">Twitter</a>
         </div>
       </div>
     </footer>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { bookingService } from '../../services/bookingService'
+import { motion } from 'motion/react'
 
 export default function PaymentPage() {
   const navigate = useNavigate()
@@ -222,7 +223,12 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24">
+    <motion.div
+      className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans pb-24"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
         .custom-font-title {
@@ -233,9 +239,9 @@ export default function PaymentPage() {
           border-color: #374151;
         }
         .step-active {
-          color: #F3EA28;
-          border-color: #F3EA28;
-          box-shadow: 0 0 10px rgba(243, 234, 40, 0.2);
+          color: var(--color-primary);
+          border-color: var(--color-primary);
+          box-shadow: 0 0 10px rgba(229, 9, 20, 0.2);
         }
         .step-done {
           color: #10b981;
@@ -287,7 +293,7 @@ export default function PaymentPage() {
             <div className="w-8 h-8 rounded-full border-2 flex items-center justify-center text-sm font-bold step-active bg-[#06080F]">
               3
             </div>
-            <span className="text-[10px] uppercase font-bold tracking-wider text-[#F3EA28]">Thanh toán</span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--color-primary)]">Thanh toán</span>
           </div>
           
           <div className="h-0.5 flex-1 bg-gray-700 mx-2 self-start mt-4"></div>
@@ -311,13 +317,20 @@ export default function PaymentPage() {
           </div>
         )}
 
-        <div className="w-full flex flex-col lg:flex-row gap-8 items-start text-left">
-          
-          {/* Left Column: Secure Payment Gateway Input Form */}
-          <div className="w-full lg:w-7/12 flex flex-col gap-6">
+        <motion.div
+          className="w-full flex flex-col lg:flex-row gap-8 items-start text-left"
+          initial="hidden"
+          animate="visible"
+          variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } } }}
+        >
+          {/* Left Column */}
+          <motion.div
+            className="w-full lg:w-7/12 flex flex-col gap-6"
+            variants={{ hidden: { opacity: 0, x: -30 }, visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+          >
             <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl flex flex-col gap-6 w-full">
-              <h3 className="custom-font-title text-xl text-[#F3EA28] uppercase tracking-wide border-b border-white/10 pb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-yellow-400">shield_lock</span>
+              <h3 className="custom-font-title text-xl text-[var(--color-primary)] uppercase tracking-wide border-b border-white/10 pb-3 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[var(--color-primary)]">shield_lock</span>
                 Cổng thanh toán an toàn (Secure Payment Gateway)
               </h3>
 
@@ -507,7 +520,7 @@ export default function PaymentPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[10px] text-gray-500">SỐ TÀI KHOẢN:</span>
-                        <span className="text-[#F3EA28] font-bold select-all">190202606179</span>
+                        <span className="text-red-400 font-bold select-all">190202606179</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[10px] text-gray-500">SỐ TIỀN:</span>
@@ -515,7 +528,7 @@ export default function PaymentPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[10px] text-gray-500">NỘI DUNG:</span>
-                        <span className="text-[#F3EA28] font-bold select-all">{bookingId}</span>
+                        <span className="text-red-400 font-bold select-all">{bookingId}</span>
                       </div>
                     </div>
                   </div>
@@ -540,7 +553,7 @@ export default function PaymentPage() {
                         setSimulatedOutcome(e.target.value)
                         setSubmitError('')
                       }}
-                      className="bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 outline-none text-xs text-white focus:border-yellow-500 cursor-pointer w-full font-medium"
+                      className="bg-black/50 border border-white/10 rounded-lg py-2.5 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer w-full font-medium"
                     >
                       <option value="success">Thanh toán Thành công (AC-03)</option>
                       <option value="fail_funds">Thất bại - Số dư tài khoản không đủ (AC-04)</option>
@@ -558,7 +571,7 @@ export default function PaymentPage() {
                   type="button"
                   onClick={handleSubmitPayment}
                   disabled={submitting}
-                  className="w-full bg-[#F3EA28] hover:bg-[#dcd424] text-[#06080F] font-black text-base py-4 rounded-xl shadow-[0_4px_20px_rgba(243,234,40,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+                  className="w-full bg-[var(--color-primary)] hover:bg-red-700 text-white font-black text-base py-4 rounded-xl shadow-[0_4px_20px_rgba(229,9,20,0.35)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-30 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer border-none"
                 >
                   {submitting ? (
                     <>
@@ -574,12 +587,15 @@ export default function PaymentPage() {
                 </button>
               </div>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Right Column: Read-Only Booking Summary */}
-          <div className="w-full lg:w-5/12 flex flex-col gap-6">
+          {/* Right Column */}
+          <motion.div
+            className="w-full lg:w-5/12 flex flex-col gap-6"
+            variants={{ hidden: { opacity: 0, x: 30 }, visible: { opacity: 1, x: 0, transition: { duration: 0.55, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+          >
             <div className="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-xl flex flex-col gap-5 w-full">
-              <h3 className="custom-font-title text-xl text-[#F3EA28] uppercase tracking-wide border-b border-white/10 pb-3">
+              <h3 className="custom-font-title text-xl text-[var(--color-primary)] uppercase tracking-wide border-b border-white/10 pb-3">
                 Tóm tắt vé đặt (Booking Summary)
               </h3>
 
@@ -637,7 +653,7 @@ export default function PaymentPage() {
 
                 <div className="border-b border-white/5 pb-3">
                   <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Danh sách ghế ngồi (Seats)</span>
-                  <p className="text-[#F3EA28] font-black text-sm mt-0.5 tracking-wider font-mono">
+                  <p className="text-[var(--color-primary)] font-black text-sm mt-0.5 tracking-wider font-mono">
                     {bookingInfo.seats?.join(', ') || 'Chưa chọn ghế'}
                   </p>
                 </div>
@@ -652,7 +668,7 @@ export default function PaymentPage() {
                   </div>
                   <div className="text-right">
                     <span className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Tổng cộng (Total)</span>
-                    <p className="text-lg font-black text-[#F3EA28] font-mono mt-0.5">
+                    <p className="text-lg font-black text-[var(--color-primary)] font-mono mt-0.5">
                       {formatCurrency(bookingInfo.totalPrice || 0)}
                     </p>
                   </div>
@@ -671,10 +687,10 @@ export default function PaymentPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
       </main>
-    </div>
+    </motion.div>
   )
 }

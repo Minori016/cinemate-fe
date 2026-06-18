@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'motion/react'
 import { userService } from '../../../services/userService'
 import { authService } from '../../../services/authService'
 import Table from '../../../components/common/Table'
@@ -268,7 +269,12 @@ export default function MemberListPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+    >
       <div className="flex justify-between items-start mb-2">
         <div>
           <h1 
@@ -405,6 +411,6 @@ export default function MemberListPage() {
           <Button variant="danger" onClick={handleDeleteSubmit}>Xóa</Button>
         </div>
       </Modal>
-    </div>
+    </motion.div>
   )
 }

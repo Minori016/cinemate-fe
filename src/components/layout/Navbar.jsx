@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Search, LogOut, User as UserIcon, Settings, ChevronDown, Bell } from 'lucide-react'
-import logoImg from '../../assets/logo.jpg'
+import logoImg from '../../assets/Cinematelogo.png'
 
 const MOVIE_TITLES = [
   { id: 1, title: 'MA XÓ (T18)', route: '/movies/1' },
@@ -116,9 +116,10 @@ export default function Navbar() {
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 900,
             letterSpacing: '-0.03em',
+            marginLeft: '-20px',
           }}
         >
-          <img src={logoImg} alt="Logo" className="w-8 h-8 rounded-full object-cover border border-white/10" />
+          <img src={logoImg} alt="Logo" className="w-11 h-11 object-contain" />
           <div className="flex items-center">
             <span style={{ color: '#FFFFFF' }}>Cine</span>
             <span style={{ color: 'var(--color-primary)' }}>mate</span>
@@ -133,7 +134,7 @@ export default function Navbar() {
             <NavLink 
               to="/movies" 
               className={({ isActive }) => 
-                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
                   isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                 }`
               }
@@ -144,7 +145,7 @@ export default function Navbar() {
             <NavLink 
               to="/showtimes" 
               className={({ isActive }) => 
-                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
                   isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                 }`
               }
@@ -155,7 +156,7 @@ export default function Navbar() {
             <NavLink 
               to="/cinemas" 
               className={({ isActive }) => 
-                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
                   isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                 }`
               }
@@ -166,7 +167,7 @@ export default function Navbar() {
             <NavLink 
               to="/promotions" 
               className={({ isActive }) => 
-                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
                   isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                 }`
               }
@@ -177,7 +178,7 @@ export default function Navbar() {
             <NavLink 
               to="/about" 
               className={({ isActive }) => 
-                `text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
                   isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
                 }`
               }
@@ -318,7 +319,7 @@ export default function Navbar() {
                   {notifications.some(n => !n.read) && (
                     <button 
                       onClick={markAllAsRead}
-                      className="text-[10px] text-yellow-400 hover:underline font-semibold bg-transparent border-none outline-none cursor-pointer"
+                      className="text-[10px] text-red-500 hover:underline font-semibold bg-transparent border-none outline-none cursor-pointer"
                     >
                       Đánh dấu đã đọc
                     </button>
@@ -335,7 +336,7 @@ export default function Navbar() {
                         className={`p-3.5 transition-colors duration-150 cursor-pointer ${!n.read ? 'bg-white/5' : 'hover:bg-white/5'}`}
                       >
                         <div className="flex justify-between items-start">
-                          <span className={`text-xs font-bold ${!n.read ? 'text-[#F3EA28]' : 'text-white'}`}>{n.title}</span>
+                          <span className={`text-xs font-bold ${!n.read ? 'text-red-500' : 'text-white'}`}>{n.title}</span>
                           <span className="text-[9px] text-gray-500 font-medium">{n.time}</span>
                         </div>
                         <p className="text-[11px] text-gray-400 leading-normal mt-1">{n.message}</p>
@@ -525,11 +526,41 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Dropdown animation */}
+      {/* Navbar styles and animation */}
       <style>{`
         @keyframes dropdownFadeIn {
           from { opacity: 0; transform: translateY(-8px); }
           to   { opacity: 1; transform: translateY(0); }
+        }
+        .nav-link-custom {
+          position: relative;
+          padding: 6px 2px;
+          transition: text-shadow 0.2s ease-in-out;
+        }
+        .nav-link-custom::after {
+          content: '';
+          position: absolute;
+          bottom: -4px;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background-color: var(--color-primary);
+          border-radius: 9999px;
+          transform: scaleX(0);
+          transform-origin: right;
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 0 8px var(--color-primary);
+        }
+        .nav-link-custom:hover::after,
+        .nav-link-custom.active::after {
+          transform: scaleX(1);
+          transform-origin: left;
+        }
+        .nav-link-custom:hover {
+          text-shadow: 0 0 8px rgba(229, 9, 20, 0.45);
+        }
+        .nav-link-custom.active {
+          text-shadow: 0 0 12px rgba(229, 9, 20, 0.65);
         }
       `}</style>
     </nav>

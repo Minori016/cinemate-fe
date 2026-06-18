@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
 import Input from '../../components/common/Input'
@@ -459,6 +460,32 @@ export default function ProfilePage() {
     }
   }
 
+  const stagger = (delay = 0) => ({
+    hidden: { opacity: 0, y: 20 },
+    show:   { opacity: 1, y: 0, transition: { duration: 0.5, delay, ease: 'easeOut' } },
+  })
+
+  function GlassCard({ children, className = '', delay = 0, style = {} }) {
+    return (
+      <motion.div
+        variants={stagger(delay)}
+        initial="hidden"
+        whileInView="show"
+        viewport={{ once: true, margin: '-60px' }}
+        className={`rounded-2xl ${className}`}
+        style={{ 
+          background: 'rgba(255,255,255,0.04)', 
+          backdropFilter: 'blur(14px)', 
+          border: '1px solid rgba(255,255,255,0.06)',
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+          ...style 
+        }}
+      >
+        {children}
+      </motion.div>
+    )
+  }
+
   const displayValue = (value) => value?.trim() || 'Chưa cập nhật'
   const isEmpty = (value) => !value?.trim()
   const initials = (profile?.fullName || profile?.email || 'U').charAt(0).toUpperCase()
@@ -490,21 +517,27 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen py-10 px-4" style={{ backgroundColor: 'var(--color-background)' }}>
+    <motion.main
+      className="min-h-screen py-10 px-4"
+      style={{ backgroundColor: 'var(--color-background)' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       <div className="w-full max-w-6xl mx-auto px-6">
 
         {/* ── Page Header ── */}
         <div className="flex items-center gap-4 mb-8">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.05)' }}
+            whileTap={{ scale: 0.9 }}
             onClick={() => navigate(-1)}
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: 'var(--color-on-surface-variant)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+            className="p-2 rounded-lg transition-colors cursor-pointer"
+            style={{ color: 'var(--color-on-surface-variant)', border: 'none', backgroundColor: 'transparent' }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>arrow_back</span>
-          </button>
-          <div>
+          </motion.button>
+          <div className="text-left">
             <h1 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '28px', fontWeight: 800, color: 'var(--color-on-surface)', margin: 0 }}>
               Tài khoản
             </h1>
@@ -517,7 +550,9 @@ export default function ProfilePage() {
 
         {/* ── Alerts (toàn cục) ── */}
         {error && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
             className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
             style={{
               backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
@@ -527,33 +562,31 @@ export default function ProfilePage() {
           >
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
             {error}
-          </div>
+          </motion.div>
         )}
         {success && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
             className="px-4 py-3 rounded-lg text-sm flex items-center gap-2 mb-5"
             style={{
               backgroundColor: 'rgba(34,197,94,0.1)',
               border: '1px solid #22c55e',
               color: '#22c55e',
-              animation: 'fadeInScale 0.3s ease-out',
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
             {success}
-          </div>
+          </motion.div>
         )}
 
         {/* ── Card Grid ── */}
         <div className="flex flex-wrap gap-6">
 
           {/* ── Profile Card (Avatar + Name + Edit Btn) ── */}
-          <div
-            className="rounded-xl overflow-hidden w-full"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
+          <GlassCard
+            className="w-full overflow-hidden"
+            delay={0.05}
           >
             <div
               className="px-8 py-6 flex items-center gap-5 flex-wrap"
@@ -562,7 +595,11 @@ export default function ProfilePage() {
               }}
             >
               {/* Avatar */}
-              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                className="relative group cursor-pointer" 
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <div
                   className={`w-28 h-28 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 transition-opacity ${uploading ? 'opacity-50' : 'group-hover:opacity-80'}`}
                   style={{
@@ -597,10 +634,10 @@ export default function ProfilePage() {
                   accept="image/*"
                   className="hidden"
                 />
-              </div>
+              </motion.div>
 
               {/* Name + Verified */}
-              <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-[200px] text-left">
                 <div className="flex items-center gap-2 mb-1">
                   <span style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '20px', fontWeight: 700, color: 'var(--color-on-surface)' }}>
                     {profile?.fullName || profile?.username || 'Chưa đặt tên'}
@@ -625,9 +662,11 @@ export default function ProfilePage() {
 
               {/* Edit / Cancel Buttons */}
               {!isEditing ? (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: '0 8px 26px rgba(229,9,20,0.5)' }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center gap-2 py-2 px-4 rounded-lg transition-all duration-200 active:scale-[0.98]"
+                  className="flex items-center gap-2 py-2.5 px-5 rounded-xl transition-all duration-200 cursor-pointer"
                   style={{
                     background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
                     color: 'var(--color-on-primary-container)',
@@ -637,16 +676,16 @@ export default function ProfilePage() {
                     border: '1px solid rgba(255,255,255,0.08)',
                     boxShadow: '0 6px 20px rgba(0,0,0,0.45)',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 26px rgba(0,0,0,0.5)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.45)' }}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
                   Chỉnh sửa
-                </button>
+                </motion.button>
               ) : (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={handleCancel}
-                  className="py-2 px-4 rounded-lg transition-all duration-200"
+                  className="py-2.5 px-5 rounded-xl transition-all duration-200 cursor-pointer"
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.06)',
                     color: 'var(--color-on-surface-variant)',
@@ -655,408 +694,395 @@ export default function ProfilePage() {
                     fontWeight: 500,
                     border: '1px solid rgba(255,255,255,0.10)',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)' }}
                 >
                   Hủy
-                </button>
+                </motion.button>
               )}
             </div>
-          </div>
+          </GlassCard>
           {/* ── End Profile Card ── */}
 
           {/* ── Tab Selector ── */}
-          <div className="w-full flex gap-6 mb-2 border-b border-white/10 pb-px overflow-x-auto scrollbar-thin">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`pb-3 text-sm font-bold tracking-wider uppercase transition-all border-b-2 px-1 cursor-pointer shrink-0 ${
-                activeTab === 'info' 
-                  ? 'border-red-500 text-white' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Thông tin tài khoản
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`pb-3 text-sm font-bold tracking-wider uppercase transition-all border-b-2 px-1 cursor-pointer shrink-0 ${
-                activeTab === 'history' 
-                  ? 'border-red-500 text-white' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Lịch sử (History)
-            </button>
-            <button
-              onClick={() => setActiveTab('booked')}
-              className={`pb-3 text-sm font-bold tracking-wider uppercase transition-all border-b-2 px-1 cursor-pointer shrink-0 ${
-                activeTab === 'booked' 
-                  ? 'border-red-500 text-white' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Vé đã đặt (Booked)
-            </button>
-            <button
-              onClick={() => setActiveTab('canceled')}
-              className={`pb-3 text-sm font-bold tracking-wider uppercase transition-all border-b-2 px-1 cursor-pointer shrink-0 ${
-                activeTab === 'canceled' 
-                  ? 'border-red-500 text-white' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              Vé đã hủy (Canceled)
-            </button>
+          <div className="w-full flex gap-6 mb-2 border-b border-white/10 pb-px overflow-x-auto scrollbar-none">
+            {['info', 'history', 'booked', 'canceled'].map((tabKey) => {
+              const tabLabels = {
+                info: 'Thông tin tài khoản',
+                history: 'Lịch sử (History)',
+                booked: 'Vé đã đặt (Booked)',
+                canceled: 'Vé đã hủy (Canceled)'
+              }
+              const isActive = activeTab === tabKey
+              return (
+                <button
+                  key={tabKey}
+                  onClick={() => setActiveTab(tabKey)}
+                  className="pb-3 text-sm font-bold tracking-wider uppercase transition-all px-1 cursor-pointer shrink-0 relative"
+                  style={{ 
+                    fontFamily: 'Montserrat, sans-serif',
+                    color: isActive ? '#fff' : '#9ca3af',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    outline: 'none'
+                  }}
+                >
+                  <span className="relative z-10">{tabLabels[tabKey]}</span>
+                  {isActive && (
+                    <motion.div 
+                      layoutId="activeTabUnderline"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500"
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           {activeTab === 'info' && (
             <>
               {/* ── Personal Information Card ── */}
-              <div
-            className="rounded-xl overflow-hidden w-full md:w-[calc(50%-12px)]"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-                Thông tin cá nhân
-              </h2>
-            </div>
-
-            <form className="px-8 py-6" onSubmit={handleSubmit}>
-              {isEditing ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
-                  <Input label="Tài khoản *" name="username" value={form.username} onChange={handleChange} required />
-                  <Input label="Email (Không thể thay đổi)" name="email" type="email" value={form.email} onChange={handleChange} disabled required />
-                  <Input label="Họ và tên (Không thể thay đổi)" name="fullName" value={form.fullName} onChange={handleChange} disabled required />
-                  <Input label="Ngày sinh *" name="dayOfBirth" type="date" value={form.dayOfBirth} onChange={handleChange} required />
-
-                  <div className="flex flex-col gap-2">
-                    <label className="uppercase font-semibold" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
-                      Giới tính (Không thể thay đổi)
-                    </label>
-                    <select
-                      name="gender"
-                      value={form.gender}
-                      onChange={handleChange}
-                      disabled
-                      className="w-full rounded-lg px-4 py-3 transition-all outline-none appearance-none cursor-pointer opacity-60"
-                      style={selectStyle}
-                      onFocus={handleFocus}
-                      onBlur={handleBlur}
-                    >
-                      <option value="MALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
-                      <option value="FEMALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
-                      <option value="OTHER" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
-                    </select>
-                  </div>
-
-                  <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
-                  <Input 
-                    label={profile?.identityCard ? "CMND / CCCD (Không thể thay đổi)" : "CMND / CCCD *"} 
-                    name="identityCard" 
-                    value={form.identityCard} 
-                    onChange={handleChange} 
-                    disabled={!!profile?.identityCard} 
-                    required 
-                  />
-
-                  <div className="md:col-span-2">
-                    <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
-                  </div>
-
-                  {/* Password confirmation removed */}
-
-                  {/* Save Button */}
-                  <div className="md:col-span-2 mt-2 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={handleCancel}
-                      className="py-2.5 px-6 rounded-lg transition-all duration-200"
-                      style={{
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        color: 'var(--color-on-surface-variant)',
-                        fontFamily: 'Inter, sans-serif',
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        border: '1px solid rgba(255,255,255,0.10)',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.06)' }}
-                    >
-                      Hủy bỏ
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                      style={{
-                        background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
-                        color: 'var(--color-on-primary-container)',
-                        fontFamily: 'Montserrat, sans-serif',
-                        fontSize: '15px',
-                        fontWeight: 600,
-                        border: '1px solid rgba(255,255,255,0.10)',
-                        boxShadow: '0 4px 14px rgba(229,9,20,0.4)',
-                      }}
-                      onMouseEnter={(e) => { if (!saving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.6)' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.4)' }}
-                    >
-                      {saving ? (
-                        <>
-                          <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
-                          Đang lưu...
-                        </>
-                      ) : (
-                        <>
-                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
-                          Lưu thay đổi
-                        </>
-                      )}
-                    </button>
-                  </div>
+              <GlassCard
+                className="w-full md:w-[calc(50%-12px)] overflow-hidden"
+                delay={0.1}
+              >
+                <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                    Thông tin cá nhân
+                  </h2>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+
+                <form className="px-8 py-6" onSubmit={handleSubmit}>
+                  {isEditing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4">
+                      <Input label="Tài khoản *" name="username" value={form.username} onChange={handleChange} required />
+                      <Input label="Email (Không thể thay đổi)" name="email" type="email" value={form.email} onChange={handleChange} disabled required />
+                      <Input label="Họ và tên (Không thể thay đổi)" name="fullName" value={form.fullName} onChange={handleChange} disabled required />
+                      <Input label="Ngày sinh *" name="dayOfBirth" type="date" value={form.dayOfBirth} onChange={handleChange} required />
+
+                      <div className="flex flex-col gap-2">
+                        <label className="uppercase font-semibold text-left" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
+                          Giới tính (Không thể thay đổi)
+                        </label>
+                        <select
+                          name="gender"
+                          value={form.gender}
+                          onChange={handleChange}
+                          disabled
+                          className="w-full rounded-lg px-4 py-3 transition-all outline-none appearance-none cursor-pointer opacity-60"
+                          style={selectStyle}
+                          onFocus={handleFocus}
+                          onBlur={handleBlur}
+                        >
+                          <option value="MALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nam</option>
+                          <option value="FEMALE" style={{ background: 'var(--color-surface-container-highest)' }}>Nữ</option>
+                          <option value="OTHER" style={{ background: 'var(--color-surface-container-highest)' }}>Khác</option>
+                        </select>
+                      </div>
+
+                      <Input label="Số điện thoại *" name="phoneNumber" value={form.phoneNumber} onChange={handleChange} required />
+                      <Input 
+                        label={profile?.identityCard ? "CMND / CCCD (Không thể thay đổi)" : "CMND / CCCD *"} 
+                        name="identityCard" 
+                        value={form.identityCard} 
+                        onChange={handleChange} 
+                        disabled={!!profile?.identityCard} 
+                        required 
+                      />
+
+                      <div className="md:col-span-2">
+                        <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="md:col-span-2 mt-2 flex justify-end gap-3">
+                        <motion.button
+                          whileHover={{ scale: 1.03, backgroundColor: 'rgba(255,255,255,0.1)' }}
+                          whileTap={{ scale: 0.97 }}
+                          type="button"
+                          onClick={handleCancel}
+                          className="py-2.5 px-6 rounded-lg transition-all duration-200 cursor-pointer"
+                          style={{
+                            backgroundColor: 'rgba(255,255,255,0.06)',
+                            color: 'var(--color-on-surface-variant)',
+                            fontFamily: 'Inter, sans-serif',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            border: '1px solid rgba(255,255,255,0.10)',
+                          }}
+                        >
+                          Hủy bỏ
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.03, boxShadow: '0 6px 20px rgba(229,9,20,0.6)' }}
+                          whileTap={{ scale: 0.97 }}
+                          type="submit"
+                          disabled={saving}
+                          className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                          style={{
+                            background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                            color: 'var(--color-on-primary-container)',
+                            fontFamily: 'Montserrat, sans-serif',
+                            fontSize: '15px',
+                            fontWeight: 600,
+                            border: '1px solid rgba(255,255,255,0.10)',
+                            boxShadow: '0 4px 14px rgba(229,9,20,0.4)',
+                          }}
+                        >
+                          {saving ? (
+                            <>
+                              <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
+                              Đang lưu...
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>save</span>
+                              Lưu thay đổi
+                            </>
+                          )}
+                        </motion.button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 text-left">
+                      {[
+                        { label: 'Tài khoản', value: profile?.username, icon: 'person' },
+                        { label: 'Email', value: profile?.email, icon: 'mail' },
+                        { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
+                        { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
+                        { label: 'Giới tính', value: profile?.gender?.toUpperCase() === 'MALE' ? 'Nam' : profile?.gender?.toUpperCase() === 'FEMALE' ? 'Nữ' : profile?.gender?.toUpperCase() === 'OTHER' ? 'Khác' : profile?.gender, icon: 'wc' },
+                        { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
+                        { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
+                        { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },
+                      ].map(({ label, value, icon }, idx) => (
+                        <motion.div 
+                          key={label} 
+                          className="flex items-start gap-3 p-1.5 rounded-xl transition-all"
+                          whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.04 }}
+                        >
+                          <span
+                            className="material-symbols-outlined mt-0.5"
+                            style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
+                          >{icon}</span>
+                          <div>
+                            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
+                              {label}
+                            </p>
+                            <p style={{
+                              fontFamily: 'Inter, sans-serif',
+                              fontSize: '15px',
+                              margin: 0,
+                              color: isEmpty(value) ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
+                              fontStyle: isEmpty(value) ? 'italic' : 'normal',
+                            }}>
+                              {displayValue(value)}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+                </form>
+              </GlassCard>
+
+              {/* ── Account Details Card ── */}
+              <GlassCard
+                className="w-full md:w-[calc(50%-12px)] overflow-hidden"
+                delay={0.15}
+              >
+                <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                    Thông tin tài khoản
+                  </h2>
+                </div>
+                <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5 text-left">
                   {[
-                    { label: 'Tài khoản', value: profile?.username, icon: 'person' },
-                    { label: 'Email', value: profile?.email, icon: 'mail' },
-                    { label: 'Họ và tên', value: profile?.fullName, icon: 'badge' },
-                    { label: 'Ngày sinh', value: profile?.dayOfBirth, icon: 'cake' },
-                    { label: 'Giới tính', value: profile?.gender?.toUpperCase() === 'MALE' ? 'Nam' : profile?.gender?.toUpperCase() === 'FEMALE' ? 'Nữ' : profile?.gender?.toUpperCase() === 'OTHER' ? 'Khác' : profile?.gender, icon: 'wc' },
-                    { label: 'Số điện thoại', value: profile?.phoneNumber, icon: 'call' },
-                    { label: 'CMND / CCCD', value: profile?.identityCard, icon: 'id_card' },
-                    { label: 'Địa chỉ', value: profile?.address, icon: 'location_on' },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className="flex items-start gap-3">
-                      <span
-                        className="material-symbols-outlined mt-0.5"
-                        style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
-                      >{icon}</span>
+                    { 
+                      icon: 'shield', 
+                      label: 'Vai trò', 
+                      content: (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {(profile?.roles || []).map((role) => (
+                            <span
+                              key={role}
+                              className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              style={{
+                                backgroundColor: role === 'ADMIN' ? 'rgba(229,9,20,0.15)' : 'rgba(34,197,94,0.15)',
+                                color: role === 'ADMIN' ? 'var(--color-primary)' : '#22c55e',
+                                fontFamily: 'Inter, sans-serif',
+                              }}
+                            >
+                              {role === 'ADMIN' ? 'Quản trị viên' : role === 'MEMBER' ? 'Thành viên' : role}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    },
+                    {
+                      icon: 'toggle_on',
+                      label: 'Trạng thái',
+                      content: (
+                        <span
+                          className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                          style={{
+                            backgroundColor: profile?.status === 'ACTIVE' ? 'rgba(34,197,94,0.15)' : 'rgba(229,9,20,0.15)',
+                            color: profile?.status === 'ACTIVE' ? '#22c55e' : 'var(--color-primary)',
+                            fontFamily: 'Inter, sans-serif',
+                          }}
+                        >
+                          {profile?.status === 'ACTIVE' ? 'Đang hoạt động' : profile?.status}
+                        </span>
+                      )
+                    },
+                    profile?.createdAt ? {
+                      icon: 'calendar_today',
+                      label: 'Ngày tạo tài khoản',
+                      content: (
+                        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-on-surface)', margin: 0 }}>
+                          {new Date(profile.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </p>
+                      )
+                    } : null,
+                    profile?.score !== undefined && profile?.score !== null ? {
+                      icon: 'star',
+                      label: 'Điểm thành viên',
+                      content: (
+                        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-primary)', margin: 0, fontWeight: 700 }}>
+                          {profile.score}
+                        </p>
+                      )
+                    } : null
+                  ].filter(Boolean).map(({ icon, label, content }, idx) => (
+                    <motion.div 
+                      key={label} 
+                      className="flex items-start gap-3 p-1.5 rounded-xl transition-all"
+                      whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.02)' }}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.04 }}
+                    >
+                      <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>{icon}</span>
                       <div>
                         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
                           {label}
                         </p>
-                        <p style={{
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: '15px',
-                          margin: 0,
-                          color: isEmpty(value) ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
-                          fontStyle: isEmpty(value) ? 'italic' : 'normal',
-                        }}>
-                          {displayValue(value)}
-                        </p>
+                        {content}
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
-              )}
-            </form>
-          </div>
-          {/* ── End Personal Information Card ── */}
+              </GlassCard>
 
-          {/* ── Account Details Card ── */}
-          <div
-            className="rounded-xl overflow-hidden w-full md:w-[calc(50%-12px)]"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-                Thông tin tài khoản
-              </h2>
-            </div>
-            <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>shield</span>
-                <div>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                    Vai trò
-                  </p>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {(profile?.roles || []).map((role) => (
-                      <span
-                        key={role}
-                        className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                        style={{
-                          backgroundColor: role === 'ADMIN' ? 'rgba(229,9,20,0.15)' : 'rgba(34,197,94,0.15)',
-                          color: role === 'ADMIN' ? 'var(--color-primary)' : '#22c55e',
-                          fontFamily: 'Inter, sans-serif',
-                        }}
-                      >
-                        {role === 'ADMIN' ? 'Quản trị viên' : role === 'MEMBER' ? 'Thành viên' : role}
-                      </span>
-                    ))}
-                  </div>
+              {/* ── Change Password Card ── */}
+              <GlassCard
+                className="w-full overflow-hidden"
+                delay={0.2}
+              >
+                <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
+                    Đổi mật khẩu
+                  </h2>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>toggle_on</span>
-                <div>
-                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                    Trạng thái
-                  </p>
-                  <span
-                    className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                    style={{
-                      backgroundColor: profile?.status === 'ACTIVE' ? 'rgba(34,197,94,0.15)' : 'rgba(229,9,20,0.15)',
-                      color: profile?.status === 'ACTIVE' ? '#22c55e' : 'var(--color-primary)',
-                      fontFamily: 'Inter, sans-serif',
-                    }}
-                  >
-                    {profile?.status === 'ACTIVE' ? 'Đang hoạt động' : profile?.status}
-                  </span>
-                </div>
-              </div>
-
-              {profile?.createdAt && (
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}>calendar_today</span>
-                  <div>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                      Ngày tạo tài khoản
-                    </p>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-on-surface)', margin: 0 }}>
-                      {new Date(profile.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {profile?.score !== undefined && profile?.score !== null && (
-                <div className="flex items-start gap-3">
-                  <span className="material-symbols-outlined mt-0.5" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7, fontVariationSettings: "'FILL' 1" }}>star</span>
-                  <div>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
-                      Điểm thành viên
-                    </p>
-                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-primary)', margin: 0, fontWeight: 700 }}>
-                      {profile.score}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* ── End Account Details Card ── */}
-
-          {/* ── Change Password Card ── */}
-          <div
-            className="rounded-xl overflow-hidden w-full"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="px-8 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--color-on-surface)', margin: 0 }}>
-                Đổi mật khẩu
-              </h2>
-            </div>
-
-            <form className="px-8 py-6 space-y-4" onSubmit={handlePwdSubmit}>
-              {pwdError && (
-                <div
-                  className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
-                  style={{
-                    backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
-                    border: '1px solid var(--color-error)',
-                    color: 'var(--color-error)',
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
-                  {pwdError}
-                </div>
-              )}
-
-              {pwdSuccess && (
-                <div
-                  className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
-                  style={{
-                    backgroundColor: 'rgba(34,197,94,0.1)',
-                    border: '1px solid #22c55e',
-                    color: '#22c55e',
-                  }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
-                  {pwdSuccess}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
-                  label="Mật khẩu hiện tại *"
-                  name="currentPassword"
-                  type="password"
-                  placeholder="Nhập mật khẩu hiện tại"
-                  value={pwdForm.currentPassword}
-                  onChange={handlePwdChange}
-                  required
-                />
-                <Input
-                  label="Mật khẩu mới *"
-                  name="newPassword"
-                  type="password"
-                  placeholder="Tối thiểu 8 kí tự, hoa, thường, số, ký tự đặc biệt"
-                  value={pwdForm.newPassword}
-                  onChange={handlePwdChange}
-                  minLength={8}
-                  required
-                />
-                <Input
-                  label="Xác nhận mật khẩu mới *"
-                  name="confirmPassword"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu mới"
-                  value={pwdForm.confirmPassword}
-                  onChange={handlePwdChange}
-                  minLength={8}
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={pwdSaving}
-                  className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{
-                    background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
-                    color: 'var(--color-on-primary-container)',
-                    fontFamily: 'Montserrat, sans-serif',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    border: '1px solid rgba(255,255,255,0.10)',
-                    boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
-                  }}
-                  onMouseEnter={(e) => { if (!pwdSaving) e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
-                >
-                  {pwdSaving ? (
-                    <>
-                      <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
-                      Đang thay đổi...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>key</span>
-                      Cập nhật mật khẩu
-                    </>
+                <form className="px-8 py-6 space-y-4" onSubmit={handlePwdSubmit}>
+                  {pwdError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
+                      style={{
+                        backgroundColor: 'color-mix(in srgb, var(--color-error-container) 40%, transparent)',
+                        border: '1px solid var(--color-error)',
+                        color: 'var(--color-error)',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>error</span>
+                      {pwdError}
+                    </motion.div>
                   )}
-                </button>
-              </div>
-            </form>
-          </div>
-          {/* ── End Change Password Card ── */}
+
+                  {pwdSuccess && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="px-4 py-3 rounded-lg text-sm flex items-center gap-2"
+                      style={{
+                        backgroundColor: 'rgba(34,197,94,0.1)',
+                        border: '1px solid #22c55e',
+                        color: '#22c55e',
+                      }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>check_circle</span>
+                      {pwdSuccess}
+                    </motion.div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                      label="Mật khẩu hiện tại *"
+                      name="currentPassword"
+                      type="password"
+                      placeholder="Nhập mật khẩu hiện tại"
+                      value={pwdForm.currentPassword}
+                      onChange={handlePwdChange}
+                      required
+                    />
+                    <Input
+                      label="Mật khẩu mới *"
+                      name="newPassword"
+                      type="password"
+                      placeholder="Tối thiểu 8 kí tự, hoa, thường, số, ký tự đặc biệt"
+                      value={pwdForm.newPassword}
+                      onChange={handlePwdChange}
+                      minLength={8}
+                      required
+                    />
+                    <Input
+                      label="Xác nhận mật khẩu mới *"
+                      name="confirmPassword"
+                      type="password"
+                      placeholder="Nhập lại mật khẩu mới"
+                      value={pwdForm.confirmPassword}
+                      onChange={handlePwdChange}
+                      minLength={8}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <motion.button
+                      whileHover={{ scale: 1.03, boxShadow: '0 6px 20px rgba(229,9,20,0.5)' }}
+                      whileTap={{ scale: 0.97 }}
+                      type="submit"
+                      disabled={pwdSaving}
+                      className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={{
+                        background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
+                        color: 'var(--color-on-primary-container)',
+                        fontFamily: 'Montserrat, sans-serif',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        border: '1px solid rgba(255,255,255,0.10)',
+                        boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
+                      }}
+                    >
+                      {pwdSaving ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin" style={{ fontSize: '18px' }}>progress_activity</span>
+                          Đang thay đổi...
+                        </>
+                      ) : (
+                        <>
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>key</span>
+                          Cập nhật mật khẩu
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+                </form>
+              </GlassCard>
             </>
           )}
 
@@ -1071,12 +1097,13 @@ export default function ProfilePage() {
                 : (score / 100) * 100
 
             return (
-              <div className="w-full flex flex-col lg:flex-row gap-8 animate-fade-in-up">
+              <div className="w-full flex flex-col lg:flex-row gap-8 text-left">
                 {/* Left Column: Membership Card & Rules */}
                 <div className="w-full lg:w-5/12 flex flex-col gap-6">
                   {/* Membership Card */}
-                  <div 
-                    className="relative rounded-2xl p-6 overflow-hidden border border-white/10 shadow-2xl flex flex-col justify-between aspect-[1.586/1] w-full max-w-[420px] mx-auto select-none group"
+                  <motion.div 
+                    whileHover={{ scale: 1.03, rotate: 0.5, boxShadow: '0 25px 50px rgba(0,0,0,0.6)' }}
+                    className="relative rounded-2xl p-6 overflow-hidden border border-white/10 shadow-2xl flex flex-col justify-between aspect-[1.586/1] w-full max-w-[420px] mx-auto select-none group cursor-pointer"
                     style={{ 
                       background: tier.gradient,
                       boxShadow: '0 15px 35px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.2)'
@@ -1116,12 +1143,12 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-out pointer-events-none"></div>
-                  </div>
+                  </motion.div>
 
                   {/* Points Progress */}
-                  <div 
-                    className="p-5 rounded-xl border border-white/5 flex flex-col gap-4 text-white"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard
+                    className="p-5 flex flex-col gap-4 text-white text-left"
+                    delay={0.08}
                   >
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400 font-medium">Hạng hiện tại:</span>
@@ -1142,13 +1169,16 @@ export default function ProfilePage() {
                           <span>Còn <strong>{tier.pointsToNext}</strong> điểm</span>
                         </div>
                         <div className="w-full bg-white/10 rounded-full h-2.5 overflow-hidden">
-                          <div 
-                            className="h-full rounded-full transition-all duration-500 ease-out" 
+                          <motion.div 
+                            className="h-full rounded-full" 
+                            initial={{ width: 0 }}
+                            whileInView={{ width: `${progressPercent}%` }}
+                            transition={{ duration: 1.1, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
+                            viewport={{ once: true }}
                             style={{ 
-                              width: `${progressPercent}%`,
                               background: 'linear-gradient(to right, var(--color-primary), #f87171)'
                             }}
-                          ></div>
+                          />
                         </div>
                       </div>
                     ) : (
@@ -1162,23 +1192,23 @@ export default function ProfilePage() {
                       <span className="font-semibold text-white block mb-1">Quyền lợi của bạn:</span>
                       {tier.benefit}
                     </div>
-                  </div>
+                  </GlassCard>
 
                   {/* Rules Card */}
-                  <div 
-                    className="p-5 rounded-xl border border-white/5 flex flex-col gap-4 text-white text-left"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard 
+                    className="p-5 flex flex-col gap-4 text-white text-left"
+                    delay={0.12}
                   >
                     <h3 className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                       Quy tắc tích lũy & Đổi quà
                     </h3>
-                    <div className="flex flex-col gap-4 text-xs text-gray-400">
+                    <div className="flex flex-col gap-4 text-xs text-gray-400 text-left">
                       <div className="space-y-1.5">
                         <h4 className="text-white font-semibold flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">payments</span>
+                          <span className="material-symbols-outlined text-sm text-[#f59e0b]">payments</span>
                           Cách tích điểm
                         </h4>
-                        <ul className="list-disc pl-4 space-y-1">
+                        <ul className="list-disc pl-4 space-y-1 text-left">
                           <li>Mỗi <strong>10.000 VND</strong> chi tiêu mua vé hoặc bắp nước tích <strong>1 điểm</strong>.</li>
                           <li>Không áp dụng tích điểm khi thanh toán bằng voucher hoặc điểm thưởng.</li>
                           <li>Điểm thành viên có giá trị sử dụng trong vòng 1 năm kể từ ngày tích lũy.</li>
@@ -1186,7 +1216,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="space-y-1.5">
                         <h4 className="text-white font-semibold flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm text-[#F3EA28]">featured_play_list</span>
+                          <span className="material-symbols-outlined text-sm text-[#f59e0b]">featured_play_list</span>
                           Bảng đổi quà
                         </h4>
                         <div className="bg-white/5 border border-white/5 rounded-lg overflow-hidden">
@@ -1200,34 +1230,34 @@ export default function ProfilePage() {
                             <tbody className="divide-y divide-white/5">
                               <tr>
                                 <td className="p-2">1 Nước ngọt lớn (L)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">30 pts</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#f59e0b]">30 pts</td>
                               </tr>
                               <tr>
                                 <td className="p-2">1 Bắp ngọt vừa (M)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">40 pts</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#f59e0b]">40 pts</td>
                               </tr>
                               <tr>
                                 <td className="p-2">1 Combo ngọt (1 Bắp M + 1 Nước L)</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">60 pts</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#f59e0b]">60 pts</td>
                               </tr>
                               <tr>
                                 <td className="p-2">1 Vé xem phim 2D miễn phí</td>
-                                <td className="p-2 text-right font-mono font-bold text-[#F3EA28]">100 pts</td>
+                                <td className="p-2 text-right font-mono font-bold text-[#f59e0b]">100 pts</td>
                               </tr>
                             </tbody>
                           </table>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </GlassCard>
                 </div>
 
                 {/* Right Column: Score History Filter and Table */}
                 <div className="flex-1 flex flex-col gap-6">
                   {/* Filters Card */}
-                  <div 
-                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-5 text-white"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard 
+                    className="p-6 flex flex-col gap-5 text-white"
+                    delay={0.05}
                   >
                     <h3 className="text-base font-bold text-white tracking-wide text-left" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                       Bộ lọc lịch sử điểm thành viên
@@ -1304,9 +1334,11 @@ export default function ProfilePage() {
 
                       {/* View Score Button */}
                       <div className="flex justify-end pt-2">
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.03, boxShadow: '0 6px 20px rgba(229,9,20,0.5)' }}
+                          whileTap={{ scale: 0.97 }}
                           type="submit"
-                          className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+                          className="py-2.5 px-6 rounded-lg flex items-center gap-2 transition-all duration-200 cursor-pointer"
                           style={{
                             background: 'linear-gradient(to bottom, var(--color-primary-container), #b3070f)',
                             color: 'var(--color-on-primary-container)',
@@ -1316,20 +1348,18 @@ export default function ProfilePage() {
                             border: '1px solid rgba(255,255,255,0.10)',
                             boxShadow: '0 4px 14px rgba(229,9,20,0.3)',
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 6px 20px rgba(229,9,20,0.5)' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 14px rgba(229,9,20,0.3)' }}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>search</span>
                           Xem điểm (View Score)
-                        </button>
+                        </motion.button>
                       </div>
                     </form>
-                  </div>
+                  </GlassCard>
 
                   {/* Results Card */}
-                  <div 
-                    className="p-6 rounded-xl border border-white/5 flex flex-col gap-4 flex-grow text-white"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard 
+                    className="p-6 flex flex-col gap-4 flex-grow text-white"
+                    delay={0.1}
                   >
                     <h3 className="text-base font-bold text-white tracking-wide border-b border-white/10 pb-3 text-left" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                       {scoreFilterType === 'EARN' ? 'Lịch sử tích lũy điểm' : 'Lịch sử sử dụng điểm'}
@@ -1382,7 +1412,7 @@ export default function ProfilePage() {
                         </table>
                       </div>
                     )}
-                  </div>
+                  </GlassCard>
                 </div>
               </div>
             )
@@ -1392,22 +1422,32 @@ export default function ProfilePage() {
           {activeTab === 'booked' && (() => {
             const activeBookings = bookings.filter(b => b.status === 'COMPLETED')
             return (
-              <div className="w-full space-y-4 animate-fade-in-up">
+              <div className="w-full space-y-4">
                 {activeBookings.length === 0 ? (
-                  <div 
-                    className="text-center py-20 bg-white/5 rounded-xl border border-white/5 w-full"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard 
+                    className="text-center py-20 w-full"
+                    delay={0.05}
                   >
                     <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">confirmation_number</span>
                     <p className="text-gray-400 font-medium">No booked tickets found.</p>
-                  </div>
+                  </GlassCard>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                    {activeBookings.map((booking) => (
-                      <div 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
+                    {activeBookings.map((booking, idx) => (
+                      <motion.div 
                         key={booking.id}
-                        className="rounded-xl overflow-hidden border border-white/10 shadow-lg flex flex-col relative w-full transition-all duration-300 hover:scale-[1.01] hover:border-white/20"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                        variants={stagger(idx * 0.05)}
+                        initial="hidden"
+                        whileInView="show"
+                        viewport={{ once: true, margin: '-40px' }}
+                        whileHover={{ scale: 1.02, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
+                        className="rounded-2xl overflow-hidden flex flex-col relative w-full transition-all duration-300"
+                        style={{ 
+                          background: 'rgba(255,255,255,0.04)', 
+                          backdropFilter: 'blur(14px)', 
+                          border: '1px solid rgba(255,255,255,0.06)',
+                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+                        }}
                       >
                         <div 
                           className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 md:block hidden"
@@ -1461,20 +1501,22 @@ export default function ProfilePage() {
                             <div className="flex flex-col items-end gap-2 text-right">
                               <div>
                                 <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                                <p className="text-lg font-black text-[#F3EA28] font-mono mt-0.5">
+                                <p className="text-lg font-black text-red-500 font-mono mt-0.5">
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
                                 </p>
                               </div>
-                              <button
+                              <motion.button
+                                whileHover={{ scale: 1.05, backgroundColor: 'rgba(239,68,68,0.2)' }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => handleCancelTicket(booking.id)}
-                                className="mt-1.5 px-3 py-1 text-[11px] font-bold text-red-500 hover:text-white hover:bg-red-600 border border-red-500/30 hover:border-red-600 rounded transition-all duration-200 cursor-pointer active:scale-95"
+                                className="mt-1.5 px-3 py-1 text-[11px] font-bold text-red-500 border border-red-500/30 hover:border-red-500 rounded transition-all duration-200 cursor-pointer"
                               >
                                 Hủy vé
-                              </button>
+                              </motion.button>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
@@ -1486,22 +1528,32 @@ export default function ProfilePage() {
           {activeTab === 'canceled' && (() => {
             const canceledBookings = bookings.filter(b => b.status === 'CANCELED')
             return (
-              <div className="w-full space-y-4 animate-fade-in-up">
+              <div className="w-full space-y-4">
                 {canceledBookings.length === 0 ? (
-                  <div 
-                    className="text-center py-20 bg-white/5 rounded-xl border border-white/5 w-full"
-                    style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                  <GlassCard 
+                    className="text-center py-20 w-full"
+                    delay={0.05}
                   >
                     <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">cancel</span>
                     <p className="text-gray-400 font-medium">No canceled tickets found.</p>
-                  </div>
+                  </GlassCard>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                    {canceledBookings.map((booking) => (
-                      <div 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
+                    {canceledBookings.map((booking, idx) => (
+                      <motion.div 
                         key={booking.id}
-                        className="rounded-xl overflow-hidden border border-white/10 shadow-lg flex flex-col relative w-full opacity-75 grayscale-[20%] transition-all duration-300 hover:scale-[1.01]"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+                        variants={stagger(idx * 0.05)}
+                        initial="hidden"
+                        whileInView="show"
+                        viewport={{ once: true, margin: '-40px' }}
+                        whileHover={{ scale: 1.01, border: '1px solid rgba(255,255,255,0.1)' }}
+                        className="rounded-2xl overflow-hidden flex flex-col relative w-full opacity-75 grayscale-[20%] transition-all duration-300"
+                        style={{ 
+                          background: 'rgba(255,255,255,0.03)', 
+                          backdropFilter: 'blur(14px)', 
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
+                        }}
                       >
                         <div 
                           className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 md:block hidden"
@@ -1554,13 +1606,13 @@ export default function ProfilePage() {
                             </div>
                             <div>
                               <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                              <p className="text-lg font-black text-[#F3EA28] font-mono mt-0.5">
+                              <p className="text-lg font-black text-red-500 font-mono mt-0.5">
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
                               </p>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
@@ -1587,7 +1639,14 @@ export default function ProfilePage() {
         .animate-fade-in-up {
           animation: fadeInUp 0.4s ease-out forwards;
         }
+        .scrollbar-none::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
       `}</style>
-    </main>
+    </motion.main>
   )
 }

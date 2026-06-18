@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { bookingService } from '../../services/bookingService'
 import { Calendar, Clock, MapPin, Search, CheckCircle, AlertCircle, ArrowLeft, Shield } from 'lucide-react'
@@ -210,9 +211,19 @@ export default function CounterCheckoutPage() {
   }
 
   return (
-    <div className="bg-[#06080F] text-white min-h-screen pb-24">
+    <motion.div
+      className="bg-[#06080F] text-white min-h-screen pb-24"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+    >
       {/* Top Navbar Header */}
-      <header className="bg-[#121414]/90 backdrop-blur-xl border-b border-white/10 shadow-xl flex justify-between items-center w-full px-6 md:px-12 h-20 fixed top-0 left-0 right-0 z-40">
+      <motion.header
+        className="bg-[#121414]/90 backdrop-blur-xl border-b border-white/10 shadow-xl flex justify-between items-center w-full px-6 md:px-12 h-20 fixed top-0 left-0 right-0 z-40"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+      >
         <button 
           onClick={() => navigate(-1)}
           className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 group text-sm font-semibold uppercase tracking-wider bg-transparent border-none outline-none cursor-pointer"
@@ -221,21 +232,26 @@ export default function CounterCheckoutPage() {
           <span>Quay lại</span>
         </button>
         <div className="text-center flex items-center gap-2">
-          <Shield size={20} className="text-purple-400" />
+          <Shield size={20} className="text-red-500" />
           <h1 className="text-xl font-black tracking-widest uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             <span className="text-white">CINE</span>
-            <span className="text-purple-400">MATE</span>
-            <span className="text-xs text-purple-400 ml-2 font-normal lowercase tracking-normal border border-purple-500/20 px-2 py-0.5 rounded bg-purple-500/5">counter checkout</span>
+            <span className="text-red-500">MATE</span>
+            <span className="text-xs text-red-500 ml-2 font-normal lowercase tracking-normal border border-red-500/20 px-2 py-0.5 rounded bg-red-500/5">counter checkout</span>
           </h1>
         </div>
         <div className="w-20"></div>
-      </header>
+      </motion.header>
 
       {/* Main Container */}
       <main className="max-w-5xl mx-auto pt-28 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start text-left">
         
         {/* LEFT PANEL: Ticket & Showtime Details (AC-01) */}
-        <div className="lg:col-span-7 space-y-6">
+        <motion.div
+          className="lg:col-span-7 space-y-6"
+          initial={{ opacity: 0, x: -25 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-5">
             <h3 className="text-lg font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3" style={{ fontFamily: 'Montserrat' }}>
               🎟️ Chi tiết vé bán tại quầy
@@ -280,7 +296,7 @@ export default function CounterCheckoutPage() {
                 {/* Seat */}
                 <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                   <span className="text-[10px] uppercase font-bold text-gray-500 block">Ghế Ngồi (Seat)</span>
-                  <span className="text-xs font-black text-purple-400 mt-1 block">{totalSeats.join(', ')}</span>
+                  <span className="text-xs font-black text-red-500 mt-1 block">{totalSeats.join(', ')}</span>
                 </div>
               </div>
 
@@ -294,17 +310,22 @@ export default function CounterCheckoutPage() {
                 {/* Total */}
                 <div className="text-right">
                   <span className="text-[10px] uppercase font-bold text-gray-500 block">Tổng cộng (Total)</span>
-                  <span className="text-lg font-black text-purple-400 mt-0.5 block">
+                  <span className="text-lg font-black text-red-500 mt-0.5 block">
                     {formatCurrency(discountedTotal)}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* RIGHT PANEL: Member Benefits & Convert ticket logic (AC-02 to AC-06) */}
-        <div className="lg:col-span-5 space-y-6">
+        <motion.div
+          className="lg:col-span-5 space-y-6"
+          initial={{ opacity: 0, x: 25 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-5">
             <h3 className="text-base font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3" style={{ fontFamily: 'Montserrat' }}>
               👤 Ưu đãi thành viên (Member Benefits)
@@ -317,11 +338,11 @@ export default function CounterCheckoutPage() {
                 placeholder="Nhập Member ID hoặc Số CCCD..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-purple-500 transition-colors"
+                className="flex-1 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-red-500 transition-colors"
               />
               <button
                 type="submit"
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <Search size={12} />
                 Check
@@ -330,9 +351,14 @@ export default function CounterCheckoutPage() {
 
             {/* Check Result logic (AC-03 & AC-04) */}
             {checked && (
-              <div className="animate-fade-in space-y-4">
+              <motion.div
+                className="space-y-4"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.3 }}
+              >
                 {foundMember ? (
-                  <div className="bg-purple-950/15 border border-purple-500/20 rounded-xl p-4 space-y-3 text-xs">
+                  <div className="bg-red-950/15 border border-red-500/20 rounded-xl p-4 space-y-3 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Mã thành viên:</span>
                       <span className="text-white font-bold font-mono">{foundMember.memberId}</span>
@@ -349,18 +375,18 @@ export default function CounterCheckoutPage() {
                       <span className="text-gray-400">Số điện thoại:</span>
                       <span className="text-white font-semibold">{foundMember.phone}</span>
                     </div>
-                    <div className="flex justify-between border-t border-purple-500/10 pt-2.5">
+                    <div className="flex justify-between border-t border-red-500/10 pt-2.5">
                       <span className="text-gray-400 font-bold">Điểm tích lũy (Score):</span>
-                      <span className="text-purple-400 font-black text-sm">{foundMember.score} điểm</span>
+                      <span className="text-red-500 font-black text-sm">{foundMember.score} điểm</span>
                     </div>
 
                     {/* Convert Tickets Using Score (AC-05) */}
-                    <div className="flex flex-col gap-1.5 border-t border-purple-500/10 pt-3 mt-1.5">
+                    <div className="flex flex-col gap-1.5 border-t border-red-500/10 pt-3 mt-1.5">
                       <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Chọn số vé muốn đổi bằng điểm (1000đ/vé)</label>
                       <select
                         value={convertCount}
                         onChange={(e) => setConvertCount(parseInt(e.target.value, 10))}
-                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
+                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer"
                       >
                         {Array.from({ length: totalSeats.length + 1 }).map((_, i) => (
                           <option key={i} value={i}>{i} vé</option>
@@ -382,7 +408,7 @@ export default function CounterCheckoutPage() {
                     <span>No member has found!</span>
                   </div>
                 )}
-              </div>
+              </motion.div>
             )}
 
             {/* Confirm buttons */}
@@ -390,7 +416,7 @@ export default function CounterCheckoutPage() {
               <button
                 onClick={handleConfirmBooking}
                 disabled={submitting || !!scoreError}
-                className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-sm py-4 rounded-xl shadow-lg shadow-purple-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+                className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-sm py-4 rounded-xl shadow-lg shadow-red-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
               >
                 {submitting ? (
                   <>
@@ -406,8 +432,8 @@ export default function CounterCheckoutPage() {
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       </main>
-    </div>
+    </motion.div>
   )
 }

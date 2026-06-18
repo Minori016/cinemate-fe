@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/layout/Navbar'
 import Footer from '../../components/layout/Footer'
+import { motion } from 'motion/react'
 
 // ─── Điều hướng theo role (giữ nguyên logic cũ) ───────────────────────────────
 const ROLE_ROUTES = {
@@ -58,39 +59,47 @@ export default function LoginPage() {
     <>
       <Navbar />
       <main
-        className="relative w-full"
+        className="relative w-full overflow-hidden"
         style={{ minHeight: 'calc(100vh - 4rem)', backgroundColor: 'var(--color-background)' }}
       >
-        <div className="grid min-h-[calc(100vh-4rem)] lg:grid-cols-[1fr_1.05fr]">
+        {/* Full-screen background image */}
+        <div className="absolute inset-0 pointer-events-none z-0">
+          <img
+            src={BG_IMAGE}
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Gradient overlay across the whole screen */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(135deg, rgba(10,10,15,0.92) 0%, rgba(10,10,15,0.80) 50%, rgba(229,9,20,0.15) 100%)',
+            }}
+          />
+          {/* Shimmer across the whole screen */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(105deg, transparent 40%, rgba(229,9,20,0.06) 50%, transparent 60%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 4s ease-in-out infinite',
+            }}
+          />
+        </div>
 
-          {/* ── Left panel (ảnh + branding) — chỉ hiện trên lg+ ── */}
-          <aside className="relative hidden lg:flex flex-col justify-between overflow-hidden">
-            <img
-              src={BG_IMAGE}
-              alt=""
-              aria-hidden="true"
-              className="absolute inset-0 h-full w-full object-cover object-center"
-            />
-            {/* Gradient overlay */}
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(135deg, rgba(10,10,15,0.92) 0%, rgba(10,10,15,0.75) 45%, rgba(229,9,20,0.18) 100%)',
-              }}
-            />
-            {/* Shimmer */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background:
-                  'linear-gradient(105deg, transparent 40%, rgba(229,9,20,0.06) 50%, transparent 60%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 4s ease-in-out infinite',
-              }}
-            />
+        <div className="relative z-10 grid min-h-[calc(100vh-4rem)] lg:grid-cols-[1fr_1.05fr] max-w-6xl mx-auto w-full px-4 md:px-12 gap-8 lg:gap-16">
 
-            <div className="relative z-10 flex flex-col justify-between h-full" style={{ padding: 'clamp(2.5rem, 4vw, 5rem) clamp(3rem, 5vw, 6rem)' }}>
+          {/* ── Left panel (branding) — chỉ hiện trên lg+ ── */}
+          <motion.aside
+            className="relative hidden lg:flex flex-col justify-between overflow-hidden"
+            initial={{ opacity: 0, x: -60 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
               {/* Brand block */}
               <div>
                 {/* Film-strip decoration */}
@@ -128,7 +137,7 @@ export default function LoginPage() {
                     fontSize: '18px',
                     lineHeight: 1.6,
                     color: 'rgba(255,255,255,0.75)',
-                    maxWidth: '340px',
+                    maxWidth: '420px',
                   }}
                 >
                   Trải nghiệm điện ảnh đỉnh cao — đặt vé, quản lý và thưởng thức phim theo cách của bạn.
@@ -172,33 +181,21 @@ export default function LoginPage() {
                 © 2026 CINEMATE · Movie Theater Management
               </p>
             </div>
-          </aside>
+          </motion.aside>
 
           {/* ── Right panel (form đăng nhập) ── */}
           <section
-            className="relative flex items-center justify-center p-8 sm:p-10 lg:p-14"
-            style={{ backgroundColor: 'var(--color-background)' }}
+            className="relative flex items-center justify-center py-12 lg:py-16"
+            style={{ backgroundColor: 'transparent' }}
           >
-            {/* Mobile background (chỉ hiện khi không có left panel) */}
-            <div className="lg:hidden absolute inset-0 z-0 pointer-events-none">
-              <img
-                src={BG_IMAGE}
-                alt=""
-                className="w-full h-full object-cover opacity-20"
-              />
-              <div
-                className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, var(--color-background) 0%, rgba(9,9,15,0.85) 100%)' }}
-              />
-            </div>
 
             {/* Form card */}
-            <div
+            <motion.div
               className="relative z-10 w-full flex flex-col"
-              style={{
-                maxWidth: '460px',
-                animation: 'authCardEnter 0.45s ease forwards',
-              }}
+              style={{ maxWidth: '460px' }}
+              initial={{ opacity: 0, y: 36 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
               {/* Mobile branding */}
               <div className="lg:hidden text-center mb-6">
@@ -485,17 +482,13 @@ export default function LoginPage() {
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </section>
         </div>
       </main>
       <Footer />
 
       <style>{`
-        @keyframes authCardEnter {
-          from { opacity: 0; transform: translateY(16px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
         @keyframes shimmer {
           0%, 100% { opacity: 0.4; }
           50%       { opacity: 0.7; }

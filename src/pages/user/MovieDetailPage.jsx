@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { Tag, Clock, Globe, MessageSquare, Star, Play, X, User, Calendar, DollarSign } from 'lucide-react'
 import { movieService } from '../../services/movieService'
+import { motion, AnimatePresence } from 'motion/react'
 
 // Helper to format YouTube URLs into Embed URLs
 const getEmbedUrl = (url) => {
@@ -146,24 +147,30 @@ export default function MovieDetailPage() {
       {/* ── Hero Section ── */}
       <section className="relative w-full overflow-hidden" style={{ height: 'clamp(480px, 65vh, 820px)' }}>
         
-        {/* Background image */}
-        <img
+        {/* Background image - Ken Burns effect */}
+        <motion.img
           src={movie.backdrop}
           alt={movie.title}
-          className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.6] blur-[2px] md:blur-0 md:brightness-[0.45] transition-all duration-700"
+          className="absolute inset-0 w-full h-full object-cover filter brightness-[0.45]"
+          initial={{ scale: 1.08 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
         />
 
         {/* Gradient overlay */}
-        <div
-          className="absolute inset-0 z-10 hero-gradient"
-        />
+        <div className="absolute inset-0 z-10 hero-gradient" />
 
         {/* Content bottom-anchored */}
         <div className="absolute bottom-0 w-full left-0 px-6 md:px-12 pb-10 z-20">
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-end">
 
             {/* Poster */}
-            <div className="hidden md:block w-44 lg:w-52 flex-shrink-0 z-30">
+            <motion.div
+              className="hidden md:block w-44 lg:w-52 flex-shrink-0 z-30"
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
               <img
                 src={movie.poster}
                 alt={`${movie.title} poster`}
@@ -174,10 +181,15 @@ export default function MovieDetailPage() {
                   boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
                 }}
               />
-            </div>
+            </motion.div>
 
             {/* Info */}
-            <div className="flex flex-col gap-3 z-30 text-left flex-1 w-full">
+            <motion.div
+              className="flex flex-col gap-3 z-30 text-left flex-1 w-full"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.65, delay: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
               <h1
                 className="text-glow-red"
                 style={{
@@ -228,7 +240,7 @@ export default function MovieDetailPage() {
                   Xem Trailer
                 </button>
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -237,7 +249,12 @@ export default function MovieDetailPage() {
       <section className="max-w-6xl mx-auto px-6 md:px-12 py-10 grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-30">
 
         {/* Left: Synopsis + Trailer */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
+        <motion.div
+          className="lg:col-span-2 flex flex-col gap-6"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
 
           {/* Synopsis */}
           <GlassCard className="p-8">
@@ -286,10 +303,15 @@ export default function MovieDetailPage() {
               </div>
             </div>
           </GlassCard>
-        </div>
+        </motion.div>
 
         {/* Right: Cast + Score + Details */}
-        <div className="flex flex-col gap-6">
+        <motion.div
+          className="flex flex-col gap-6"
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6, delay: 0.85, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
 
           {/* Cast & Crew */}
           <GlassCard className="p-6">
@@ -302,9 +324,21 @@ export default function MovieDetailPage() {
               </span>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <motion.div
+              className="flex flex-col gap-4"
+              initial="hidden"
+              animate="visible"
+              variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.08, delayChildren: 1.0 } } }}
+            >
               {movie.cast.map(({ name, role, img }) => (
-                <div key={name} className="flex items-center gap-3 group">
+                <motion.div
+                  key={name}
+                  className="flex items-center gap-3 group"
+                  variants={{
+                    hidden: { opacity: 0, x: -20 },
+                    visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: 'easeOut' } }
+                  }}
+                >
                   <div
                     className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 border border-white/10 group-hover:border-[var(--color-primary)] transition-all duration-300"
                     style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}
@@ -315,9 +349,9 @@ export default function MovieDetailPage() {
                     <p className="m-0 text-sm font-bold text-white group-hover:text-[var(--color-primary)] transition-colors duration-200 truncate">{name}</p>
                     <p className="m-0 text-xs text-[var(--color-on-surface-variant)] truncate">{role}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           </GlassCard>
 
           {/* Audience Score */}
@@ -345,11 +379,14 @@ export default function MovieDetailPage() {
               Dựa trên 2,500+ đánh giá đã xác thực.
             </p>
 
-            {/* Score bar progress */}
+            {/* Score bar progress - animated */}
             <div className="mt-4 rounded-full overflow-hidden bg-white/8 h-1.5 w-full">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${movie.scoreValue}%`, background: `linear-gradient(to right, var(--color-gold), #f59e0b)` }}
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: `linear-gradient(to right, var(--color-gold), #f59e0b)` }}
+                initial={{ width: '0%' }}
+                animate={{ width: `${movie.scoreValue}%` }}
+                transition={{ duration: 1.2, delay: 1.1, ease: 'easeOut' }}
               />
             </div>
           </GlassCard>
@@ -373,54 +410,58 @@ export default function MovieDetailPage() {
             ))}
           </GlassCard>
 
-        </div>
+        </motion.div>
       </section>
 
-      {/* ── YouTube Video Lightbox Modal ── */}
-      {isTrailerOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md transition-opacity duration-300 animate-fade-in">
-          
-          {/* Close trigger boundary */}
-          <div className="absolute inset-0 cursor-pointer" onClick={() => setIsTrailerOpen(false)} />
-          
-          {/* Close button */}
-          <button 
-            onClick={() => setIsTrailerOpen(false)}
-            className="absolute top-6 right-6 z-[110] w-12 h-12 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white flex items-center justify-center transition-all"
+      {/* ── YouTube Video Lightbox Modal with AnimatePresence ── */}
+      <AnimatePresence>
+        {isTrailerOpen && (
+          <motion.div
+            className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md"
+            style={{ backgroundColor: 'rgba(0,0,0,0.93)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
-            <X size={20} />
-          </button>
+            {/* Close trigger boundary */}
+            <div className="absolute inset-0 cursor-pointer" onClick={() => setIsTrailerOpen(false)} />
+            
+            {/* Close button */}
+            <motion.button
+              onClick={() => setIsTrailerOpen(false)}
+              className="absolute top-6 right-6 z-[110] w-12 h-12 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white flex items-center justify-center"
+              initial={{ opacity: 0, rotate: -90, scale: 0.5 }}
+              animate={{ opacity: 1, rotate: 0, scale: 1 }}
+              exit={{ opacity: 0, rotate: 90, scale: 0.5 }}
+              transition={{ duration: 0.35, delay: 0.1 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <X size={20} />
+            </motion.button>
 
-          {/* Iframe wrapper */}
-          <div className="w-full max-w-5xl aspect-video px-4 z-[105] relative animate-scale-up">
-            <iframe
-              title={`${movie.title} Trailer`}
-              src={`${movie.trailerUrl}?autoplay=1&rel=0`}
-              className="w-full h-full rounded-xl border border-white/10 shadow-2xl"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </div>
-        </div>
-      )}
+            {/* Iframe wrapper */}
+            <motion.div
+              className="w-full max-w-5xl aspect-video px-4 z-[105] relative"
+              initial={{ opacity: 0, scale: 0.88, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 10 }}
+              transition={{ duration: 0.4, ease: [0.34, 1.26, 0.64, 1] }}
+            >
+              <iframe
+                title={`${movie.title} Trailer`}
+                src={`${movie.trailerUrl}?autoplay=1&rel=0`}
+                className="w-full h-full rounded-xl border border-white/10 shadow-2xl"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Styles animations */}
-      <style>{`
-        .animate-fade-in {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-        .animate-scale-up {
-          animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes scaleUp {
-          from { transform: scale(0.9); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
+      {/* Styles đã được thay thế bằng Motion React AnimatePresence */}
     </div>
   )
 }

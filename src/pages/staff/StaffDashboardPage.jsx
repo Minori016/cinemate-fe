@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { motion } from 'motion/react'
 import {
   Search,
   CheckCircle,
@@ -136,7 +137,12 @@ export default function StaffDashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+    >
       {/* Toast Alert */}
       {toast && (
         <div
@@ -188,7 +194,7 @@ export default function StaffDashboardPage() {
           triggerToast={triggerToast}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
 

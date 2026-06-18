@@ -1,4 +1,5 @@
 import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity } from 'lucide-react'
+import { motion } from 'motion/react'
 
 const stats = [
   { 
@@ -54,9 +55,19 @@ const revenueData = [
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-8">
+    <motion.div
+      className="space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35 }}
+    >
       {/* Welcome & Overview Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <motion.div 
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <div>
           <h1 
             className="text-4xl text-white font-bold tracking-wider uppercase" 
@@ -77,16 +88,23 @@ export default function DashboardPage() {
             Hệ thống trực tuyến
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Counter Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } } }}
+      >
         {stats.map(s => {
           const Icon = s.icon
           return (
-            <div 
-              key={s.label} 
-              className={`group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 flex items-center justify-between transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(229,9,20,0.08)] ${s.borderColor}`}
+            <motion.div
+              key={s.label}
+              className={`group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_30px_rgba(229,9,20,0.08)] ${s.borderColor}`}
+              variants={{ hidden: { opacity: 0, y: 24, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
               <div className="space-y-2">
                 <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -99,10 +117,10 @@ export default function DashboardPage() {
               <div className={`p-4 rounded-xl bg-gradient-to-br ${s.color} transition-all duration-300 group-hover:scale-110`}>
                 <Icon className={`w-6 h-6 ${s.iconColor}`} />
               </div>
-            </div>
+            </motion.div>
           )
         })}
-      </div>
+      </motion.div>
 
       {/* Main Analysis Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -127,20 +145,17 @@ export default function DashboardPage() {
 
           {/* Bar Chart Simulation */}
           <div className="h-64 flex items-end justify-between gap-3 pt-6 border-b border-white/5 pb-2">
-            {revenueData.map((d) => (
-              <div key={d.day} className="flex-1 flex flex-col items-center gap-3 group h-full justify-end">
-                {/* Tooltip on hover */}
+            {revenueData.map((d, i) => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-3 group h-full justify-end relative">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-white py-1 px-1.5 rounded border border-white/10 absolute -translate-y-16 pointer-events-none whitespace-nowrap z-30">
                   {(d.amount / 1000000).toFixed(1)}M đ
                 </div>
-                
-                {/* Bar */}
-                <div 
-                  className="w-full rounded-t-md bg-gradient-to-t from-red-600 to-rose-500 transition-all duration-500 origin-bottom group-hover:from-red-500 group-hover:to-rose-400 group-hover:shadow-[0_0_15px_rgba(229,9,20,0.3)]"
-                  style={{ height: d.percentage }}
+                <motion.div
+                  className="w-full rounded-t-md bg-gradient-to-t from-red-600 to-rose-500 group-hover:from-red-500 group-hover:to-rose-400 group-hover:shadow-[0_0_15px_rgba(229,9,20,0.3)]"
+                  initial={{ height: 0 }}
+                  animate={{ height: d.percentage }}
+                  transition={{ duration: 0.7, delay: 0.3 + i * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
                 />
-                
-                {/* Label */}
                 <span className="text-[10px] md:text-xs text-[var(--color-text-muted)] group-hover:text-white transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {d.day}
                 </span>
@@ -161,9 +176,18 @@ export default function DashboardPage() {
             </h2>
           </div>
 
-          <div className="space-y-4">
+          <motion.div
+            className="space-y-4"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.4 } } }}
+          >
             {recentBookings.map((b) => (
-              <div key={b.id} className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-white/10 transition-colors">
+              <motion.div
+                key={b.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-white/10 transition-colors"
+                variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.4 } } }}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-xs font-bold text-red-500">
                     {b.user.charAt(0)}
@@ -186,12 +210,12 @@ export default function DashboardPage() {
                     {b.status === 'SUCCESS' ? 'THÀNH CÔNG' : 'ĐANG XỬ LÝ'}
                   </span>
                 </div>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
 
       </div>
-    </div>
+    </motion.div>
   )
 }

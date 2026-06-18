@@ -1,4 +1,5 @@
 import { Calendar, Tag } from 'lucide-react'
+import { motion } from 'motion/react'
 
 const PROMOTIONS = [
   {
@@ -26,28 +27,47 @@ const PROMOTIONS = [
 
 export default function PromotionsPage() {
   return (
-    <div className="min-h-screen py-10 px-4 md:px-8 max-w-7xl mx-auto" style={{ backgroundColor: 'var(--color-background)' }}>
+    <motion.div
+      className="min-h-screen py-10 px-4 md:px-8 max-w-7xl mx-auto"
+      style={{ backgroundColor: 'var(--color-background)' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+    >
       {/* Page Title */}
-      <div className="text-center mb-10">
+      <motion.div
+        className="text-center mb-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Chương trình</p>
         <h1 className="text-4xl text-white tracking-widest uppercase font-extrabold mb-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>
           Khuyến Mãi & Ưu Đãi
         </h1>
         <p className="text-[var(--color-on-surface-variant)] text-sm max-w-md mx-auto">
           Nhận ngay các chương trình ưu đãi vé xem phim và bắp nước cực kì hấp dẫn dành riêng cho hội viên CineMate.
         </p>
-      </div>
+      </motion.div>
 
       {/* Promotions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
+      >
         {PROMOTIONS.map((promo) => (
-          <div
-            key={promo.id}
-            className="rounded-xl overflow-hidden border border-white/8 hover:border-red-500/30 transition-all duration-300 flex flex-col"
-            style={{
-              backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.35)'
-            }}
-          >
+        <motion.div
+          key={promo.id}
+          className="rounded-xl overflow-hidden border border-white/8 hover:border-red-500/30 transition-all duration-300 flex flex-col"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.35)'
+          }}
+          variants={{ hidden: { opacity: 0, y: 30, scale: 0.96 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+          whileHover={{ y: -6, boxShadow: '0 20px 48px rgba(229,9,20,0.15)', transition: { duration: 0.22 } }}
+        >
             <div className="relative aspect-video overflow-hidden">
               <img
                 src={promo.img}
@@ -73,9 +93,9 @@ export default function PromotionsPage() {
                 <span>{promo.date}</span>
               </div>
             </div>
-          </div>
+        </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
