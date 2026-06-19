@@ -20,6 +20,8 @@ export const movieService = {
     })
   },
 
+  deleteAdmin: (id) => api.delete(`/api/v1/admin/movies/${id}`),
+
   // Helper endpoints for genres, countries and cinema rooms
   getGenres: () => api.get('/api/v1/genres'),
   getCountries: () => api.get('/api/v1/countries'),

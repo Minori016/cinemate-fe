@@ -21,10 +21,16 @@ export default function MovieListPage() {
   useEffect(() => { load() }, [])
 
   const handleDelete = async () => {
-    // NOTE: Backend mới chưa expose DELETE /api/v1/admin/movies/{id}
-    // Hiện tại chỉ cập nhật UI local
-    setMovies(prev => prev.filter(m => m.id !== deleteTarget.id))
-    setDeleteTarget(null)
+    if (!deleteTarget) return
+    try {
+      await movieService.deleteAdmin(deleteTarget.id)
+      setMovies(prev => prev.filter(m => m.id !== deleteTarget.id))
+    } catch (err) {
+      console.error('Lỗi khi xóa phim:', err)
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa phim.')
+    } finally {
+      setDeleteTarget(null)
+    }
   }
 
   const columns = [
