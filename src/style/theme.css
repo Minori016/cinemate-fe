@@ -144,6 +144,7 @@
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
   }
 
   /**
@@ -153,6 +154,8 @@
 
   html {
     font-size: var(--font-size);
+    overflow-x: hidden;
+    width: 100%;
   }
 
   h1 {
@@ -196,4 +199,121 @@
     font-weight: var(--font-weight-normal);
     line-height: 1.5;
   }
+}
+
+/* ── Light Mode override for Admin, Manager, and Staff workspaces ── */
+.theme-light {
+  --color-background:               #f8f9fa;
+  --color-surface:                  #ffffff;
+  --color-surface-container:        #f3f4f6;
+  --color-surface-container-highest:#e5e7eb;
+  --color-surface-2:                #f3f4f6;
+  --color-on-surface:               #0f172a;
+  --color-on-surface-variant:       #475569;
+  --color-primary:                  #e50914;
+  --color-primary-container:        #fee2e2;
+  --color-on-primary-container:     #991b1b;
+  --color-error:                    #dc2626;
+  --color-error-container:          #fef2f2;
+  --color-border:                   #e2e8f0;
+  --color-text-muted:               #475569;
+  --color-bg:                       #f8f9fa;
+
+  --background:                     #f8f9fa;
+  --foreground:                     #0f172a;
+  --card:                           #ffffff;
+  --card-foreground:                #0f172a;
+  --popover:                        #ffffff;
+  --popover-foreground:             #0f172a;
+  --primary:                        #e50914;
+  --primary-foreground:             #ffffff;
+  --secondary:                      #f1f5f9;
+  --secondary-foreground:           #0f172a;
+  --muted:                          #f1f5f9;
+  --muted-foreground:               #475569;
+  --accent:                         #e2e8f0;
+  --accent-foreground:              #0f172a;
+  --destructive:                    #dc2626;
+  --destructive-foreground:         #ffffff;
+  --border:                         #e2e8f0;
+
+  --sidebar:                        #ffffff;
+  --sidebar-foreground:             #0f172a;
+  --sidebar-border:                 #e2e8f0;
+  --sidebar-accent:                 #f1f5f9;
+  --sidebar-accent-foreground:      #0f172a;
+}
+
+/* Light mode specific element overrides for CineMate components */
+.theme-light .text-white {
+  color: var(--color-on-surface) !important;
+}
+.theme-light .text-white-force {
+  color: #ffffff !important;
+}
+.theme-light aside h1 .text-white {
+  color: #000000 !important;
+}
+.theme-light aside a.bg-red-600,
+.theme-light aside a.bg-\[var\(--color-primary\)\],
+.theme-light .bg-red-600,
+.theme-light .bg-\[var\(--color-primary\)\],
+.theme-light .bg-red-600 *,
+.theme-light .bg-\[var\(--color-primary\)\] *,
+.theme-light button.bg-red-600,
+.theme-light button.bg-\[var\(--color-primary\)\],
+.theme-light .text-white-keep,
+.theme-light select option {
+  color: #ffffff !important;
+}
+.theme-light .text-red-500,
+.theme-light .text-[var(--color-primary)] {
+  color: #e50914 !important;
+}
+.theme-light .border-white\/5,
+.theme-light .border-white\/8,
+.theme-light .border-white\/10,
+.theme-light .border-white\/20,
+.theme-light .border-[var\(--color-border\)] {
+  border-color: #e2e8f0 !important;
+}
+.theme-light .bg-black\/20,
+.theme-light .bg-white\/5 {
+  background-color: #f1f5f9 !important;
+}
+.theme-light .bg-black\/40 {
+  background-color: rgba(255, 255, 255, 0.7) !important;
+}
+.theme-light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+.theme-light select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+.theme-light input {
+  color: #0f172a !important;
+}
+.theme-light input::placeholder {
+  color: #94a3b8 !important;
+}
+.theme-light textarea {
+  color: #0f172a !important;
+}
+.theme-light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+.theme-light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+.theme-light aside .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+.theme-light aside a.bg-red-600:hover,
+.theme-light aside a.bg-[var\(--color-primary\)]:hover {
+  color: #ffffff !important;
+}
+.theme-light aside button:hover {
+  color: #e50914 !important;
 }

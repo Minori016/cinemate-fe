@@ -3,9 +3,9 @@ import Sidebar from './Sidebar'
 
 export default function AdminLayout() {
   return (
-    <div className="flex min-h-screen bg-[var(--color-bg)]">
+    <div className="theme-light flex min-h-screen bg-[var(--color-background)] text-[var(--color-on-surface)]">
       <Sidebar />
-      <main className="flex-1 p-8 overflow-auto">
+      <main className="flex-1 p-8 overflow-auto bg-[var(--color-background)]">
         <Outlet />
       </main>
     </div>

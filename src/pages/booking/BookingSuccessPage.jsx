@@ -6,7 +6,7 @@ import { motion } from 'motion/react'
 export default function BookingSuccessPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  
+
   const bookingInfo = location.state || {}
 
   // Bắn confetti chúc mừng khi load trang thành công
@@ -82,7 +82,7 @@ export default function BookingSuccessPage() {
 
       {/* Main Content */}
       <main className="flex-grow pt-28 px-4 md:px-8 max-w-xl mx-auto w-full flex flex-col items-center">
-        
+
         {/* Step Progress Tracker */}
         <div className="w-full max-w-md flex items-center justify-between mb-10 select-none">
           <div className="flex flex-col items-center gap-1.5">
@@ -91,27 +91,27 @@ export default function BookingSuccessPage() {
             </div>
             <span className="text-[9px] uppercase font-bold tracking-wider text-green-500">Chọn ghế</span>
           </div>
-          
+
           <div className="h-0.5 flex-1 bg-green-500 mx-2 self-start mt-3.5"></div>
-          
+
           <div className="flex flex-col items-center gap-1.5">
             <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold step-done bg-[#06080F]">
               <span className="material-symbols-outlined text-xs font-black">done</span>
             </div>
             <span className="text-[9px] uppercase font-bold tracking-wider text-green-500">Xác nhận</span>
           </div>
-          
+
           <div className="h-0.5 flex-1 bg-green-500 mx-2 self-start mt-3.5"></div>
-          
+
           <div className="flex flex-col items-center gap-1.5">
             <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold step-done bg-[#06080F]">
               <span className="material-symbols-outlined text-xs font-black">done</span>
             </div>
             <span className="text-[9px] uppercase font-bold tracking-wider text-green-500">Thanh toán</span>
           </div>
-          
+
           <div className="h-0.5 flex-1 bg-green-500 mx-2 self-start mt-3.5"></div>
-          
+
           <div className="flex flex-col items-center gap-1.5">
             <div className="w-7 h-7 rounded-full border-2 flex items-center justify-center text-xs font-bold step-done bg-[#06080F]">
               <span className="material-symbols-outlined text-xs font-black">done</span>
@@ -154,13 +154,13 @@ export default function BookingSuccessPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.55, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
-          
+
           {/* Ticket Header Graphic */}
           <div className="p-5 bg-gradient-to-r from-red-950/40 via-black/30 to-red-950/30 border-b border-dashed border-white/10 flex gap-4 items-center">
             {bookingInfo.movie?.image && (
-              <img 
-                src={bookingInfo.movie.image} 
-                alt={bookingInfo.movie.movieNameVn} 
+              <img
+                src={bookingInfo.movie.image}
+                alt={bookingInfo.movie.movieNameVn}
                 className="w-12 h-16 object-cover rounded-md border border-white/10 shadow-md"
               />
             )}
@@ -186,7 +186,7 @@ export default function BookingSuccessPage() {
                 <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</span>
                 <p className="text-white font-semibold mt-0.5">{bookingInfo.screen || 'Phòng 03 (IMAX)'}</p>
               </div>
-              
+
               <div>
                 <span className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</span>
                 <p className="text-white font-semibold mt-0.5">{bookingInfo.time}</p>
@@ -246,7 +246,7 @@ export default function BookingSuccessPage() {
           >
             Quay Về Trang Chủ
           </button>
-          
+
           <button
             onClick={() => navigate('/profile', { state: { activeTab: 'booked' } })}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl shadow-[0_4px_15px_rgba(220,38,38,0.25)] hover:scale-[1.01] active:scale-[0.99] transition-all uppercase tracking-wider text-sm cursor-pointer"

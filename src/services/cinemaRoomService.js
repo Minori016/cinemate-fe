@@ -12,5 +12,8 @@ export const cinemaRoomService = {
     if (!room) throw new Error('Room not found')
     return { data: room }
   }),
+  // Stub methods for seats since BE only supports cinema-rooms listing currently
+  getSeats: (roomId) => Promise.resolve({ data: null }),
+  updateSeats: (roomId, seats) => Promise.resolve({ data: null }),
 }
 

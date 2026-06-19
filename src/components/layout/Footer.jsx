@@ -49,9 +49,9 @@ export default function Footer() {
         className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-8 items-start"
         style={{ 
           maxWidth: '1400px', 
-          paddingLeft: 'clamp(2rem, 9vw, 12rem)', 
-          paddingRight: 'clamp(2rem, 5vw, 8rem)',
-          columnGap: 'clamp(2.5rem, 5.5vw, 6rem)'
+          paddingLeft: '30px', 
+          paddingRight: '30px',
+          columnGap: '40px'
         }}
       >
         
@@ -60,7 +60,7 @@ export default function Footer() {
           <Link 
             to="/" 
             className="text-3xl tracking-tighter transition-opacity hover:opacity-90 flex items-center gap-2" 
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, letterSpacing: '-0.03em', marginLeft: '-20px' }}
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, letterSpacing: '-0.03em' }}
             onClick={handleScrollToTop}
           >
             <img src={logoImg} alt="Logo" className="w-14 h-14 object-contain" />
@@ -72,14 +72,23 @@ export default function Footer() {
           <p className="text-sm font-medium leading-snug" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
             Hệ thống rạp chiếu phim chuẩn quốc tế
           </p>
-          <div className="text-sm flex flex-col gap-1 mt-2" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <p><strong style={{ color: 'var(--color-on-surface)' }}>Hotline:</strong> 1900 6868</p>
-            <p><strong style={{ color: 'var(--color-on-surface)' }}>Email:</strong> contact@cinemate.vn</p>
-            <p><strong style={{ color: 'var(--color-on-surface)' }}>Trụ sở chính:</strong> 135 Đồng Khởi, Q.1, TP.HCM</p>
+        </div>
+
+        {/* Block 2: Hỗ Trợ & Chính Sách */}
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Hỗ Trợ & Chính Sách</h3>
+          <div className="flex flex-col gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
+            <Link to="/about" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Giới thiệu</Link>
+            <Link to="/contact" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Liên hệ</Link>
+            <Link to="/terms" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Điều khoản sử dụng</Link>
+            <Link to="/privacy" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Chính sách bảo mật</Link>
+            <Link to="/faqs" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Câu hỏi thường gặp</Link>
+            <Link to="/feedback" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Góp ý</Link>
+            <Link to="/careers" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Tuyển dụng</Link>
           </div>
         </div>
 
-        {/* Block 2: Hệ thống rạp */}
+        {/* Block 3: Hệ Thống Rạp */}
         <div className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Hệ Thống Rạp</h3>
           <div className="flex flex-col gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
@@ -90,24 +99,13 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Block 3: Thông tin & Chính sách */}
-        <div className="flex flex-col gap-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Thông Tin</h3>
-          <div className="flex flex-col gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <Link to="/about" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Giới thiệu</Link>
-            <Link to="/terms" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Điều khoản sử dụng</Link>
-            <Link to="/privacy" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Chính sách bảo mật</Link>
-            <Link to="/faqs" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Câu hỏi thường gặp</Link>
-          </div>
-        </div>
-
-        {/* Block 4: Chăm sóc khách hàng */}
+        {/* Block 4: Thông Tin Liên Hệ */}
         <div className="flex flex-col md-cskh-align gap-3">
-          <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>CSKH</h3>
-          <div className="flex flex-col md-cskh-align gap-2 text-sm font-medium" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
-            <Link to="/contact" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Liên hệ</Link>
-            <Link to="/feedback" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Góp ý</Link>
-            <Link to="/careers" onClick={handleScrollToTop} className="footer-link-custom hover:text-[var(--color-primary)] transition-colors">Tuyển dụng</Link>
+          <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Liên Hệ</h3>
+          <div className="text-sm flex flex-col md-cskh-align gap-2.5 mt-1" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
+            <p><strong style={{ color: 'var(--color-on-surface)' }}>Hotline:</strong> 1900 6868</p>
+            <p><strong style={{ color: 'var(--color-on-surface)' }}>Email:</strong> contact@cinemate.vn</p>
+            <p><strong style={{ color: 'var(--color-on-surface)' }}>Trụ sở chính:</strong> 135 Đồng Khởi, Q.1, TP.HCM</p>
           </div>
         </div>
 
@@ -115,7 +113,7 @@ export default function Footer() {
 
       <div
         className="w-full mx-auto mt-10 pt-6 border-t text-center text-xs"
-        style={{ maxWidth: '1400px', paddingLeft: 'clamp(2rem, 9vw, 12rem)', paddingRight: 'clamp(2rem, 5vw, 8rem)', borderColor: 'rgba(255,255,255,0.04)', color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}
+        style={{ maxWidth: '1400px', paddingLeft: '30px', paddingRight: '30px', borderColor: 'rgba(255,255,255,0.04)', color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}
       >
         <p className="mx-auto max-w-2xl">© 2026 Cinemate. All rights reserved. Bằng việc sử dụng dịch vụ của Cinemate, bạn đồng ý với các <strong>Điều khoản sử dụng</strong> và <strong>Chính sách bảo mật</strong> của chúng tôi.</p>
         <div className="flex justify-center gap-4 mt-3">

@@ -3,19 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Search, LogOut, User as UserIcon, Settings, ChevronDown, Bell } from 'lucide-react'
 import logoImg from '../../assets/Cinematelogo.png'
-
-const MOVIE_TITLES = [
-  { id: 1, title: 'MA XÓ (T18)', route: '/movies/1' },
-  { id: 2, title: 'LỚP HỌC ÁM SÁT (T16)', route: '/movies/2' },
-  { id: 3, title: 'KUMANTHONG (T18)', route: '/movies/3' },
-  { id: 4, title: 'THE AMAZING DIGITAL CIRCUS (K)', route: '/movies/4' },
-  { id: 5, title: 'BẦY XÁC SỐNG (T16)', route: '/movies/5' },
-  { id: 6, title: 'SPIDER NOIR (T13)', route: '/movies/6' },
-  { id: 7, title: 'SPIDER-MAN: BRAND NEW DAY (K)', route: '/movies/7' },
-  { id: 8, title: 'THE BACKROOMS (T16)', route: '/movies/8' },
-  { id: 9, title: 'AVATAR: THE SEED BEARER (T13)', route: '/movies/9' },
-  { id: 10, title: 'THÁM TỬ LỪNG DANH CONAN (K)', route: '/movies/10' }
-]
+import { movieService } from '../../services/movieService'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -44,19 +32,35 @@ export default function Navbar() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const searchRef = useRef(null)
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value
-    setSearchTerm(value)
-    if (value.trim().length >= 1) {
-      const filtered = MOVIE_TITLES.filter(movie => 
-        movie.title.toLowerCase().includes(value.toLowerCase())
-      )
-      setSuggestions(filtered)
-      setSuggestionsOpen(true)
+  // Fetch search suggestions from the backend movie API with debouncing
+  useEffect(() => {
+    if (searchTerm.trim().length >= 1) {
+      const delayDebounce = setTimeout(() => {
+        movieService.getAll({ search: searchTerm.trim(), size: 6 })
+          .then(res => {
+            const moviesList = res.data?.result?.content || res.data?.result || []
+            const formatted = moviesList.map(movie => ({
+              id: movie.id,
+              title: movie.titleVn || movie.titleEn || 'Phim Chưa Đặt Tên',
+              route: `/movies/${movie.id}`
+            }))
+            setSuggestions(formatted)
+            setSuggestionsOpen(true)
+          })
+          .catch(err => {
+            console.error('Error fetching suggestions:', err)
+            setSuggestions([])
+          })
+      }, 300)
+      return () => clearTimeout(delayDebounce)
     } else {
       setSuggestions([])
       setSuggestionsOpen(false)
     }
+  }, [searchTerm])
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value)
   }
 
   const handleLogout = () => { 
@@ -102,10 +106,10 @@ export default function Navbar() {
       <div 
         className="w-full mx-auto h-16 flex items-center"
         style={{ 
-          maxWidth: '1400px', 
-          paddingLeft: 'clamp(1.5rem, 4vw, 5rem)', 
-          paddingRight: 'clamp(1.5rem, 4vw, 5rem)',
-          gap: '24px',
+          maxWidth: '100%', 
+          paddingLeft: '30px', 
+          paddingRight: '30px',
+          gap: '32px',
         }}
       >
         
@@ -119,7 +123,7 @@ export default function Navbar() {
             letterSpacing: '-0.03em',
           }}
         >
-          <img src={logoImg} alt="Logo" className="w-11 h-11 object-contain" />
+          <img src={logoImg} alt="Logo" className="w-14 h-14 object-contain" />
           <div className="flex items-center">
             <span style={{ color: '#FFFFFF' }}>Cine</span>
             <span style={{ color: 'var(--color-primary)' }}>mate</span>
@@ -127,7 +131,7 @@ export default function Navbar() {
         </Link>
 
         {/* ── CỘT GIỮA: Menu điều hướng chính ── */}
-        <div className="flex-1 flex items-center justify-center gap-5">
+        <div className="flex-1 flex items-center justify-center gap-10" style={{ position: 'relative', left: '40px' }}>
           <NavLink 
             to="/movies" 
             className={({ isActive }) => 
@@ -186,7 +190,7 @@ export default function Navbar() {
         </div>
 
         {/* ── CỘT PHẢI: Search + Actions ── */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-5 flex-shrink-0">
           
           {/* Ô Tìm Kiếm */}
           <div className="relative flex items-center w-36 md:w-44 transition-all duration-300" ref={searchRef}>
@@ -251,94 +255,6 @@ export default function Navbar() {
                       {movie.title}
                     </button>
                   ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Nút MUA VÉ */}
-          <button 
-            onClick={() => navigate('/showtimes')}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-              color: '#ffffff',
-              fontFamily: 'Montserrat, sans-serif',
-              boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            <span className="material-symbols-outlined filled text-[14px]">grade</span>
-            <span>MUA VÉ</span>
-            <div className="h-3.5 border-l border-dashed border-white/40 ml-1.5 pl-1.5 flex items-center justify-center">
-              <span className="w-1.5 h-1.5 rounded-full bg-white/80"></span>
-            </div>
-          </button>
-
-          {/* Nút Notification */}
-          <div className="relative" ref={notificationRef}>
-            <button 
-              onClick={() => {
-                setNotificationsOpen(!notificationsOpen)
-                setDropdownOpen(false)
-              }}
-              className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-[0_4px_8px_rgba(229,9,20,0.2)] shrink-0 relative cursor-pointer"
-              style={{
-                backgroundColor: '#e50914',
-                color: '#ffffff',
-                border: 'none',
-              }}
-            >
-              <Bell size={14} />
-              {notifications.some(n => !n.read) && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-yellow-400 text-[#06080F] text-[8px] font-black rounded-full flex items-center justify-center border border-[#06080F] select-none scale-95">
-                  {notifications.filter(n => !n.read).length}
-                </span>
-              )}
-            </button>
-
-            {notificationsOpen && (
-              <div
-                className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50 text-left"
-                style={{
-                  backgroundColor: 'var(--color-surface-container)',
-                  border: '1px solid rgba(255,255,255,0.10)',
-                  boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(229,9,20,0.1)',
-                  animation: 'dropdownFadeIn 0.2s ease-out',
-                }}
-              >
-                <div className="px-4 py-3 flex justify-between items-center bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                  <span className="font-bold text-[10px] uppercase text-white tracking-wider">Thông báo của bạn</span>
-                  {notifications.some(n => !n.read) && (
-                    <button 
-                      onClick={markAllAsRead}
-                      className="text-[10px] text-red-500 hover:underline font-semibold bg-transparent border-none outline-none cursor-pointer"
-                    >
-                      Đánh dấu đã đọc
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
-                  {notifications.length > 0 ? (
-                    notifications.map((n) => (
-                      <div 
-                        key={n.id} 
-                        onClick={() => toggleRead(n.id)}
-                        className={`p-3.5 transition-colors duration-150 cursor-pointer ${!n.read ? 'bg-white/5' : 'hover:bg-white/5'}`}
-                      >
-                        <div className="flex justify-between items-start">
-                          <span className={`text-xs font-bold ${!n.read ? 'text-red-500' : 'text-white'}`}>{n.title}</span>
-                          <span className="text-[9px] text-gray-500 font-medium">{n.time}</span>
-                        </div>
-                        <p className="text-[11px] text-gray-400 leading-normal mt-1">{n.message}</p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="py-8 text-center text-xs text-gray-500 font-semibold flex flex-col items-center gap-1.5">
-                      <span className="material-symbols-outlined text-3xl">notifications_off</span>
-                      <span>Không có thông báo mới!</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -412,10 +328,10 @@ export default function Navbar() {
                         {user.roles?.includes('ADMIN') 
                           ? 'Quản trị viên' 
                           : user.roles?.includes('MANAGER') 
-                            ? 'Quản lý' 
-                            : user.roles?.includes('STAFF') 
-                              ? 'Nhân viên' 
-                              : 'Thành viên'}
+                             ? 'Quản lý' 
+                             : user.roles?.includes('STAFF') 
+                               ? 'Nhân viên' 
+                               : 'Thành viên'}
                       </p>
                     </div>
                   </div>
@@ -487,6 +403,75 @@ export default function Navbar() {
               Đăng nhập
             </Link>
           )}
+
+          {/* Nút Notification */}
+          <div className="relative" ref={notificationRef}>
+            <button 
+              onClick={() => {
+                setNotificationsOpen(!notificationsOpen)
+                setDropdownOpen(false)
+              }}
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 shadow-[0_4px_8px_rgba(229,9,20,0.2)] shrink-0 relative cursor-pointer"
+              style={{
+                backgroundColor: '#e50914',
+                color: '#ffffff',
+                border: 'none',
+              }}
+            >
+              <Bell size={14} />
+              {notifications.some(n => !n.read) && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-yellow-400 text-[#06080F] text-[8px] font-black rounded-full flex items-center justify-center border border-[#06080F] select-none scale-95">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
+            </button>
+
+            {notificationsOpen && (
+              <div
+                className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50 text-left"
+                style={{
+                  backgroundColor: 'var(--color-surface-container)',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(229,9,20,0.1)',
+                  animation: 'dropdownFadeIn 0.2s ease-out',
+                }}
+              >
+                <div className="px-4 py-3 flex justify-between items-center bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <span className="font-bold text-[10px] uppercase text-white tracking-wider">Thông báo của bạn</span>
+                  {notifications.some(n => !n.read) && (
+                    <button 
+                      onClick={markAllAsRead}
+                      className="text-[10px] text-red-500 hover:underline font-semibold bg-transparent border-none outline-none cursor-pointer"
+                    >
+                      Đánh dấu đã đọc
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
+                  {notifications.length > 0 ? (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.id} 
+                        onClick={() => toggleRead(n.id)}
+                        className={`p-3.5 transition-colors duration-150 cursor-pointer ${!n.read ? 'bg-white/5' : 'hover:bg-white/5'}`}
+                      >
+                        <div className="flex justify-between items-start">
+                           <span className={`text-xs font-bold ${!n.read ? 'text-red-500' : 'text-white'}`}>{n.title}</span>
+                           <span className="text-[9px] text-gray-500 font-medium">{n.time}</span>
+                        </div>
+                        <p className="text-[11px] text-gray-400 leading-normal mt-1">{n.message}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-xs text-gray-500 font-semibold flex flex-col items-center gap-1.5">
+                      <span className="material-symbols-outlined text-3xl">notifications_off</span>
+                      <span>Không có thông báo mới!</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>

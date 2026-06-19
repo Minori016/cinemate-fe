@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -63,8 +63,19 @@ export default function CinemaRoomListPage() {
         const res = await cinemaRoomService.getAll()
         // If we got a structured array from the backend API
         if (res && res.data && active) {
-          setRooms(res.data)
-          localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(res.data))
+          const roomsList = res.data?.result || res.data
+          let finalRooms = Array.isArray(roomsList) ? roomsList : []
+          if (finalRooms.length === 0) {
+            const local = localStorage.getItem('admin_cinema_rooms_db')
+            if (local) {
+              const parsed = JSON.parse(local)
+              finalRooms = parsed.length > 0 ? parsed : INITIAL_ROOMS
+            } else {
+              finalRooms = INITIAL_ROOMS
+            }
+          }
+          setRooms(finalRooms)
+          localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(finalRooms))
         }
       } catch (err) {
         console.warn('Backend service offline. Loading mock data from local storage.', err)

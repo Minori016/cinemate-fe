@@ -467,31 +467,28 @@ export default function HomePage() {
                               {movie.description}
                             </p>
                           )}
+                        </motion.div>
 
-                          {/* CTA */}
-                          <div className="flex flex-wrap gap-3 mt-1">
-                            <Link
-                              to={detailLink}
-                              className="flex items-center gap-2 px-7 py-3 rounded-full font-bold text-sm uppercase tracking-wider text-white transition-all duration-200 hover:scale-105 active:scale-95"
-                              style={{
-                                background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-                                boxShadow: '0 6px 24px rgba(229,9,20,0.45)',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                fontFamily: 'Montserrat, sans-serif',
-                              }}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>confirmation_number</span>
-                              Đặt Vé Ngay
-                            </Link>
-                            <Link
-                              to={detailLink}
-                              className="flex items-center gap-2 px-7 py-3 rounded-full font-bold text-sm uppercase tracking-wider text-white transition-all duration-200 hover:scale-105 active:scale-95 border-2 border-white/25 hover:bg-white/10 hover:border-white/50 bg-transparent"
-                              style={{ fontFamily: 'Montserrat, sans-serif' }}
-                            >
-                              <span className="material-symbols-outlined" style={{ fontSize: '17px' }}>info</span>
-                              Chi Tiết
-                            </Link>
-                          </div>
+                        {/* Right side: Large Book Ticket Button */}
+                        <motion.div
+                          className="flex-shrink-0 w-full sm:w-auto"
+                          initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                          animate={{ opacity: 1, scale: 1, x: 0 }}
+                          transition={{ duration: 0.65, delay: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        >
+                          <Link
+                            to={detailLink}
+                            className="flex items-center justify-center gap-3.5 px-10 py-5 rounded-2xl font-black text-base uppercase tracking-wider text-white transition-all duration-200 hover:scale-105 active:scale-95 w-full sm:w-auto cursor-pointer"
+                            style={{
+                              background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                              boxShadow: '0 8px 32px rgba(229,9,20,0.5)',
+                              border: '1px solid rgba(255,255,255,0.12)',
+                              fontFamily: 'Montserrat, sans-serif',
+                            }}
+                          >
+                            <span className="material-symbols-outlined font-black" style={{ fontSize: '20px' }}>confirmation_number</span>
+                            <span>Đặt Vé Ngay</span>
+                          </Link>
                         </motion.div>
                       </div>
                     </div>

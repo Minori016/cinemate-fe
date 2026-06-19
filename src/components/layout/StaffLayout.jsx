@@ -24,7 +24,7 @@ export default function StaffLayout({ children }) {
   ]
 
   return (
-    <div className="flex min-h-screen bg-[var(--color-bg)] text-white">
+    <div className="theme-light flex min-h-screen bg-[var(--color-background)] text-[var(--color-on-surface)]">
       {/* Staff Sidebar */}
       <aside className="w-64 min-h-screen flex flex-col bg-[var(--color-surface)] border-r border-[var(--color-border)] shrink-0">
         {/* Brand Header */}
@@ -103,7 +103,7 @@ export default function StaffLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-8 overflow-y-auto" style={{ backgroundColor: 'var(--color-background)' }}>
+      <main className="flex-1 min-w-0 p-8 overflow-y-auto bg-[var(--color-background)] text-[var(--color-on-surface)]">
         {children || <Outlet />}
       </main>
     </div>

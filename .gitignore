@@ -23,3 +23,4 @@ dist-ssr
 *.sln
 *.sw?
 movie-theater-back-end-main/
+.vercel

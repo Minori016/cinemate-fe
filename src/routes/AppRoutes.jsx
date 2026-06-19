@@ -37,6 +37,8 @@ import MemberListPage from '../pages/admin/members/MemberListPage'
 import TicketManagementPage from '../pages/admin/tickets/TicketManagementPage'
 import CinemaRoomListPage from '../pages/admin/cinema-rooms/CinemaRoomListPage'
 import CinemaRoomDetailPage from '../pages/admin/cinema-rooms/CinemaRoomDetailPage'
+import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
+import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
 import StaffDashboardPage from '../pages/staff/StaffDashboardPage'
 import ManagerDashboardPage from '../pages/manager/ManagerDashboardPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
@@ -102,6 +104,9 @@ export default function AppRoutes() {
         <Route path="tickets" element={<TicketManagementPage />} />
         <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
         <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
+        <Route path="promotions" element={<PromotionListPage />} />
+        <Route path="promotions/add" element={<PromotionFormPage />} />
+        <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
       </Route>
 
       {/* Wildcard */}

@@ -519,30 +519,6 @@ export default function RegisterPage() {
                       </div>
                     </div>
 
-                    {/* Password */}
-                    <div className="flex flex-col gap-2">
-                      <label htmlFor="reg-password" style={labelStyle}>Mật khẩu</label>
-                      <div className="relative flex items-center">
-                        <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
-                        <input id="reg-password" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
-                        <button type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showPassword ? 'visibility' : 'visibility_off'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div className="flex flex-col gap-2">
-                      <label htmlFor="reg-confirm-password" style={labelStyle}>Xác nhận mật khẩu</label>
-                      <div className="relative flex items-center">
-                        <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
-                        <input id="reg-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
-                        <button type="button" aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowConfirmPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
-                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showConfirmPassword ? 'visibility' : 'visibility_off'}</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Full Name */}
                     <div className="flex flex-col gap-2">
                       <label htmlFor="fullName" style={labelStyle}>Họ và tên</label>
@@ -589,6 +565,30 @@ export default function RegisterPage() {
                       <div className="relative flex items-center">
                         <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>phone</span>
                         <input id="phoneNumber" name="phoneNumber" type="text" placeholder="0xxx xxx xxx" value={form.phoneNumber} onChange={handleChange} required className="w-full rounded-xl py-3 outline-none" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+                      </div>
+                    </div>
+
+                    {/* Password */}
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="reg-password" style={labelStyle}>Mật khẩu</label>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
+                        <input id="reg-password" name="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
+                        <button type="button" aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showPassword ? 'visibility' : 'visibility_off'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm Password */}
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="reg-confirm-password" style={labelStyle}>Xác nhận mật khẩu</label>
+                      <div className="relative flex items-center">
+                        <span className="material-symbols-outlined absolute left-3.5 select-none pointer-events-none" style={{ color: 'var(--color-on-surface-variant)', fontSize: '20px', zIndex: 2 }}>lock</span>
+                        <input id="reg-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} placeholder="••••••••" value={form.confirmPassword} onChange={handleChange} minLength="8" required className="w-full rounded-xl py-3 outline-none" style={{ ...inputStyle, paddingRight: '46px' }} onFocus={handleFocus} onBlur={handleBlur} />
+                        <button type="button" aria-label={showConfirmPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'} onClick={() => setShowConfirmPassword((v) => !v)} className="absolute right-3 flex items-center justify-center focus:outline-none transition-colors hover:text-[var(--color-on-surface)]" style={{ color: 'var(--color-on-surface-variant)', zIndex: 2 }}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '20px' }}>{showConfirmPassword ? 'visibility' : 'visibility_off'}</span>
+                        </button>
                       </div>
                     </div>
                   </div>
