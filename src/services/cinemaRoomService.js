@@ -1,10 +1,16 @@
 import api from './api'
 
 export const cinemaRoomService = {
-  getAll: () => api.get('/cinema-rooms'),
-  getById: (id) => api.get(`/cinema-rooms/${id}`),
-  create: (data) => api.post('/cinema-rooms', data),
-  update: (id, data) => api.put(`/cinema-rooms/${id}`, data),
-  getSeats: (id) => api.get(`/cinema-rooms/${id}/seats`),
-  updateSeats: (id, data) => api.put(`/cinema-rooms/${id}/seats`, data),
+  // GET /api/v1/cinema-rooms?cinemaId={uuid}  (cinemaId optional)
+  getAll: (cinemaId) => api.get('/api/v1/cinema-rooms', {
+    params: cinemaId ? { cinemaId } : {}
+  }),
+  // Fallback for ID-based lookup (route via list + filter client-side if BE has no single-room endpoint)
+  getById: (id) => api.get('/api/v1/cinema-rooms').then(res => {
+    const rooms = res.data?.result || []
+    const room = rooms.find(r => r.id === id)
+    if (!room) throw new Error('Room not found')
+    return { data: room }
+  }),
 }
+

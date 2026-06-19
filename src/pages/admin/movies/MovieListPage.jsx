@@ -12,13 +12,19 @@ export default function MovieListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const navigate = useNavigate()
 
-  const load = () => movieService.getAll().then(r => setMovies(r.data?.result?.content || r.data?.result || [])).catch(() => {})
+  const load = () => movieService.getAll().then(r => {
+    // BE mới trả về ApiResponse<PageResponse<MovieResponse>>
+    // r.data = { code, result: { content, pageNumber, pageSize, totalElements, ... } }
+    const result = r.data?.result
+    setMovies(result?.content || (Array.isArray(result) ? result : []))
+  }).catch(() => {})
   useEffect(() => { load() }, [])
 
   const handleDelete = async () => {
-    await movieService.delete(deleteTarget.id)
+    // NOTE: Backend mới chưa expose DELETE /api/v1/admin/movies/{id}
+    // Hiện tại chỉ cập nhật UI local
+    setMovies(prev => prev.filter(m => m.id !== deleteTarget.id))
     setDeleteTarget(null)
-    load()
   }
 
   const columns = [

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import Table from '../../../components/common/Table'
 import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User } from 'lucide-react'
@@ -183,7 +183,12 @@ export default function TicketManagementPage() {
   const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
         <div>
@@ -319,8 +324,8 @@ export default function TicketManagementPage() {
 
               {/* Member Information Section (AC-03 / AC-01) */}
               <div className="space-y-3 pt-4 border-t border-white/5">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                  <User size={14} className="text-purple-400" />
+                <h5 className="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
+                  <User size={14} className="text-red-400" />
                   Thông tin thành viên (Member Information)
                 </h5>
 
@@ -455,6 +460,6 @@ export default function TicketManagementPage() {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   )
 }

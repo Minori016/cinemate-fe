@@ -84,6 +84,7 @@ export default function CinemaRoomDetailPage() {
 
       try {
         // 1. Fetch Room Info (AC-01)
+        // cinemaRoomService.getById() calls /api/v1/cinema-rooms và filter client-side
         const roomRes = await cinemaRoomService.getById(roomId)
         if (roomRes && roomRes.data && active) {
           fetchedRoom = roomRes.data
@@ -94,7 +95,7 @@ export default function CinemaRoomDetailPage() {
         const localRooms = localStorage.getItem('admin_cinema_rooms_db')
         if (localRooms && active) {
           const roomsList = JSON.parse(localRooms)
-          fetchedRoom = roomsList.find(r => r.id === roomId)
+          fetchedRoom = roomsList.find(r => r.id === roomId || String(r.id) === String(roomId))
           if (fetchedRoom) {
             setRoom(fetchedRoom)
           }
@@ -317,7 +318,7 @@ export default function CinemaRoomDetailPage() {
             Sơ đồ: {room ? room.name : 'Đang tải...'}
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            {room ? `Cinema Room ID: ${room.id} • Tên: ${room.name} • Quy mô: ${room.seatsCount} ghế` : 'Đang lấy dữ liệu chi tiết phòng chiếu...'}
+            {room ? `Cinema Room ID: ${room.id} • Tên: ${room.name} • Quy mô: ${room.capacity ?? room.seatsCount ?? '?'} ghế` : 'Đang lấy dữ liệu chi tiết phòng chiếu...'}
           </p>
         </div>
 
@@ -473,7 +474,7 @@ export default function CinemaRoomDetailPage() {
                 <div className="flex justify-between items-center pt-2 font-bold text-sm">
                   <span className="text-white">Tổng cộng:</span>
                   <span className="text-red-500 font-mono">
-                    {seats.length} / {room ? room.seatsCount : 0}
+                    {seats.length} / {room ? (room.capacity ?? room.seatsCount ?? 0) : 0}
                   </span>
                 </div>
               </div>

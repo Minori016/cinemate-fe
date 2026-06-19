@@ -1,6 +1,7 @@
 import { Link, useSearchParams, useNavigate, Outlet } from 'react-router-dom'
 import { TrendingUp, Calendar, Users, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import logoImg from '../../assets/Cinematelogo.png'
 
 export default function ManagerLayout({ children }) {
   const { user, logout } = useAuth()
@@ -29,7 +30,7 @@ export default function ManagerLayout({ children }) {
         {/* Brand Header */}
         <div className="px-6 py-5 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">📊</span>
+            <img src={logoImg} alt="Logo" className="w-9 h-9 object-contain" />
             <div>
               <h1 className="text-xl font-black tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                 <span className="text-white">CINE</span>
@@ -53,7 +54,7 @@ export default function ManagerLayout({ children }) {
                 to={item.to}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-purple-600 text-white shadow-lg shadow-[rgba(147,51,234,0.25)]'
+                    ? 'bg-red-600 text-white shadow-lg shadow-[rgba(229,9,20,0.25)]'
                     : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-white'
                 }`}
               >
@@ -78,14 +79,14 @@ export default function ManagerLayout({ children }) {
         {/* User Profile & Logout */}
         <div className="p-4 border-t border-[var(--color-border)] bg-color-mix(in srgb, var(--color-surface-container) 40%, transparent)">
           <div className="flex items-center gap-3 px-2 py-1.5 mb-3">
-            <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold shadow-md">
+            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-sm font-bold shadow-md">
               {user?.email?.[0]?.toUpperCase() || 'M'}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
                 {user?.email?.split('@')[0]}
               </p>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20 uppercase tracking-wider">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20 uppercase tracking-wider">
                 Quản lý
               </span>
             </div>

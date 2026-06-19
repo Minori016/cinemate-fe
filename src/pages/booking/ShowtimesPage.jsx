@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { motion } from 'motion/react'
@@ -62,115 +62,12 @@ const DAYS = Array.from({ length: 7 }, (_, i) => {
   }
 })
 
-// Mapping of valid show dates for each mock movie to verify dynamic options populating (AC-02 & AC-03)
-const MOVIE_DATES_MAP = {
-  1: [DAYS[0].date, DAYS[1].date], // Ma Xó - Today, Tomorrow
-  2: [DAYS[0].date, DAYS[1].date, DAYS[2].date], // Lớp học ám sát - 3 days
-  3: [], // Kumanthong - Empty dates to test AC-02 fallback requirement
-  7: [DAYS[0].date, DAYS[1].date, DAYS[2].date, DAYS[3].date, DAYS[4].date, DAYS[5].date, DAYS[6].date], // Spiderman - All 7 days
-  8: [DAYS[0].date] // Backrooms - Today only
-}
 
-/* ── Custom Select Component ── */
-function CustomSelect({ value, onChange, options, placeholder, disabled, error, label }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  const selectedOption = options.find(opt => opt.value === value)
-
-  return (
-    <div className="flex flex-col gap-2 relative w-full text-left" ref={containerRef}>
-      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
-        {label}
-      </span>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-[var(--color-surface)] border rounded-xl py-3 px-4 outline-none text-xs text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[42px]"
-        style={{
-          borderColor: error ? 'var(--color-error)' : isOpen ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.1)',
-          boxShadow: isOpen ? '0 0 10px rgba(229, 9, 20, 0.2)' : 'none',
-        }}
-      >
-        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        <span 
-          className="material-symbols-outlined transition-transform duration-200 text-gray-400 text-sm select-none"
-          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}
-        >
-          keyboard_arrow_down
-        </span>
-      </button>
-
-      {error && <span className="text-[10px] text-red-500 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
-
-      {isOpen && !disabled && (
-        <div
-          className="absolute left-0 top-[calc(100%+4px)] w-full rounded-xl border z-50 max-h-60 overflow-y-auto"
-          style={{
-            backgroundColor: 'var(--color-surface-container)',
-            borderColor: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-            padding: '6px 0',
-          }}
-        >
-          {options.length === 0 ? (
-            <div className="px-4 py-2.5 text-xs text-gray-500 italic select-none">
-              Không có lựa chọn nào
-            </div>
-          ) : (
-            options.map(opt => {
-              const isSelected = opt.value === value
-              return (
-                <div
-                  key={opt.value}
-                  onClick={() => {
-                    onChange(opt.value)
-                    setIsOpen(false)
-                  }}
-                  className="px-4 py-2.5 text-xs text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium"
-                  style={{
-                    backgroundColor: isSelected ? 'rgba(229, 9, 20, 0.15)' : 'transparent',
-                    color: isSelected ? 'var(--color-primary)' : 'inherit',
-                  }}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {isSelected && (
-                    <span className="material-symbols-outlined text-sm font-bold" style={{ color: 'var(--color-primary)' }}>
-                      check
-                    </span>
-                  )}
-                </div>
-              )
-            })
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function ShowtimesPage() {
   const [movies, setMovies] = useState([])
   const [selectedDay, setSelectedDay] = useState(DAYS[0].date)
   const navigate = useNavigate()
-
-  // Quick booking state variables (AC-01)
-  const [bookingMovieId, setBookingMovieId] = useState('')
-  const [bookingDate, setBookingDate] = useState('')
-  const [bookingTime, setBookingTime] = useState('')
-  const [errors, setErrors] = useState({ movie: '', date: '', time: '' })
 
   useEffect(() => { 
     movieService.getAll({ size: 100 })
@@ -203,60 +100,6 @@ export default function ShowtimesPage() {
       }) 
   }, [])
 
-  // Retrieve valid show dates for the selected movie (AC-02)
-  const getAvailableDates = () => {
-    if (!bookingMovieId) return []
-    
-    // Fallback if it matches mock IDs
-    if (MOVIE_DATES_MAP[bookingMovieId]) {
-      return MOVIE_DATES_MAP[bookingMovieId]
-    }
-    
-    const movie = movies.find(m => m.id.toString() === bookingMovieId)
-    if (!movie) return []
-    
-    // Generate deterministic available dates for API UUID movies
-    const charCodeSum = movie.id.toString().split('').reduce((sum, c) => sum + c.charCodeAt(0), 0)
-    const numDays = (charCodeSum % 5) + 3 // between 3 and 7 days
-    return DAYS.slice(0, numDays).map(d => d.date)
-  }
-
-  // Retrieve available times based on movie and date selections (AC-03)
-  const getAvailableTimes = () => {
-    if (!bookingMovieId || !bookingDate) return []
-    const availableDates = getAvailableDates()
-    if (!availableDates.includes(bookingDate)) return []
-    
-    const movie = movies.find(m => m.id.toString() === bookingMovieId)
-    return movie ? (movie.schedules || []) : []
-  }
-
-  // Handle Quick Booking Validation and Redirect (AC-04)
-  const handleQuickBook = (e) => {
-    e.preventDefault()
-    const newErrors = { movie: '', date: '', time: '' }
-    let valid = true
-
-    if (!bookingMovieId) {
-      newErrors.movie = 'Please select a movie'
-      valid = false
-    }
-    if (!bookingDate) {
-      newErrors.date = 'Please select the show date'
-      valid = false
-    }
-    if (!bookingTime) {
-      newErrors.time = 'Please select showtime'
-      valid = false
-    }
-
-    setErrors(newErrors)
-
-    if (valid) {
-      navigate(`/booking?movie=${bookingMovieId}&time=${bookingTime}&date=${bookingDate}`)
-    }
-  }
-
   return (
     <motion.div
       className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10"
@@ -282,80 +125,6 @@ export default function ShowtimesPage() {
           Chọn ngày và suất chiếu phù hợp với bạn
         </p>
       </motion.div>
-
-      {/* Quick Booking Widget (AC-01 to AC-04) */}
-      <div 
-        className="p-6 rounded-2xl mb-12 backdrop-blur-xl shadow-2xl relative z-30 text-left"
-        style={{
-          backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 45%, transparent)',
-          border: '1px solid rgba(255,255,255,0.08)'
-        }}
-      >
-        <h3 className="text-lg font-bold text-white uppercase tracking-wider mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-          ⚡ Đặt Vé Nhanh (Quick Booking)
-        </h3>
-        
-        <form onSubmit={handleQuickBook} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start pb-4">
-          {/* Select Movie Combobox (AC-01) */}
-          <CustomSelect
-            label="Chọn phim (Select Movie)"
-            placeholder="-- Chọn phim --"
-            value={bookingMovieId}
-            options={movies.map(m => ({ value: m.id.toString(), label: m.movieNameVn }))}
-            error={errors.movie}
-            onChange={(val) => {
-              setBookingMovieId(val)
-              setBookingDate('')
-              setBookingTime('')
-              setErrors({ movie: '', date: '', time: '' })
-            }}
-          />
-
-          {/* Select Date Combobox (AC-02) */}
-          <CustomSelect
-            label="Chọn ngày chiếu (Select Date)"
-            placeholder="-- Chọn ngày --"
-            value={bookingDate}
-            disabled={!bookingMovieId}
-            options={getAvailableDates().map(d => {
-              const dateObj = new Date(d)
-              const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
-              return { value: d, label }
-            })}
-            error={errors.date}
-            onChange={(val) => {
-              setBookingDate(val)
-              setBookingTime('')
-              setErrors(prev => ({ ...prev, date: '', time: '' }))
-            }}
-          />
-
-          {/* Select Time Combobox (AC-03) */}
-          <CustomSelect
-            label="Chọn suất chiếu (Select Time)"
-            placeholder="-- Chọn giờ --"
-            value={bookingTime}
-            disabled={!bookingDate}
-            options={getAvailableTimes().map(t => ({ value: t, label: t }))}
-            error={errors.time}
-            onChange={(val) => {
-              setBookingTime(val)
-              setErrors(prev => ({ ...prev, time: '' }))
-            }}
-          />
-
-          {/* Book Ticket Button (AC-04) */}
-          <div className="flex flex-col gap-2 w-full">
-            <span className="hidden md:block text-[10px] uppercase font-bold text-transparent tracking-wider">Đặt vé</span>
-            <button
-              type="submit"
-              className="w-full py-3 px-6 bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider active:scale-[0.98] transition-all shadow-lg shadow-[rgba(229,9,20,0.25)] h-[42px] cursor-pointer"
-            >
-              Book Ticket
-            </button>
-          </div>
-        </form>
-      </div>
 
       {/* Thanh chọn ngày (Day selector) */}
       <div className="flex flex-wrap justify-center gap-3 mb-12">

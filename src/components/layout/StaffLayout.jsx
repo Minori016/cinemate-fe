@@ -1,6 +1,7 @@
 import { Link, useSearchParams, useNavigate, Outlet } from 'react-router-dom'
 import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import logoImg from '../../assets/Cinematelogo.png'
 
 export default function StaffLayout({ children }) {
   const { user, logout } = useAuth()
@@ -29,7 +30,7 @@ export default function StaffLayout({ children }) {
         {/* Brand Header */}
         <div className="px-6 py-5 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2">
-            <span className="text-2xl">🎬</span>
+            <img src={logoImg} alt="Logo" className="w-9 h-9 object-contain" />
             <div>
               <h1 className="text-xl font-black tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                 <span className="text-white">CINE</span>

@@ -100,23 +100,23 @@ export default function Navbar() {
       }}
     >
       <div 
-        className="w-full mx-auto h-16 flex items-center justify-between"
+        className="w-full mx-auto h-16 flex items-center"
         style={{ 
           maxWidth: '1400px', 
-          paddingLeft: 'clamp(2rem, 6vw, 8rem)', 
-          paddingRight: 'clamp(2rem, 6vw, 8rem)' 
+          paddingLeft: 'clamp(1.5rem, 4vw, 5rem)', 
+          paddingRight: 'clamp(1.5rem, 4vw, 5rem)',
+          gap: '24px',
         }}
       >
         
-        {/* Logo Cinemate */}
+        {/* ── CỘT TRÁI: Logo ── */}
         <Link 
           to="/" 
-          className="text-2xl tracking-tighter transition-opacity hover:opacity-90 flex items-center gap-2" 
+          className="text-2xl tracking-tighter transition-opacity hover:opacity-90 flex items-center gap-2 flex-shrink-0" 
           style={{
             fontFamily: 'Montserrat, sans-serif',
             fontWeight: 900,
             letterSpacing: '-0.03em',
-            marginLeft: '-60px',
           }}
         >
           <img src={logoImg} alt="Logo" className="w-11 h-11 object-contain" />
@@ -126,69 +126,69 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Khu vực Menu & Tiện ích */}
-        <div className="flex items-center gap-6">
-          
-          {/* Menu Điều hướng chính */}
-          <div className="flex items-center gap-5">
-            <NavLink 
-              to="/movies" 
-              className={({ isActive }) => 
-                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
-                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
-                }`
-              }
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Phim
-            </NavLink>
-            <NavLink 
-              to="/showtimes" 
-              className={({ isActive }) => 
-                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
-                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
-                }`
-              }
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Lịch Chiếu
-            </NavLink>
-            <NavLink 
-              to="/cinemas" 
-              className={({ isActive }) => 
-                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
-                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
-                }`
-              }
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Rạp Chiếu
-            </NavLink>
-            <NavLink 
-              to="/promotions" 
-              className={({ isActive }) => 
-                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
-                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
-                }`
-              }
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Ưu Đãi
-            </NavLink>
-            <NavLink 
-              to="/about" 
-              className={({ isActive }) => 
-                `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
-                  isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
-                }`
-              }
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            >
-              Giới Thiệu
-            </NavLink>
-          </div>
+        {/* ── CỘT GIỮA: Menu điều hướng chính ── */}
+        <div className="flex-1 flex items-center justify-center gap-5">
+          <NavLink 
+            to="/movies" 
+            className={({ isActive }) => 
+              `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+              }`
+            }
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Phim
+          </NavLink>
+          <NavLink 
+            to="/showtimes" 
+            className={({ isActive }) => 
+              `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+              }`
+            }
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Lịch Chiếu
+          </NavLink>
+          <NavLink 
+            to="/cinemas" 
+            className={({ isActive }) => 
+              `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+              }`
+            }
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Rạp Chiếu
+          </NavLink>
+          <NavLink 
+            to="/promotions" 
+            className={({ isActive }) => 
+              `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+              }`
+            }
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Ưu Đãi
+          </NavLink>
+          <NavLink 
+            to="/about" 
+            className={({ isActive }) => 
+              `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 ${
+                isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-on-surface-variant)] hover:text-[var(--color-on-surface)]'
+              }`
+            }
+            style={{ fontFamily: 'Inter, sans-serif' }}
+          >
+            Giới Thiệu
+          </NavLink>
+        </div>
 
-          {/* Ô Tìm Kiếm chuẩn UI (Sửa triệt để lỗi đè chữ) */}
+        {/* ── CỘT PHẢI: Search + Actions ── */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          
+          {/* Ô Tìm Kiếm */}
           <div className="relative flex items-center w-36 md:w-44 transition-all duration-300" ref={searchRef}>
             <button
               type="button"
@@ -222,19 +222,14 @@ export default function Navbar() {
               onFocus={(e) => {
                 e.target.style.border = '1px solid var(--color-primary)'
                 e.target.style.boxShadow = '0 0 10px rgba(229,9,20,0.2)'
-                if (searchTerm.trim().length >= 1) {
-                  setSuggestionsOpen(true)
-                }
+                if (searchTerm.trim().length >= 1) setSuggestionsOpen(true)
               }}
               onBlur={(e) => {
                 e.target.style.border = '1px solid rgba(255,255,255,0.10)'
                 e.target.style.boxShadow = 'none'
-                // Delay so suggestion selection registers correctly before closing
                 setTimeout(() => setSuggestionsOpen(false), 200)
               }}
             />
-
-            {/* Suggestions list popup */}
             {suggestionsOpen && suggestions.length > 0 && (
               <div
                 className="absolute left-0 top-full mt-2 w-56 bg-[var(--color-surface-container)] border border-white/10 rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-hidden z-50 animate-fade-in text-left text-xs"
@@ -261,7 +256,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Nút MUA VÉ (Thiết kế dạng Vé xem phim) */}
+          {/* Nút MUA VÉ */}
           <button 
             onClick={() => navigate('/showtimes')}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-200 hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
@@ -280,7 +275,7 @@ export default function Navbar() {
             </div>
           </button>
 
-          {/* Nút Notification Chuông màu đỏ */}
+          {/* Nút Notification */}
           <div className="relative" ref={notificationRef}>
             <button 
               onClick={() => {
@@ -302,7 +297,6 @@ export default function Navbar() {
               )}
             </button>
 
-            {/* Notifications Dropdown Panel */}
             {notificationsOpen && (
               <div
                 className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50 text-left"
@@ -313,7 +307,6 @@ export default function Navbar() {
                   animation: 'dropdownFadeIn 0.2s ease-out',
                 }}
               >
-                {/* Header */}
                 <div className="px-4 py-3 flex justify-between items-center bg-white/5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                   <span className="font-bold text-[10px] uppercase text-white tracking-wider">Thông báo của bạn</span>
                   {notifications.some(n => !n.read) && (
@@ -325,8 +318,6 @@ export default function Navbar() {
                     </button>
                   )}
                 </div>
-
-                {/* List */}
                 <div className="max-h-72 overflow-y-auto divide-y divide-white/5">
                   {notifications.length > 0 ? (
                     notifications.map((n) => (
@@ -353,14 +344,13 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Khối User Profile / Nút Đăng nhập */}
+          {/* User Profile / Đăng nhập */}
           {user ? (
             <div className="relative" ref={dropdownRef}>
-              {/* Avatar Button */}
               <button
                 onClick={() => setDropdownOpen((v) => !v)}
-                className="flex items-center gap-2 pl-2 transition-all duration-200 group"
-                style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '16px' }}
+                className="flex items-center gap-2 transition-all duration-200 group"
+                style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}
               >
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden transition-all duration-200"
@@ -373,14 +363,7 @@ export default function Navbar() {
                   {user.image ? (
                     <img src={user.image} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <span
-                      style={{
-                        fontFamily: 'Montserrat, sans-serif',
-                        fontWeight: 800,
-                        fontSize: '14px',
-                        color: '#fff',
-                      }}
-                    >
+                    <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: '14px', color: '#fff' }}>
                       {(user.email || 'U').charAt(0).toUpperCase()}
                     </span>
                   )}
@@ -401,7 +384,6 @@ export default function Navbar() {
                 />
               </button>
 
-              {/* Dropdown Menu */}
               {dropdownOpen && (
                 <div
                   className="absolute right-0 top-full mt-2 w-64 rounded-xl overflow-hidden"
@@ -412,17 +394,10 @@ export default function Navbar() {
                     animation: 'dropdownFadeIn 0.2s ease-out',
                   }}
                 >
-                  {/* User Info Header */}
-                  <div
-                    className="px-4 py-3 flex items-center gap-3"
-                    style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
-                  >
+                  <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
-                      style={{
-                        background: 'linear-gradient(135deg, var(--color-primary-container), #b3070f)',
-                        border: '2px solid rgba(255,255,255,0.15)',
-                      }}
+                      style={{ background: 'linear-gradient(135deg, var(--color-primary-container), #b3070f)', border: '2px solid rgba(255,255,255,0.15)' }}
                     >
                       {user.image ? (
                         <img src={user.image} alt="Avatar" className="w-full h-full object-cover" />
@@ -433,33 +408,18 @@ export default function Navbar() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p
-                        className="truncate"
-                        style={{
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: '14px',
-                          fontWeight: 600,
-                          color: 'var(--color-on-surface)',
-                          margin: 0,
-                        }}
-                      >
-                        {user.email}
-                      </p>
-                      <p
-                        className="truncate"
-                        style={{
-                          fontFamily: 'Inter, sans-serif',
-                          fontSize: '12px',
-                          color: 'var(--color-on-surface-variant)',
-                          margin: 0,
-                        }}
-                      >
-                        {user.roles?.includes('ADMIN') ? 'Quản trị viên' : 'Thành viên'}
+                              <p className="truncate" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
+                        {user.roles?.includes('ADMIN') 
+                          ? 'Quản trị viên' 
+                          : user.roles?.includes('MANAGER') 
+                            ? 'Quản lý' 
+                            : user.roles?.includes('STAFF') 
+                              ? 'Nhân viên' 
+                              : 'Thành viên'}
                       </p>
                     </div>
                   </div>
-
-                  {/* Menu Items */}
+ 
                   <div className="py-1">
                     <Link
                       to="/profile"
@@ -472,23 +432,29 @@ export default function Navbar() {
                       <UserIcon size={16} />
                       Thông tin cá nhân
                     </Link>
-
-                    {user.roles?.includes('ADMIN') && (
-                      <Link
-                        to="/admin"
-                        onClick={() => setDropdownOpen(false)}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors duration-150"
-                        style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--color-on-surface)' }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--color-on-surface-variant)' }}
-                      >
-                        <Settings size={16} />
-                        Trang quản trị
-                      </Link>
-                    )}
+ 
+                    {(user.roles?.includes('ADMIN') || user.roles?.includes('MANAGER') || user.roles?.includes('STAFF')) && (() => {
+                      const dashboardPath = user.roles.includes('ADMIN') 
+                        ? '/admin' 
+                        : user.roles.includes('MANAGER') 
+                          ? '/manager' 
+                          : '/staff';
+                      return (
+                        <Link
+                          to={dashboardPath}
+                          onClick={() => setDropdownOpen(false)}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 transition-colors duration-150"
+                          style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif', fontSize: '14px' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--color-on-surface)' }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = 'var(--color-on-surface-variant)' }}
+                        >
+                          <Settings size={16} />
+                          Trang quản trị
+                        </Link>
+                      );
+                    })()}
                   </div>
 
-                  {/* Logout */}
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                     <button
                       onClick={handleLogout}
@@ -505,7 +471,6 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            /* Nút Đăng Nhập Đổ Bóng Đỏ Cao Cấp */
             <Link 
               to="/login" 
               className="py-1.5 px-4 rounded-full text-xs font-bold uppercase tracking-wider transition-all duration-200 active:scale-[0.98]"

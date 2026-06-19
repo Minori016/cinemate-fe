@@ -138,6 +138,32 @@ const getMembershipTier = (score) => {
   }
 }
 
+const stagger = (delay = 0) => ({
+  hidden: { opacity: 0, y: 20 },
+  show:   { opacity: 1, y: 0, transition: { duration: 0.5, delay, ease: 'easeOut' } },
+})
+
+function GlassCard({ children, className = '', delay = 0, style = {} }) {
+  return (
+    <motion.div
+      variants={stagger(delay)}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-60px' }}
+      className={`rounded-2xl ${className}`}
+      style={{ 
+        background: 'rgba(255,255,255,0.04)', 
+        backdropFilter: 'blur(14px)', 
+        border: '1px solid rgba(255,255,255,0.06)',
+        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+        ...style 
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
@@ -258,6 +284,7 @@ export default function ProfilePage() {
     identityCard: '',
     phoneNumber: '',
     address: '',
+    password: '',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -275,6 +302,16 @@ export default function ProfilePage() {
   const fileInputRef = useRef(null)
   const hasFetchedRef = useRef(false)
 
+  // States for Vietnam administrative divisions API
+  const [provinces, setProvinces] = useState([])
+  const [districts, setDistricts] = useState([])
+  const [wards, setWards] = useState([])
+
+  const [selectedProvince, setSelectedProvince] = useState('')
+  const [selectedDistrict, setSelectedDistrict] = useState('')
+  const [selectedWard, setSelectedWard] = useState('')
+  const [specificAddress, setSpecificAddress] = useState('')
+
   const fetchProfile = useCallback(async () => {
     try {
       const res = await userService.getMyInfo()
@@ -290,6 +327,7 @@ export default function ProfilePage() {
         identityCard: data.identityCard || '',
         phoneNumber: data.phoneNumber || '',
         address: data.address || '',
+        password: '',
       })
     } catch {
       setError('Không thể tải thông tin hồ sơ.')
@@ -314,6 +352,128 @@ export default function ProfilePage() {
     setSuccess('')
   }
 
+  const handleProvinceChange = async (e) => {
+    const code = e.target.value
+    setSelectedProvince(code)
+    setSelectedDistrict('')
+    setSelectedWard('')
+    setDistricts([])
+    setWards([])
+    if (code) {
+      try {
+        const res = await fetch(`https://provinces.open-api.vn/api/p/${code}?depth=2`)
+        const data = await res.json()
+        setDistricts(data.districts || [])
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách quận huyện:', err)
+      }
+    }
+  }
+
+  const handleDistrictChange = async (e) => {
+    const code = e.target.value
+    setSelectedDistrict(code)
+    setSelectedWard('')
+    setWards([])
+    if (code) {
+      try {
+        const res = await fetch(`https://provinces.open-api.vn/api/d/${code}?depth=2`)
+        const data = await res.json()
+        setWards(data.wards || [])
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách phường xã:', err)
+      }
+    }
+  }
+
+  const handleWardChange = (e) => {
+    setSelectedWard(e.target.value)
+  }
+
+  // Effect to parse existing address when entering edit mode
+  useEffect(() => {
+    if (isEditing && profile?.address) {
+      const addr = profile.address
+      fetch('https://provinces.open-api.vn/api/p/')
+        .then(res => res.json())
+        .then(async (provList) => {
+          setProvinces(provList)
+          
+          const matchedProv = provList.find(p => addr.toLowerCase().includes(p.name.toLowerCase()))
+          if (matchedProv) {
+            setSelectedProvince(matchedProv.code)
+            
+            try {
+              const distRes = await fetch(`https://provinces.open-api.vn/api/p/${matchedProv.code}?depth=2`)
+              const distData = await distRes.json()
+              const distList = distData.districts || []
+              setDistricts(distList)
+              
+              const matchedDist = distList.find(d => addr.toLowerCase().includes(d.name.toLowerCase()))
+              if (matchedDist) {
+                setSelectedDistrict(matchedDist.code)
+                
+                const wardRes = await fetch(`https://provinces.open-api.vn/api/d/${matchedDist.code}?depth=2`)
+                const wardData = await wardRes.json()
+                const wardList = wardData.wards || []
+                setWards(wardList)
+                
+                const matchedWard = wardList.find(w => addr.toLowerCase().includes(w.name.toLowerCase()))
+                if (matchedWard) {
+                  setSelectedWard(matchedWard.code)
+                  
+                  let spec = addr
+                  spec = spec.replace(new RegExp(matchedProv.name, 'i'), '')
+                  spec = spec.replace(new RegExp(matchedDist.name, 'i'), '')
+                  spec = spec.replace(new RegExp(matchedWard.name, 'i'), '')
+                  spec = spec.replace(/^[\s,]+|[\s,]+$/g, '').replace(/,\s*,/g, ',')
+                  setSpecificAddress(spec)
+                } else {
+                  let spec = addr
+                  spec = spec.replace(new RegExp(matchedProv.name, 'i'), '')
+                  spec = spec.replace(new RegExp(matchedDist.name, 'i'), '')
+                  spec = spec.replace(/^[\s,]+|[\s,]+$/g, '').replace(/,\s*,/g, ',')
+                  setSpecificAddress(spec)
+                }
+              } else {
+                let spec = addr
+                spec = spec.replace(new RegExp(matchedProv.name, 'i'), '')
+                spec = spec.replace(/^[\s,]+|[\s,]+$/g, '').replace(/,\s*,/g, ',')
+                setSpecificAddress(spec)
+              }
+            } catch (err) {
+              console.error('Lỗi khi phân tích địa chỉ đã lưu:', err)
+            }
+          } else {
+            setSpecificAddress(addr)
+          }
+        })
+        .catch(err => console.error('Lỗi khi tải danh sách tỉnh thành:', err))
+    } else if (isEditing) {
+      fetch('https://provinces.open-api.vn/api/p/')
+        .then(res => res.json())
+        .then(data => setProvinces(data))
+        .catch(err => console.error('Lỗi khi tải danh sách tỉnh thành:', err))
+      
+      setSelectedProvince('')
+      setSelectedDistrict('')
+      setSelectedWard('')
+      setSpecificAddress('')
+    }
+  }, [isEditing, profile])
+
+  // Effect to reactively compile selected fields to form.address
+  useEffect(() => {
+    if (!isEditing) return
+    const provinceName = provinces.find(p => String(p.code) === String(selectedProvince))?.name || ''
+    const districtName = districts.find(d => String(d.code) === String(selectedDistrict))?.name || ''
+    const wardName = wards.find(w => String(w.code) === String(selectedWard))?.name || ''
+
+    const parts = [specificAddress, wardName, districtName, provinceName].filter(Boolean)
+    const fullAddress = parts.join(', ')
+    setForm(f => ({ ...f, address: fullAddress }))
+  }, [selectedProvince, selectedDistrict, selectedWard, specificAddress, provinces, districts, wards, isEditing])
+
   const handleCancel = () => {
     if (profile) {
       setForm({
@@ -325,6 +485,7 @@ export default function ProfilePage() {
         identityCard: profile.identityCard || '',
         phoneNumber: profile.phoneNumber || '',
         address: profile.address || '',
+        password: '',
       })
     }
     setIsEditing(false)
@@ -335,6 +496,10 @@ export default function ProfilePage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+
+    if (!form.password) {
+      return setError('Vui lòng nhập mật khẩu để xác nhận cập nhật.')
+    }
 
     setSaving(true)
     try {
@@ -347,12 +512,14 @@ export default function ProfilePage() {
         identityCard: form.identityCard || profile?.identityCard || '',
         phoneNumber: form.phoneNumber || profile?.phoneNumber || '',
         address: form.address || profile?.address || '',
+        password: form.password,
       }
 
       const res = await userService.updateMyProfile(payload)
       const data = res.data?.result ?? res.data
       setProfile(data)
       updateUser({ image: data.image, fullName: data.fullName })
+      setForm((f) => ({ ...f, password: '' }))
       setSuccess('Cập nhật hồ sơ thành công!')
       setIsEditing(false)
       setTimeout(() => setSuccess(''), 4000)
@@ -458,32 +625,6 @@ export default function ProfilePage() {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
-  }
-
-  const stagger = (delay = 0) => ({
-    hidden: { opacity: 0, y: 20 },
-    show:   { opacity: 1, y: 0, transition: { duration: 0.5, delay, ease: 'easeOut' } },
-  })
-
-  function GlassCard({ children, className = '', delay = 0, style = {} }) {
-    return (
-      <motion.div
-        variants={stagger(delay)}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, margin: '-60px' }}
-        className={`rounded-2xl ${className}`}
-        style={{ 
-          background: 'rgba(255,255,255,0.04)', 
-          backdropFilter: 'blur(14px)', 
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-          ...style 
-        }}
-      >
-        {children}
-      </motion.div>
-    )
   }
 
   const displayValue = (value) => value?.trim() || 'Chưa cập nhật'
@@ -789,8 +930,100 @@ export default function ProfilePage() {
                         required 
                       />
 
-                      <div className="md:col-span-2">
-                        <Input label="Địa chỉ *" name="address" value={form.address} onChange={handleChange} required />
+                      {/* Tỉnh / Thành phố */}
+                      <div className="flex flex-col gap-2">
+                        <label className="uppercase font-semibold text-left" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
+                          Tỉnh / Thành phố *
+                        </label>
+                        <select
+                          value={selectedProvince}
+                          onChange={handleProvinceChange}
+                          className="w-full rounded-lg px-4 py-3 transition-all outline-none cursor-pointer"
+                          style={selectStyle}
+                          onFocus={handleFocus}
+                          onBlur={handleBlur}
+                          required
+                        >
+                          <option value="" style={{ background: 'var(--color-surface-container-highest)' }}>Chọn Tỉnh / Thành phố</option>
+                          {provinces.map(p => (
+                            <option key={p.code} value={p.code} style={{ background: 'var(--color-surface-container-highest)' }}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Quận / Huyện */}
+                      <div className="flex flex-col gap-2">
+                        <label className="uppercase font-semibold text-left" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
+                          Quận / Huyện *
+                        </label>
+                        <select
+                          value={selectedDistrict}
+                          onChange={handleDistrictChange}
+                          disabled={!selectedProvince}
+                          className="w-full rounded-lg px-4 py-3 transition-all outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={selectStyle}
+                          onFocus={handleFocus}
+                          onBlur={handleBlur}
+                          required
+                        >
+                          <option value="" style={{ background: 'var(--color-surface-container-highest)' }}>Chọn Quận / Huyện</option>
+                          {districts.map(d => (
+                            <option key={d.code} value={d.code} style={{ background: 'var(--color-surface-container-highest)' }}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Phường / Xã */}
+                      <div className="flex flex-col gap-2">
+                        <label className="uppercase font-semibold text-left" style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', letterSpacing: '0.05em', color: 'var(--color-on-surface)' }}>
+                          Phường / Xã *
+                        </label>
+                        <select
+                          value={selectedWard}
+                          onChange={handleWardChange}
+                          disabled={!selectedDistrict}
+                          className="w-full rounded-lg px-4 py-3 transition-all outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={selectStyle}
+                          onFocus={handleFocus}
+                          onBlur={handleBlur}
+                          required
+                        >
+                          <option value="" style={{ background: 'var(--color-surface-container-highest)' }}>Chọn Phường / Xã</option>
+                          {wards.map(w => (
+                            <option key={w.code} value={w.code} style={{ background: 'var(--color-surface-container-highest)' }}>{w.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Số nhà, tên đường */}
+                      <div>
+                        <Input 
+                          label="Số nhà, tên đường *" 
+                          name="specificAddress" 
+                          placeholder="VD: 123 Đường ABC"
+                          value={specificAddress} 
+                          onChange={(e) => setSpecificAddress(e.target.value)} 
+                          required 
+                        />
+                      </div>
+
+                      {/* Password confirmation */}
+                      <div className="md:col-span-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '16px', marginTop: '8px' }}>
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-primary)', marginTop: '2px' }}>info</span>
+                          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0, lineHeight: '1.5', textAlign: 'left' }}>
+                            Nhập mật khẩu hiện tại để xác nhận thay đổi thông tin tài khoản. Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.
+                          </p>
+                        </div>
+                        <Input 
+                          label="Mật khẩu xác nhận *" 
+                          name="password" 
+                          type="password" 
+                          placeholder="Nhập mật khẩu hiện tại của bạn" 
+                          value={form.password} 
+                          onChange={handleChange} 
+                          required 
+                        />
                       </div>
 
                       {/* Save Button */}

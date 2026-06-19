@@ -134,7 +134,7 @@ const CustomTooltipMovie = ({ active, payload, label }) => {
     return (
       <div className="bg-[#0f121d] border border-white/10 p-3.5 rounded-xl shadow-xl text-xs space-y-1 text-left text-white">
         <p className="font-extrabold text-white mb-1">{label}</p>
-        <p className="text-purple-400 font-semibold">Doanh thu: {formatVND(payload[0].value)}</p>
+        <p className="text-red-400 font-semibold">Doanh thu: {formatVND(payload[0].value)}</p>
         <p className="text-gray-400">Vé bán ước tính: {payload[0].payload.tickets} vé</p>
       </div>
     )
@@ -333,7 +333,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
             <p class="text-sm font-semibold">Bản in xem trước (Print Preview Dashboard)</p>
             <p class="text-xs text-gray-400">Trang này được tối ưu hóa cho in ấn hoặc xuất PDF từ trình duyệt.</p>
           </div>
-          <button onclick="window.print()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all cursor-pointer">
+          <button onclick="window.print()" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-lg transition-all cursor-pointer">
             🖨️ Tiến hành In / Xuất PDF
           </button>
         </div>
@@ -346,7 +346,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                 <span class="text-3xl">📊</span>
                 <div>
                   <h1 class="text-2xl font-black font-montserrat tracking-wider">
-                    <span class="text-white">CINE</span><span class="text-purple-500">MATE</span>
+                    <span class="text-white">CINE</span><span class="text-red-500">MATE</span>
                   </h1>
                   <p class="text-[10px] tracking-widest text-gray-400 font-bold uppercase">Báo cáo hiệu suất rạp phim</p>
                 </div>
@@ -354,7 +354,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
             </div>
             <div class="text-right text-xs text-gray-400 space-y-1">
               <p>Ngày tạo: <span class="text-white font-semibold">${new Date().toLocaleString('vi-VN')}</span></p>
-              <p>Chu kỳ dữ liệu: <span class="text-purple-400 font-bold uppercase">${currentGranularity}</span></p>
+              <p>Chu kỳ dữ liệu: <span class="text-red-400 font-bold uppercase">${currentGranularity}</span></p>
             </div>
           </div>
 
@@ -362,19 +362,19 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
           <div class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl text-xs">
             <div>
               <p class="text-gray-400">Phim chiếu:</p>
-              <p class="font-bold text-purple-300 mt-0.5">${filterLabels.movieLabel}</p>
+              <p class="font-bold text-red-300 mt-0.5">${filterLabels.movieLabel}</p>
             </div>
             <div>
               <p class="text-gray-400">Thời gian biểu:</p>
-              <p class="font-bold text-purple-300 mt-0.5">${filterLabels.dateLabel}</p>
+              <p class="font-bold text-red-300 mt-0.5">${filterLabels.dateLabel}</p>
             </div>
             <div>
               <p class="text-gray-400">Khung giờ:</p>
-              <p class="font-bold text-purple-300 mt-0.5">${filterLabels.timeLabel}</p>
+              <p class="font-bold text-red-300 mt-0.5">${filterLabels.timeLabel}</p>
             </div>
             <div>
               <p class="text-gray-400">Chi nhánh:</p>
-              <p class="font-bold text-purple-300 mt-0.5">${filterLabels.locationLabel}</p>
+              <p class="font-bold text-red-300 mt-0.5">${filterLabels.locationLabel}</p>
             </div>
           </div>
 
@@ -382,7 +382,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="p-5 bg-white/5 border border-white/10 rounded-2xl">
               <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Doanh thu tổng cộng</p>
-              <p class="text-xl font-extrabold text-white mt-2 font-mono text-purple-400">${formatVND(totalRev)}</p>
+              <p class="text-xl font-extrabold text-white mt-2 font-mono text-red-400">${formatVND(totalRev)}</p>
             </div>
             <div class="p-5 bg-white/5 border border-white/10 rounded-2xl">
               <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Tổng số lượng vé</p>
@@ -411,10 +411,10 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                 <div>
                   <div class="flex justify-between text-xs font-semibold mb-1">
                     <span>Doanh thu vé phim</span>
-                    <span class="text-purple-400">${formatVND(ticketRev)} (${((ticketRev / totalRev) * 100).toFixed(1)}%)</span>
+                    <span class="text-red-400">${formatVND(ticketRev)} (${((ticketRev / totalRev) * 100).toFixed(1)}%)</span>
                   </div>
                   <div class="w-full h-2.5 bg-white/5 rounded-full overflow-hidden">
-                    <div class="h-full bg-purple-500 rounded-full" style="width: ${((ticketRev / totalRev) * 100)}%"></div>
+                    <div class="h-full bg-red-500 rounded-full" style="width: ${((ticketRev / totalRev) * 100)}%"></div>
                   </div>
                 </div>
 
@@ -518,7 +518,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                       <td class="py-3 font-semibold text-white">${item.label}</td>
                       <td class="py-3 font-mono">${formatVND(item.ticket)}</td>
                       <td class="py-3 font-mono">${formatVND(item.concession)}</td>
-                      <td class="py-3 font-mono font-bold text-right text-purple-300">${formatVND(item.total)}</td>
+                      <td class="py-3 font-mono font-bold text-right text-red-300">${formatVND(item.total)}</td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -568,17 +568,17 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
         <div className="p-6 space-y-6">
           {isExporting ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center">
-              <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+              <Loader2 className="w-10 h-10 text-red-500 animate-spin" />
               <p className="text-sm font-bold text-white transition-all duration-300">{exportStep}</p>
               <div className="w-48 h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 animate-pulse" style={{ width: '70%' }}></div>
+                <div className="h-full bg-red-500 animate-pulse" style={{ width: '70%' }}></div>
               </div>
             </div>
           ) : (
             <>
               {/* Active Filters Display */}
-              <div className="p-4 bg-purple-900/10 border border-purple-500/20 rounded-2xl space-y-2.5">
-                <p className="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Bộ lọc báo cáo đang áp dụng (AC-03)</p>
+              <div className="p-4 bg-red-950/15 border border-red-500/20 rounded-2xl space-y-2.5">
+                <p className="text-[10px] uppercase font-bold text-red-400 tracking-wider">Bộ lọc báo cáo đang áp dụng (AC-03)</p>
                 <div className="grid grid-cols-2 gap-2.5 text-xs text-gray-300">
                   <p>● Phim: <strong className="text-white">{filterLabels.movieLabel}</strong></p>
                   <p>● Thời gian: <strong className="text-white">{filterLabels.dateLabel}</strong></p>
@@ -595,7 +595,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                     onClick={() => setFormat('excel')}
                     className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
                       format === 'excel'
-                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 shadow-md'
+                        ? 'bg-red-600/10 border-red-500 text-red-400 shadow-md'
                         : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
                     }`}
                   >
@@ -608,7 +608,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                     onClick={() => setFormat('pdf')}
                     className={`p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all duration-200 ${
                       format === 'pdf'
-                        ? 'bg-purple-600/10 border-purple-500 text-purple-400 shadow-md'
+                        ? 'bg-red-600/10 border-red-500 text-red-400 shadow-md'
                         : 'bg-white/5 border-white/10 text-gray-400 hover:border-white/20'
                     }`}
                   >
@@ -646,7 +646,7 @@ function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displ
                 <button
                   type="button"
                   onClick={handleExport}
-                  className="flex-1 py-3.5 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-2xl shadow-lg shadow-[rgba(147,51,234,0.25)] transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                  className="flex-1 py-3.5 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl shadow-lg shadow-[rgba(229,9,20,0.25)] transition-all flex items-center justify-center gap-1.5 cursor-pointer border-none"
                 >
                   <Download size={14} /> Xác nhận xuất file
                 </button>
@@ -701,9 +701,9 @@ export default function ManagerDashboardPage() {
         <div
           className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm max-w-sm transition-all duration-300 animate-slide-in-up`}
           style={{
-            backgroundColor: toast.type === 'success' ? 'rgba(147,51,234,0.15)' : 'rgba(239,68,68,0.15)',
-            borderColor: toast.type === 'success' ? 'rgba(147,51,234,0.3)' : 'rgba(239,68,68,0.3)',
-            color: toast.type === 'success' ? '#a855f7' : '#ef4444',
+            backgroundColor: toast.type === 'success' ? 'rgba(229,9,20,0.15)' : 'rgba(239,68,68,0.15)',
+            borderColor: toast.type === 'success' ? 'rgba(229,9,20,0.3)' : 'rgba(239,68,68,0.3)',
+            color: toast.type === 'success' ? '#e50914' : '#ef4444',
             backdropFilter: 'blur(16px)'
           }}
         >
@@ -867,7 +867,7 @@ function AnalyticsSection({ triggerToast }) {
         transition={{ duration: 0.45 }}
       >
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight uppercase text-purple-400" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h2 className="text-3xl font-extrabold tracking-tight uppercase text-red-500" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Báo cáo doanh thu & Thống kê
           </h2>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -889,7 +889,7 @@ function AnalyticsSection({ triggerToast }) {
           <button
             onClick={handleForceRefresh}
             disabled={isRefreshing}
-            className="p-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/50 text-white rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center cursor-pointer border-none outline-none"
+            className="p-3 bg-red-600 hover:bg-red-700 disabled:bg-red-600/50 text-white rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center cursor-pointer border-none outline-none"
             title="Làm mới ngay dữ liệu"
           >
             <Clock className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -897,7 +897,7 @@ function AnalyticsSection({ triggerToast }) {
 
           <button
             onClick={() => setExportModalOpen(true)}
-            className="px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer border-none"
+            className="px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer border-none"
           >
             <Download size={14} /> Xuất báo cáo
           </button>
@@ -912,7 +912,7 @@ function AnalyticsSection({ triggerToast }) {
         transition={{ duration: 0.45, delay: 0.05 }}
       >
         <h4 className="text-xs uppercase font-extrabold text-white tracking-widest mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm text-purple-400">filter_alt</span>
+          <span className="material-symbols-outlined text-sm text-red-500">filter_alt</span>
           Bộ lọc thống kê nâng cao (Advanced Filters)
         </h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -922,7 +922,7 @@ function AnalyticsSection({ triggerToast }) {
             <select
               value={filterMovie}
               onChange={(e) => setFilterMovie(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-purple-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả phim</option>
               <option value="latmat">Lật Mặt 7: Một Điều Ước</option>
@@ -938,7 +938,7 @@ function AnalyticsSection({ triggerToast }) {
             <select
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-purple-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả ngày</option>
               <option value="today">Hôm nay (Today)</option>
@@ -953,7 +953,7 @@ function AnalyticsSection({ triggerToast }) {
             <select
               value={filterTime}
               onChange={(e) => setFilterTime(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-purple-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả khung giờ</option>
               <option value="morning">Ca Sáng (08:00 - 12:00)</option>
@@ -968,7 +968,7 @@ function AnalyticsSection({ triggerToast }) {
             <select
               value={filterLocation}
               onChange={(e) => setFilterLocation(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-purple-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả chi nhánh</option>
               <option value="hungvuong">CineMate Hùng Vương Plaza</option>
@@ -1005,7 +1005,7 @@ function AnalyticsSection({ triggerToast }) {
         >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Doanh thu bán vé</p>
-            <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
+            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <DollarSign size={16} />
             </span>
           </div>
@@ -1026,7 +1026,7 @@ function AnalyticsSection({ triggerToast }) {
         >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tổng số lượng vé</p>
-            <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
+            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <Ticket size={16} />
             </span>
           </div>
@@ -1047,7 +1047,7 @@ function AnalyticsSection({ triggerToast }) {
         >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Số lượng lượt khách</p>
-            <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
+            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <Users size={16} />
             </span>
           </div>
@@ -1068,7 +1068,7 @@ function AnalyticsSection({ triggerToast }) {
         >
           <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tỷ lệ lấp đầy</p>
-            <span className="p-2 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/10">
+            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <Percent size={16} />
             </span>
           </div>
@@ -1104,7 +1104,7 @@ function AnalyticsSection({ triggerToast }) {
               <button
                 onClick={() => setTimeGranularity('day')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-none outline-none cursor-pointer ${
-                  timeGranularity === 'day' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
+                  timeGranularity === 'day' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
                 }`}
               >
                 Ngày
@@ -1112,7 +1112,7 @@ function AnalyticsSection({ triggerToast }) {
               <button
                 onClick={() => setTimeGranularity('week')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-none outline-none cursor-pointer ${
-                  timeGranularity === 'week' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
+                  timeGranularity === 'week' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
                 }`}
               >
                 Tuần
@@ -1120,7 +1120,7 @@ function AnalyticsSection({ triggerToast }) {
               <button
                 onClick={() => setTimeGranularity('month')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-none outline-none cursor-pointer ${
-                  timeGranularity === 'month' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
+                  timeGranularity === 'month' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
                 }`}
               >
                 Tháng
@@ -1128,7 +1128,7 @@ function AnalyticsSection({ triggerToast }) {
               <button
                 onClick={() => setTimeGranularity('quarter')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-none outline-none cursor-pointer ${
-                  timeGranularity === 'quarter' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
+                  timeGranularity === 'quarter' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
                 }`}
               >
                 Quý
@@ -1136,7 +1136,7 @@ function AnalyticsSection({ triggerToast }) {
               <button
                 onClick={() => setTimeGranularity('year')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all border-none outline-none cursor-pointer ${
-                  timeGranularity === 'year' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
+                  timeGranularity === 'year' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white bg-transparent'
                 }`}
               >
                 Năm
@@ -1149,8 +1149,8 @@ function AnalyticsSection({ triggerToast }) {
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.4}/>
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#e50914" stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor="#e50914" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0d" />
@@ -1160,7 +1160,7 @@ function AnalyticsSection({ triggerToast }) {
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                 <Area type="monotone" dataKey="ticket" name="Doanh thu vé" stroke="#3b82f6" fill="transparent" strokeWidth={2} />
                 <Area type="monotone" dataKey="concession" name="Doanh thu bắp nước" stroke="#f59e0b" fill="transparent" strokeWidth={2} />
-                <Area type="monotone" dataKey="total" name="Tổng doanh số" stroke="#a855f7" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
+                <Area type="monotone" dataKey="total" name="Tổng doanh số" stroke="#e50914" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -1182,7 +1182,7 @@ function AnalyticsSection({ triggerToast }) {
                 <XAxis type="number" stroke="#7e8494" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
                 <YAxis dataKey="name" type="category" stroke="#7e8494" fontSize={11} width={80} tickLine={false} />
                 <Tooltip content={<CustomTooltipMovie />} />
-                <Bar dataKey="revenue" name="Doanh thu" fill="#a855f7" radius={[0, 8, 8, 0]} barSize={16} />
+                <Bar dataKey="revenue" name="Doanh thu" fill="#e50914" radius={[0, 8, 8, 0]} barSize={16} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1270,7 +1270,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3.5 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-[rgba(147,51,234,0.25)] text-sm"
+          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-[rgba(229,9,20,0.25)] text-sm"
         >
           <Plus size={16} /> Lên lịch suất chiếu
         </button>
@@ -1356,7 +1356,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 <select
                   value={form.movie}
                   onChange={(e) => setForm({ ...form, movie: e.target.value })}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer"
                 >
                   {AVAILABLE_MOVIES.map((mv) => (
                     <option key={mv} value={mv}>{mv}</option>
@@ -1370,7 +1370,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 <select
                   value={form.room}
                   onChange={(e) => setForm({ ...form, room: e.target.value })}
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer"
                 >
                   {AVAILABLE_ROOMS.map((rm) => (
                     <option key={rm} value={rm}>{rm}</option>
@@ -1387,7 +1387,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                     value={form.date}
                     onChange={(e) => setForm({ ...form, date: e.target.value })}
                     required
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer"
                   />
                 </div>
 
@@ -1399,7 +1399,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                     value={form.time}
                     onChange={(e) => setForm({ ...form, time: e.target.value })}
                     required
-                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500 cursor-pointer"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer"
                   />
                 </div>
               </div>
@@ -1415,7 +1415,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                   required
                   min="30000"
                   step="5000"
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-purple-500"
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500"
                 />
               </div>
 
@@ -1430,7 +1430,7 @@ function ShowtimeSection({ showtimes, setShowtimes, triggerToast }) {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3.5 text-xs bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer border-none"
+                  className="flex-1 py-3.5 text-xs bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer border-none"
                 >
                   Xác nhận lên lịch
                 </button>
@@ -1532,7 +1532,7 @@ function ShiftSection({ shifts, setShifts, triggerToast }) {
                   <select
                     value={sf.room}
                     onChange={(e) => handleRoomAllocation(sf.id, sf.name, e.target.value)}
-                    className="bg-color-mix(in srgb, var(--color-surface-container) 70%, transparent) border border-[var(--color-border)] rounded-lg py-1.5 px-3 outline-none text-[11px] text-white focus:border-purple-500 font-medium cursor-pointer"
+                    className="bg-color-mix(in srgb, var(--color-surface-container) 70%, transparent) border border-[var(--color-border)] rounded-lg py-1.5 px-3 outline-none text-[11px] text-white focus:border-red-500 font-medium cursor-pointer"
                   >
                     <option value="Quầy bán vé trung tâm">Quầy bán vé trung tâm</option>
                     <option value="Quầy bắp nước số 1">Quầy bắp nước số 1</option>

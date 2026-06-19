@@ -1,9 +1,101 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { useAuth } from '../../contexts/AuthContext'
 import { ChevronLeft, ChevronRight, Tag, Clock, Globe, MessageSquare, MapPin, Phone, Calendar, Star, Gift, Crown, Ticket, Zap, Users, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+
+// ── Quick Booking: 7 ngày tới ─────────────────────────────────────
+const DAYS = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date()
+  d.setDate(d.getDate() + i)
+  return {
+    date: d.toISOString().slice(0, 10),
+    label: d.getDate(),
+    day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]
+  }
+})
+
+/* ── Custom Select dùng cho Quick Booking ── */
+function CustomSelect({ value, onChange, options, placeholder, disabled, error, label }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find(opt => opt.value === value)
+
+  return (
+    <div className="flex flex-col gap-2 relative w-full text-left" ref={containerRef}>
+      <span className="text-[10px] uppercase font-bold tracking-wider" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        {label}
+      </span>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between rounded-xl py-3 px-4 outline-none text-xs text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[44px]"
+        style={{
+          background: 'rgba(255,255,255,0.07)',
+          border: `1px solid ${error ? '#ef4444' : isOpen ? '#e50914' : 'rgba(255,255,255,0.13)'}`,
+          boxShadow: isOpen ? '0 0 12px rgba(229,9,20,0.25)' : 'none',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        <span className="truncate font-medium" style={{ color: selectedOption ? '#fff' : 'rgba(255,255,255,0.4)' }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <span
+          className="material-symbols-outlined text-sm select-none transition-transform duration-200"
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', color: 'rgba(255,255,255,0.5)' }}
+        >
+          keyboard_arrow_down
+        </span>
+      </button>
+      {error && <span className="text-[10px] text-red-400 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
+      {isOpen && !disabled && (
+        <div
+          className="absolute left-0 top-[calc(100%+6px)] w-full rounded-xl z-50 max-h-60 overflow-y-auto"
+          style={{
+            background: 'rgba(18,12,12,0.97)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(24px)',
+            boxShadow: '0 16px 40px rgba(0,0,0,0.7)',
+            padding: '6px 0',
+          }}
+        >
+          {options.length === 0 ? (
+            <div className="px-4 py-3 text-xs text-gray-500 italic">Không có lựa chọn nào</div>
+          ) : (
+            options.map(opt => {
+              const isSelected = opt.value === value
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => { onChange(opt.value); setIsOpen(false) }}
+                  className="px-4 py-2.5 text-xs text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium"
+                  style={{
+                    backgroundColor: isSelected ? 'rgba(229,9,20,0.18)' : 'transparent',
+                    color: isSelected ? '#e50914' : 'inherit',
+                  }}
+                >
+                  <span className="truncate">{opt.label}</span>
+                  {isSelected && <span className="material-symbols-outlined text-sm font-bold" style={{ color: '#e50914' }}>check</span>}
+                </div>
+              )
+            })
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── Static data cho các section homepage ─────────────────────────
 const PROMOTIONS = [
@@ -106,6 +198,50 @@ export default function HomePage() {
   const [isHoveringBanner, setIsHoveringBanner] = useState(false)
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
+
+  // ── Quick Booking state ────────────────────────────────────────
+  const [bookingMovieId, setBookingMovieId] = useState('')
+  const [bookingDate, setBookingDate] = useState('')
+  const [bookingTime, setBookingTime] = useState('')
+  const [bookingErrors, setBookingErrors] = useState({ movie: '', date: '', time: '' })
+
+  const getAvailableDates = () => {
+    if (!bookingMovieId) return []
+    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
+    if (!movie) return []
+    const charCodeSum = movie.id.toString().split('').reduce((s, c) => s + c.charCodeAt(0), 0)
+    const numDays = (charCodeSum % 5) + 3
+    return DAYS.slice(0, numDays).map(d => d.date)
+  }
+
+  const getAvailableTimes = () => {
+    if (!bookingMovieId || !bookingDate) return []
+    if (!getAvailableDates().includes(bookingDate)) return []
+    const SCHEDULE_TEMPLATES = [
+      ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15'],
+      ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30'],
+      ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30'],
+      ['10:15', '13:00', '16:45', '19:30', '22:15'],
+      ['11:00', '14:30', '18:00', '20:30', '22:30'],
+    ]
+    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
+    if (!movie) return []
+    const idx = movies.indexOf(movie)
+    return movie.showtimes?.map(st => new Date(st.startTime).toTimeString().slice(0, 5)) ||
+           SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
+  }
+
+  const handleQuickBook = (e) => {
+    e.preventDefault()
+    const newErrors = { movie: '', date: '', time: '' }
+    let valid = true
+    if (!bookingMovieId) { newErrors.movie = 'Vui lòng chọn phim'; valid = false }
+    if (!bookingDate)    { newErrors.date  = 'Vui lòng chọn ngày'; valid = false }
+    if (!bookingTime)    { newErrors.time  = 'Vui lòng chọn giờ';  valid = false }
+    setBookingErrors(newErrors)
+    if (valid) navigate(`/booking?movie=${bookingMovieId}&time=${bookingTime}&date=${bookingDate}`)
+  }
+  // ─────────────────────────────────────────────────────────────
 
   // Lấy tối đa 6 phim đầu làm banner
   const bannerMovies = movies.slice(0, 6)
@@ -416,8 +552,107 @@ export default function HomePage() {
           </div>
           {/* ===== HẾT CINEMATIC MOVIE BANNER ===== */}
 
+          {/* ===== QUICK BOOKING WIDGET ===== */}
+          <motion.div
+            className="relative z-20 w-full px-4 md:px-14"
+            style={{ marginTop: '-6px' }}
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <div
+              className="max-w-5xl mx-auto rounded-2xl p-6 md:p-8"
+              style={{
+                background: 'rgba(10,5,5,0.82)',
+                backdropFilter: 'blur(28px)',
+                border: '1px solid rgba(229,9,20,0.25)',
+                boxShadow: '0 8px 48px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 0 rgba(255,255,255,0.07)',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 4px 16px rgba(229,9,20,0.4)' }}
+                >
+                  <span className="material-symbols-outlined text-white font-bold" style={{ fontSize: '18px' }}>confirmation_number</span>
+                </div>
+                <div>
+                  <h2 className="text-white font-black text-base uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                    Đặt Vé Nhanh
+                  </h2>
+                  <p className="text-[11px]" style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif' }}>
+                    Chọn phim, ngày và giờ — đặt ngay chỉ trong vài giây
+                  </p>
+                </div>
+                <Link
+                  to="/showtimes"
+                  className="ml-auto hidden sm:flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider transition-colors"
+                  style={{ color: 'rgba(229,9,20,0.7)', fontFamily: 'Inter, sans-serif' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#e50914'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(229,9,20,0.7)'}
+                >
+                  Xem lịch chiếu đầy đủ <ArrowRight size={13} />
+                </Link>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleQuickBook} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                <CustomSelect
+                  label="Chọn phim"
+                  placeholder="-- Chọn phim --"
+                  value={bookingMovieId}
+                  options={movies.map(m => ({ value: m.id?.toString(), label: m.titleVn || m.titleEn || 'Phim' }))}
+                  error={bookingErrors.movie}
+                  onChange={val => { setBookingMovieId(val); setBookingDate(''); setBookingTime(''); setBookingErrors({ movie: '', date: '', time: '' }) }}
+                />
+                <CustomSelect
+                  label="Chọn ngày chiếu"
+                  placeholder="-- Chọn ngày --"
+                  value={bookingDate}
+                  disabled={!bookingMovieId}
+                  options={getAvailableDates().map(d => {
+                    const dateObj = new Date(d)
+                    const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
+                    return { value: d, label }
+                  })}
+                  error={bookingErrors.date}
+                  onChange={val => { setBookingDate(val); setBookingTime(''); setBookingErrors(p => ({ ...p, date: '', time: '' })) }}
+                />
+                <CustomSelect
+                  label="Chọn suất chiếu"
+                  placeholder="-- Chọn giờ --"
+                  value={bookingTime}
+                  disabled={!bookingDate}
+                  options={getAvailableTimes().map(t => ({ value: t, label: t }))}
+                  error={bookingErrors.time}
+                  onChange={val => { setBookingTime(val); setBookingErrors(p => ({ ...p, time: '' })) }}
+                />
+                <div className="flex flex-col gap-2 w-full">
+                  <span className="hidden md:block text-[10px] uppercase font-bold tracking-wider" style={{ color: 'transparent' }}>Đặt vé</span>
+                  <button
+                    type="submit"
+                    className="w-full font-black text-white rounded-xl text-xs uppercase tracking-wider transition-all h-[44px] cursor-pointer flex items-center justify-center gap-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                      boxShadow: '0 6px 24px rgba(229,9,20,0.4)',
+                      fontFamily: 'Montserrat, sans-serif',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 30px rgba(229,9,20,0.6)'; e.currentTarget.style.transform = 'scale(1.02)' }}
+                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(229,9,20,0.4)'; e.currentTarget.style.transform = 'scale(1)' }}
+                  >
+                    <span className="material-symbols-outlined font-bold" style={{ fontSize: '15px' }}>confirmation_number</span>
+                    Đặt Vé Ngay
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
+          {/* ===== HẾT QUICK BOOKING WIDGET ===== */}
+
           {/* ================= PHẦN PHIM ĐANG CHIẾU ================= */}
           <div className="w-full my-20 relative z-10 flex flex-col items-center">
+
 
             <div className="w-full flex justify-center items-center h-[80px] px-6">
               <motion.h2
