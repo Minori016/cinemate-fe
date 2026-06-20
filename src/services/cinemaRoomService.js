@@ -15,5 +15,6 @@ export const cinemaRoomService = {
   // Stub methods for seats since BE only supports cinema-rooms listing currently
   getSeats: (roomId) => Promise.resolve({ data: null }),
   updateSeats: (roomId, seats) => Promise.resolve({ data: null }),
+  create: (payload) => api.post('/api/v1/admin/cinema-rooms', payload),
 }
 

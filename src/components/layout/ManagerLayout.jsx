@@ -1,12 +1,10 @@
-import { Link, useSearchParams, useNavigate, Outlet } from 'react-router-dom'
+import { Link, useNavigate, Outlet } from 'react-router-dom'
 import { TrendingUp, Calendar, Users, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
 export default function ManagerLayout({ children }) {
   const { user, logout } = useAuth()
-  const [searchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'analytics'
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -14,13 +12,13 @@ export default function ManagerLayout({ children }) {
     navigate('/login')
   }
 
-  const isTicketsPage = window.location.pathname.includes('/manager/tickets')
+  const pathname = window.location.pathname
 
   const navItems = [
-    { id: 'analytics', label: 'Thống kê & Phân tích', icon: TrendingUp, to: '/manager/dashboard?tab=analytics', active: !isTicketsPage && currentTab === 'analytics' },
-    { id: 'showtimes', label: 'Quản lý lịch chiếu', icon: Calendar, to: '/manager/dashboard?tab=showtimes', active: !isTicketsPage && currentTab === 'showtimes' },
-    { id: 'shifts', label: 'Ca trực nhân viên', icon: Users, to: '/manager/dashboard?tab=shifts', active: !isTicketsPage && currentTab === 'shifts' },
-    { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/manager/tickets', active: isTicketsPage },
+    { id: 'analytics', label: 'Thống kê & Phân tích', icon: TrendingUp, to: '/manager/analytics', active: pathname === '/manager/analytics' },
+    { id: 'showtimes', label: 'Quản lý lịch chiếu', icon: Calendar, to: '/manager/showtimes', active: pathname === '/manager/showtimes' },
+    { id: 'shifts', label: 'Ca trực nhân viên', icon: Users, to: '/manager/shifts', active: pathname === '/manager/shifts' },
+    { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/manager/tickets', active: pathname.includes('/manager/tickets') },
   ]
 
   return (

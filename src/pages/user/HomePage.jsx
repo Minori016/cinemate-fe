@@ -181,12 +181,12 @@ const CINEMAS = [
 ]
 
 const MEMBER_PERKS = [
-  { icon: Ticket,  title: 'Vé Ưu Đãi',     desc: 'Giảm đến 30% vé mọi suất chiếu trong tuần' },
-  { icon: Star,    title: 'Tích Điểm',     desc: 'Đổi điểm lấy vé, bắp nước & quà tặng hấp dẫn' },
-  { icon: Crown,   title: 'Ghế Ưu Tiên',   desc: 'Đặt ghế VIP trước 48 giờ so với khách thường' },
-  { icon: Gift,    title: 'Quà Sinh Nhật', desc: 'Combo vé + bắp miễn phí vào tháng sinh nhật' },
-  { icon: Users,   title: 'Cộng Đồng',    desc: 'Tham gia club & các sự kiện chiếu phim riêng' },
-  { icon: Zap,     title: 'Flash Sale',    desc: 'Nhận thông báo ưu đãi chớp nhoáng sớm nhất' },
+  { icon: Ticket, title: 'Vé Ưu Đãi', desc: 'Giảm đến 30% vé mọi suất chiếu trong tuần' },
+  { icon: Star, title: 'Tích Điểm', desc: 'Đổi điểm lấy vé, bắp nước & quà tặng hấp dẫn' },
+  { icon: Crown, title: 'Ghế Ưu Tiên', desc: 'Đặt ghế VIP trước 48 giờ so với khách thường' },
+  { icon: Gift, title: 'Quà Sinh Nhật', desc: 'Combo vé + bắp miễn phí vào tháng sinh nhật' },
+  { icon: Users, title: 'Cộng Đồng', desc: 'Tham gia club & các sự kiện chiếu phim riêng' },
+  { icon: Zap, title: 'Flash Sale', desc: 'Nhận thông báo ưu đãi chớp nhoáng sớm nhất' },
 ]
 
 export default function HomePage() {
@@ -228,7 +228,7 @@ export default function HomePage() {
     if (!movie) return []
     const idx = movies.indexOf(movie)
     return movie.showtimes?.map(st => new Date(st.startTime).toTimeString().slice(0, 5)) ||
-           SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
+      SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
   }
 
   const handleQuickBook = (e) => {
@@ -236,10 +236,10 @@ export default function HomePage() {
     const newErrors = { movie: '', date: '', time: '' }
     let valid = true
     if (!bookingMovieId) { newErrors.movie = 'Vui lòng chọn phim'; valid = false }
-    if (!bookingDate)    { newErrors.date  = 'Vui lòng chọn ngày'; valid = false }
-    if (!bookingTime)    { newErrors.time  = 'Vui lòng chọn giờ';  valid = false }
+    if (!bookingDate) { newErrors.date = 'Vui lòng chọn ngày'; valid = false }
+    if (!bookingTime) { newErrors.time = 'Vui lòng chọn giờ'; valid = false }
     setBookingErrors(newErrors)
-    if (valid) navigate(`/booking?movie=${bookingMovieId}&time=${bookingTime}&date=${bookingDate}`)
+    if (valid) navigate(`/movies/${bookingMovieId}?date=${bookingDate}&time=${bookingTime}`)
   }
   // ─────────────────────────────────────────────────────────────
 
@@ -276,7 +276,7 @@ export default function HomePage() {
       .then(r => {
         setMovies(r.data?.result?.content || r.data?.result || [])
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const getRatingColor = (rating) => {
@@ -552,7 +552,7 @@ export default function HomePage() {
           {/* ===== QUICK BOOKING WIDGET ===== */}
           <motion.div
             className="relative z-20 w-full px-4 md:px-14"
-            style={{ marginTop: '-6px' }}
+            style={{ marginTop: '24px' }}
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}

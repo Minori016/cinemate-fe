@@ -138,18 +138,11 @@ export default function CounterCheckoutPage() {
       }
       localStorage.setItem('staff_bookings_db', JSON.stringify([newBooking, ...localBookings]))
 
-      // Redirect to success screen
-      navigate('/booking/success', { 
+      // Redirect to tickets list with success message
+      const redirectPath = user?.role === 'MANAGER' ? '/manager/tickets' : '/staff/tickets'
+      navigate(redirectPath, { 
         state: { 
-          ...bookingInfo, 
-          bookingId,
-          totalPrice: discountedTotal,
-          profile: {
-            fullName: payload.fullName,
-            email: payload.email,
-            identityCard: payload.identityCard,
-            phoneNumber: payload.phoneNumber
-          }
+          successMessage: `Đã xác nhận đặt vé thành công với mã: ${bookingId} cho khách hàng ${payload.fullName} (Ghế: ${payload.seats?.join(', ')})`
         } 
       })
     } catch (err) {
@@ -181,17 +174,10 @@ export default function CounterCheckoutPage() {
       }
       localStorage.setItem('staff_bookings_db', JSON.stringify([newBooking, ...localBookings]))
 
-      navigate('/booking/success', { 
+      const redirectPath = user?.role === 'MANAGER' ? '/manager/tickets' : '/staff/tickets'
+      navigate(redirectPath, { 
         state: { 
-          ...bookingInfo, 
-          bookingId,
-          totalPrice: discountedTotal,
-          profile: {
-            fullName: payload.fullName,
-            email: payload.email,
-            identityCard: payload.identityCard,
-            phoneNumber: payload.phoneNumber
-          }
+          successMessage: `Đã xác nhận đặt vé thành công với mã: ${bookingId} cho khách hàng ${payload.fullName} (Ghế: ${payload.seats?.join(', ')})`
         } 
       })
     } finally {

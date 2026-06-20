@@ -1,5 +1,5 @@
 import { NavLink, Link } from 'react-router-dom'
-import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut, Home } from 'lucide-react'
+import { Film, Users, User, LayoutGrid, Tag, Ticket, BarChart2, LogOut, Home, Calendar } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
@@ -7,6 +7,7 @@ const adminLinks = [
   { to: '/admin/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/admin/movies', icon: Film, label: 'Phim' },
   { to: '/admin/cinema-rooms', icon: LayoutGrid, label: 'Phòng chiếu' },
+  { to: '/admin/showtimes', icon: Calendar, label: 'Lịch chiếu' },
   { to: '/admin/employees', icon: Users, label: 'Nhân viên' },
   { to: '/admin/members', icon: User, label: 'Thành viên' },
   { to: '/admin/tickets', icon: Ticket, label: 'Quản lý vé' },

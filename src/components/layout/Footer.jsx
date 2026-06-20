@@ -11,13 +11,6 @@ export default function Footer() {
   return (
     <footer className="pt-14 pb-8 border-t w-full" style={{ background: 'linear-gradient(180deg, rgba(10,10,10,0.6), rgba(5,5,5,0.85))', borderColor: 'rgba(255,255,255,0.04)' }}>
       <style>{`
-        @media (min-width: 768px) {
-          .md-cskh-align {
-            justify-self: end !important;
-            align-items: flex-end !important;
-            text-align: right !important;
-          }
-        }
         .footer-link-custom {
           position: relative;
           width: fit-content;
@@ -46,12 +39,12 @@ export default function Footer() {
         }
       `}</style>
       <div
-        className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-8 items-start"
+        className="w-full mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-y-10 items-start"
         style={{ 
-          maxWidth: '1400px', 
-          paddingLeft: '30px', 
-          paddingRight: '30px',
-          columnGap: '40px'
+          maxWidth: '1200px', 
+          paddingLeft: '40px', 
+          paddingRight: '40px',
+          columnGap: '48px'
         }}
       >
         
@@ -100,9 +93,9 @@ export default function Footer() {
         </div>
 
         {/* Block 4: Thông Tin Liên Hệ */}
-        <div className="flex flex-col md-cskh-align gap-3">
+        <div className="flex flex-col gap-3">
           <h3 className="text-sm font-bold uppercase tracking-wider" style={{ color: 'var(--color-on-surface)', fontFamily: 'Inter, sans-serif' }}>Liên Hệ</h3>
-          <div className="text-sm flex flex-col md-cskh-align gap-2.5 mt-1" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
+          <div className="text-sm flex flex-col gap-2.5 mt-1" style={{ color: 'var(--color-on-surface-variant)', fontFamily: 'Inter, sans-serif' }}>
             <p><strong style={{ color: 'var(--color-on-surface)' }}>Hotline:</strong> 1900 6868</p>
             <p><strong style={{ color: 'var(--color-on-surface)' }}>Email:</strong> contact@cinemate.vn</p>
             <p><strong style={{ color: 'var(--color-on-surface)' }}>Trụ sở chính:</strong> 135 Đồng Khởi, Q.1, TP.HCM</p>

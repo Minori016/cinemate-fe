@@ -26,9 +26,6 @@ import FeedbackPage from '../pages/user/FeedbackPage'
 import CareersPage from '../pages/user/CareersPage'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
-import BookingConfirmationPage from '../pages/booking/BookingConfirmationPage'
-import PaymentPage from '../pages/booking/PaymentPage'
-import BookingSuccessPage from '../pages/booking/BookingSuccessPage'
 import DashboardPage from '../pages/admin/DashboardPage'
 import MovieListPage from '../pages/admin/movies/MovieListPage'
 import MovieFormPage from '../pages/admin/movies/MovieFormPage'
@@ -37,10 +34,15 @@ import MemberListPage from '../pages/admin/members/MemberListPage'
 import TicketManagementPage from '../pages/admin/tickets/TicketManagementPage'
 import CinemaRoomListPage from '../pages/admin/cinema-rooms/CinemaRoomListPage'
 import CinemaRoomDetailPage from '../pages/admin/cinema-rooms/CinemaRoomDetailPage'
+import ShowtimeListPage from '../pages/admin/showtimes/ShowtimeListPage'
 import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
 import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
-import StaffDashboardPage from '../pages/staff/StaffDashboardPage'
-import ManagerDashboardPage from '../pages/manager/ManagerDashboardPage'
+import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
+import StaffTicketVerifierPage from '../pages/staff/checkin/StaffTicketVerifierPage'
+import StaffConcessionsPage from '../pages/staff/concessions/StaffConcessionsPage'
+import ManagerAnalyticsPage from '../pages/manager/analytics/ManagerAnalyticsPage'
+import ManagerShowtimesPage from '../pages/manager/showtimes/ManagerShowtimesPage'
+import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 export default function AppRoutes() {
@@ -74,22 +76,25 @@ export default function AppRoutes() {
 
       {/* Booking Layout: Tách biệt khỏi UserLayout để hiển thị Header giao dịch rút gọn */}
       <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
-      <Route path="/booking/confirm" element={<ProtectedRoute><BookingConfirmationPage /></ProtectedRoute>} />
-      <Route path="/booking/payment" element={<ProtectedRoute><PaymentPage /></ProtectedRoute>} />
-      <Route path="/booking/success" element={<ProtectedRoute><BookingSuccessPage /></ProtectedRoute>} />
       <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
 
       {/* Staff */}
       <Route path="/staff" element={<ProtectedRoute role="STAFF"><StaffLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<StaffDashboardPage />} />
+        <Route index element={<Navigate to="overview" replace />} />
+        <Route path="dashboard" element={<Navigate to="/staff/overview" replace />} />
+        <Route path="overview" element={<StaffOverviewPage />} />
+        <Route path="checkin" element={<StaffTicketVerifierPage />} />
+        <Route path="concessions" element={<StaffConcessionsPage />} />
         <Route path="tickets" element={<TicketManagementPage />} />
       </Route>
 
       {/* Manager */}
       <Route path="/manager" element={<ProtectedRoute role="MANAGER"><ManagerLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<ManagerDashboardPage />} />
+        <Route index element={<Navigate to="analytics" replace />} />
+        <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
+        <Route path="analytics" element={<ManagerAnalyticsPage />} />
+        <Route path="showtimes" element={<ManagerShowtimesPage />} />
+        <Route path="shifts" element={<ManagerShiftsPage />} />
         <Route path="tickets" element={<TicketManagementPage />} />
       </Route>
 
@@ -104,6 +109,7 @@ export default function AppRoutes() {
         <Route path="tickets" element={<TicketManagementPage />} />
         <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
         <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
+        <Route path="showtimes" element={<ShowtimeListPage />} />
         <Route path="promotions" element={<PromotionListPage />} />
         <Route path="promotions/add" element={<PromotionFormPage />} />
         <Route path="promotions/edit/:id" element={<PromotionFormPage />} />

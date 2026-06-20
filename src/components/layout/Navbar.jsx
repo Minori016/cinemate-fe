@@ -131,7 +131,7 @@ export default function Navbar() {
         </Link>
 
         {/* ── CỘT GIỮA: Menu điều hướng chính ── */}
-        <div className="flex-1 flex items-center justify-center gap-10" style={{ position: 'relative', left: '40px' }}>
+        <div className="flex-1 flex items-center justify-center gap-10" style={{ position: 'relative', left: '60px' }}>
           <NavLink 
             to="/movies" 
             className={({ isActive }) => 
@@ -245,7 +245,8 @@ export default function Navbar() {
                     <button
                       key={movie.id}
                       type="button"
-                      onClick={() => {
+                      onMouseDown={(e) => {
+                        e.preventDefault()
                         setSearchTerm('')
                         setSuggestionsOpen(false)
                         navigate(movie.route)

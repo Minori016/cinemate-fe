@@ -334,49 +334,56 @@ export default function CinemaRoomListPage() {
 
       {/* Add Cinema Room Modal Dialog (AC-03) */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <form 
             onSubmit={handleAddRoom}
-            className="bg-[#0f121d] border border-[var(--color-border)] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in flex flex-col"
+            className="bg-gradient-to-b from-[#161b2a] to-[#0f121f] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl shadow-black/80 animate-fade-in flex flex-col"
           >
-            <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-white/5">
-              <h4 className="font-extrabold uppercase tracking-wider text-sm text-white flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
-                <Plus size={16} className="text-red-500" />
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-white/5 flex justify-between items-center bg-white/5 backdrop-blur-sm">
+              <h4 className="font-extrabold uppercase tracking-wider text-sm text-white flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <span className="p-1.5 rounded-lg bg-red-600/10 text-red-500">
+                  <Plus size={16} />
+                </span>
                 Thêm phòng chiếu mới
               </h4>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-white bg-transparent border-none outline-none cursor-pointer flex"
+                className="text-gray-400 hover:text-white bg-transparent border-none outline-none cursor-pointer flex transition-colors"
               >
-                <span className="material-symbols-outlined text-lg">close</span>
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4 text-xs">
+            {/* Content */}
+            <div className="p-6 space-y-5 text-xs">
               {modalError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 font-bold rounded-lg leading-normal">
-                  ⚠️ {modalError}
+                <div className="p-3.5 bg-red-500/10 border border-red-500/20 text-red-400 font-bold rounded-xl leading-normal flex items-center gap-2">
+                  <AlertCircle size={16} className="shrink-0" />
+                  <span>{modalError}</span>
                 </div>
               )}
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tên phòng chiếu (Room Name)</label>
+              {/* Room Name Input */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Tên phòng chiếu (Room Name)</label>
                 <input
                   type="text"
                   placeholder="Ví dụ: Phòng chiếu 5 (IMAX)"
                   value={newRoomName}
                   onChange={e => setNewRoomName(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-red-500/50 w-full font-medium"
+                  className="bg-white/5 border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white focus:outline-none focus:border-red-500 focus:ring-4 focus:ring-red-500/10 w-full placeholder-gray-600 transition-all font-medium"
                 />
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Số lượng ghế ngồi (Seat Capacity)</label>
+              {/* Seat Capacity Select */}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Số lượng ghế ngồi (Seat Capacity)</label>
                 <select
                   value={newRoomSeats}
                   onChange={e => setNewRoomSeats(Number(e.target.value))}
-                  className="bg-black/40 border border-white/10 rounded-xl py-3 px-4 text-sm text-white focus:outline-none focus:border-red-500/50 w-full font-medium cursor-pointer"
+                  className="bg-[#131725] border border-white/10 rounded-2xl py-3.5 px-4 text-sm text-white focus:outline-none focus:border-red-500 w-full font-medium cursor-pointer transition-colors"
                 >
                   <option value={48}>48 Ghế (6 Hàng × 8 Cột)</option>
                   <option value={60}>60 Ghế (6 Hàng × 10 Cột)</option>
@@ -384,25 +391,27 @@ export default function CinemaRoomListPage() {
                 </select>
               </div>
 
-              <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex gap-2 items-start text-[10px] text-gray-400 leading-normal">
-                <HelpCircle size={14} className="shrink-0 text-gray-500 mt-0.5" />
+              {/* Informative Tip */}
+              <div className="bg-blue-500/5 p-4 rounded-2xl border border-blue-500/10 flex gap-3 items-start text-[10px] text-blue-300 leading-relaxed shadow-sm">
+                <HelpCircle size={16} className="shrink-0 text-blue-400 mt-0.5" />
                 <p>
-                  Hệ thống sẽ tự động khởi tạo lưới sơ đồ chỗ ngồi mặc định (Standard, VIP, Couple) tương ứng với số lượng ghế đã chọn. Bạn có thể thay đổi thiết lập này tại mục Seat Detail.
+                  Hệ thống sẽ tự động khởi tạo lưới sơ đồ chỗ ngồi mặc định (Standard, VIP, Couple) tương ứng với số lượng ghế đã chọn. Bạn có thể thay đổi thiết lập này tại mục <strong className="text-white">Seat Detail</strong>.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 border-t border-[var(--color-border)] bg-slate-900/40 flex justify-end gap-2 text-xs">
+            {/* Footer Actions */}
+            <div className="p-5 border-t border-white/5 bg-black/20 flex justify-end gap-3 text-xs">
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-white/5 transition-all cursor-pointer"
+                className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-gray-300 font-bold rounded-2xl border border-white/5 hover:border-white/10 transition-all cursor-pointer active:scale-95"
               >
                 Hủy bỏ
               </button>
               <button
                 type="submit"
-                className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all cursor-pointer"
+                className="px-5 py-3.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white font-bold rounded-2xl shadow-lg shadow-red-500/20 active:scale-[0.98] transition-all cursor-pointer border-none"
               >
                 Thêm phòng
               </button>

@@ -1,12 +1,10 @@
-import { Link, useSearchParams, useNavigate, Outlet } from 'react-router-dom'
+import { Link, useNavigate, Outlet } from 'react-router-dom'
 import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
 export default function StaffLayout({ children }) {
   const { user, logout } = useAuth()
-  const [searchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab') || 'overview'
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -14,13 +12,12 @@ export default function StaffLayout({ children }) {
     navigate('/login')
   }
 
-  const isTicketsPage = window.location.pathname.includes('/staff/tickets')
-
+  const pathname = window.location.pathname
   const navItems = [
-    { id: 'overview', label: 'Tổng quan & Lịch chiếu', icon: LayoutGrid, to: '/staff/dashboard?tab=overview', active: !isTicketsPage && currentTab === 'overview' },
-    { id: 'scan', label: 'Soát vé nhanh', icon: Ticket, to: '/staff/dashboard?tab=tickets', active: !isTicketsPage && currentTab === 'tickets' },
-    { id: 'concessions', label: 'Quầy bắp nước', icon: ShoppingBag, to: '/staff/dashboard?tab=concessions', active: !isTicketsPage && currentTab === 'concessions' },
-    { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/staff/tickets', active: isTicketsPage },
+    { id: 'overview', label: 'Tổng quan & Lịch chiếu', icon: LayoutGrid, to: '/staff/overview', active: pathname === '/staff/overview' },
+    { id: 'scan', label: 'Soát vé nhanh', icon: Ticket, to: '/staff/checkin', active: pathname === '/staff/checkin' },
+    { id: 'concessions', label: 'Quầy bắp nước', icon: ShoppingBag, to: '/staff/concessions', active: pathname === '/staff/concessions' },
+    { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/staff/tickets', active: pathname.includes('/staff/tickets') },
   ]
 
   return (

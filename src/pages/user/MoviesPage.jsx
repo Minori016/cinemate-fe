@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Tag, Clock, Globe, MessageSquare, Search } from 'lucide-react'
+import { Tag, Clock, Globe, MessageSquare } from 'lucide-react'
 import { movieService } from '../../services/movieService'
 import { motion } from 'motion/react'
 
@@ -9,15 +9,8 @@ export default function MoviesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('search') || ''
   
-  const [searchVal, setSearchVal] = useState(searchQuery)
   const [movies, setMovies] = useState([])
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setSearchVal(searchQuery)
-    })
-  }, [searchQuery])
 
   useEffect(() => {
     setIsLoading(true)
@@ -33,11 +26,6 @@ export default function MoviesPage() {
         setIsLoading(false)
       })
   }, [activeTab, searchQuery])
-
-  const handleSearchSubmit = (e) => {
-    if (e) e.preventDefault()
-    setSearchParams(searchVal.trim() ? { search: searchVal.trim() } : {})
-  }
 
   // Alphabetical sort (A-Z) (AC-02)
   const sortedMovies = [...movies].sort((a, b) => {
@@ -69,26 +57,21 @@ export default function MoviesPage() {
         </p>
       </motion.div>
 
-      {/* Search Bar (AC-01 & AC-02) */}
-      <form onSubmit={handleSearchSubmit} className="flex gap-3 max-w-md mx-auto mb-10">
-        <div className="relative flex-1">
-          <input 
-            type="text"
-            placeholder="Tìm kiếm tên phim..." 
-            value={searchVal}
-            onChange={(e) => setSearchVal(e.target.value)}
-            className="bg-[color-mix(in srgb,var(--color-surface-container-highest)_40%,transparent)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-red-500 w-full transition-colors font-medium shadow-inner"
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          />
+      {/* Search results indicator */}
+      {searchQuery && (
+        <div className="text-center mb-8 flex flex-col items-center gap-2">
+          <p className="text-gray-400 text-sm">
+            Kết quả tìm kiếm cho: <strong className="text-white">"{searchQuery}"</strong>
+          </p>
+          <button
+            onClick={() => setSearchParams({})}
+            className="text-xs text-[var(--color-primary)] hover:underline flex items-center gap-1 cursor-pointer bg-transparent border-0 outline-none font-bold"
+          >
+            <span className="material-symbols-outlined text-[14px] align-middle">close</span>
+            Xóa tìm kiếm
+          </button>
         </div>
-        <button
-          type="submit"
-          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 rounded-xl flex items-center gap-2 transition-all cursor-pointer text-xs uppercase tracking-wider border-none outline-none"
-        >
-          <Search size={14} />
-          Search
-        </button>
-      </form>
+      )}
 
       {/* Tabs */}
       <div className="flex justify-center gap-4 mb-10">

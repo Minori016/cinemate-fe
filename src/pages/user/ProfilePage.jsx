@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
+import { movieService } from '../../services/movieService'
 import Input from '../../components/common/Input'
 
 const MOCK_BOOKINGS = [
@@ -103,6 +104,15 @@ const MOCK_POINT_HISTORY = [
     date: '2026-05-25T11:30:00Z',
   }
 ]
+const MOCK_POSTERS = {
+  'backrooms: vùng ngoài tầm kiểm soát': 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=300',
+  'spider-man: brand new day': 'https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=300',
+  'lớp học ám sát: giờ của chúng ta': 'https://images.unsplash.com/photo-1578632767115-351597cf2477?q=80&w=300',
+  'kumanthong ác quỷ dẫn đường': 'https://images.unsplash.com/photo-1505635552518-3448ff116af3?q=80&w=300',
+  'doraemon: bản tình ca đất nước': 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?q=80&w=300',
+  'lật mặt 7: một điều ước': 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'
+}
+
 
 const getMembershipTier = (score) => {
   if (score >= 300) {
@@ -172,6 +182,66 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
   const [bookings, setBookings] = useState(MOCK_BOOKINGS)
+  const [moviePosters, setMoviePosters] = useState({})
+
+  // Fetch movie posters map
+  useEffect(() => {
+    const fetchPosters = async () => {
+      try {
+        const res = await movieService.getAll({ size: 100 })
+        const moviesList = res.data?.result?.content || res.data?.result || []
+        const posterMap = {}
+        moviesList.forEach(m => {
+          const titleVn = m.titleVn ? m.titleVn.toLowerCase().trim() : ''
+          const titleEn = m.titleEn ? m.titleEn.toLowerCase().trim() : ''
+          if (titleVn) posterMap[titleVn] = m.posterUrl
+          if (titleEn) posterMap[titleEn] = m.posterUrl
+        })
+        setMoviePosters(posterMap)
+      } catch (err) {
+        console.error('Error fetching movie posters for tickets:', err)
+      }
+    }
+    fetchPosters()
+  }, [])
+
+  // Sync with local storage bookings
+  useEffect(() => {
+    const local = localStorage.getItem('staff_bookings_db')
+    if (local) {
+      try {
+        const parsed = JSON.parse(local)
+        const userBookings = parsed
+          .filter(b => b.email === user?.email)
+          .map(b => ({
+            id: b.id,
+            movieName: b.movie,
+            bookingDate: new Date().toISOString(),
+            showDate: b.date,
+            showTime: b.time,
+            room: b.screen,
+            seats: typeof b.seats === 'string' ? b.seats.split(', ') : b.seats,
+            totalPrice: b.total,
+            status: b.status === 'Đã thanh toán' ? 'COMPLETED' : b.status === 'Đã hủy' ? 'CANCELED' : 'COMPLETED'
+          }))
+        
+        setBookings(prev => {
+          const combined = [...userBookings, ...MOCK_BOOKINGS]
+          const unique = []
+          const ids = new Set()
+          combined.forEach(item => {
+            if (!ids.has(item.id)) {
+              ids.add(item.id)
+              unique.push(item)
+            }
+          })
+          return unique
+        })
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  }, [user])
 
   const [fromDateStr, setFromDateStr] = useState('01/05/2026')
   const [toDateStr, setToDateStr] = useState('30/06/2026')
@@ -848,9 +918,9 @@ export default function ProfilePage() {
             {['info', 'history', 'booked', 'canceled'].map((tabKey) => {
               const tabLabels = {
                 info: 'Thông tin tài khoản',
-                history: 'Lịch sử (History)',
-                booked: 'Vé đã đặt (Booked)',
-                canceled: 'Vé đã hủy (Canceled)'
+                history: 'Xem hạng thành viên',
+                booked: 'Vé đã đặt',
+                canceled: 'Vé đã hủy'
               }
               const isActive = activeTab === tabKey
               return (
@@ -1548,7 +1618,7 @@ export default function ProfilePage() {
                               onChange={() => setScoreFilterType('EARN')}
                               className="accent-red-600 w-4 h-4 cursor-pointer"
                             />
-                            Lịch sử nhận điểm (History of Score Adding)
+                            Lịch sử nhận điểm
                           </label>
 
                           <label className="flex items-center gap-2 cursor-pointer text-sm text-white hover:text-gray-200">
@@ -1560,7 +1630,7 @@ export default function ProfilePage() {
                               onChange={() => setScoreFilterType('SPEND')}
                               className="accent-red-600 w-4 h-4 cursor-pointer"
                             />
-                            Lịch sử dùng điểm (History of Score Using)
+                            Lịch sử dùng điểm
                           </label>
                         </div>
                       </div>
@@ -1674,7 +1744,7 @@ export default function ProfilePage() {
                         whileInView="show"
                         viewport={{ once: true, margin: '-40px' }}
                         whileHover={{ scale: 1.02, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
-                        className="rounded-2xl overflow-hidden flex flex-col relative w-full transition-all duration-300"
+                        className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full transition-all duration-300"
                         style={{ 
                           background: 'rgba(255,255,255,0.04)', 
                           backdropFilter: 'blur(14px)', 
@@ -1683,15 +1753,25 @@ export default function ProfilePage() {
                         }}
                       >
                         <div 
-                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 md:block hidden"
+                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 sm:block hidden"
                           style={{ backgroundColor: 'var(--color-background)' }}
                         ></div>
                         <div 
-                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 md:block hidden"
+                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 sm:block hidden"
                           style={{ backgroundColor: 'var(--color-background)' }}
                         ></div>
 
-                        <div className="p-6 flex-grow flex flex-col justify-between">
+                        {/* Movie Poster Cover */}
+                        <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto flex-shrink-0 relative overflow-hidden">
+                          <img 
+                            src={moviePosters[booking.movieName.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
+                            alt={booking.movieName}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-black/50" />
+                        </div>
+
+                        <div className="p-6 flex-grow flex flex-col justify-between min-w-0">
                           <div>
                             <div className="flex justify-between items-start gap-2 mb-2">
                               <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
@@ -1780,7 +1860,7 @@ export default function ProfilePage() {
                         whileInView="show"
                         viewport={{ once: true, margin: '-40px' }}
                         whileHover={{ scale: 1.01, border: '1px solid rgba(255,255,255,0.1)' }}
-                        className="rounded-2xl overflow-hidden flex flex-col relative w-full opacity-75 grayscale-[20%] transition-all duration-300"
+                        className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full opacity-75 grayscale-[20%] transition-all duration-300"
                         style={{ 
                           background: 'rgba(255,255,255,0.03)', 
                           backdropFilter: 'blur(14px)', 
@@ -1789,15 +1869,25 @@ export default function ProfilePage() {
                         }}
                       >
                         <div 
-                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 md:block hidden"
+                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 sm:block hidden"
                           style={{ backgroundColor: 'var(--color-background)' }}
                         ></div>
                         <div 
-                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 md:block hidden"
+                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 sm:block hidden"
                           style={{ backgroundColor: 'var(--color-background)' }}
                         ></div>
 
-                        <div className="p-6 flex-grow flex flex-col justify-between">
+                        {/* Movie Poster Cover */}
+                        <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto flex-shrink-0 relative overflow-hidden">
+                          <img 
+                            src={moviePosters[booking.movieName.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
+                            alt={booking.movieName}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-black/50" />
+                        </div>
+
+                        <div className="p-6 flex-grow flex flex-col justify-between min-w-0">
                           <div>
                             <div className="flex justify-between items-start gap-2 mb-2">
                               <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>

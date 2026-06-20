@@ -491,62 +491,6 @@ export default function SeatSelectionPage() {
                 </div>
               </div>
 
-              {/* Add-on Combos Selection Section */}
-              <div className="w-full max-w-[620px] bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 p-5 mt-10 mb-8 space-y-4">
-                <h3 className="text-sm font-extrabold uppercase text-white tracking-wider flex items-center gap-2 border-b border-white/5 pb-3">
-                  <span className="material-symbols-outlined text-[var(--color-primary)] text-sm">restaurant</span>
-                  Chọn Thêm Bắp & Nước (Add Combos)
-                </h3>
-                <div className="flex flex-col gap-4">
-                  {COMBOS.map(combo => {
-                    const qty = selectedCombos[combo.id] || 0
-                    return (
-                      <div 
-                        key={combo.id} 
-                        className="flex items-center justify-between p-3.5 rounded-xl border transition-all"
-                        style={{
-                          backgroundColor: qty > 0 ? 'rgba(229, 9, 20, 0.04)' : 'transparent',
-                          borderColor: qty > 0 ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.08)'
-                        }}
-                      >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <img 
-                            src={combo.img} 
-                            alt={combo.name} 
-                            className="w-16 h-16 object-cover rounded-lg border border-white/10 shrink-0" 
-                          />
-                          <div className="text-left min-w-0">
-                            <h4 className="text-sm font-bold text-white truncate">{combo.name}</h4>
-                            <p className="text-[10px] text-gray-400 mt-1 leading-relaxed line-clamp-2">{combo.desc}</p>
-                            <span className="text-xs font-extrabold text-red-500 mt-1.5 block font-mono">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(combo.price)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Quantity Controls */}
-                        <div className="flex items-center gap-3.5 bg-black/40 border border-white/10 px-3 py-1.5 rounded-xl shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateComboQty(combo.id, -1)}
-                            className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/15 active:scale-90 transition-all text-white text-base font-black border-none cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="text-sm font-extrabold text-white w-4 text-center font-mono">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateComboQty(combo.id, 1)}
-                            className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center hover:opacity-90 active:scale-90 transition-all text-white text-base font-black border-none cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
             </div>
           {/* End of Seat Map Area */}
       </main>
@@ -659,7 +603,7 @@ export default function SeatSelectionPage() {
             }`}
           >
             {isVip && rowLabel === 'D' && (
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#06080F] px-1.5 tracking-widest whitespace-nowrap border border-[#f59e0b]/20 rounded-full select-none">
+              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#06080F] px-2 py-0.5 tracking-widest whitespace-nowrap border border-[#f59e0b] rounded select-none">
                 VÙNG TRUNG TÂM (BEST VIEW)
               </span>
             )}

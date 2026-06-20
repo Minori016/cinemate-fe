@@ -16,6 +16,7 @@
   --color-error-container:          #450a0a;
   --color-border:                   rgba(255,255,255,0.10);
   --color-text-muted:               #666666;
+  --color-text:                     var(--foreground);
 }
 
 :root {
@@ -217,6 +218,7 @@
   --color-error-container:          #fef2f2;
   --color-border:                   #e2e8f0;
   --color-text-muted:               #475569;
+  --color-text:                     var(--foreground);
   --color-bg:                       #f8f9fa;
 
   --background:                     #f8f9fa;
@@ -262,6 +264,18 @@
 .theme-light .bg-\[var\(--color-primary\)\] *,
 .theme-light button.bg-red-600,
 .theme-light button.bg-\[var\(--color-primary\)\],
+.theme-light button.bg-red-700,
+.theme-light button.bg-red-700 *,
+.theme-light button.bg-gradient-to-r,
+.theme-light button.bg-gradient-to-r *,
+.theme-light button.bg-emerald-500,
+.theme-light button.bg-emerald-500 *,
+.theme-light button.bg-green-600,
+.theme-light button.bg-green-600 *,
+.theme-light button.bg-blue-600,
+.theme-light button.bg-blue-600 *,
+.theme-light button.bg-slate-800,
+.theme-light button.bg-slate-800 *,
 .theme-light .text-white-keep,
 .theme-light select option {
   color: #ffffff !important;
@@ -317,3 +331,80 @@
 .theme-light aside button:hover {
   color: #e50914 !important;
 }
+
+/* Better contrast for gray text on light theme inside admin, staff and manager dashboards */
+.theme-light .text-gray-300 {
+  color: #334155 !important; /* slate-700 */
+}
+.theme-light .text-gray-400 {
+  color: #475569 !important; /* slate-600 */
+}
+.theme-light .text-gray-500 {
+  color: #64748b !important; /* slate-500 */
+}
+.theme-light .text-gray-600 {
+  color: #334155 !important; /* slate-700 */
+}
+.theme-light .text-gray-700 {
+  color: #1e293b !important; /* slate-800 */
+}
+.theme-light .text-gray-800 {
+  color: #0f172a !important; /* slate-900 */
+}
+
+/* Form labels or helper texts that use text-gray-400 or text-gray-500 */
+.theme-light label.text-gray-400,
+.theme-light span.text-gray-400,
+.theme-light p.text-gray-400,
+.theme-light label.text-gray-500,
+.theme-light span.text-gray-500,
+.theme-light p.text-gray-500 {
+  color: #334155 !important;
+  font-weight: 600; /* slightly bolder for better legibility on white bg */
+}
+
+/* Light mode overrides for specific containers, labels, and text colors */
+.theme-light .text-\[\#e2e2e2\] {
+  color: var(--color-on-surface) !important;
+}
+
+.theme-light label {
+  color: #1e293b !important; /* slate-800 label text */
+  font-weight: 600;
+}
+
+/* Modals & Form overlays that had hardcoded dark backgrounds under light dashboard layout */
+.theme-light .fixed.inset-0.z-50 form,
+.theme-light .fixed.inset-0.z-50 .bg-\[\#0f121d\],
+.theme-light .bg-\[\#0f121d\],
+.theme-light .bg-gradient-to-b.from-\[\#161b2a\].to-\[\#0f121f\],
+.theme-light .bg-\[\#161b2a\],
+.theme-light .bg-\[\#0f121f\],
+.theme-light .bg-\[\#131725\],
+.theme-light div[style*="linear-gradient(145deg"] {
+  background: var(--color-surface) !important;
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-border) !important;
+}
+
+.theme-light .text-blue-300 {
+  color: #1e3a8a !important; /* blue-900 */
+}
+.theme-light .text-blue-400 {
+  color: #1d4ed8 !important; /* blue-700 */
+}
+
+.theme-light .bg-slate-900\/40,
+.theme-light .bg-slate-900\/20 {
+  background: var(--color-surface-container) !important;
+  background-color: var(--color-surface-container) !important;
+  border-color: var(--color-border) !important;
+}
+
+.theme-light .text-green-400 {
+  color: #15803d !important; /* green-700 */
+}
+.theme-light .text-green-500 {
+  color: #166534 !important; /* green-800 */
+}
+

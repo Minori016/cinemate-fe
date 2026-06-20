@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import Table from '../../../components/common/Table'
 import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User } from 'lucide-react'
@@ -77,8 +78,16 @@ const getSeatCount = (seats) => {
 }
 
 export default function TicketManagementPage() {
+  const location = useLocation()
   const [bookings, setBookings] = useState([])
   const [search, setSearch] = useState('')
+  const [successBanner, setSuccessBanner] = useState(location.state?.successMessage || '')
+
+  useEffect(() => {
+    if (location.state?.successMessage) {
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state])
   const [selectedBooking, setSelectedBooking] = useState(null)
   const [convertOption, setConvertOption] = useState('no')
   const [convertTicketsCount, setConvertTicketsCount] = useState(0)
@@ -184,11 +193,23 @@ export default function TicketManagementPage() {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-6 text-left"
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45 }}
     >
+      {successBanner && (
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="shrink-0" size={16} />
+            <span>{successBanner}</span>
+          </div>
+          <button onClick={() => setSuccessBanner('')} className="text-emerald-400 hover:text-emerald-300 transition-colors bg-transparent border-0 outline-none cursor-pointer">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
         <div>
