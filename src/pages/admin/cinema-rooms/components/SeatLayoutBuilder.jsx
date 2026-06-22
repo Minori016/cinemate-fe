@@ -9,6 +9,7 @@ import {
   Wand2,
   Trash2,
   Maximize2,
+  Minimize2,
   AlertCircle,
   Paintbrush,
   MousePointer,
@@ -55,6 +56,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
   const [selectedTool, setSelectedTool] = useState('SELECT')
   const [gridData, setGridData] = useState([])
   const [sweetSpotMode, setSweetSpotMode] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [isDrawing, setIsDrawing] = useState(false)
   const [rowsInput, setRowsInput] = useState(initialRows.toString())
   const [colsInput, setColsInput] = useState(initialCols.toString())
@@ -525,7 +527,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         }
       }
     }
-    onSave(finalSeats)
+    onSave({ rows, cols, seats: finalSeats })
   }
 
   const stats = useMemo(() => {
@@ -558,7 +560,11 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
   const isSweetSpot = (r, c) => scoreGrid[r]?.[c] > 0.80
 
   return (
-    <div className="flex flex-col gap-6 font-sans">
+    <div className={`flex flex-col font-sans transition-all duration-300 ${
+      isFullscreen 
+        ? 'fixed inset-0 z-[100] bg-slate-50/95 backdrop-blur-md p-4 md:p-6 overflow-hidden' 
+        : 'gap-6'
+    }`}>
       
       {/* Top Action Bar (Sleek design toolbar) */}
       <div className="flex flex-wrap items-center justify-between p-3 bg-white border border-slate-100 rounded-2xl shadow-sm gap-3">
@@ -628,6 +634,21 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
             <div className="w-px h-8 bg-slate-100 mx-1" />
 
             <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              title={isFullscreen ? "Thu nhỏ màn hình" : "Toàn màn hình"}
+              className={`flex items-center gap-2 px-3.5 h-10 rounded-xl transition-all duration-200 text-xs font-semibold border cursor-pointer ${
+                isFullscreen 
+                  ? 'text-blue-600 bg-blue-50 border-blue-200 shadow-sm' 
+                  : 'text-slate-500 border-slate-100 hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50'
+              }`}
+            >
+              {isFullscreen ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+            </button>
+
+            <div className="w-px h-8 bg-slate-100 mx-1" />
+
+            <button
               onClick={handleSave}
               className="flex items-center gap-2 px-5 h-10 rounded-xl transition-all duration-200 bg-red-600 text-white font-bold text-xs shadow-md shadow-red-500/10 hover:bg-red-700 active:scale-[0.98] cursor-pointer border-none"
             >
@@ -645,14 +666,16 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row min-h-[600px] bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden">
+      <div className={`flex flex-col lg:flex-row bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden ${
+        isFullscreen ? 'flex-1 min-h-0 mt-4' : 'min-h-[600px]'
+      }`}>
       {/* Main Immersive Canvas Area */}
-      <div className="flex-1 relative flex flex-col canvas-bg">
+      <div className="flex-1 min-w-0 relative flex flex-col canvas-bg">
         
         {/* Scrollable Container for Grid (Horizontal Only) */}
-        <div className="w-full overflow-x-auto pb-16 pt-8 custom-scrollbar">
+        <div className="w-full overflow-x-auto pb-16 pt-8 custom-scrollbar text-center">
           
-          <div className="min-w-max flex flex-col items-center px-16 select-none">
+          <div className="inline-flex flex-col items-center px-16 select-none relative text-left">
             
             {/* Screen curve graphic */}
             <div 
@@ -664,20 +687,64 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
             </div>
 
             {/* Grid Map with Sightline Guides */}
-            <div className="relative">
-              {/* SVG Viewing Angle Overlay */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" preserveAspectRatio="none">
-                <line x1="50%" y1="-15%" x2="25%" y2="100%" stroke="rgba(239, 68, 68, 0.35)" strokeWidth="1.2" strokeDasharray="5, 5" />
-                <line x1="50%" y1="-15%" x2="75%" y2="100%" stroke="rgba(239, 68, 68, 0.35)" strokeWidth="1.2" strokeDasharray="5, 5" />
-                <circle cx="50%" cy="66%" r="6" fill="rgba(239, 68, 68, 0.4)" fillOpacity="0.15" />
-                <text x="50%" y="66%" textAnchor="middle" dy="16" fill="rgba(239, 68, 68, 0.4)" fillOpacity="0.3" fontSize="8" fontWeight="700" fontFamily="monospace">THX SWEET SPOT</text>
+            <div className="relative p-6 md:p-8 border-[3px] border-slate-300 rounded-3xl bg-white shadow-xl ring-[10px] ring-slate-100/50">
+              
+              {/* Lối đi bên trái (Walkway) */}
+              <div className="absolute left-3 md:left-5 top-8 bottom-8 w-14 border-x-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center rounded-lg pointer-events-none z-0">
+                <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] opacity-80" style={{ writingMode: 'vertical-rl' }}>LỐI ĐI (WALKWAY)</span>
+              </div>
+              
+              {/* Lối đi bên phải (Walkway) */}
+              <div className="absolute right-3 md:right-5 top-8 bottom-8 w-14 border-x-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center rounded-lg pointer-events-none z-0">
+                <span className="text-[11px] font-black text-slate-300 uppercase tracking-[0.4em] opacity-80" style={{ writingMode: 'vertical-rl' }}>LỐI ĐI (WALKWAY)</span>
+              </div>
+
+              {/* Cửa vào (Entrance) - Góc trên phải */}
+              <div className="absolute top-12 right-0 translate-x-full w-14 h-28 flex items-center justify-start z-20 pointer-events-none">
+                 <div className="w-full h-full border-[3px] border-l-0 border-emerald-400 rounded-r-3xl bg-emerald-50/90 shadow-md flex items-center justify-center relative backdrop-blur-sm overflow-hidden">
+                   <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-white" />
+                   <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] ml-1" style={{ writingMode: 'vertical-rl' }}>CỬA VÀO</span>
+                 </div>
+              </div>
+
+              {/* Cửa ra (Exit) - Góc dưới phải */}
+              <div className="absolute bottom-12 right-0 translate-x-full w-14 h-28 flex items-center justify-start z-20 pointer-events-none">
+                 <div className="w-full h-full border-[3px] border-l-0 border-red-400 rounded-r-3xl bg-red-50/90 shadow-md flex items-center justify-center relative backdrop-blur-sm overflow-hidden">
+                   <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-white" />
+                   <span className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] ml-1" style={{ writingMode: 'vertical-rl' }}>CỬA RA</span>
+                 </div>
+              </div>
+              {/* SVG Viewing Angle Overlay (MindYourDecisions Best Seat Algorithm) */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none z-[30] overflow-visible" preserveAspectRatio="none">
+                <line 
+                  x1={`calc(50% - ${(Math.max(420, cols * 48 + 40) * 0.8) / 2}px)`} y1="-80" 
+                  x2="50%" y2="66%" 
+                  stroke="rgba(239, 68, 68, 0.45)" strokeWidth="1.5" className="laser-line" 
+                />
+                <line 
+                  x1={`calc(50% + ${(Math.max(420, cols * 48 + 40) * 0.8) / 2}px)`} y1="-80" 
+                  x2="50%" y2="66%" 
+                  stroke="rgba(239, 68, 68, 0.45)" strokeWidth="1.5" className="laser-line" 
+                />
+                <circle cx="50%" cy="66%" r="6" fill="rgba(239, 68, 68, 0.4)" fillOpacity="0.25" className="animate-pulse" />
+                <circle cx="50%" cy="66%" r="2" fill="rgba(239, 68, 68, 0.8)" />
+                <text x="50%" y="66%" textAnchor="middle" dy="18" fill="rgba(239, 68, 68, 0.6)" fillOpacity="0.8" fontSize="9" fontWeight="800" fontFamily="monospace" className="tracking-widest">
+                  OPTIMAL VIEWING ANGLE
+                </text>
               </svg>
 
-            <div className="flex flex-col gap-4 relative z-[1]">
+            <div className="flex flex-col pt-4 pb-8 relative z-[20]">
               {gridData.map((rowArr, rIndex) => (
-                <div key={`row-${rIndex}`} className="flex items-center gap-4 group/row">
+                <div 
+                  key={`row-${rIndex}`} 
+                  className="flex items-center gap-4 group/row relative transition-all duration-300"
+                  style={{ 
+                    zIndex: rIndex,
+                    marginTop: rIndex === 0 ? '0' : '-16px' 
+                  }}
+                >
                   {/* Left Row Label with Actions */}
-                  <div className="w-16 flex items-center justify-end gap-1 shrink-0 select-none">
+                  <div className="w-16 flex items-center justify-end gap-1 shrink-0 select-none relative z-10">
                     <button
                       onClick={() => handleApplyToolToRow(rIndex)}
                       title={`Áp dụng công cụ đang chọn cho Hàng ${getRowChar(rIndex)}`}
@@ -697,8 +764,11 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                     </span>
                   </div>
 
-                  {/* Seat Row */}
-                  <div className="flex gap-2">
+                  {/* Seat Row Platform (Bậc thang 2.5D) */}
+                  <div className="flex gap-2 relative px-4 py-4 rounded-[28px] bg-[#f8fafc] border-t-4 border-white shadow-[0_-12px_24px_rgba(15,23,42,0.06)] ring-1 ring-slate-200/50 backdrop-blur-sm">
+                    {/* Đường viền phản quang của bậc thang */}
+                    <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-slate-300/40 to-transparent" />
+                    
                     {rowArr.map((cell, cIndex) => {
                       if (cell.isSecondHalf) return null
 
@@ -759,20 +829,20 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                           {isCouple ? (
                             isMaintenance ? (
                               <div className="relative z-20 flex w-full items-center justify-between px-2.5">
-                                <span className="text-[9px] font-extrabold uppercase tracking-tighter">
+                                <span className="text-[9px] font-extrabold uppercase tracking-tighter whitespace-nowrap">
                                   {cell.id}
                                 </span>
-                                <Wrench size={10} className="text-amber-500 shrink-0" />
-                                <span className="text-[9px] font-extrabold uppercase tracking-tighter">
+                                <Wrench size={10} className="text-amber-500 shrink-0 mx-1" />
+                                <span className="text-[9px] font-extrabold uppercase tracking-tighter whitespace-nowrap">
                                   {cell.rowName}{cell.colNum + 1}
                                 </span>
                               </div>
                             ) : (
                               <div className="relative z-20 flex w-full justify-between px-2.5">
-                                <span className="text-[9px] font-extrabold uppercase tracking-tighter">
+                                <span className="text-[9px] font-extrabold uppercase tracking-tighter whitespace-nowrap">
                                   {cell.id}
                                 </span>
-                                <span className="text-[9px] font-extrabold uppercase tracking-tighter">
+                                <span className="text-[9px] font-extrabold uppercase tracking-tighter whitespace-nowrap">
                                   {cell.rowName}{cell.colNum + 1}
                                 </span>
                               </div>
@@ -795,7 +865,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                   </div>
 
                   {/* Right Row Label */}
-                  <div className="w-16 text-left font-black text-slate-500 text-[11px] tracking-wider font-mono shrink-0 select-none pl-1.5">
+                  <div className="w-16 text-left font-black text-slate-500 text-[11px] tracking-wider font-mono shrink-0 select-none pl-1.5 relative z-10">
                     {getRowChar(rIndex)}
                   </div>
                 </div>
@@ -912,7 +982,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       </div>
 
       {/* Right Panel: Statistics & Grid Setup */}
-      <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-150 bg-white p-6 flex flex-col z-10">
+      <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-150 bg-white p-6 flex flex-col z-10 overflow-y-auto custom-scrollbar">
         
         <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-6 pb-3 border-b border-slate-100 font-mono">
           CHI TIẾT SƠ ĐỒ
