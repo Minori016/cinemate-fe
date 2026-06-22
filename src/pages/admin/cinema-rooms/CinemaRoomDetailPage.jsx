@@ -13,6 +13,7 @@ import {
   LayoutGrid, 
   RefreshCw 
 } from 'lucide-react'
+import SeatLayoutBuilder from './components/SeatLayoutBuilder'
 
 // Generate default seats matching CinemaRoomListPage fallback
 const generateDefaultSeats = (capacity) => {
@@ -155,29 +156,18 @@ export default function CinemaRoomDetailPage() {
     }
   }, [roomId, isAdmin])
 
-  // Handle checkbox toggling (AC-02 & AC-03)
-  const handleToggleSeat = (seatId, isChecked) => {
-    setSeats(prevSeats => 
-      prevSeats.map(seat => 
-        seat.id === seatId 
-          ? { ...seat, type: isChecked ? 'VIP' : 'STANDARD' } 
-          : seat
-      )
-    )
-  }
-
   // Handle Save Seats layout (AC-04 & AC-05)
-  const handleSave = async () => {
+  const handleSave = async (finalSeats) => {
     setSaving(true)
     setError('')
     try {
       // Basic validation
-      if (!seats || seats.length === 0) {
+      if (!finalSeats || finalSeats.length === 0) {
         throw new Error('Sơ đồ ghế không được trống.')
       }
 
       try {
-        await cinemaRoomService.updateSeats(roomId, seats)
+        await cinemaRoomService.updateSeats(roomId, finalSeats)
       } catch (err) {
         if (err.response) {
           // Server returned an error code
@@ -191,7 +181,8 @@ export default function CinemaRoomDetailPage() {
       }
 
       // Update database / local storage (AC-04)
-      localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(seats))
+      localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(finalSeats))
+      setSeats(finalSeats)
       
       // Return to listing and show confirmation (AC-04)
       navigate('/admin/cinema-rooms', { 
@@ -205,39 +196,6 @@ export default function CinemaRoomDetailPage() {
       setSaving(false)
     }
   }
-
-  // Reset to default layout helper
-  const handleResetDefault = () => {
-    if (window.confirm('Bạn có chắc chắn muốn đặt lại sơ đồ ghế về cấu hình mặc định?')) {
-      const defaults = generateDefaultSeats(room ? room.seatsCount : 80)
-      setSeats(defaults)
-      triggerToast('Đã đặt lại sơ đồ ghế mặc định. Nhấn Lưu để áp dụng.', 'info')
-    }
-  }
-
-  // Sort and group seats by row key for rendering
-  const getGroupedSeats = () => {
-    const grouped = {}
-    seats.forEach(seat => {
-      if (!grouped[seat.row]) {
-        grouped[seat.row] = []
-      }
-      grouped[seat.row].push(seat)
-    })
-    
-    const sortedRows = Object.keys(grouped).sort()
-    sortedRows.forEach(row => {
-      grouped[row].sort((a, b) => a.number - b.number)
-    })
-    
-    return { sortedRows, grouped }
-  }
-
-  const { sortedRows, grouped } = getGroupedSeats()
-
-  // Calculate dynamic stats
-  const vipCount = seats.filter(s => s.type === 'VIP').length
-  const normalCount = seats.length - vipCount
 
   // Access Denied (AC-07)
   if (!isAdmin) {
@@ -322,26 +280,6 @@ export default function CinemaRoomDetailPage() {
           </p>
         </div>
 
-        {/* Action button controls */}
-        {room && (
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={handleResetDefault}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 uppercase tracking-wider border border-white/5 cursor-pointer"
-            >
-              <RefreshCw size={14} />
-              Đặt lại mặc định
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider border-none cursor-pointer"
-            >
-              <Save size={14} />
-              {saving ? 'Đang lưu...' : 'Lưu cấu hình'}
-            </button>
-          </div>
-        )}
       </div>
 
       {error && (
@@ -357,132 +295,12 @@ export default function CinemaRoomDetailPage() {
           <span className="text-sm text-gray-400 font-semibold">Đang nạp sơ đồ ghế...</span>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* Left: Seat Map Grid Editor using Checkboxes (AC-02 & AC-03) */}
-          <div className="lg:col-span-8 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl overflow-hidden flex flex-col items-center">
-            
-            {/* Screen layout graphic */}
-            <div className="w-4/5 h-12 mb-14 relative flex flex-col items-center justify-start">
-              <div className="w-full h-6 screen-glow rounded-[100%] border-t-2 border-red-500/50"></div>
-              <p className="text-[9px] text-red-500/50 font-bold uppercase tracking-[0.3em] mt-2.5">Màn Hình Chiếu</p>
-            </div>
-
-            {/* Grid Container with scroll wrap */}
-            <div className="w-full overflow-x-auto pb-4 flex justify-center">
-              <div className="min-w-max flex flex-col gap-3 px-4 select-none">
-                {sortedRows.map(rowLabel => (
-                  <div key={rowLabel} className="flex items-center gap-3.5 justify-center">
-                    {/* Row Label (Left) */}
-                    <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{rowLabel}</span>
-                    
-                    {/* Row Seats of Checkboxes (AC-02) */}
-                    <div className="flex gap-2">
-                      {grouped[rowLabel].map(seat => {
-                        const isVip = seat.type === 'VIP'
-                        
-                        return (
-                          <label
-                            key={seat.id}
-                            className={`seat-edit-btn flex flex-col items-center justify-center p-1 rounded-xl border-2 transition-all cursor-pointer select-none w-14 h-14 ${
-                              isVip 
-                                ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_12px_rgba(34,197,94,0.3)] font-bold' 
-                                : 'border-slate-700 bg-slate-900/40 text-gray-400 hover:border-slate-500 hover:text-white'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isVip}
-                              onChange={(e) => handleToggleSeat(seat.id, e.target.checked)}
-                              className="w-4.5 h-4.5 accent-green-500 cursor-pointer mb-1 border-slate-600 rounded"
-                            />
-                            <span className="text-[10px] font-extrabold uppercase leading-none tracking-tight">{seat.id}</span>
-                          </label>
-                        )
-                      })}
-                    </div>
-
-                    {/* Row Label (Right) */}
-                    <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{rowLabel}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Quick helper tip */}
-            <div className="mt-8 flex gap-2 items-center bg-white/5 px-4 py-2.5 rounded-xl border border-white/5 text-[10px] text-gray-400 font-medium">
-              <Info size={14} className="text-gray-500 font-bold" />
-              <span>Mẹo: Check vào ô của ghế để chuyển thành loại VIP (Màu xanh lá). Bỏ check để chuyển thành Ghế Thường (Normal).</span>
-            </div>
-          </div>
-
-          {/* Right: Legend & Statistics Panel */}
-          <div className="lg:col-span-4 space-y-6">
-            
-            {/* Guide Info */}
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-xl">
-              <h3 className="font-extrabold uppercase text-xs text-white tracking-wider mb-4 flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
-                <Info size={14} className="text-red-500" />
-                Hướng dẫn loại ghế
-              </h3>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-2.5 rounded-xl border border-white/5 bg-slate-900/20">
-                  <div className="w-9 h-9 rounded-xl border-2 border-slate-700 bg-slate-900/40 text-gray-400 flex flex-col items-center justify-center shrink-0">
-                    <input type="checkbox" disabled className="w-3 h-3 accent-green-500" />
-                    <span className="text-[8px] font-bold mt-0.5">A1</span>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">Ghế Thường (Normal)</h4>
-                    <p className="text-[10px] text-gray-500">Trạng thái checkbox: Bỏ chọn.</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 p-2.5 rounded-xl border border-green-500/20 bg-green-500/5">
-                  <div className="w-9 h-9 rounded-xl border-2 border-green-500 bg-green-500/10 text-green-400 flex flex-col items-center justify-center shrink-0">
-                    <input type="checkbox" checked readOnly className="w-3 h-3 accent-green-500" />
-                    <span className="text-[8px] font-bold mt-0.5">A2</span>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-green-400">Ghế VIP</h4>
-                    <p className="text-[10px] text-green-500/80">Trạng thái checkbox: Được chọn (Màu xanh).</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Statistics box */}
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 shadow-xl">
-              <h3 className="font-extrabold uppercase text-xs text-white tracking-wider mb-4 flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
-                <LayoutGrid size={14} className="text-red-500" />
-                Thống kê sơ đồ ghế
-              </h3>
-
-              <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-gray-400 font-medium">Ghế Thường (Normal):</span>
-                  <span className="font-bold text-white font-mono bg-white/5 px-2.5 py-1 rounded-lg">
-                    {normalCount}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-1.5 border-b border-white/5">
-                  <span className="text-gray-400 font-medium">Ghế VIP:</span>
-                  <span className="font-bold text-green-400 font-mono bg-green-500/5 px-2.5 py-1 rounded-lg">
-                    {vipCount}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center pt-2 font-bold text-sm">
-                  <span className="text-white">Tổng cộng:</span>
-                  <span className="text-red-500 font-mono">
-                    {seats.length} / {room ? (room.capacity ?? room.seatsCount ?? 0) : 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-        </div>
+        <SeatLayoutBuilder 
+          initialSeats={seats} 
+          capacity={room ? (room.capacity ?? room.seatsCount ?? 0) : 0} 
+          onSave={handleSave} 
+          onCancel={() => navigate('/admin/cinema-rooms')} 
+        />
       )}
     </div>
   )
