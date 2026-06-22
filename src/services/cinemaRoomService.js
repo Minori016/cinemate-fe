@@ -5,16 +5,11 @@ export const cinemaRoomService = {
   getAll: (cinemaId) => api.get('/api/v1/cinema-rooms', {
     params: cinemaId ? { cinemaId } : {}
   }),
-  // Fallback for ID-based lookup (route via list + filter client-side if BE has no single-room endpoint)
-  getById: (id) => api.get('/api/v1/cinema-rooms').then(res => {
-    const rooms = res.data?.result || []
-    const room = rooms.find(r => r.id === id)
-    if (!room) throw new Error('Room not found')
-    return { data: room }
-  }),
-  // Stub methods for seats since BE only supports cinema-rooms listing currently
-  getSeats: (roomId) => Promise.resolve({ data: null }),
-  updateSeats: (roomId, seats) => Promise.resolve({ data: null }),
+  getById: (id) => api.get(`/api/v1/cinema-rooms/${id}`),
+  getSeats: (roomId) => api.get(`/api/v1/cinema-rooms/${roomId}/seats`),
   create: (payload) => api.post('/api/v1/admin/cinema-rooms', payload),
+  updateInfo: (roomId, payload) => api.put(`/api/v1/admin/cinema-rooms/${roomId}`, payload),
+  updateLayout: (roomId, payload) => api.put(`/api/v1/admin/cinema-rooms/${roomId}/layout`, payload),
+  delete: (roomId) => api.delete(`/api/v1/admin/cinema-rooms/${roomId}`),
 }
 
