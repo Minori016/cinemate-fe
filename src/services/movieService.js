@@ -20,6 +20,17 @@ export const movieService = {
     })
   },
 
+  updateAdmin: (id, movieData, posterFile) => {
+    const formData = new FormData()
+    formData.append('movie', new Blob([JSON.stringify(movieData)], { type: 'application/json' }))
+    if (posterFile) {
+      formData.append('posterFile', posterFile)
+    }
+    return api.put(`/api/v1/admin/movies/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+
   deleteAdmin: (id) => api.delete(`/api/v1/admin/movies/${id}`),
 
   // Helper endpoints for genres, countries and cinema rooms

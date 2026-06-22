@@ -163,17 +163,17 @@ export default function CinemaRoomDetailPage() {
   }, [roomId, isAdmin])
 
   // Handle Save Seats layout (AC-04 & AC-05)
-  const handleSave = async (finalSeats) => {
+  const handleSave = async (payload) => {
     setSaving(true)
     setError('')
     try {
       // Basic validation
-      if (!finalSeats || finalSeats.length === 0) {
+      if (!payload.seats || payload.seats.length === 0) {
         throw new Error('Sơ đồ ghế không được trống.')
       }
 
       try {
-        await cinemaRoomService.updateSeats(roomId, finalSeats)
+        await cinemaRoomService.updateLayout(roomId, payload)
       } catch (err) {
         if (err.response) {
           // Server returned an error code
@@ -187,8 +187,8 @@ export default function CinemaRoomDetailPage() {
       }
 
       // Update database / local storage (AC-04)
-      localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(finalSeats))
-      setSeats(finalSeats)
+      localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(payload.seats))
+      setSeats(payload.seats)
       
       // Return to listing and show confirmation (AC-04)
       navigate('/admin/cinema-rooms', { 
