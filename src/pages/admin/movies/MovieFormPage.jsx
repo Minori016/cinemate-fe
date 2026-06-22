@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { movieService } from '../../../services/movieService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
@@ -10,6 +10,9 @@ import {
 
 export default function MovieFormPage() {
   const navigate = useNavigate()
+  const { id } = useParams()
+  
+  const isEditMode = !!id
   
   // State for reference data
   const [genres, setGenres] = useState([])
@@ -60,15 +63,41 @@ export default function MovieFormPage() {
         setGenres(genresRes.data?.result || [])
         setCountries(countriesRes.data?.result || [])
         setCinemaRooms(roomsRes.data?.result || [])
+
+        if (isEditMode) {
+          const movieRes = await movieService.getById(id)
+          const movie = movieRes.data?.result || movieRes.data
+          if (movie) {
+            setTitleVn(movie.titleVn || '')
+            setTitleEn(movie.titleEn || '')
+            setDescription(movie.description || '')
+            setDirector(movie.director || '')
+            setDurationMinutes(movie.durationMinutes || '')
+            setRating(movie.rating || 'P')
+            setVersion(movie.version || '2D')
+            setFromDate(movie.fromDate || '')
+            setToDate(movie.toDate || '')
+            setLanguage(movie.language || 'Tiếng Việt - Phụ đề Tiếng Anh')
+            setTrailerUrl(movie.trailerUrl || '')
+            if (movie.posterUrl) setPosterPreview(movie.posterUrl)
+            
+            if (movie.genres) setSelectedGenres(movie.genres.map(g => g.id))
+            if (movie.countries) setSelectedCountries(movie.countries.map(c => c.id))
+            if (movie.actors) setActors(movie.actors.map(a => ({ fullName: a.fullName, characterName: a.characterName || '' })))
+            
+            // For showtimes, you would also map them if the BE returned them, e.g.:
+            // if (movie.showtimes) setShowtimes(movie.showtimes.map(...))
+          }
+        }
       } catch (err) {
-        console.error('Failed to load form reference data', err)
-        showToast('Không thể tải danh mục thể loại, quốc gia hoặc phòng chiếu.', 'danger')
+        console.error('Failed to load form reference data or movie data', err)
+        showToast('Không thể tải dữ liệu. Vui lòng thử lại.', 'danger')
       } finally {
         setLoadingRefs(false)
       }
     }
     fetchReferences()
-  }, [])
+  }, [id, isEditMode])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -209,15 +238,20 @@ export default function MovieFormPage() {
     }
 
     try {
-      await movieService.createAdmin(movieData, posterFile)
-      showToast('Thêm phim mới thành công!', 'success')
+      if (isEditMode) {
+        await movieService.updateAdmin(id, movieData, posterFile)
+        showToast('Cập nhật phim thành công!', 'success')
+      } else {
+        await movieService.createAdmin(movieData, posterFile)
+        showToast('Thêm phim mới thành công!', 'success')
+      }
       setTimeout(() => {
         navigate('/admin/movies')
       }, 1500)
     } catch (err) {
-      console.error('Failed to create movie', err)
+      console.error('Failed to save movie', err)
       const serverMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
-      showToast(`Không thể thêm phim: ${serverMsg}`, 'danger')
+      showToast(`Không thể lưu phim: ${serverMsg}`, 'danger')
     } finally {
       setIsSubmitting(false)
     }
@@ -262,10 +296,10 @@ export default function MovieFormPage() {
             className="text-4xl text-white font-black tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif' }}
           >
-            Thêm phim mới
+            {isEditMode ? 'Cập nhật phim' : 'Thêm phim mới'}
           </h1>
           <p className="text-sm text-gray-400 mt-1">
-            Khai báo thông tin chi tiết, thể loại, quốc gia sản xuất, dàn diễn viên và lập lịch chiếu phim tại rạp.
+            {isEditMode ? 'Chỉnh sửa thông tin phim, poster và lịch chiếu.' : 'Khai báo thông tin chi tiết, thể loại, quốc gia sản xuất, dàn diễn viên và lập lịch chiếu phim tại rạp.'}
           </p>
         </div>
       </div>
@@ -659,7 +693,7 @@ export default function MovieFormPage() {
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5 justify-center">
-                    <Plus size={16} /> Lưu phim mới
+                    <Plus size={16} /> {isEditMode ? 'Cập nhật phim' : 'Lưu phim mới'}
                   </span>
                 )}
               </Button>
