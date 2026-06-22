@@ -346,7 +346,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row min-h-[600px] bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="flex flex-col lg:flex-row min-h-[600px] bg-[#0c0d14] border border-slate-800/80 rounded-2xl shadow-xl overflow-hidden">
       {/* Main Immersive Canvas Area */}
       <div className="flex-1 relative flex flex-col canvas-bg">
         
@@ -357,20 +357,18 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
             
             {/* 3D Curved Projector Screen */}
             <div 
-              className="h-20 mb-24 relative flex justify-center pointer-events-none transition-all duration-500"
+              className="h-24 mb-24 relative flex justify-center pointer-events-none transition-all duration-500"
               style={{ width: `${Math.max(420, cols * 48 + 40)}px` }}
             >
               {/* Glow Behind */}
-              <div className="absolute top-0 w-[85%] h-full bg-[var(--color-primary)] opacity-12 blur-[35px] rounded-[100%] screen-glow" />
+              <div className="absolute top-0 w-[80%] h-full bg-red-600/20 opacity-70 blur-[40px] rounded-[100%] screen-glow" />
               {/* Screen Surface */}
               <div 
-                className="w-full h-3.5 bg-gradient-to-b from-slate-800 to-slate-900 border-b border-slate-700 rounded-b-full shadow-2xl"
-                style={{ 
-                  boxShadow: '0 10px 30px rgba(0,0,0,0.06), 0 20px 50px rgba(99,102,241,0.03)'
-                }}
-              />
-              <div className="absolute top-8 left-1/2 -translate-x-1/2 text-[9px] text-slate-400 font-bold uppercase tracking-[0.6em]">
-                MÀN HÌNH CHIẾU / SCREEN
+                className="w-4/5 h-16 bg-gradient-to-b from-red-950/20 to-red-900/10 border border-red-500/30 rounded-b-[40px] shadow-[0_15px_30px_rgba(239,68,68,0.15)] flex items-center justify-center"
+              >
+                <span className="text-[10px] text-red-500 font-bold uppercase tracking-[0.6em] text-shadow-glow">
+                  MÀN HÌNH CHIẾU
+                </span>
               </div>
             </div>
 
@@ -390,11 +388,11 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                 <text x="50%" y="66%" textAnchor="middle" dy="16" fill="var(--color-primary)" fillOpacity="0.3" fontSize="8" fontWeight="700" fontFamily="monospace">THX SWEET SPOT</text>
               </svg>
 
-            <div className="flex flex-col gap-5 relative z-[1]">
+            <div className="flex flex-col gap-4 relative z-[1]">
               {gridData.map((rowArr, rIndex) => (
                 <div key={`row-${rIndex}`} className="flex items-center gap-4">
                   {/* Left Row Label */}
-                  <div className="w-5 text-right font-black text-slate-400 text-[11px] tracking-wider font-mono">
+                  <div className="w-5 text-right font-black text-slate-500 text-[11px] tracking-wider font-mono">
                     {getRowChar(rIndex)}
                   </div>
 
@@ -410,14 +408,14 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
 
                       let seatStyle = ''
                       if (cell.type === 'STANDARD') {
-                        seatStyle = 'bg-gradient-to-b from-purple-500 to-purple-600 border-b-[3px] border-purple-700 text-white hover:from-purple-600 hover:to-purple-700 shadow-sm'
+                        seatStyle = 'bg-[#1e293b]/40 border border-slate-700/50 text-slate-400 hover:bg-[#1e293b]/70 hover:text-white shadow-sm'
                       } else if (cell.type === 'VIP') {
-                        seatStyle = 'bg-gradient-to-b from-rose-500 to-rose-600 border-b-[3px] border-rose-700 text-white hover:from-rose-600 hover:to-rose-700 shadow-[0_3px_8px_rgba(244,63,94,0.2)]'
+                        seatStyle = 'bg-emerald-950/20 border border-emerald-500/80 text-emerald-400 hover:bg-emerald-900/30 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                       } else if (cell.type === 'COUPLE') {
-                        seatStyle = 'bg-gradient-to-b from-pink-500 to-pink-600 border-b-[3px] border-pink-700 text-white hover:from-pink-600 hover:to-pink-700 shadow-[0_3px_8px_rgba(236,72,153,0.15)]'
+                        seatStyle = 'bg-rose-950/20 border border-pink-500/80 text-pink-400 hover:bg-rose-900/30 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
                       } else {
                         // Empty / Walkway
-                        seatStyle = 'border border-dashed border-slate-200 bg-transparent text-slate-300 hover:bg-slate-100 hover:border-slate-300 transition-colors'
+                        seatStyle = 'border border-dashed border-slate-800/80 bg-transparent text-slate-700/60 hover:bg-slate-900/50 hover:border-slate-700 transition-colors'
                       }
 
                       return (
@@ -432,7 +430,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                             relative flex flex-col items-center justify-center rounded-t-lg rounded-b-md transition-all cursor-pointer shrink-0
                             h-10 ${isCouple ? 'w-[88px]' : 'w-10'}
                             ${seatStyle}
-                            ${sweetSpotHint ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
+                            ${sweetSpotHint ? 'ring-2 ring-amber-500 ring-offset-1' : ''}
                           `}
                           style={heatmap ? { 
                             boxShadow: `inset 0 0 0 1.5px ${heatmap.border}`, 
@@ -442,22 +440,22 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                           {isCouple && (
                             <>
                               {/* Cushion Divider visual styling */}
-                              <div className="absolute top-0 bottom-1 left-1/2 w-px bg-white/25 z-10" />
-                              <div className="absolute top-[2px] left-1/2 w-1.5 h-1.5 bg-slate-50 -translate-x-1/2 rounded-full border border-black/5 z-10" />
+                              <div className="absolute top-0 bottom-0 left-1/2 w-px bg-pink-500/30 z-10" />
+                              <div className="absolute top-[2px] left-1/2 w-1.5 h-1.5 bg-pink-500/40 -translate-x-1/2 rounded-full border border-black/5 z-10" />
                             </>
                           )}
                           
                           {isCouple ? (
-                            <div className="relative z-20 flex w-full justify-between px-3">
-                              <span className="text-[9px] font-black uppercase tracking-tighter text-white/95">
+                            <div className="relative z-20 flex w-full justify-between px-2.5">
+                              <span className="text-[9px] font-extrabold uppercase tracking-tighter">
                                 {cell.id}
                               </span>
-                              <span className="text-[9px] font-black uppercase tracking-tighter text-white/95">
+                              <span className="text-[9px] font-extrabold uppercase tracking-tighter">
                                 {cell.rowName}{cell.colNum + 1}
                               </span>
                             </div>
                           ) : (
-                            <span className={`text-[9px] font-black uppercase tracking-tighter relative z-20 ${cell.type === 'EMPTY' ? 'text-slate-300 hover:text-slate-500' : 'text-white/95'}`}>
+                            <span className="text-[9px] font-extrabold uppercase tracking-tighter relative z-20">
                               {cell.id}
                             </span>
                           )}
@@ -467,7 +465,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                   </div>
 
                   {/* Right Row Label */}
-                  <div className="w-5 text-left font-black text-slate-400 text-[11px] tracking-wider font-mono">
+                  <div className="w-5 text-left font-black text-slate-500 text-[11px] tracking-wider font-mono">
                     {getRowChar(rIndex)}
                   </div>
                 </div>
@@ -478,7 +476,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                 <div className="w-5" />
                 <div className="flex gap-2">
                   {Array.from({ length: cols }).map((_, i) => (
-                    <div key={`col-lbl-${i}`} className="w-10 text-center font-bold text-slate-400 text-[9px] shrink-0 font-mono">
+                    <div key={`col-lbl-${i}`} className="w-10 text-center font-bold text-slate-500 text-[9px] shrink-0 font-mono">
                       {i + 1}
                     </div>
                   ))}
@@ -491,24 +489,24 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
             </div> {/* Close sightline wrapper */}
 
             {/* Legend / Chú thích (Clean layout) */}
-            <div className="mt-14 w-full max-w-[800px] border-t border-slate-100 pt-6">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Chú thích loại ghế</div>
+            <div className="mt-14 w-full max-w-[800px] border-t border-slate-800/80 pt-6">
+              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Chú thích loại ghế</div>
               <div className="flex flex-wrap items-center gap-8">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded bg-gradient-to-b from-purple-500 to-purple-600 border-b-2 border-purple-700" />
-                  <span className="text-xs text-slate-600 font-semibold">Standard (Thường)</span>
+                  <div className="w-5 h-5 rounded bg-[#1e293b]/40 border border-slate-700/50" />
+                  <span className="text-xs text-slate-400 font-semibold">Standard (Thường)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded bg-gradient-to-b from-rose-500 to-rose-600 border-b-2 border-rose-700 shadow-sm shadow-rose-500/10" />
-                  <span className="text-xs text-slate-600 font-semibold">VIP (Cao cấp)</span>
+                  <div className="w-5 h-5 rounded bg-emerald-950/20 border border-emerald-500/80" />
+                  <span className="text-xs text-slate-400 font-semibold">VIP (Cao cấp)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-5 rounded bg-gradient-to-b from-pink-500 to-pink-600 border-b-2 border-pink-700 shadow-sm shadow-pink-500/10" />
-                  <span className="text-xs text-slate-600 font-semibold">Couple (Ghế đôi)</span>
+                  <div className="w-10 h-5 rounded bg-rose-950/20 border border-pink-500/80" />
+                  <span className="text-xs text-slate-400 font-semibold">Couple (Ghế đôi)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded border border-dashed border-slate-200 bg-white" />
-                  <span className="text-xs text-slate-400 font-medium">Lối đi / Hàng trống</span>
+                  <div className="w-5 h-5 rounded border border-dashed border-slate-800 bg-transparent" />
+                  <span className="text-xs text-slate-500 font-medium">Lối đi / Hàng trống</span>
                 </div>
               </div>
             </div>
@@ -518,89 +516,85 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       </div>
 
       {/* Right Panel: Statistics & Grid Setup */}
-      <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-100 bg-white p-6 flex flex-col z-10">
+      <div className="w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-800 bg-[#0e0f14] p-6 flex flex-col z-10">
         
-        <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 pb-3 border-b border-slate-50">
-          Thông số phòng chiếu
+        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6 pb-3 border-b border-slate-800/60 font-mono">
+          CHI TIẾT SƠ ĐỒ
         </h2>
 
         {/* Stats Section */}
         <div className="space-y-3.5 mb-8">
-          <div className="flex justify-between items-end pb-1">
-            <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tổng ghế vật lý</span>
-            <span className="text-3xl font-extrabold text-slate-900 leading-none">{stats.totalPhysical}</span>
+          <div className="flex justify-between items-end pb-3 border-b border-slate-800/80 mb-4">
+            <span className="text-xs text-slate-500 font-bold uppercase tracking-wider">Tổng số ghế (Total)</span>
+            <span className="text-3xl font-extrabold text-blue-500 font-mono leading-none">{stats.totalPhysical}</span>
           </div>
           
-          <div className="flex justify-between items-center p-3 rounded-xl border border-purple-100 bg-purple-50/20">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-slate-800/60 bg-slate-900/30">
             <div className="flex items-center gap-2.5">
-              <div className="w-3.5 h-3.5 rounded bg-gradient-to-b from-purple-400 to-purple-600 shadow-sm" />
-              <span className="text-xs text-slate-700 font-semibold">Standard</span>
+              <div className="w-3.5 h-3.5 rounded bg-[#1e293b]/60 border border-slate-700/50 shadow-sm" />
+              <span className="text-xs text-slate-400 font-semibold">Ghế Standard</span>
             </div>
-            <span className="font-bold text-slate-900 text-sm">{stats.standard}</span>
+            <span className="font-bold text-slate-300 text-sm font-mono">{stats.standard}</span>
           </div>
 
-          <div className="flex justify-between items-center p-3 rounded-xl border border-rose-100 bg-rose-50/20">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-emerald-500/20 bg-emerald-950/10">
             <div className="flex items-center gap-2.5">
-              <div className="w-3.5 h-3.5 rounded bg-gradient-to-b from-rose-400 to-rose-600 shadow-sm animate-pulse" />
-              <span className="text-xs text-slate-700 font-semibold">VIP</span>
+              <div className="w-3.5 h-3.5 rounded bg-emerald-500/20 border border-emerald-500 shadow-sm" />
+              <span className="text-xs text-emerald-400 font-semibold">Ghế VIP</span>
             </div>
-            <span className="font-bold text-slate-900 text-sm">{stats.vip}</span>
+            <span className="font-bold text-emerald-400 text-sm font-mono">{stats.vip}</span>
           </div>
 
-          <div className="flex justify-between items-center p-3 rounded-xl border border-pink-100 bg-pink-50/20">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-pink-500/20 bg-rose-950/10">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-3.5 rounded bg-gradient-to-b from-pink-400 to-pink-600 shadow-sm" />
-              <span className="text-xs text-slate-700 font-semibold">Ghế Đôi</span>
+              <div className="w-7 h-3.5 rounded bg-pink-500/20 border border-pink-500 shadow-sm" />
+              <span className="text-xs text-pink-400 font-semibold">Ghế Đôi</span>
             </div>
-            <span className="font-bold text-slate-900 text-sm">{stats.couple}</span>
+            <span className="font-bold text-pink-400 text-sm font-mono">{stats.couple}</span>
           </div>
 
-          <div className="flex justify-between items-center p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-dashed border-slate-800 bg-transparent">
             <div className="flex items-center gap-2.5">
-              <div className="w-3.5 h-3.5 rounded border border-dashed border-slate-300 bg-white" />
-              <span className="text-xs text-slate-500">Lối đi</span>
+              <div className="w-3.5 h-3.5 rounded border border-dashed border-slate-700 bg-transparent" />
+              <span className="text-xs text-slate-500 font-semibold">Lối đi / Blocked</span>
             </div>
-            <span className="font-bold text-slate-700 text-sm">{stats.empty}</span>
+            <span className="font-bold text-slate-500 text-sm font-mono">{stats.empty}</span>
           </div>
 
           {sweetSpotMode && (
-            <div className="mt-4 p-4 rounded-xl border border-amber-100 bg-amber-50/30">
-              <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <Wand2 size={12} className="text-amber-600" />
+            <div className="mt-4 p-4 rounded-xl border border-amber-950/40 bg-amber-950/10">
+              <div className="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-3 flex items-center gap-1.5 font-mono">
+                <Wand2 size={12} className="text-amber-500" />
                 Bản đồ nhiệt gợi ý
               </div>
               <div className="space-y-2 text-[11px]">
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 rounded-sm border border-amber-300 bg-amber-100/60" />
-                  <span className="text-slate-700 font-medium">VIP Zone (Sweet Spot)</span>
-                  <span className="text-amber-800 ml-auto font-bold">&gt;80%</span>
+                  <div className="w-4 h-3 rounded-sm border border-amber-500/40 bg-amber-950/30" />
+                  <span className="text-slate-400 font-medium">VIP Zone (Sweet Spot)</span>
+                  <span className="text-amber-500 ml-auto font-bold">&gt;80%</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 rounded-sm border border-blue-200 bg-blue-50/60" />
-                  <span className="text-slate-700 font-medium">Premium</span>
-                  <span className="text-blue-800 ml-auto font-bold">55-80%</span>
+                  <div className="w-4 h-3 rounded-sm border border-blue-500/40 bg-blue-950/30" />
+                  <span className="text-slate-400 font-medium">Premium</span>
+                  <span className="text-blue-400 ml-auto font-bold">55-80%</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-4 h-3 rounded-sm border border-slate-200 bg-slate-100/60" />
-                  <span className="text-slate-700 font-medium">Standard</span>
+                  <div className="w-4 h-3 rounded-sm border border-slate-700/40 bg-slate-900/30" />
+                  <span className="text-slate-400 font-medium">Standard</span>
                   <span className="text-slate-500 ml-auto font-bold">35-55%</span>
                 </div>
-              </div>
-              <div className="mt-3 pt-2.5 border-t border-amber-100/60 text-[9px] text-amber-800/70 leading-relaxed font-mono">
-                Chuẩn: <span className="font-bold">SMPTE</span> (40-50°) & <span className="font-bold">THX</span> (2/3)<br/>
-                Khoảng cách hàng (TCVN 5577): <span className="font-bold">0.9-1.05m</span>
               </div>
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-slate-100">
+          <div className="mt-6 pt-4 border-t border-slate-800/80">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tỷ lệ lấp đầy</span>
-              <span className="text-sm font-bold text-slate-800">{stats.fillRate}%</span>
+              <span className="text-xs text-slate-500 font-semibold uppercase tracking-wider">Tỷ lệ lấp đầy (Capacity)</span>
+              <span className="text-sm font-bold text-red-500 font-mono">{stats.fillRate}%</span>
             </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-slate-900 border border-slate-800 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-[var(--color-primary)] transition-all duration-500 rounded-full" 
+                className="h-full bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.5)] transition-all duration-500 rounded-full" 
                 style={{ width: `${stats.fillRate}%` }}
               />
             </div>
@@ -608,34 +602,34 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         </div>
 
         {/* Grid Dimensions */}
-        <div className="rounded-2xl p-4 mt-auto border border-slate-100 bg-slate-50/50">
-          <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Maximize2 size={14} className="text-[var(--color-primary)]" />
-            Cấu hình lưới
+        <div className="rounded-2xl p-4 mt-auto border border-slate-800/60 bg-slate-900/30">
+          <h3 className="font-bold text-slate-300 text-xs uppercase tracking-wider mb-4 flex items-center gap-2 font-mono">
+            <Maximize2 size={14} className="text-red-500" />
+            CẤU HÌNH LƯỚI
           </h3>
           
           <div className="space-y-4">
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Hàng ghế (Rows)</label>
-                <span className="text-xs font-bold text-[var(--color-primary)]">{rows}</span>
+                <label className="text-[10px] font-bold text-slate-500 uppercase">SỐ HÀNG NGANG (ROWS)</label>
+                <span className="text-xs font-bold text-red-500 font-mono">{rows}</span>
               </div>
               <input 
                 type="range" min={MIN_ROWS} max={MAX_ROWS} 
                 value={rows} onChange={(e) => setRows(parseInt(e.target.value))}
-                className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
             </div>
             
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Cột ghế (Cols)</label>
-                <span className="text-xs font-bold text-[var(--color-primary)]">{cols}</span>
+                <label className="text-[10px] font-bold text-slate-500 uppercase">SỐ CỘT (COLS)</label>
+                <span className="text-xs font-bold text-red-500 font-mono">{cols}</span>
               </div>
               <input 
                 type="range" min={MIN_COLS} max={MAX_COLS} 
                 value={cols} onChange={(e) => setCols(parseInt(e.target.value))}
-                className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
             </div>
           </div>
@@ -643,7 +637,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
           <div className="mt-4 pt-2">
             <button 
               onClick={onCancel}
-              className="w-full py-2 bg-white border border-slate-200 text-slate-600 font-bold text-xs rounded-xl transition-all hover:bg-slate-50 hover:text-slate-800 shadow-sm"
+              className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-400 font-bold text-xs rounded-xl transition-all hover:bg-slate-800 hover:text-white shadow-sm"
             >
               Thoát cấu hình
             </button>
@@ -655,8 +649,8 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       {/* Styles for premium interactive animations */}
       <style>{`
         .canvas-bg {
-          background-color: #f8fafc;
-          background-image: radial-gradient(#e2e8f0 1.2px, transparent 1.2px);
+          background-color: #0c0d14;
+          background-image: radial-gradient(#1e293b 1.2px, transparent 1.2px);
           background-size: 24px 24px;
         }
         .custom-scrollbar::-webkit-scrollbar {
@@ -667,15 +661,15 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(148, 163, 184, 0.2);
+          background: rgba(30, 41, 59, 0.5);
           border-radius: 10px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(148, 163, 184, 0.4);
+          background: rgba(30, 41, 59, 0.8);
         }
         @keyframes glowBreathing {
-          0%, 100% { opacity: 0.12; filter: blur(35px); }
-          50% { opacity: 0.20; filter: blur(45px); }
+          0%, 100% { opacity: 0.5; filter: blur(35px); }
+          50% { opacity: 0.7; filter: blur(45px); }
         }
         .screen-glow {
           animation: glowBreathing 4s ease-in-out infinite;
@@ -691,6 +685,9 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         }
         input[type="range"]::-webkit-slider-thumb {
           background: var(--color-primary);
+        }
+        .text-shadow-glow {
+          text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
       `}</style>
     </div>
