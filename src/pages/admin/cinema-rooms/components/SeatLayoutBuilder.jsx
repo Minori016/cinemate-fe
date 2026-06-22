@@ -811,7 +811,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                             h-10 ${isCouple ? 'w-[88px]' : 'w-10'}
                             ${seatStyle}
                             ${sweetSpotHint ? 'ring-2 ring-amber-500 ring-offset-1' : ''}
-                            ${isSelected ? 'ring-2 ring-blue-500 ring-offset-2 scale-[1.02] z-30' : ''}
+                            ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-2 bg-emerald-500/20 scale-[1.02] z-30' : ''}
                           `}
                           style={heatmap ? { 
                             boxShadow: `inset 0 0 0 1.5px ${heatmap.border}`, 
