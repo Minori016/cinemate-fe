@@ -104,6 +104,7 @@ export default function AppRoutes() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="movies" element={<MovieListPage />} />
         <Route path="movies/add" element={<MovieFormPage />} />
+        <Route path="movies/edit/:id" element={<MovieFormPage />} />
         <Route path="employees" element={<EmployeeListPage />} />
         <Route path="members" element={<MemberListPage />} />
         <Route path="tickets" element={<TicketManagementPage />} />

@@ -34,6 +34,7 @@ export default function MovieListPage() {
   }
 
   const columns = [
+    { key: 'poster', label: 'Poster', render: r => r.posterUrl ? <img src={r.posterUrl} alt="poster" className="w-12 h-16 object-cover rounded shadow border border-white/10" /> : <div className="w-12 h-16 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">N/A</div> },
     { key: 'titleEn', label: 'Tên (ENG)' },
     { key: 'titleVn', label: 'Tên (VN)' },
     { key: 'fromDate', label: 'Từ ngày' },
