@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Table from '../../../components/common/Table'
-import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw } from 'lucide-react'
 
 // Initial seeds matching current workspace listings
 const INITIAL_ROOMS = [
@@ -44,6 +44,7 @@ export default function CinemaRoomListPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeSearch, setActiveSearch] = useState('')
+  const [maintenanceConfirm, setMaintenanceConfirm] = useState(null)
 
   // Add Room Dialog Modal
   const [showAddModal, setShowAddModal] = useState(false)
@@ -123,6 +124,12 @@ export default function CinemaRoomListPage() {
         } else if (rowName === 'G' || rowName === 'H') {
           type = 'COUPLE'
         }
+
+        // Leave walkways at columns 3 and 8 for 10-column rooms (between 2-3 and 8-9)
+        if (colsCount === 10 && (c === 3 || c === 8)) {
+          type = 'EMPTY'
+        }
+
         seats.push({
           id: `${rowName}${c}`,
           row: rowName,
@@ -132,6 +139,41 @@ export default function CinemaRoomListPage() {
       }
     }
     return seats
+  }
+
+  const countAffectedShowtimes = (roomName) => {
+    const local = localStorage.getItem('manager_showtimes_db')
+    const list = local ? JSON.parse(local) : []
+    return list.filter(item => item.room === roomName).length
+  }
+
+  const handleStatusChange = (roomObj, newStatus) => {
+    if (newStatus === 'MAINTENANCE') {
+      const affectedCount = countAffectedShowtimes(roomObj.name)
+      setMaintenanceConfirm({
+        room: roomObj,
+        targetStatus: newStatus,
+        affectedCount,
+        onConfirm: () => {
+          updateRoomStatus(roomObj.id, newStatus)
+          setMaintenanceConfirm(null)
+        }
+      })
+    } else {
+      updateRoomStatus(roomObj.id, newStatus)
+    }
+  }
+
+  const updateRoomStatus = (roomId, status) => {
+    const updated = rooms.map(r => {
+      if (r.id === roomId) {
+        return { ...r, status }
+      }
+      return r
+    })
+    setRooms(updated)
+    localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(updated))
+    triggerToast(`Đã chuyển trạng thái phòng sang ${status}!`, 'success')
   }
 
   const handleAddRoom = async (e) => {
@@ -182,6 +224,11 @@ export default function CinemaRoomListPage() {
     setActiveSearch(searchTerm.trim())
   }
 
+  const handleResetSearch = () => {
+    setSearchTerm('')
+    setActiveSearch('')
+  }
+
   const filteredRooms = rooms.filter(room => {
     const query = activeSearch.toLowerCase()
     return (
@@ -194,7 +241,25 @@ export default function CinemaRoomListPage() {
   const columns = [
     { key: 'id', label: 'Cinema Room ID' },
     { key: 'name', label: 'Cinema Room Name' },
-    { key: 'seatsCount', label: 'Seat Quantity' }
+    { key: 'seatsCount', label: 'Seat Quantity' },
+    { 
+      key: 'status', 
+      label: 'Trạng thái',
+      render: (row) => {
+        const isActive = row.status !== 'MAINTENANCE'
+        return (
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+              isActive 
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
+                : 'bg-amber-500/10 border border-amber-500/20 text-amber-400'
+            }`}>
+              {isActive ? 'ACTIVE' : 'MAINTENANCE'}
+            </span>
+          </div>
+        )
+      }
+    }
   ]
 
   // Render Access Denied state (AC-06)
@@ -277,9 +342,26 @@ export default function CinemaRoomListPage() {
         </button>
       </div>
 
+      {/* Maintenance Warning Alerts */}
+      {rooms.filter(r => r.status === 'MAINTENANCE').map(r => {
+        const count = countAffectedShowtimes(r.name)
+        return (
+          <div key={r.id} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl text-xs font-semibold flex items-start gap-3 max-w-4xl shadow-sm animate-fade-in">
+            <AlertCircle className="shrink-0 mt-0.5" size={16} />
+            <div>
+              <p className="font-bold uppercase tracking-wider mb-1">Cảnh báo bảo trì: {r.name}</p>
+              <p className="text-gray-400 leading-relaxed font-medium">
+                Phòng chiếu này đang ở trạng thái bảo trì (<span className="text-amber-500 font-bold">MAINTENANCE</span>). 
+                Hiện có <span className="text-white font-black">{count}</span> suất chiếu liên quan đang bị ảnh hưởng hoặc tạm ngưng bán vé.
+              </p>
+            </div>
+          </div>
+        )
+      })}
+
       {/* Search Bar container with search limits (AC-04) */}
-      <form onSubmit={handleSearchSubmit} className="flex gap-3 max-w-md">
-        <div className="relative flex-1">
+      <form onSubmit={handleSearchSubmit} className="flex flex-wrap gap-3 max-w-xl">
+        <div className="relative min-w-[240px] flex-1">
           <input 
             type="text"
             placeholder="Tìm theo Room ID hoặc tên phòng..." 
@@ -302,6 +384,16 @@ export default function CinemaRoomListPage() {
           <Search size={14} />
           Tìm kiếm
         </button>
+        {activeSearch && (
+          <button
+            type="button"
+            onClick={handleResetSearch}
+            className="bg-transparent border border-gray-600 hover:border-gray-400 hover:bg-gray-800/30 text-gray-400 hover:text-white font-bold px-5 rounded-xl flex items-center gap-2 transition-all cursor-pointer text-xs uppercase tracking-wider"
+          >
+            <RotateCcw size={14} />
+            Reset
+          </button>
+        )}
       </form>
 
       {/* Main List Table rendering (AC-01) */}
@@ -315,19 +407,40 @@ export default function CinemaRoomListPage() {
             columns={columns}
             data={filteredRooms}
             actions={(row) => (
-              /* Seat Detail Button (AC-02) */
-              <button
-                onClick={() => navigate(`/admin/cinema-rooms/${row.id}`)}
-                className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 hover:text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20 active:scale-[0.98] cursor-pointer"
-              >
-                Seat Detail
-              </button>
+              <div className="flex items-center justify-end gap-3.5">
+                {/* Status Toggle/Select */}
+                <select
+                  value={row.status || 'ACTIVE'}
+                  onChange={(e) => handleStatusChange(row, e.target.value)}
+                  className="bg-[#181c2c] border border-white/10 rounded-lg text-xs py-1 px-2.5 text-white font-semibold focus:outline-none focus:border-red-500 cursor-pointer shadow-sm"
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="MAINTENANCE">MAINTENANCE</option>
+                </select>
+
+                {/* Seat Detail Button (AC-02) */}
+                <button
+                  onClick={() => navigate(`/admin/cinema-rooms/${row.id}`)}
+                  className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 hover:text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20 active:scale-[0.98] cursor-pointer"
+                >
+                  Seat Detail
+                </button>
+              </div>
             )}
           />
         ) : (
-          <div className="text-center py-16 text-gray-500 font-semibold flex flex-col items-center justify-center gap-2">
+          <div className="text-center py-16 text-gray-500 font-semibold flex flex-col items-center justify-center gap-3">
             <span className="material-symbols-outlined text-4xl text-gray-600">search_off</span>
             <span className="text-sm">Không tìm thấy phòng chiếu nào phù hợp!</span>
+            {activeSearch && (
+              <button
+                type="button"
+                onClick={handleResetSearch}
+                className="mt-2 px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 hover:text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20 active:scale-[0.98] cursor-pointer"
+              >
+                Reset tìm kiếm
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -417,6 +530,37 @@ export default function CinemaRoomListPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Maintenance Confirmation Modal */}
+      {maintenanceConfirm && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#161b2a] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-left">
+            <h4 className="font-bold text-amber-500 text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
+              <AlertCircle size={18} />
+              Cảnh báo bảo trì phòng chiếu
+            </h4>
+            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
+              Bạn đang chuyển phòng chiếu <strong>"{maintenanceConfirm.room.name}"</strong> sang trạng thái bảo trì (<span className="text-amber-500 font-bold">MAINTENANCE</span>).
+              <br /><br />
+              Phòng này hiện đang có <strong className="text-white">{maintenanceConfirm.affectedCount}</strong> suất chiếu được lên lịch. Các suất chiếu này sẽ không thể mở bán vé. Bạn có chắc chắn muốn tiếp tục không?
+            </p>
+            <div className="flex justify-end gap-3 text-xs">
+              <button
+                onClick={() => setMaintenanceConfirm(null)}
+                className="px-4 py-2 border border-white/10 text-gray-300 font-bold rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={maintenanceConfirm.onConfirm}
+                className="px-5 py-2 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 cursor-pointer shadow-md shadow-amber-500/10 transition-colors"
+              >
+                Xác nhận bảo trì
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

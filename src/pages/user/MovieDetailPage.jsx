@@ -630,7 +630,7 @@ export default function MovieDetailPage() {
           align-items: center;
           justify-content: flex-start;
           width: 100%;
-          padding-top: 100px;
+          padding-top: 130px;
         }
         .success-ticket-physical {
           background: #111;

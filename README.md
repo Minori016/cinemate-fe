@@ -99,25 +99,37 @@ Frontend cho hệ thống quản lý rạp chiếu phim, xây dựng bằng **Vi
 
 ```
 src/
-├── assets/            # Hình ảnh, fonts
-├── components/
-│   ├── common/        # Button, Input, Modal, Table, Badge
-│   └── layout/        # Navbar, Sidebar, AdminLayout, UserLayout
-├── contexts/          # AuthContext
-├── hooks/             # Custom hooks
-├── pages/
-│   ├── auth/          # LoginPage, RegisterPage
-│   ├── user/          # HomePage
-│   ├── booking/       # ShowtimesPage, SeatSelectionPage
-│   └── admin/
-│       ├── movies/    # MovieListPage
-│       ├── employees/ # EmployeeListPage
-│       ├── cinemaRooms/
-│       ├── tickets/   # TicketManagementPage
-│       └── promotions/
-├── routes/            # AppRoutes, ProtectedRoute
-├── services/          # API services (axios)
-└── utils/             # Helper functions
+├── assets/             # Tài nguyên tĩnh, hình ảnh (Cinematelogo.png...)
+├── components/         # Các component dùng chung cho dự án
+│   ├── common/         # Các UI component cơ bản (Button, Input, Table, Modal...)
+│   ├── figma/          # Các component import/mock thiết kế từ Figma
+│   ├── layout/         # Bố cục giao diện (Navbar, Sidebar, Footers...)
+│   └── ui/             # Các component giao diện bổ sung
+├── contexts/           # Quản lý State toàn cục
+│   └── AuthContext.jsx # Quản lý trạng thái đăng nhập, phân quyền người dùng
+├── pages/              # Các trang chính (Pages) theo vai trò phân quyền
+│   ├── admin/          # Quản lý cho Admin (Phòng chiếu, Nhân viên, Phim, Lịch chiếu, Vé, Promotions...)
+│   │   ├── cinema-rooms/
+│   │   ├── employees/
+│   │   ├── members/
+│   │   ├── movies/
+│   │   ├── promotions/
+│   │   ├── showtimes/
+│   │   └── tickets/
+│   ├── auth/           # Đăng nhập, Đăng ký, Quên mật khẩu, Khôi phục mật khẩu
+│   ├── booking/        # Luồng đặt vé (Chọn ghế, Lịch chiếu)
+│   ├── manager/        # Các chức năng của Quản lý (Counter Checkout, Ca làm việc, Thống kê...)
+│   ├── staff/          # Các chức năng của Nhân viên (Check-in, Quầy bắp nước, Tổng quan...)
+│   └── user/           # Các trang dành cho Khách hàng (Trang chủ, Chi tiết phim, Profile, Liên hệ...)
+├── routes/             # Cấu hình phân tuyến định tuyến ứng dụng
+│   ├── AppRoutes.jsx   # Khai báo các Route
+│   └── ProtectedRoute.jsx # Middleware bảo mật, kiểm tra quyền truy cập theo vai trò
+├── services/           # Gọi API backend (Axios service: showtime, movie, user, booking...)
+├── style/              # CSS Styles, Fonts, và cấu hình Tailwind CSS
+├── App.css
+├── App.jsx
+├── index.css
+└── main.jsx
 ```
 
 ## Chạy project

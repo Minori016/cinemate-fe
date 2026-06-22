@@ -38,6 +38,12 @@ const generateDefaultSeats = (capacity) => {
       } else if (rowName === 'G' || rowName === 'H') {
         type = 'COUPLE'
       }
+
+      // Leave walkways at columns 3 and 8 for 10-column rooms (between 2-3 and 8-9)
+      if (colsCount === 10 && (c === 3 || c === 8)) {
+        type = 'EMPTY'
+      }
+
       seatsList.push({
         id: `${rowName}${c}`,
         row: rowName,
@@ -221,86 +227,93 @@ export default function CinemaRoomDetailPage() {
   }
 
   return (
-    <div className="space-y-6 text-[#e2e2e2] animate-fade-in text-left">
-      <style>{`
-        .seat-edit-btn {
-          transition: all 0.15s ease-in-out;
-        }
-        .seat-edit-btn:hover {
-          transform: scale(1.06);
-          box-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
-        }
-        .screen-glow {
-          background: linear-gradient(to bottom, rgba(229, 9, 20, 0.3) 0%, transparent 100%);
-          box-shadow: 0 15px 35px rgba(229, 9, 20, 0.15);
-        }
-      `}</style>
-
-      {/* Toast Notification */}
+    <div className="space-y-6 text-[var(--color-text-primary)] animate-fade-in text-left">
+      
+      {/* Toast — giữ nguyên, chỉ bỏ backdropFilter & dùng class chuẩn hơn */}
       {toast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm max-w-sm transition-all duration-300 animate-slide-in-up"
-          style={{
-            backgroundColor: toast.type === 'error' ? 'rgba(239,68,68,0.15)' : toast.type === 'info' ? 'rgba(59,130,246,0.15)' : 'rgba(16,185,129,0.15)',
-            borderColor: toast.type === 'error' ? 'rgba(239,68,68,0.3)' : toast.type === 'info' ? 'rgba(59,130,246,0.3)' : 'rgba(16,185,129,0.3)',
-            color: toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#10b981',
-            backdropFilter: 'blur(16px)'
-          }}
+        <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3.5 rounded-xl shadow-lg border text-sm max-w-sm
+          ${toast.type === 'error'
+            ? 'bg-red-500/10 border-red-500/20 text-red-400'
+            : toast.type === 'info'
+            ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+          }`}
         >
-          {toast.type === 'error' ? (
-            <AlertCircle className="shrink-0" size={20} />
-          ) : (
-            <CheckCircle className="shrink-0" size={20} />
-          )}
-          <span className="font-medium">{toast.text}</span>
-          <button onClick={() => setToast(null)} className="ml-auto hover:opacity-80">
-            <X size={16} />
+          {toast.type === 'error' ? <AlertCircle className="shrink-0" size={18} /> : <CheckCircle className="shrink-0" size={18} />}
+          <span className="font-medium leading-snug">{toast.text}</span>
+          <button onClick={() => setToast(null)} className="ml-auto opacity-60 hover:opacity-100 transition-opacity">
+            <X size={15} />
           </button>
         </div>
       )}
 
-      {/* Header (AC-06 Back Button & AC-01 Display ID/Name) */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <button
-            onClick={() => navigate('/admin/cinema-rooms')}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Quay lại phòng chiếu</span>
-          </button>
-          <h1 
-            className="text-4xl text-white font-black tracking-wider uppercase flex items-center gap-3" 
-            style={{ fontFamily: 'Montserrat, sans-serif' }}
-          >
-            Sơ đồ: {room ? room.name : 'Đang tải...'}
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            {room ? `Cinema Room ID: ${room.id} • Tên: ${room.name} • Quy mô: ${room.capacity ?? room.seatsCount ?? '?'} ghế` : 'Đang lấy dữ liệu chi tiết phòng chiếu...'}
-          </p>
-        </div>
+      {/* Back + Header */}
+      <div>
+        <button
+          onClick={() => navigate('/admin/cinema-rooms')}
+          className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-white uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
+        >
+          <ArrowLeft size={13} />
+          Quay lại phòng chiếu
+        </button>
 
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-medium text-white">
+              Sơ đồ: {room ? room.name : 'Đang tải...'}
+            </h1>
+            <div className="flex items-center flex-wrap gap-2 mt-1.5">
+              {room && (
+                <>
+                  <span className="text-xs bg-white/5 border border-white/10 rounded-md px-2.5 py-0.5 text-gray-400">
+                    ID: {room.id}
+                  </span>
+                  <span className="text-gray-600">•</span>
+                  <span className="text-sm text-gray-400">{room.name}</span>
+                  <span className="text-gray-600">•</span>
+                  <span className="text-sm text-gray-400">{room.capacity ?? room.seatsCount ?? '?'} ghế</span>
+                </>
+              )}
+              {!room && <span className="text-sm text-gray-500">Đang lấy dữ liệu...</span>}
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Divider */}
+      <div className="border-t border-white/8" />
+
+      {/* Error */}
       {error && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm font-semibold flex items-center gap-2.5 max-w-3xl leading-relaxed">
-          <AlertCircle className="shrink-0" size={18} />
+        <div className="flex items-start gap-2.5 p-3.5 bg-red-500/8 border border-red-500/15 rounded-xl text-red-400 text-sm leading-relaxed max-w-2xl">
+          <AlertCircle className="shrink-0 mt-0.5" size={16} />
           <span>{error}</span>
         </div>
       )}
 
+      {/* Loading */}
       {loading ? (
-        <div className="py-24 flex flex-col justify-center items-center gap-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl">
-          <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
-          <span className="text-sm text-gray-400 font-semibold">Đang nạp sơ đồ ghế...</span>
+        <div className="py-20 flex flex-col justify-center items-center gap-3 bg-white/[0.03] border border-white/8 rounded-2xl">
+          <RefreshCw className="animate-spin text-gray-400" size={28} />
+          <span className="text-sm text-gray-500 font-medium">Đang nạp sơ đồ ghế...</span>
         </div>
       ) : (
-        <SeatLayoutBuilder 
-          initialSeats={seats} 
-          capacity={room ? (room.capacity ?? room.seatsCount ?? 0) : 0} 
-          onSave={handleSave} 
-          onCancel={() => navigate('/admin/cinema-rooms')} 
-        />
+        <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-6">
+          {/* SeatLayoutBuilder header */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <LayoutGrid size={17} className="text-gray-400" />
+              <span className="text-[15px] font-medium text-white">Trình chỉnh sơ đồ ghế</span>
+            </div>
+          </div>
+
+          <SeatLayoutBuilder
+            initialSeats={seats}
+            capacity={room ? (room.capacity ?? room.seatsCount ?? 0) : 0}
+            onSave={handleSave}
+            onCancel={() => navigate('/admin/cinema-rooms')}
+          />
+        </div>
       )}
     </div>
   )
