@@ -239,7 +239,6 @@ export default function CinemaRoomListPage() {
 
   // Direct Columns mapping (AC-01)
   const columns = [
-    { key: 'id', label: 'Cinema Room ID' },
     { key: 'name', label: 'Cinema Room Name' },
     { key: 'capacity', label: 'Seat Quantity', render: (row) => row.capacity || row.seatsCount },
     { 
