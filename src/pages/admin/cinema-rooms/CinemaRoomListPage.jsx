@@ -193,23 +193,20 @@ export default function CinemaRoomListPage() {
 
     const newId = 'CR-' + Math.floor(10 + Math.random() * 90)
     const payload = {
-      id: newId,
       name: newRoomName.trim(),
-      seatsCount: Number(newRoomSeats)
+      capacity: Number(newRoomSeats)
     }
 
     try {
-      await cinemaRoomService.create(payload)
-    } catch (err) {
-      console.warn('Backend create skipped. Writing mock storage entity.', err)
-    } finally {
-      const updatedRooms = [...rooms, payload]
+      const res = await cinemaRoomService.create(payload)
+      const createdRoom = res?.data?.result || res?.data || { ...payload, id: newId }
+      const updatedRooms = [...rooms, createdRoom]
       setRooms(updatedRooms)
       localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(updatedRooms))
-
+      
       // Write default seat structures for this room (AC-02 editing)
       const defaultSeats = generateDefaultSeats(Number(newRoomSeats))
-      localStorage.setItem(`admin_room_seats_db_${newId}`, JSON.stringify(defaultSeats))
+      localStorage.setItem(`admin_room_seats_db_${createdRoom.id}`, JSON.stringify(defaultSeats))
 
       // Clean form states
       setNewRoomName('')
@@ -241,7 +238,7 @@ export default function CinemaRoomListPage() {
   const columns = [
     { key: 'id', label: 'Cinema Room ID' },
     { key: 'name', label: 'Cinema Room Name' },
-    { key: 'seatsCount', label: 'Seat Quantity' },
+    { key: 'capacity', label: 'Seat Quantity', render: (row) => row.capacity || row.seatsCount },
     { 
       key: 'status', 
       label: 'Trạng thái',
