@@ -212,6 +212,9 @@ export default function CinemaRoomListPage() {
       setNewRoomName('')
       setNewRoomSeats(80)
       setShowAddModal(false)
+    } catch (err) {
+      console.error('Failed to create room:', err)
+      setModalError(err.response?.data?.message || 'Có lỗi xảy ra khi tạo phòng chiếu.')
     }
   }
 
