@@ -27,7 +27,7 @@ const TOOLS = [
   { id: 'EMPTY', name: 'Lối đi / Xóa', icon: Eraser, activeClass: 'bg-slate-200 border-slate-400 text-slate-700 shadow-sm' }
 ]
 
-export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel }) {
+export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel, setIsDirty }) {
   const MAX_ROWS = 26
   const MAX_COLS = 50
   const MIN_ROWS = 5
@@ -91,6 +91,83 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
   useEffect(() => {
     setLocalError('')
   }, [gridData])
+
+  const initialLoadRef = useRef(true)
+  useEffect(() => {
+    if (gridData.length > 0) {
+      if (initialLoadRef.current) {
+        initialLoadRef.current = false
+      } else {
+        if (setIsDirty) setIsDirty(true)
+      }
+    }
+  }, [gridData, setIsDirty])
+
+  const handleRowsChange = (newRows) => {
+    if (newRows < rows) {
+      let hasConfiguredSeats = false
+      for (let r = newRows; r < rows; r++) {
+        if (gridData[r]) {
+          for (let c = 0; c < cols; c++) {
+            if (gridData[r][c] && gridData[r][c].type !== 'EMPTY') {
+              hasConfiguredSeats = true
+              break
+            }
+          }
+        }
+        if (hasConfiguredSeats) break
+      }
+
+      if (hasConfiguredSeats) {
+        setConfirmDialog({
+          title: 'Xác nhận thu nhỏ số hàng',
+          message: `Việc giảm số hàng từ ${rows} xuống ${newRows} sẽ XÓA TOÀN BỘ các ghế đã cấu hình ở các hàng bị cắt bỏ (từ hàng ${getRowChar(newRows)} đến hàng ${getRowChar(rows - 1)}). Bạn có chắc chắn muốn tiếp tục?`,
+          onConfirm: () => {
+            setRows(newRows)
+            setConfirmDialog(null)
+          },
+          onCancel: () => {
+            setRowsInput(rows.toString())
+            setConfirmDialog(null)
+          }
+        })
+        return
+      }
+    }
+    setRows(newRows)
+  }
+
+  const handleColsChange = (newCols) => {
+    if (newCols < cols) {
+      let hasConfiguredSeats = false
+      for (let r = 0; r < rows; r++) {
+        for (let c = newCols; c < cols; c++) {
+          if (gridData[r] && gridData[r][c] && gridData[r][c].type !== 'EMPTY') {
+            hasConfiguredSeats = true
+            break
+          }
+        }
+        if (hasConfiguredSeats) break
+      }
+
+      if (hasConfiguredSeats) {
+        setConfirmDialog({
+          title: 'Xác nhận thu nhỏ số cột',
+          message: `Việc giảm số cột từ ${cols} xuống ${newCols} sẽ XÓA TOÀN BỘ các ghế đã cấu hình ở các cột bị cắt bỏ (từ cột ${newCols + 1} đến cột ${cols}). Bạn có chắc chắn muốn tiếp tục?`,
+          onConfirm: () => {
+            setCols(newCols)
+            setConfirmDialog(null)
+          },
+          onCancel: () => {
+            setColsInput(cols.toString())
+            setConfirmDialog(null)
+          }
+        })
+        return
+      }
+    }
+    setCols(newCols)
+  }
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -1114,7 +1191,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                     setRowsInput(valStr)
                     const val = parseInt(valStr, 10)
                     if (!isNaN(val) && val >= MIN_ROWS && val <= MAX_ROWS) {
-                      setRows(val)
+                      handleRowsChange(val)
                     }
                   }}
                   onBlur={() => {
@@ -1125,7 +1202,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
               </div>
               <input 
                 type="range" min={MIN_ROWS} max={MAX_ROWS} 
-                value={rows} onChange={(e) => setRows(parseInt(e.target.value))}
+                value={rows} onChange={(e) => handleRowsChange(parseInt(e.target.value))}
                 className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
             </div>
@@ -1143,7 +1220,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                     setColsInput(valStr)
                     const val = parseInt(valStr, 10)
                     if (!isNaN(val) && val >= MIN_COLS && val <= MAX_COLS) {
-                      setCols(val)
+                      handleColsChange(val)
                     }
                   }}
                   onBlur={() => {
@@ -1154,7 +1231,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
               </div>
               <input 
                 type="range" min={MIN_COLS} max={MAX_COLS} 
-                value={cols} onChange={(e) => setCols(parseInt(e.target.value))}
+                value={cols} onChange={(e) => handleColsChange(parseInt(e.target.value))}
                 className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-600"
               />
             </div>
@@ -1191,7 +1268,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
             </p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setConfirmDialog(null)}
+                onClick={() => confirmDialog.onCancel ? confirmDialog.onCancel() : setConfirmDialog(null)}
                 className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-bold rounded-xl bg-white hover:bg-slate-50 cursor-pointer transition-colors"
               >
                 Hủy

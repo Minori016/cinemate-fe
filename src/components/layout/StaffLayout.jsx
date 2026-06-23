@@ -1,5 +1,5 @@
 import { Link, useNavigate, Outlet } from 'react-router-dom'
-import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home } from 'lucide-react'
+import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home, Armchair } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
@@ -15,6 +15,7 @@ export default function StaffLayout({ children }) {
   const pathname = window.location.pathname
   const navItems = [
     { id: 'overview', label: 'Tổng quan & Lịch chiếu', icon: LayoutGrid, to: '/staff/overview', active: pathname === '/staff/overview' },
+    { id: 'ticketing', label: 'Bán vé tại quầy', icon: Armchair, to: '/staff/ticketing', active: pathname === '/staff/ticketing' },
     { id: 'scan', label: 'Soát vé nhanh', icon: Ticket, to: '/staff/checkin', active: pathname === '/staff/checkin' },
     { id: 'concessions', label: 'Quầy bắp nước', icon: ShoppingBag, to: '/staff/concessions', active: pathname === '/staff/concessions' },
     { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/staff/tickets', active: pathname.includes('/staff/tickets') },

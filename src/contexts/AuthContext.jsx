@@ -107,6 +107,17 @@ export function AuthProvider({ children }) {
         setUser(userData)
         return userData
       }
+      if (email === 'staff@cinemate.com' && (password === 'Staff@123456' || password === 'staff123')) {
+        const userData = {
+          uuid: 'mock-staff-id',
+          email: 'staff@cinemate.com',
+          roles: ['STAFF'],
+        }
+        localStorage.setItem('token', 'mock-staff-token')
+        localStorage.setItem('user', JSON.stringify(userData))
+        setUser(userData)
+        return userData
+      }
       if (email === 'admin@cinemate.com' && password === 'Admin@123456') {
         const userData = {
           uuid: 'mock-admin-id',

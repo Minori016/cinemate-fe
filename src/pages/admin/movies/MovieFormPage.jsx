@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { movieService } from '../../../services/movieService'
 import Button from '../../../components/common/Button'
@@ -27,7 +27,7 @@ export default function MovieFormPage() {
   const [director, setDirector] = useState('')
   const [durationMinutes, setDurationMinutes] = useState('')
   const [rating, setRating] = useState('P')
-  const [version, setVersion] = useState('2D')
+  const [selectedVersions, setSelectedVersions] = useState(['2D'])
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [language, setLanguage] = useState('Tiếng Việt - Phụ đề Tiếng Anh')
@@ -49,6 +49,39 @@ export default function MovieFormPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
+  const [isDirty, setIsDirty] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+
+  const isLoadedRef = useRef(false)
+
+  // Mark form as loaded once reference data & movie details are loaded
+  useEffect(() => {
+    if (!loadingRefs) {
+      const timer = setTimeout(() => {
+        isLoadedRef.current = true
+      }, 200)
+      return () => clearTimeout(timer)
+    }
+  }, [loadingRefs])
+
+  // Monitor form fields for changes to set dirty status
+  useEffect(() => {
+    if (isLoadedRef.current) {
+      setIsDirty(true)
+    }
+  }, [
+    titleVn, titleEn, description, director, durationMinutes, rating,
+    selectedVersions, fromDate, toDate, language, trailerUrl, selectedGenres,
+    selectedCountries, actors, showtimes, posterFile
+  ])
+
+  const handleCancel = () => {
+    if (isDirty) {
+      setShowExitConfirm(true)
+    } else {
+      navigate('/admin/movies')
+    }
+  }
 
   // Fetch reference data on load
   useEffect(() => {
@@ -74,7 +107,12 @@ export default function MovieFormPage() {
             setDirector(movie.director || '')
             setDurationMinutes(movie.durationMinutes || '')
             setRating(movie.rating || 'P')
-            setVersion(movie.version || '2D')
+            if (movie.version) {
+              const splitVersions = movie.version.split(',').map(v => v.trim()).filter(Boolean)
+              setSelectedVersions(splitVersions.length > 0 ? splitVersions : ['2D'])
+            } else {
+              setSelectedVersions(['2D'])
+            }
             setFromDate(movie.fromDate || '')
             setToDate(movie.toDate || '')
             setLanguage(movie.language || 'Tiếng Việt - Phụ đề Tiếng Anh')
@@ -178,7 +216,9 @@ export default function MovieFormPage() {
     if (!durationMinutes || isNaN(durationMinutes) || Number(durationMinutes) <= 0) {
       tempErrors.durationMinutes = 'Thời lượng phim phải lớn hơn 0 phút'
     }
-    if (!version.trim()) tempErrors.version = 'Phiên bản không được để trống'
+    if (selectedVersions.length === 0) {
+      tempErrors.version = 'Chọn ít nhất 1 phiên bản chiếu cho phim'
+    }
     if (!fromDate) tempErrors.fromDate = 'Ngày bắt đầu chiếu chiếu không được để trống'
     if (!toDate) tempErrors.toDate = 'Ngày kết thúc chiếu không được để trống'
     if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
@@ -222,7 +262,7 @@ export default function MovieFormPage() {
       director: director.trim(),
       durationMinutes: parseInt(durationMinutes),
       rating: rating,
-      version: version,
+      version: selectedVersions.join(', '),
       fromDate: fromDate,
       toDate: toDate,
       language: language.trim() || null,
@@ -286,7 +326,7 @@ export default function MovieFormPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <button
-            onClick={() => navigate('/admin/movies')}
+            onClick={handleCancel}
             className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
           >
             <ArrowLeft size={14} />
@@ -388,21 +428,40 @@ export default function MovieFormPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
                 <div className="flex flex-col gap-1 w-full text-left">
-                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-2">
                     Phiên bản chiếu *
                   </label>
-                  <select
-                    value={version}
-                    onChange={(e) => setVersion(e.target.value)}
-                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
-                  >
-                    <option value="2D">2D Phụ đề / Lồng tiếng</option>
-                    <option value="3D">3D Phụ đề / Lồng tiếng</option>
-                    <option value="IMAX 2D">IMAX 2D Phụ đề</option>
-                    <option value="IMAX 3D">IMAX 3D Phụ đề</option>
-                  </select>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['2D', '3D', 'IMAX', 'ScreenX', '4DX', 'Starium', 'ULTRA 4DX'].map(v => {
+                      const isChecked = selectedVersions.includes(v)
+                      return (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            if (isChecked) {
+                              if (selectedVersions.length > 1) {
+                                setSelectedVersions(selectedVersions.filter(x => x !== v))
+                              }
+                            } else {
+                              setSelectedVersions([...selectedVersions, v])
+                            }
+                          }}
+                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer
+                            ${isChecked 
+                              ? 'bg-red-600/10 border-red-500 text-red-400 shadow-sm' 
+                              : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                            }`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-red-500' : 'bg-gray-600'}`}></span>
+                          <span>{v}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {errors.version && <span className="text-xs text-red-400 mt-1">{errors.version}</span>}
                 </div>
 
                 <Input
@@ -702,7 +761,7 @@ export default function MovieFormPage() {
                 type="button"
                 variant="secondary"
                 disabled={isSubmitting}
-                onClick={() => navigate('/admin/movies')}
+                onClick={handleCancel}
                 className="w-full py-3.5 uppercase tracking-wider font-extrabold"
               >
                 Hủy bỏ
@@ -714,6 +773,42 @@ export default function MovieFormPage() {
         </form>
       )}
 
+      {showExitConfirm && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans"
+          style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.45)', 
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)'
+          }}
+        >
+          <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-left">
+            <h4 className="font-bold text-white text-sm uppercase tracking-wider mb-2">
+              Xác nhận thoát
+            </h4>
+            <p className="text-xs text-gray-400 mb-6 leading-relaxed font-sans">
+              Bạn có các thay đổi chưa lưu. Bạn có chắc chắn muốn thoát và hủy bỏ toàn bộ thay đổi này không?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="px-4 py-2 border border-white/10 text-gray-400 text-xs font-bold rounded-xl bg-transparent hover:bg-white/5 cursor-pointer transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false)
+                  navigate('/admin/movies')
+                }}
+                className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 cursor-pointer shadow-md transition-colors"
+              >
+                Thoát và Hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

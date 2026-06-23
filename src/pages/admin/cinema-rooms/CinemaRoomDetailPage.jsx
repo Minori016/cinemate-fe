@@ -70,11 +70,21 @@ export default function CinemaRoomDetailPage() {
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
 
   // Helper to show Toast messages
   const triggerToast = (msg, type = 'success') => {
     setToast({ text: msg, type })
     setTimeout(() => setToast(null), 3500)
+  }
+
+  const handleBackClick = () => {
+    if (isDirty) {
+      setShowExitConfirm(true)
+    } else {
+      navigate('/admin/cinema-rooms')
+    }
   }
 
   useEffect(() => {
@@ -250,7 +260,7 @@ export default function CinemaRoomDetailPage() {
       {/* Back + Header */}
       <div>
         <button
-          onClick={() => navigate('/admin/cinema-rooms')}
+          onClick={handleBackClick}
           className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-white uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
         >
           <ArrowLeft size={13} />
@@ -311,8 +321,46 @@ export default function CinemaRoomDetailPage() {
             initialSeats={seats}
             capacity={room ? (room.capacity ?? room.seatsCount ?? 0) : 0}
             onSave={handleSave}
-            onCancel={() => navigate('/admin/cinema-rooms')}
+            onCancel={handleBackClick}
+            setIsDirty={setIsDirty}
           />
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ 
+            backgroundColor: 'rgba(15, 23, 42, 0.45)', 
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)'
+          }}
+        >
+          <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-left">
+            <h4 className="font-bold text-white text-sm uppercase tracking-wider mb-2">
+              Xác nhận thoát
+            </h4>
+            <p className="text-xs text-gray-400 mb-6 leading-relaxed font-sans">
+              Bạn có những thay đổi chưa lưu. Bạn có chắc chắn muốn thoát và hủy bỏ toàn bộ thay đổi này không?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="px-4 py-2 border border-white/10 text-gray-400 text-xs font-bold rounded-xl bg-transparent hover:bg-white/5 cursor-pointer transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false)
+                  navigate('/admin/cinema-rooms')
+                }}
+                className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 cursor-pointer shadow-md transition-colors"
+              >
+                Thoát và Hủy
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

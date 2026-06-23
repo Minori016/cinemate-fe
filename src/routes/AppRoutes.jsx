@@ -40,6 +40,7 @@ import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
 import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
 import StaffTicketVerifierPage from '../pages/staff/checkin/StaffTicketVerifierPage'
 import StaffConcessionsPage from '../pages/staff/concessions/StaffConcessionsPage'
+import StaffTicketingPage from '../pages/staff/ticketing/StaffTicketingPage'
 import ManagerAnalyticsPage from '../pages/manager/analytics/ManagerAnalyticsPage'
 import ManagerShowtimesPage from '../pages/manager/showtimes/ManagerShowtimesPage'
 import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
@@ -83,6 +84,7 @@ export default function AppRoutes() {
         <Route index element={<Navigate to="overview" replace />} />
         <Route path="dashboard" element={<Navigate to="/staff/overview" replace />} />
         <Route path="overview" element={<StaffOverviewPage />} />
+        <Route path="ticketing" element={<StaffTicketingPage />} />
         <Route path="checkin" element={<StaffTicketVerifierPage />} />
         <Route path="concessions" element={<StaffConcessionsPage />} />
         <Route path="tickets" element={<TicketManagementPage />} />
