@@ -108,6 +108,19 @@ const getEmbedUrl = (url) => {
   return url
 }
 
+const getYoutubeVideoId = (url) => {
+  if (!url) return ''
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const match = url.match(regExp)
+  if (match && match[2].length === 11) return match[2]
+  if (url.includes('embed/')) {
+    const parts = url.split('embed/')
+    const id = parts[parts.length - 1]?.split('?')[0]
+    if (id && id.length === 11) return id
+  }
+  return ''
+}
+
 export default function MovieDetailPage() {
   const { movieId } = useParams()
   const navigate = useNavigate()
@@ -415,6 +428,7 @@ export default function MovieDetailPage() {
   }
 
   const schedules = getMovieSchedules()
+  const videoId = movie ? getYoutubeVideoId(movie.trailerUrl || '') : ''
 
   return (
     <div className="min-h-screen w-full relative pb-20 md:pb-8" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)', fontFamily: 'Inter, sans-serif' }}>
@@ -696,9 +710,14 @@ export default function MovieDetailPage() {
       `}</style>
 
       {/* ── Hero Section ── */}
-      <section className="relative w-full overflow-hidden" style={{ height: 'clamp(480px, 65vh, 820px)' }}>
+      <section 
+        onClick={() => videoId && setIsTrailerOpen(true)}
+        className={`relative w-full overflow-hidden ${videoId ? 'cursor-pointer' : ''}`}
+        style={{ height: 'clamp(480px, 65vh, 820px)' }}
+        title={videoId ? "Click để xem trailer có âm thanh" : undefined}
+      >
         {/* Back Button */}
-        <div className="absolute top-6 left-6 md:left-12 z-30">
+        <div className="absolute top-6 left-6 md:left-12 z-30" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={handleBack}
             className="group flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider text-white transition-all bg-black/45 border border-white/10 hover:bg-black/85 hover:border-red-500/50 hover:shadow-[0_0_15px_rgba(229,9,20,0.35)] cursor-pointer backdrop-blur-md"
@@ -709,13 +728,32 @@ export default function MovieDetailPage() {
           </button>
         </div>
 
-        <motion.img
-          src={movie.backdrop} alt={movie.title}
-          className="absolute inset-0 w-full h-full object-cover filter brightness-[0.45]"
-          initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease: 'easeOut' }}
-        />
+        {videoId ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&enablejsapi=1`}
+            className="absolute pointer-events-none filter brightness-[0.4]"
+            style={{
+              top: '50%',
+              left: '50%',
+              width: '100%',
+              height: '100%',
+              minHeight: '100%',
+              minWidth: '100%',
+              transform: 'translate(-50%, -50%) scale(1.5)',
+              border: 'none',
+            }}
+            allow="autoplay; encrypted-media"
+            title="Movie Trailer"
+          />
+        ) : (
+          <motion.img
+            src={movie.backdrop} alt={movie.title}
+            className="absolute inset-0 w-full h-full object-cover filter brightness-[0.5]"
+            initial={{ scale: 1.08 }} animate={{ scale: 1 }} transition={{ duration: 1.2, ease: 'easeOut' }}
+          />
+        )}
         <div className="absolute inset-0 z-10 hero-gradient" />
-        <div className="absolute bottom-0 w-full left-0 px-6 md:px-12 pb-10 z-20">
+        <div className="absolute bottom-0 w-full left-0 px-6 md:px-12 pb-10 z-20 cursor-default" onClick={(e) => e.stopPropagation()}>
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-end">
             <motion.div
               className="hidden md:block w-44 lg:w-52 flex-shrink-0 z-30"
@@ -755,13 +793,6 @@ export default function MovieDetailPage() {
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>confirmation_number</span>
                   Đặt Vé Ngay
-                </button>
-                <button
-                  onClick={() => setIsTrailerOpen(true)}
-                  className="flex items-center gap-2 py-3 px-8 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-200 hover:scale-105 active:scale-95 border-2 border-white/20 hover:bg-white/10 hover:border-white/45 text-white bg-transparent cursor-pointer"
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>play_circle</span>
-                  Xem Trailer
                 </button>
               </div>
             </motion.div>

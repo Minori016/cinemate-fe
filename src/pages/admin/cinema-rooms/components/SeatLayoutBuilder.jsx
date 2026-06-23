@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'motion/react'
 import { 
   Square, 
@@ -68,6 +68,11 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
   const [dragStart, setDragStart] = useState(null)
   const [isDraggingSelect, setIsDraggingSelect] = useState(false)
 
+  // Immediate refs to prevent React render-cycle async state lags during drag selection
+  const isDraggingSelectRef = useRef(false)
+  const dragStartRef = useRef(null)
+  const isDrawingRef = useRef(false)
+
   // Clear selections when tool changes
   useEffect(() => {
     setSelectedSeats([])
@@ -89,6 +94,9 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
+      isDrawingRef.current = false
+      isDraggingSelectRef.current = false
+      dragStartRef.current = null
       setIsDrawing(false)
       setIsDraggingSelect(false)
       setDragStart(null)
@@ -144,7 +152,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       const isResize = prevGrid.length !== rows || (prevGrid.length > 0 && prevGrid[0].length !== cols)
       const isInitial = prevGrid.length === 0
 
-      if (!isResize && !isInitial && !sweetSpotMode) {
+      if (!isResize && !isInitial) {
         return prevGrid
       }
 
@@ -188,32 +196,9 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         })
       }
 
-      if (sweetSpotMode) {
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const score = getSeatScore(r, c, rows, cols)
-            
-            if (score > 0.80) {
-               const cell = newGrid[r][c]
-               if (cell.isSecondHalf) {
-                 newGrid[r][c - 1] = { ...newGrid[r][c - 1], type: 'EMPTY' }
-               }
-               if (cell.type === 'COUPLE' && c + 1 < cols) {
-                 newGrid[r][c + 1] = { ...newGrid[r][c + 1], isSecondHalf: false }
-               }
-               newGrid[r][c] = { ...cell, type: 'VIP', isSecondHalf: false }
-            } else {
-               if (newGrid[r][c].type === 'VIP') {
-                 newGrid[r][c] = { ...newGrid[r][c], type: 'STANDARD' }
-               }
-            }
-          }
-        }
-      }
-
       return newGrid
     })
-  }, [rows, cols, initialSeats, sweetSpotMode])
+  }, [rows, cols, initialSeats])
 
   const handleCellClick = (r, c) => {
     if (selectedTool === 'SELECT') {
@@ -230,7 +215,6 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       return
     }
 
-    if (sweetSpotMode) setSweetSpotMode(false)
     setGridData(prev => {
       const cell = prev[r][c]
 
@@ -271,6 +255,8 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
 
   const handleCellMouseDown = (r, c, e) => {
     if (selectedTool === 'SELECT' || e.ctrlKey) {
+      isDraggingSelectRef.current = true
+      dragStartRef.current = { r, c }
       setIsDraggingSelect(true)
       setDragStart({ r, c })
       e.preventDefault() // prevent text selection
@@ -296,6 +282,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
     }
 
     if (e.shiftKey) {
+      isDrawingRef.current = true
       setIsDrawing(true)
       e.preventDefault() // prevent text selection
     }
@@ -303,11 +290,11 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
   }
 
   const handleCellMouseEnter = (r, c, e) => {
-    if (isDraggingSelect && dragStart) {
-      const minR = Math.min(dragStart.r, r)
-      const maxR = Math.max(dragStart.r, r)
-      const minC = Math.min(dragStart.c, c)
-      const maxC = Math.max(dragStart.c, c)
+    if (isDraggingSelectRef.current && dragStartRef.current) {
+      const minR = Math.min(dragStartRef.current.r, r)
+      const maxR = Math.max(dragStartRef.current.r, r)
+      const minC = Math.min(dragStartRef.current.c, c)
+      const maxC = Math.max(dragStartRef.current.c, c)
       
       const boxKeys = []
       for (let rowIdx = minR; rowIdx <= maxR; rowIdx++) {
@@ -330,7 +317,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
       return
     }
 
-    if (isDrawing && e.shiftKey) {
+    if (isDrawingRef.current && e.shiftKey) {
       handleCellClick(r, c)
     }
   }
@@ -600,7 +587,35 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
         <div className="flex items-center gap-2">
           <div className="flex gap-2">
             <button
-              onClick={() => setSweetSpotMode(!sweetSpotMode)}
+              onClick={() => {
+                const nextVal = !sweetSpotMode
+                setSweetSpotMode(nextVal)
+                if (nextVal) {
+                  setGridData(prev => {
+                    const newGrid = prev.map(rowArr => rowArr.map(cell => ({ ...cell })))
+                    for (let r = 0; r < rows; r++) {
+                      for (let c = 0; c < cols; c++) {
+                        const score = getSeatScore(r, c, rows, cols)
+                        if (score > 0.80) {
+                          const cell = newGrid[r][c]
+                          if (cell.isSecondHalf) {
+                            newGrid[r][c - 1] = { ...newGrid[r][c - 1], type: 'EMPTY' }
+                          }
+                          if (cell.type === 'COUPLE' && c + 1 < cols) {
+                            newGrid[r][c + 1] = { ...newGrid[r][c + 1], isSecondHalf: false }
+                          }
+                          newGrid[r][c] = { ...cell, type: 'VIP', isSecondHalf: false }
+                        } else {
+                          if (newGrid[r][c].type === 'VIP') {
+                            newGrid[r][c] = { ...newGrid[r][c], type: 'STANDARD' }
+                          }
+                        }
+                      }
+                    }
+                    return newGrid
+                  })
+                }
+              }}
               title="Tự động tính toán & gợi ý vùng ghế VIP trung tâm tốt nhất"
               className={`flex items-center gap-2 px-4 h-10 rounded-xl transition-all duration-200 text-xs font-semibold cursor-pointer border ${
                 sweetSpotMode 
@@ -806,6 +821,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel 
                           onClick={() => handleCellClick(rIndex, cIndex)}
                           onMouseDown={(e) => handleCellMouseDown(rIndex, cIndex, e)}
                           onMouseEnter={(e) => handleCellMouseEnter(rIndex, cIndex, e)}
+                          onDragStart={(e) => e.preventDefault()}
                           className={`
                             relative flex flex-col items-center justify-center rounded-t-lg rounded-b-md transition-all cursor-pointer shrink-0
                             h-10 ${isCouple ? 'w-[88px]' : 'w-10'}
