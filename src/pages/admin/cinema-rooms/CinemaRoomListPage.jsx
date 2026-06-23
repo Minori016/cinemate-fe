@@ -310,16 +310,9 @@ export default function CinemaRoomListPage() {
         </div>
       )}
       
-      {/* Header with Back button (AC-05) */}
+      {/* Header (AC-05) */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <button
-            onClick={() => navigate('/admin/dashboard')}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Quay lại Dashboard</span>
-          </button>
           <h1 
             className="text-4xl text-white font-black tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif' }}

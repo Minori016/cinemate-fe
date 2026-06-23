@@ -4,6 +4,29 @@ import { movieService } from '../../services/movieService'
 import { useAuth } from '../../contexts/AuthContext'
 import { ChevronLeft, ChevronRight, Tag, Clock, Globe, MessageSquare, MapPin, Phone, Calendar, Star, Gift, Crown, Ticket, Zap, Users, ArrowRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import TrailerModal from './components/moviedetail/TrailerModal'
+
+const getEmbedUrl = (url) => {
+  if (!url) return ''
+  if (url.includes('youtube.com/embed/')) return url
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const match = url.match(regExp)
+  if (match && match[2].length === 11) return `https://www.youtube.com/embed/${match[2]}`
+  return url
+}
+
+const getYoutubeVideoId = (url) => {
+  if (!url) return ''
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const match = url.match(regExp)
+  if (match && match[2].length === 11) return match[2]
+  if (url.includes('embed/')) {
+    const parts = url.split('embed/')
+    const id = parts[parts.length - 1]?.split('?')[0]
+    if (id && id.length === 11) return id
+  }
+  return ''
+}
 
 // ── Quick Booking: 7 ngày tới ─────────────────────────────────────
 const DAYS = Array.from({ length: 7 }, (_, i) => {
@@ -196,6 +219,8 @@ export default function HomePage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
   const [isHoveringBanner, setIsHoveringBanner] = useState(false)
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false)
+  const [selectedTrailerMovie, setSelectedTrailerMovie] = useState(null)
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
 
@@ -299,7 +324,7 @@ export default function HomePage() {
           {/* ===== CINEMATIC MOVIE BANNER ===== */}
           <div
             className="relative w-full overflow-hidden"
-            style={{ height: 'clamp(400px, 70vh, 680px)' }}
+            style={{ height: 'clamp(580px, 80vh, 820px)' }}
             onMouseEnter={() => setIsHoveringBanner(true)}
             onMouseLeave={() => setIsHoveringBanner(false)}
           >
@@ -323,77 +348,75 @@ export default function HomePage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.8, ease: 'easeInOut' }}
                   >
-                    {/* Backdrop blur */}
+                    {/* Backdrop without blur, recessed look */}
                     <motion.div
-                      className="absolute inset-0 w-full h-full"
-                      initial={{ scale: 1.06 }}
+                      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none"
+                      initial={{ scale: 1.03 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 8, ease: 'linear' }}
+                      style={{ pointerEvents: 'none' }}
                     >
-                      <img
-                        src={posterUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        style={{ filter: 'blur(28px) brightness(0.3) saturate(1.5)' }}
-                      />
+                      {movie.trailerUrl && getYoutubeVideoId(movie.trailerUrl) ? (
+                        <iframe
+                          src={`https://www.youtube.com/embed/${getYoutubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&loop=1&playlist=${getYoutubeVideoId(movie.trailerUrl)}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&enablejsapi=1`}
+                          className="absolute pointer-events-none filter brightness-[0.60] saturate(1.15) contrast(1.05)"
+                          style={{
+                            top: '50%',
+                            left: '50%',
+                            width: '100%',
+                            height: '100%',
+                            minHeight: '100%',
+                            minWidth: '100%',
+                            transform: 'translate(-50%, -50%) scale(1.35)',
+                            border: 'none',
+                            pointerEvents: 'none',
+                          }}
+                          allow="autoplay; encrypted-media"
+                          title={`${movie.titleVn || movie.titleEn} Trailer Backdrop`}
+                          tabIndex="-1"
+                        />
+                      ) : (
+                        <img
+                          src={posterUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          style={{ filter: 'brightness(0.60) saturate(1.15) contrast(1.05)', pointerEvents: 'none' }}
+                        />
+                      )}
                     </motion.div>
 
-                    {/* Gradient overlay */}
+                    {/* Dark Vignette / Recessed Gradients */}
                     <div
                       className="absolute inset-0 z-10"
                       style={{
-                        background: 'linear-gradient(105deg, rgba(5,5,10,0.97) 0%, rgba(5,5,10,0.72) 38%, rgba(5,5,10,0.22) 68%, rgba(5,5,10,0.5) 100%)',
+                        background: 'radial-gradient(circle at center, transparent 20%, rgba(5,5,10,0.85) 90%), linear-gradient(105deg, rgba(5,5,10,0.96) 0%, rgba(5,5,10,0.7) 40%, rgba(5,5,10,0.2) 70%, rgba(5,5,10,0.6) 100%)',
                       }}
                     />
-                    {/* Bottom fade vào background */}
+                    
+                    {/* Top fade */}
                     <div
-                      className="absolute bottom-0 left-0 right-0 h-44 z-10"
+                      className="absolute top-0 left-0 right-0 h-28 z-10 pointer-events-none"
+                      style={{ background: 'linear-gradient(to bottom, var(--color-background) 0%, transparent 100%)' }}
+                    />
+
+                    {/* Bottom fade into background */}
+                    <div
+                      className="absolute bottom-0 left-0 right-0 h-44 z-10 pointer-events-none"
                       style={{ background: 'linear-gradient(to top, var(--color-background), transparent)' }}
                     />
 
                     {/* Nội dung */}
-                    <div className="absolute inset-0 z-20 flex items-center">
-                      <div className="w-full max-w-7xl mx-auto px-6 md:px-14 flex flex-col sm:flex-row items-center sm:items-center gap-8 md:gap-14">
+                    <div className="absolute inset-0 z-20 flex flex-col justify-between pt-24 pb-8 h-full">
+                      
+                      {/* Top part: Left Info & Right Poster */}
+                      <div className="w-full max-w-7xl mx-auto px-6 md:px-14 flex flex-col lg:flex-row items-center justify-between gap-10 md:gap-14 flex-grow animate-fade-in">
 
-                        {/* Poster card nổi bật */}
-                        <motion.div
-                          className="flex-shrink-0 hidden sm:block"
-                          initial={{ opacity: 0, x: -48, rotate: -4 }}
-                          animate={{ opacity: 1, x: 0, rotate: 0 }}
-                          transition={{ duration: 0.7, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        >
-                          <div className="relative" style={{ width: 'clamp(150px, 16vw, 220px)' }}>
-                            <img
-                              src={posterUrl}
-                              alt={movie.titleVn}
-                              className="w-full rounded-2xl"
-                              style={{
-                                aspectRatio: '2/3',
-                                objectFit: 'cover',
-                                boxShadow: '0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.09)',
-                              }}
-                            />
-                            {/* Rating badge */}
-                            <div
-                              className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-white text-xs font-black uppercase shadow-lg"
-                              style={{ backgroundColor: getRatingColor(movie.rating || 'K') }}
-                            >
-                              {movie.rating || 'K'}
-                            </div>
-                            {/* Shine */}
-                            <div
-                              className="absolute inset-0 rounded-2xl pointer-events-none"
-                              style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.13) 0%, transparent 55%)' }}
-                            />
-                          </div>
-                        </motion.div>
-
-                        {/* Text info */}
+                        {/* Text info - Left Column */}
                         <motion.div
                           className="flex flex-col gap-4 text-white flex-1 text-left"
                           initial={{ opacity: 0, y: 28 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.65, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          transition={{ duration: 0.65, delay: 0.15, ease: [0.25, 0.46, 0.45, 0.94] }}
                         >
                           {/* Genre tags */}
                           <div className="flex flex-wrap gap-2">
@@ -418,41 +441,41 @@ export default function HomePage() {
                           </div>
 
                           {/* Title */}
-                          <h2
+                          <h1
                             style={{
                               fontFamily: 'Montserrat, sans-serif',
-                              fontSize: 'clamp(24px, 4.2vw, 54px)',
+                              fontSize: 'clamp(28px, 3.8vw, 48px)',
                               fontWeight: 900,
                               textTransform: 'uppercase',
-                              letterSpacing: '0.02em',
-                              textShadow: '0 4px 28px rgba(0,0,0,0.7)',
-                              lineHeight: 1.06,
+                              letterSpacing: '0.01em',
+                              textShadow: '0 4px 28px rgba(0,0,0,0.85)',
+                              lineHeight: 1.1,
                               margin: 0,
                             }}
                           >
                             {movie.titleVn || movie.titleEn}
-                          </h2>
+                          </h1>
 
                           {/* Meta */}
                           <div
-                            className="flex flex-wrap items-center gap-3 text-sm"
+                            className="flex flex-wrap items-center gap-3.5 text-sm"
                             style={{ color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}
                           >
                             {movie.durationMinutes && (
-                              <span className="flex items-center gap-1.5">
-                                <Clock size={13} className="text-red-500" />
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <Clock size={14} className="text-red-500" />
                                 {movie.durationMinutes} phút
                               </span>
                             )}
                             {movie.language && (
-                              <span className="flex items-center gap-1.5">
-                                <MessageSquare size={13} className="text-red-500" />
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <MessageSquare size={14} className="text-red-500" />
                                 {movie.language}
                               </span>
                             )}
                             {movie.countries?.length > 0 && (
-                              <span className="flex items-center gap-1.5">
-                                <Globe size={13} className="text-red-500" />
+                              <span className="flex items-center gap-1.5 font-medium">
+                                <Globe size={14} className="text-red-500" />
                                 {movie.countries.map(c => c.name).join(', ')}
                               </span>
                             )}
@@ -462,35 +485,161 @@ export default function HomePage() {
                           {movie.description && (
                             <p
                               className="text-sm leading-relaxed line-clamp-3 max-w-xl"
-                              style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', margin: 0 }}
+                              style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', margin: '4px 0 8px 0' }}
                             >
                               {movie.description}
                             </p>
                           )}
+
+                          {/* Movie Action Buttons (Trailer & Detail & Booking on mobile) */}
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            <Link
+                              to={detailLink}
+                              className="flex lg:hidden items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                              style={{ fontFamily: 'Montserrat, sans-serif', boxShadow: '0 4px 14px rgba(229,9,20,0.4)' }}
+                            >
+                              <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>confirmation_number</span>
+                              <span>Đặt Vé Ngay</span>
+                            </Link>
+                            {movie.trailerUrl && (
+                              <button
+                                onClick={() => {
+                                  setSelectedTrailerMovie(movie)
+                                  setIsTrailerOpen(true)
+                                }}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white border border-white/20 bg-white/5 hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                              >
+                                <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>play_circle</span>
+                                <span>Xem Trailer</span>
+                              </button>
+                            )}
+                            <Link
+                              to={detailLink}
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white border border-red-500/25 bg-red-500/5 hover:bg-red-500/15 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
+                              style={{ fontFamily: 'Montserrat, sans-serif' }}
+                            >
+                              <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>info</span>
+                              <span>Chi Tiết</span>
+                            </Link>
+                          </div>
                         </motion.div>
 
-                        {/* Right side: Large Book Ticket Button */}
+                        {/* Booking & Poster Area - Right Column */}
                         <motion.div
-                          className="flex-shrink-0 w-full sm:w-auto"
-                          initial={{ opacity: 0, scale: 0.9, x: 20 }}
+                          className="flex-shrink-0 hidden lg:block"
+                          initial={{ opacity: 0, scale: 0.92, x: 30 }}
                           animate={{ opacity: 1, scale: 1, x: 0 }}
-                          transition={{ duration: 0.65, delay: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                          transition={{ duration: 0.65, delay: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
                         >
-                          <Link
-                            to={detailLink}
-                            className="flex items-center justify-center gap-3.5 px-10 py-5 rounded-2xl font-black text-base uppercase tracking-wider text-white transition-all duration-200 hover:scale-105 active:scale-95 w-full sm:w-auto cursor-pointer"
-                            style={{
-                              background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-                              boxShadow: '0 8px 32px rgba(229,9,20,0.5)',
-                              border: '1px solid rgba(255,255,255,0.12)',
-                              fontFamily: 'Montserrat, sans-serif',
-                            }}
+                          <div
+                            className="flex flex-col items-center bg-black/35 p-5 rounded-3xl border border-white/8 backdrop-blur-md"
+                            style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.85)' }}
                           >
-                            <span className="material-symbols-outlined font-black" style={{ fontSize: '20px' }}>confirmation_number</span>
-                            <span>Đặt Vé Ngay</span>
-                          </Link>
+                            <div className="relative w-[170px]" style={{ aspectRatio: '2/3' }}>
+                              <img
+                                src={posterUrl}
+                                alt={movie.titleVn}
+                                className="w-full h-full object-cover rounded-2xl"
+                                style={{
+                                  boxShadow: '0 16px 36px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.08)',
+                                }}
+                              />
+                              {/* Rating badge */}
+                              <div
+                                className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-white text-[10px] font-black uppercase shadow-lg"
+                                style={{ backgroundColor: getRatingColor(movie.rating || 'K') }}
+                              >
+                                {movie.rating || 'K'}
+                              </div>
+                              {/* Shine effect */}
+                              <div
+                                className="absolute inset-0 rounded-2xl pointer-events-none"
+                                style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%)' }}
+                              />
+                            </div>
+
+                            <Link
+                              to={detailLink}
+                              className="mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] w-[170px] cursor-pointer"
+                              style={{
+                                background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                                boxShadow: '0 6px 20px rgba(229,9,20,0.4)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                fontFamily: 'Montserrat, sans-serif',
+                              }}
+                            >
+                              <span className="material-symbols-outlined text-sm font-bold">confirmation_number</span>
+                              <span>Đặt Vé Ngay</span>
+                            </Link>
+                          </div>
                         </motion.div>
+
                       </div>
+
+                      {/* Bottom horizontal selection strip (User's Idea style) */}
+                      {bannerMovies.length > 1 && (
+                        <div className="w-full max-w-7xl mx-auto px-6 md:px-14 mt-auto mb-2 select-none">
+                          <div className="flex items-center gap-2 mb-3">
+                            <span 
+                              className="text-[9px] font-black uppercase text-white px-2 py-0.5 rounded shadow-[0_0_8px_rgba(229,9,20,0.6)]"
+                              style={{ backgroundColor: '#e50914' }}
+                            >
+                              HOT
+                            </span>
+                            <h3 className="text-white text-xs font-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                              PHIM HOT TRONG THÁNG
+                            </h3>
+                          </div>
+                          
+                          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none justify-start">
+                            {bannerMovies.map((m, i) => (
+                              <button
+                                key={m.id}
+                                onClick={() => setCurrentBannerIndex(i)}
+                                className="flex-shrink-0 group/card text-left transition-all duration-300 focus:outline-none cursor-pointer"
+                                style={{ width: '92px' }}
+                              >
+                                <div 
+                                  className="relative aspect-[2/3] w-full rounded-lg overflow-hidden border-2 transition-all duration-300"
+                                  style={{
+                                    borderColor: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.12)',
+                                    boxShadow: i === currentBannerIndex ? '0 0 16px rgba(229,9,20,0.5)' : 'none',
+                                  }}
+                                >
+                                  <img
+                                    src={m.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=120&h=180&fit=crop'}
+                                    alt={m.titleVn}
+                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                  />
+                                  {/* Number Overlay in Gold Gradient style */}
+                                  <div 
+                                    className="absolute top-1 left-2 font-black text-2xl select-none"
+                                    style={{
+                                      fontFamily: 'Montserrat, sans-serif',
+                                      color: '#d97706',
+                                      textShadow: '2px 2px 0px rgba(0,0,0,0.95), 0 0 8px rgba(217,119,6,0.6)',
+                                    }}
+                                  >
+                                    {i + 1}
+                                  </div>
+                                </div>
+                                {/* Movie Title */}
+                                <p 
+                                  className="mt-1.5 text-[9px] font-bold uppercase tracking-wide truncate transition-colors duration-200"
+                                  style={{
+                                    color: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.6)',
+                                    fontFamily: 'Montserrat, sans-serif'
+                                  }}
+                                >
+                                  {m.titleVn || m.titleEn}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </motion.div>
                 )
@@ -501,50 +650,23 @@ export default function HomePage() {
             {bannerMovies.length > 1 && (
               <button
                 onClick={() => setCurrentBannerIndex(prev => (prev - 1 + bannerMovies.length) % bannerMovies.length)}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-red-600/90 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-white/15"
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/40 hover:bg-red-600/90 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-white/15"
                 style={{ opacity: isHoveringBanner ? 1 : 0 }}
                 aria-label="Previous"
               >
-                <ChevronLeft size={22} />
+                <ChevronLeft size={20} />
               </button>
             )}
             {/* Next button */}
             {bannerMovies.length > 1 && (
               <button
                 onClick={() => setCurrentBannerIndex(prev => (prev + 1) % bannerMovies.length)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-black/40 hover:bg-red-600/90 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-white/15"
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-black/40 hover:bg-red-600/90 text-white flex items-center justify-center transition-all duration-300 backdrop-blur-sm border border-white/15"
                 style={{ opacity: isHoveringBanner ? 1 : 0 }}
                 aria-label="Next"
               >
-                <ChevronRight size={22} />
+                <ChevronRight size={20} />
               </button>
-            )}
-
-            {/* Thumbnail strip */}
-            {bannerMovies.length > 1 && (
-              <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-end gap-2">
-                {bannerMovies.map((m, i) => (
-                  <button
-                    key={m.id}
-                    onClick={() => setCurrentBannerIndex(i)}
-                    className="flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-300"
-                    style={{
-                      width: i === currentBannerIndex ? '46px' : '32px',
-                      height: i === currentBannerIndex ? '62px' : '44px',
-                      borderColor: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.2)',
-                      opacity: i === currentBannerIndex ? 1 : 0.55,
-                      boxShadow: i === currentBannerIndex ? '0 0 16px rgba(229,9,20,0.6)' : 'none',
-                    }}
-                    aria-label={`Slide ${i + 1}`}
-                  >
-                    <img
-                      src={m.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=100&h=150&fit=crop'}
-                      alt={m.titleVn}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
             )}
           </div>
           {/* ===== HẾT CINEMATIC MOVIE BANNER ===== */}
@@ -1181,6 +1303,21 @@ export default function HomePage() {
 
       {/* NƠI HIỂN THỊ CÁC TRANG CON */}
       <Outlet />
+
+      {/* Trailer Modal */}
+      {isTrailerOpen && selectedTrailerMovie && (
+        <TrailerModal
+          isTrailerOpen={isTrailerOpen}
+          onClose={() => {
+            setIsTrailerOpen(false)
+            setSelectedTrailerMovie(null)
+          }}
+          movie={{
+            ...selectedTrailerMovie,
+            trailerUrl: getEmbedUrl(selectedTrailerMovie.trailerUrl)
+          }}
+        />
+      )}
 
       <style>{`
         .overflow-x-auto::-webkit-scrollbar { display: none; }
