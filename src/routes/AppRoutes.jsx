@@ -26,7 +26,7 @@ import FaqPage from '../pages/user/FaqPage'
 import ContactPage from '../pages/user/ContactPage'
 import FeedbackPage from '../pages/user/FeedbackPage'
 import CareersPage from '../pages/user/CareersPage'
-import IntroPage from '../pages/user/IntroPage'
+import VideoIntro from '../components/intro/VideoIntro'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
 import DashboardPage from '../pages/admin/DashboardPage'
@@ -50,7 +50,7 @@ import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 function RootRedirect() {
-  const introSeen = localStorage.getItem('introSeen')
+  const introSeen = localStorage.getItem('cinemate_intro_seen')
   return introSeen
     ? <Navigate to="/home" replace />
     : <Navigate to="/intro" replace />
@@ -67,7 +67,7 @@ export default function AppRoutes() {
         <Route path="/" element={<RootRedirect />} />
 
         {/* Intro — không navbar/footer */}
-        <Route path="/intro" element={<IntroPage />} />
+        <Route path="/intro" element={<VideoIntro onExplore={() => window.location.href = '/home'} />} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginPage />} />
