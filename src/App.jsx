@@ -1,7 +1,12 @@
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import AppRoutes from './routes/AppRoutes'
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import VideoIntro from './components/intro/VideoIntro'
+
+// Constants
+const INTRO_SEEN_KEY = 'cinemate_intro_seen'
 
 function ScrollToTop() {
   const location = useLocation()
@@ -20,13 +25,65 @@ function ScrollToTop() {
   return null
 }
 
+/**
+ * IntroWrapper Component
+ * Quản lý việc hiển thị intro video trước khi vào app
+ */
+function IntroWrapper({ children }) {
+  const [showIntro, setShowIntro] = useState(() => {
+    try {
+      const seen = localStorage.getItem(INTRO_SEEN_KEY) === 'true'
+      console.log('[IntroWrapper] Initial check - hasSeenIntro:', seen)
+      return !seen
+    } catch {
+      console.warn('[IntroWrapper] localStorage error, showing intro')
+      return true
+    }
+  })
+
+  const handleIntroComplete = useCallback(() => {
+    console.log('[IntroWrapper] Intro complete, marking as seen')
+    try {
+      localStorage.setItem(INTRO_SEEN_KEY, 'true')
+    } catch (e) {
+      console.warn('[IntroWrapper] localStorage not available')
+    }
+    setShowIntro(false)
+  }, [])
+
+  console.log('[IntroWrapper] Rendering, showIntro:', showIntro)
+
+  return (
+    <AnimatePresence mode="wait">
+      {showIntro ? (
+        <VideoIntro
+          key="intro"
+          onComplete={handleIntroComplete}
+          videoSrc="/Intro.mp4"
+        />
+      ) : (
+        <motion.div
+          key="app"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <ScrollToTop />
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <IntroWrapper>
+        <ScrollToTop />
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </IntroWrapper>
     </BrowserRouter>
   )
 }
