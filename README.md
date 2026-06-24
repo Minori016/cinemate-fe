@@ -1,152 +1,399 @@
-# Movie Theater Front End
+# 🎬 CineMate - Movie Theater Management System
 
+**Frontend Application** cho hệ thống quản lý rạp chiếu phim hiện đại, được xây dựng với React 18, Vite, và Tailwind CSS.
 
+---
 
-## Getting started
+## ✨ Tính năng nổi bật
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### 🎥 Cinematic Intro Experience
+- **Video intro fullscreen** tự động phát khi truy cập lần đầu
+- **Skip button** với hiệu ứng mượt mà
+- **CTA overlay** với các nút "Khám phá ngay" và "Mua vé ngay"
+- **localStorage tracking** - chỉ hiện intro 1 lần
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+### 👤 Hệ thống phân quyền đa vai trò
+| Role | Chức năng |
+|------|-----------|
+| **Member** | Đặt vé, quản lý tài khoản, xem lịch sử đặt vé |
+| **Staff** | Check-in vé, bán bắp/nước tại quầy, xem tổng quan ca làm |
+| **Manager** | Quản lý ca làm, thống kê doanh thu, counter checkout |
+| **Admin** | Quản lý phim, nhân viên, phòng chiếu, lịch chiếu, vé, khuyến mãi |
 
-## Add your files
+### 🎨 UI/UX cao cấp
+- **Smooth scrolling** với Lenis (1.5s duration)
+- **Cinematic animations** với Framer Motion & GSAP
+- **3D visual effects** với Three.js & React Three Fiber
+- **Responsive design** cho mọi thiết bị
+- **Dark theme** với màu đỏ đặc trưng Cinemate (#e50914)
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+---
 
-```
-cd existing_repo
-git remote add origin https://git.fsoft-academy.edu.vn/hcm26_cpl_js_java_02/group-05/movie-theater-front-end.git
-git branch -M main
-git push -uf origin main
-```
+## 🚀 Tech Stack
 
-## Integrate with your tools
+| Category | Technology | Version |
+|----------|------------|---------|
+| **Framework** | React | 18.3.1 |
+| **Build Tool** | Vite | 6.3.5 |
+| **Router** | React Router DOM | 7.16.0 |
+| **Styling** | Tailwind CSS | 4.1.12 |
+| **Animation** | Framer Motion | 12.23.24 |
+| | GSAP | 3.12.5 |
+| **3D Graphics** | Three.js | 0.184.0 |
+| | @react-three/fiber | 9.6.1 |
+| | @react-three/drei | 10.7.7 |
+| **Scroll** | Lenis | 1.3.23 |
+| **HTTP Client** | Axios | 1.16.1 |
+| **Icons** | Lucide React | 0.487.0 |
+| **State Management** | React Context | Built-in |
 
-- [ ] [Set up project integrations](https://git.fsoft-academy.edu.vn/hcm26_cpl_js_java_02/group-05/movie-theater-front-end/-/settings/integrations)
+---
 
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
-# 🎬 CineStar - Movie Theater Management
-
-Frontend cho hệ thống quản lý rạp chiếu phim, xây dựng bằng **Vite + React**.
-
-## Cấu trúc thư mục
+## 📁 Cấu trúc dự án
 
 ```
-src/
-├── assets/             # Tài nguyên tĩnh, hình ảnh (Cinematelogo.png...)
-├── components/         # Các component dùng chung cho dự án
-│   ├── common/         # Các UI component cơ bản (Button, Input, Table, Modal...)
-│   ├── figma/          # Các component import/mock thiết kế từ Figma
-│   ├── layout/         # Bố cục giao diện (Navbar, Sidebar, Footers...)
-│   └── ui/             # Các component giao diện bổ sung
-├── contexts/           # Quản lý State toàn cục
-│   └── AuthContext.jsx # Quản lý trạng thái đăng nhập, phân quyền người dùng
-├── pages/              # Các trang chính (Pages) theo vai trò phân quyền
-│   ├── admin/          # Quản lý cho Admin (Phòng chiếu, Nhân viên, Phim, Lịch chiếu, Vé, Promotions...)
-│   │   ├── cinema-rooms/
-│   │   ├── employees/
-│   │   ├── members/
-│   │   ├── movies/
-│   │   ├── promotions/
-│   │   ├── showtimes/
-│   │   └── tickets/
-│   ├── auth/           # Đăng nhập, Đăng ký, Quên mật khẩu, Khôi phục mật khẩu
-│   ├── booking/        # Luồng đặt vé (Chọn ghế, Lịch chiếu)
-│   ├── manager/        # Các chức năng của Quản lý (Counter Checkout, Ca làm việc, Thống kê...)
-│   ├── staff/          # Các chức năng của Nhân viên (Check-in, Quầy bắp nước, Tổng quan...)
-│   └── user/           # Các trang dành cho Khách hàng (Trang chủ, Chi tiết phim, Profile, Liên hệ...)
-├── routes/             # Cấu hình phân tuyến định tuyến ứng dụng
-│   ├── AppRoutes.jsx   # Khai báo các Route
-│   └── ProtectedRoute.jsx # Middleware bảo mật, kiểm tra quyền truy cập theo vai trò
-├── services/           # Gọi API backend (Axios service: showtime, movie, user, booking...)
-├── style/              # CSS Styles, Fonts, và cấu hình Tailwind CSS
-├── App.css
-├── App.jsx
-├── index.css
-└── main.jsx
+movie-theater-front-end/
+├── public/                          # Tài nguyên tĩnh
+│   ├── Intro.mp4                   # Video intro
+│   ├── favicon.png, .svg, .ico     # Icon và favicon
+│   └── icons.svg                   # SVG icons bundle
+├── src/
+│   ├── components/                 # Reusable components
+│   │   ├── common/                 # UI cơ bản (Button, Input, Modal, Table, Badge...)
+│   │   ├── layout/                 # Layout components (Navbar, Sidebar, Footer...)
+│   │   ├── video/                  # Video/3D components
+│   │   │   ├── HeroCinematic.jsx   # 3D particle cinematic hero (planned)
+│   │   │   └── VideoIntro.jsx      # Intro video component ✅
+│   │   └── intro/                  # Intro section components
+│   │       └── VideoIntro.jsx      # Main intro component
+│   ├── contexts/                   # React Context providers
+│   │   └── AuthContext.jsx         # Authentication & user state
+│   ├── hooks/                      # Custom React hooks
+│   │   └── useLenisScroll.jsx      # Lenis scroll integration
+│   ├── pages/                      # Page components by role
+│   │   ├── admin/                  # Admin dashboard & management
+│   │   │   ├── cinema-rooms/       # Quản lý phòng chiếu + seat layout builder
+│   │   │   ├── employees/          # Quản lý nhân viên
+│   │   │   ├── members/            # Quản lý thành viên
+│   │   │   ├── movies/             # Quản lý phim (CRUD + poster upload)
+│   │   │   ├── promotions/         # Quản lý khuyến mãi
+│   │   │   ├── showtimes/          # Quản lý lịch chiếu
+│   │   │   └── tickets/            # Quản lý vé
+│   │   ├── auth/                   # Authentication pages
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── RegisterPage.jsx
+│   │   │   ├── ForgotPasswordPage.jsx
+│   │   │   └── ResetPasswordPage.jsx
+│   │   ├── booking/                # Booking flow
+│   │   │   ├── ShowtimesPage.jsx
+│   │   │   └── SeatSelectionPage.jsx
+│   │   ├── manager/                # Manager functions
+│   │   │   ├── analytics/          # Doanh thu, thống kê
+│   │   │   ├── CounterCheckoutPage.jsx
+│   │   │   ├── shifts/             # Quản lý ca làm
+│   │   │   └── showtimes/          # Quản lý lịch chiếu
+│   │   ├── staff/                  # Staff functions
+│   │   │   ├── checkin/            # Check-in vé
+│   │   │   ├── concessions/        # Bán bắp/nước
+│   │   │   └── overview/           # Tổng quan ca làm
+│   │   └── user/                   # Customer-facing pages
+│   │       ├── HomePage.jsx        # Trang chủ + cinematic intro
+│   │       ├── MoviesPage.jsx      # Danh sách phim
+│   │       ├── MovieDetailPage.jsx # Chi tiết phim + trailer modal
+│   │       ├── ProfilePage.jsx     # Trang cá nhân
+│   │       ├── AboutPage.jsx       # Giới thiệu
+│   │       ├── ContactPage.jsx     # Liên hệ
+│   │       ├── FaqPage.jsx         # FAQ
+│   │       ├── FeedbackPage.jsx    # Feedback
+│   │       ├── CareersPage.jsx     # Tuyển dụng
+│   │       ├── PromotionsPage.jsx  # Khuyến mãi
+│   │       ├── TermsPage.jsx       # Điều khoản
+│   │       └── PrivacyPage.jsx     # Chính sách bảo mật
+│   ├── routes/                     # Routing configuration
+│   │   ├── AppRoutes.jsx           # Main route definitions
+│   │   └── ProtectedRoute.jsx      # Route guard by role
+│   ├── services/                   # API service layer
+│   │   ├── api.js                 # Axios instance + interceptors
+│   │   ├── authService.js         # Authentication APIs
+│   │   ├── movieService.js        # Movie APIs
+│   │   ├── showtimeService.js     # Showtime APIs
+│   │   ├── bookingService.js      # Booking APIs
+│   │   ├── userService.js         # User APIs
+│   │   ├── employeeService.js     # Employee APIs
+│   │   ├── cinemaRoomService.js   # Cinema room APIs
+│   │   ├── promotionService.js    # Promotion APIs
+│   │   └── genreService.js        # Genre APIs
+│   ├── style/                      # Styles & configuration
+│   │   └── globals.css             # Global CSS + Tailwind imports
+│   ├── App.jsx                     # Main app component with intro wrapper
+│   ├── main.jsx                    # Entry point
+│   └── index.css                   # Global styles
+├── .env.example                    # Environment variables template
+├── .gitignore                      # Git ignore rules
+├── index.html                      # HTML template
+├── package.json                    # Dependencies & scripts
+├── tailwind.config.js              # Tailwind configuration
+├── vite.config.js                  # Vite configuration with proxy
+└── README.md                       # This file
 ```
 
-## Chạy project
+---
 
+## 📦 Installation & Setup
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Backend API running on `localhost:8080`
+
+### Quick Start
+
+1. **Clone repository**
+```bash
+git clone https://git.fsoft-academy.edu.vn/hcm26_cpl_js_java_02/group-05/movie-theater-front-end.git
+cd movie-theater-front-end
+```
+
+2. **Install dependencies**
+```bash
+npm install
+```
+
+3. **Configure environment**
 ```bash
 cp .env.example .env
-npm install
+```
+Edit `.env` if needed (default config works for local dev).
+
+4. **Start development server**
+```bash
 npm run dev
 ```
+Open browser at `http://localhost:5173` (or the port shown in terminal).
 
-## Tech stack
-- React 19 + Vite
-- React Router DOM v7
-- Tailwind CSS v4
-- Axios
-- Lucide React (icons)
+5. **Build for production**
+```bash
+npm run build
+npm run preview  # Preview production build
+```
 
-## Vai trò người dùng
-- **Member**: Đặt vé, quản lý tài khoản, xem lịch sử
-- **Admin/Manager**: Quản lý phim, nhân viên, phòng chiếu, khuyến mãi, vé
+---
+
+## 🔧 Configuration
+
+### Vite Proxy (CORS Workaround)
+The project includes a Vite proxy to forward API requests:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:8080`
+- Requests to `/api/*` are automatically proxied to backend
+
+### Environment Variables
+Create `.env` from `.env.example`:
+```env
+# API Configuration
+VITE_API_URL=/api
+```
+
+---
+
+## 🎯 Key Features Breakdown
+
+### 1. Cinematic Intro
+- Fullscreen video playback on first visit
+- Auto-plays with fallback for browser restrictions
+- Skip button (appears after 3s, enabled after 3s)
+- Call-to-action overlay with navigation buttons
+- localStorage flag prevents re-showing
+
+### 2. Authentication & Authorization
+- JWT token-based auth
+- Role-based route protection (Admin, Manager, Staff, Member)
+- Auto-logout on token expiry
+- Public vs protected API endpoints
+
+### 3. Movie Management (Admin)
+- CRUD operations for movies
+- Poster upload with multipart/form-data
+- Genre and country associations
+- Status management (active/inactive)
+
+### 4. Cinema Room & Seat Management
+- Visual seat layout builder
+- Multiple seat types (Standard, VIP, Couple)
+- Heatmap visualization for optimal seating
+- Real-time preview of seat configuration
+
+### 5. Booking System
+- Date & time selection for showtimes
+- Interactive seat map
+- Real-time seat availability
+- Price calculation based on seat type
+
+### 6. Staff & Manager Features
+- Ticket verification/check-in
+- Concessions (popcorn & drinks) sales
+- Shift management
+- Sales analytics & reports
+- Counter checkout
+
+---
+
+## 🎨 Design System
+
+### Colors
+```css
+Primary Red: #e50914
+Background: #0a0a0a (deep cinema black)
+Surface: #141414
+Surface Light: #1f1f1f
+Text White: #ffffff
+Text Muted: rgba(255,255,255,0.5)
+```
+
+### Typography
+- **Headlines**: Montserrat (weights: 700-900)
+- **Body**: Inter (weights: 400-500)
+- **Tracking**: Tight for headlines (-0.03 to -0.05em)
+
+### Spacing
+- Consistent 8px grid system
+- Generous white space for cinematic feel
+- Section padding: `clamp(20px, 4vw, 80px)`
+
+---
+
+## 🏗️ Development Guidelines
+
+### Code Style
+- React functional components with hooks
+- ESLint + Prettier configuration
+- Consistent naming conventions
+
+### Component Structure
+```jsx
+// Example component structure
+export default function ComponentName({ prop1, prop2 }) {
+  // State & refs
+  const [state, setState] = useState()
+  const ref = useRef()
+
+  // Effects
+  useEffect(() => { ... }, [])
+
+  // Handlers
+  const handleClick = useCallback(() => { ... }, [])
+
+  // Render
+  return (
+    <div className="...">
+      {/* JSX */}
+    </div>
+  )
+}
+```
+
+### API Integration
+All API calls go through `src/services/api.js` with:
+- Base URL configuration
+- Request interceptors (auth token)
+- Response interceptors (error handling, token cleanup)
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run tests (if configured)
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+
+# E2E tests (if configured)
+npm run test:e2e
+```
+
+---
+
+## 🚢 Deployment
+
+### Build
+```bash
+npm run build
+```
+Output goes to `dist/` folder.
+
+### Deploy to Netlify/Vercel
+1. Connect Git repository
+2. Set build command: `npm run build`
+3. Set publish directory: `dist`
+4. Add environment variables if needed
+
+### Docker (optional)
+```dockerfile
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+---
+
+## 📡 API Integration
+
+The frontend connects to a Spring Boot backend:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `POST /api/v1/auth/login` | Login |
+| `POST /api/v1/auth/register` | Register |
+| `GET /api/v1/movies` | List movies (with filters) |
+| `GET /api/v1/movies/:id` | Movie details |
+| `POST /api/v1/booking` | Create booking |
+| `GET /api/v1/showtimes` | List showtimes |
+| ... | ... | See API documentation |
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push: `git push origin feature/amazing-feature`
+5. Open a Merge Request
+
+---
+
+## 📄 License
+
+[Your License Here] - Add license file and update this section.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Design inspiration**: Netflix, Apple TV, luxury cinema websites
+- **Icons**: [Lucide React](https://lucide.dev/)
+- **Animation**: [Framer Motion](https://www.framer.com/motion/), [GSAP](https://greensock.com/gsap/)
+- **3D Graphics**: [Three.js](https://threejs.org/), [React Three Fiber](https://docs.pmnd.rs/react-three-fiber/getting-started/introduction)
+- **Smooth Scroll**: [Lenis](https://lenis.studiofreight.com/)
+
+---
+
+## 📞 Support
+
+- Create an issue in the GitLab repository
+- Contact the development team
+
+---
+
+**Made with ❤️ by CineMate Team**

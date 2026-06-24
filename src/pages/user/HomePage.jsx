@@ -770,30 +770,54 @@ export default function HomePage() {
           {/* ===== HẾT QUICK BOOKING WIDGET ===== */}
 
           {/* ================= PHẦN PHIM ĐANG CHIẾU ================= */}
-          <div className="w-full my-20 relative z-10 flex flex-col items-center">
+          <motion.section
+            className="w-full my-20 relative z-10 flex flex-col items-center"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-100px' }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.08, delayChildren: 0.1 }
+              }
+            }}
+          >
 
-
-            <div className="w-full flex justify-center items-center h-[80px] px-6">
-              <motion.h2
+            <motion.div
+              className="w-full flex justify-center items-center h-[80px] px-6"
+              variants={{
+                hidden: { opacity: 0, y: 30 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } }
+              }}
+            >
+              <h2
                 className="text-3xl md:text-4xl text-center text-white tracking-wide uppercase"
                 style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, letterSpacing: '2px' }}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
               >
                 PHIM ĐANG CHIẾU
-              </motion.h2>
-            </div>
+              </h2>
+            </motion.div>
 
-            <div className="relative group/slider w-full max-w-[1100px] px-6">
+            <motion.div
+              className="relative group/slider w-full max-w-[1100px] px-6"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { delay: 0.15 } }
+              }}
+            >
 
               {movies.length > 4 && (
-                <button
+                <motion.button
                   onClick={slideLeft}
                   className="absolute left-2 md:-left-6 top-[40%] -translate-y-1/2 z-40 w-12 h-16 bg-black/60 hover:bg-black/90 text-white flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 rounded-sm backdrop-blur-sm"
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
                 >
                   <ChevronLeft size={36} />
-                </button>
+                </motion.button>
               )}
 
               <div className="w-full overflow-hidden">
@@ -801,24 +825,48 @@ export default function HomePage() {
                   className="flex gap-6 transition-transform duration-500 ease-in-out pb-8 w-max"
                   style={{ transform: `translateX(-${currentIndex * (240 + 24)}px)` }}
                 >
-                  {movies.map((movie) => {
+                  {movies.map((movie, index) => {
                     const genresStr = movie.genres?.map(g => g.name).join(', ') || 'Chưa phân loại'
                     const countriesStr = movie.countries?.map(c => c.name).join(', ') || 'N/A'
                     const detailLink = `/movies/${movie.id}`
                     return (
-                      <div key={movie.id} className="w-[240px] flex-shrink-0 snap-center flex flex-col h-full cursor-pointer">
+                      <motion.div
+                        key={movie.id}
+                        className="w-[240px] flex-shrink-0 snap-center flex flex-col h-full cursor-pointer"
+                        variants={{
+                          hidden: { opacity: 0, y: 40, scale: 0.95 },
+                          visible: {
+                            opacity: 1,
+                            y: 0,
+                            scale: 1,
+                            transition: {
+                              duration: 0.5,
+                              ease: [0.25, 0.46, 0.45, 0.94],
+                              delay: index * 0.08
+                            }
+                          }
+                        }}
+                        whileHover={{ y: -8, transition: { duration: 0.22 } }}
+                      >
                         <Link to={detailLink} className="group flex flex-col flex-grow">
                           <div className="relative w-full aspect-[2/3] flex-shrink-0 overflow-hidden border border-white/10 shadow-lg mb-4">
                             <div className="absolute top-0 left-0 z-30 flex">
                               <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 flex items-center justify-center border-r border-b border-white/5">{movie.version || '2D'}</span>
                               <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 flex items-center justify-center">{movie.rating || 'K'}</span>
                             </div>
-                            <img
+                            <motion.img
                               src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
                               alt={movie.titleVn}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 relative z-10"
+                              className="w-full h-full object-cover relative z-10"
+                              whileHover={{ scale: 1.08 }}
+                              transition={{ duration: 0.4 }}
                             />
-                            <div className="absolute inset-0 bg-black/85 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-center px-6 text-left">
+                            <motion.div
+                              className="absolute inset-0 bg-black/85 z-20 flex flex-col justify-center px-6 text-left"
+                              initial={{ opacity: 0 }}
+                              whileHover={{ opacity: 1 }}
+                              transition={{ duration: 0.3 }}
+                            >
                               <h3 className="text-white font-bold text-xl mb-6 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>{movie.titleVn}</h3>
                               <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-3"><Tag size={18} className="text-red-500" /><span className="text-white text-sm font-semibold line-clamp-1">{genresStr}</span></div>
@@ -826,76 +874,96 @@ export default function HomePage() {
                                 <div className="flex items-center gap-3"><Globe size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{countriesStr}</span></div>
                                 <div className="flex items-center gap-3"><MessageSquare size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.language || 'Phụ Đề'}</span></div>
                               </div>
-                            </div>
+                            </motion.div>
                           </div>
-                          <h3 className="text-white text-center font-bold text-sm mb-4 uppercase line-clamp-2 min-h-[40px] flex items-center justify-center group-hover:text-red-500 transition-colors">
+                          <motion.h3
+                            className="text-white text-center font-bold text-sm mb-4 uppercase line-clamp-2 min-h-[40px] flex items-center justify-center group-hover:text-red-500 transition-colors"
+                            whileHover={{ scale: 1.02 }}
+                          >
                             {movie.titleVn}
-                          </h3>
+                          </motion.h3>
                         </Link>
                         <div className="flex items-center justify-between mt-auto px-1">
                           <Link to={detailLink} className="flex items-center gap-1 text-sm text-gray-300 hover:text-white transition-colors">
                             <span className="material-symbols-outlined text-lg text-red-500">play_circle</span>
                             <span className="underline decoration-1 underline-offset-2 text-xs font-semibold">Chi Tiết</span>
                           </Link>
-                          <Link
-                            to={detailLink}
-                            className="text-white text-xs font-extrabold px-5 py-2 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
-                            style={{
-                              background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-                              boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)'
-                            }}
+                          <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                           >
-                            ĐẶT VÉ
-                          </Link>
+                            <Link
+                              to={detailLink}
+                              className="text-white text-xs font-extrabold px-5 py-2 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
+                              style={{
+                                background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                                boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
+                                border: '1px solid rgba(255, 255, 255, 0.08)'
+                              }}
+                            >
+                              ĐẶT VÉ
+                            </Link>
+                          </motion.div>
                         </div>
-                      </div>
+                      </motion.div>
                     )
                   })}
                   {movies.length === 0 && (
-                    <div className="w-[1100px] py-16 text-center text-gray-400 font-semibold">
+                    <motion.div
+                      className="w-[1100px] py-16 text-center text-gray-400 font-semibold"
+                      initial={{ opacity: 0 }}
+                      whileInView={{ opacity: 1 }}
+                      viewport={{ once: true }}
+                    >
                       Hiện chưa có phim đang chiếu.
-                    </div>
+                    </motion.div>
                   )}
                 </div>
               </div>
 
               {movies.length > 4 && (
-                <button
-                  onClick={slideRight}
-                  className="absolute right-2 md:-right-6 top-[40%] -translate-y-1/2 z-40 w-12 h-16 bg-black/60 hover:bg-black/90 text-white flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 rounded-sm backdrop-blur-sm"
+                <motion.div
+                  className="flex justify-center gap-2 mt-2 w-full"
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.5 }}
                 >
-                  <ChevronRight size={36} />
-                </button>
+                  {Array.from({ length: Math.ceil(movies.length / 4) }).map((_, pageIdx) => {
+                    const targetIndex = pageIdx * 4
+                    const isActive = currentIndex === targetIndex || (currentIndex > targetIndex && currentIndex < targetIndex + 4)
+                    return (
+                      <motion.button
+                        key={pageIdx}
+                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isActive ? 'bg-red-500 scale-125 shadow-[0_0_8px_rgba(229,9,20,0.6)]' : 'bg-white/30 hover:bg-white/50'}`}
+                        onClick={() => setCurrentIndex(targetIndex)}
+                        whileHover={{ scale: 1.2 }}
+                        whileTap={{ scale: 0.9 }}
+                      />
+                    )
+                  })}
+                </motion.div>
               )}
-            </div>
 
-            {movies.length > 4 && (
-              <div className="flex justify-center gap-2 mt-2 w-full">
-                {Array.from({ length: Math.ceil(movies.length / 4) }).map((_, pageIdx) => {
-                  const targetIndex = pageIdx * 4
-                  const isActive = currentIndex === targetIndex || (currentIndex > targetIndex && currentIndex < targetIndex + 4)
-                  return (
-                    <button
-                      key={pageIdx}
-                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isActive ? 'bg-red-500 scale-125 shadow-[0_0_8px_rgba(229,9,20,0.6)]' : 'bg-white/30 hover:bg-white/50'}`}
-                      onClick={() => setCurrentIndex(targetIndex)}
-                    />
-                  )
-                })}
-              </div>
-            )}
-
-            <div className="flex justify-center mt-8 w-full">
-              <Link
-                to="/movies"
-                className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
+              <motion.div
+                className="flex justify-center mt-8 w-full"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.6 }}
               >
-                XEM THÊM
-              </Link>
-            </div>
+                <Link
+                  to="/movies"
+                  className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  XEM THÊM
+                </Link>
+              </motion.div>
 
-          </div>
+            </motion.div>
+          </motion.section>
           {/* ================= HẾT PHẦN PHIM ĐANG CHIẾU ================= */}
 
           {/* ====================================================

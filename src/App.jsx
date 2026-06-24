@@ -81,7 +81,10 @@ export default function App() {
       <IntroWrapper>
         <ScrollToTop />
         <AuthProvider>
-          <AppRoutes />
+          {/* Padding top để tránh bị navbar che (72px expanded, 56px scrolled) */}
+          <div style={{ paddingTop: '72px', minHeight: '100vh' }}>
+            <AppRoutes />
+          </div>
         </AuthProvider>
       </IntroWrapper>
     </BrowserRouter>

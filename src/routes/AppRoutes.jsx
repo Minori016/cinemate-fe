@@ -6,6 +6,8 @@ import StaffLayout from '../components/layout/StaffLayout'
 import ManagerLayout from '../components/layout/ManagerLayout'
 import ProtectedRoute from './ProtectedRoute'
 
+import IntroPage from '../pages/IntroPage'
+
 import LoginPage from '../pages/auth/LoginPage'
 import RegisterPage from '../pages/auth/RegisterPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
@@ -46,81 +48,104 @@ import ManagerShowtimesPage from '../pages/manager/showtimes/ManagerShowtimesPag
 import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
+function RootRedirect() {
+  const introSeen = localStorage.getItem('introSeen')
+  return introSeen
+    ? <Navigate to="/home" replace />
+    : <Navigate to="/intro" replace />
+}
+
 export default function AppRoutes() {
   const location = useLocation()
+
   return (
     <AnimatePresence mode="wait">
-    <Routes location={location} key={location.pathname}>
-      {/* Public: Đưa các trang không cần login lên đầu */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Routes location={location} key={location.key}>
 
-      {/* User Layout: Để "/" làm trang chủ chính thức tại đây */}
-      <Route element={<UserLayout />}>
-        <Route index element={<HomePage />} /> {/* Sử dụng index cho trang chủ của layout */}
-        <Route path="/movies" element={<MoviesPage />} />
-        <Route path="/movies/:movieId" element={<MovieDetailPage />} />
-        <Route path="/showtimes" element={<ShowtimesPage />} />
-        <Route path="/cinemas" element={<CinemasPage />} />
-        <Route path="/promotions" element={<PromotionsPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/faqs" element={<FaqPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/careers" element={<CareersPage />} />
-        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-      </Route>
+        {/* Root */}
+        <Route path="/" element={<RootRedirect />} />
 
-      {/* Booking Layout: Tách biệt khỏi UserLayout để hiển thị Header giao dịch rút gọn */}
-      <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
-      <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
+        {/* Intro — không navbar/footer */}
+        <Route path="/intro" element={<IntroPage />} />
 
-      {/* Staff */}
-      <Route path="/staff" element={<ProtectedRoute role="STAFF"><StaffLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="overview" replace />} />
-        <Route path="dashboard" element={<Navigate to="/staff/overview" replace />} />
-        <Route path="overview" element={<StaffOverviewPage />} />
-        <Route path="ticketing" element={<StaffTicketingPage />} />
-        <Route path="checkin" element={<StaffTicketVerifierPage />} />
-        <Route path="concessions" element={<StaffConcessionsPage />} />
-        <Route path="tickets" element={<TicketManagementPage />} />
-      </Route>
+        {/* Auth */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* Manager */}
-      <Route path="/manager" element={<ProtectedRoute role="MANAGER"><ManagerLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="analytics" replace />} />
-        <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
-        <Route path="analytics" element={<ManagerAnalyticsPage />} />
-        <Route path="showtimes" element={<ManagerShowtimesPage />} />
-        <Route path="shifts" element={<ManagerShiftsPage />} />
-        <Route path="tickets" element={<TicketManagementPage />} />
-      </Route>
+        {/* User Layout */}
+        <Route element={<UserLayout />}>
+          <Route path="/home" element={<HomePage />} />
+          <Route path="/movies" element={<MoviesPage />} />
+          <Route path="/movies/:movieId" element={<MovieDetailPage />} />
+          <Route path="/showtimes" element={<ShowtimesPage />} />
+          <Route path="/cinemas" element={<CinemasPage />} />
+          <Route path="/promotions" element={<PromotionsPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/faqs" element={<FaqPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/careers" element={<CareersPage />} />
+          <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        </Route>
 
-      {/* Admin */}
-      <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="movies" element={<MovieListPage />} />
-        <Route path="movies/add" element={<MovieFormPage />} />
-        <Route path="movies/edit/:id" element={<MovieFormPage />} />
-        <Route path="employees" element={<EmployeeListPage />} />
-        <Route path="members" element={<MemberListPage />} />
-        <Route path="tickets" element={<TicketManagementPage />} />
-        <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
-        <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
-        <Route path="showtimes" element={<ShowtimeListPage />} />
-        <Route path="promotions" element={<PromotionListPage />} />
-        <Route path="promotions/add" element={<PromotionFormPage />} />
-        <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
-      </Route>
+        {/* Booking */}
+        <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
+        <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
 
-      {/* Wildcard */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Staff */}
+        <Route path="/staff" element={<ProtectedRoute role="STAFF"><StaffLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="overview" replace />} />
+          <Route path="dashboard" element={<Navigate to="/staff/overview" replace />} />
+          <Route path="overview" element={<StaffOverviewPage />} />
+          <Route path="ticketing" element={<StaffTicketingPage />} />
+          <Route path="checkin" element={<StaffTicketVerifierPage />} />
+          <Route path="concessions" element={<StaffConcessionsPage />} />
+          <Route path="tickets" element={<TicketManagementPage />} />
+        </Route>
+
+        {/* Manager */}
+        <Route path="/manager" element={<ProtectedRoute role="MANAGER"><ManagerLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="analytics" replace />} />
+          <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
+          <Route path="analytics" element={<ManagerAnalyticsPage />} />
+          <Route path="showtimes" element={<ManagerShowtimesPage />} />
+          <Route path="shifts" element={<ManagerShiftsPage />} />
+          <Route path="tickets" element={<TicketManagementPage />} />
+        </Route>
+
+        {/* Admin */}
+        <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="movies" element={<MovieListPage />} />
+          <Route path="movies/add" element={<MovieFormPage />} />
+          <Route path="movies/edit/:id" element={<MovieFormPage />} />
+          <Route path="employees" element={<EmployeeListPage />} />
+          <Route path="members" element={<MemberListPage />} />
+          <Route path="tickets" element={<TicketManagementPage />} />
+          <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
+          <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
+          <Route path="showtimes" element={<ShowtimeListPage />} />
+          <Route path="promotions" element={<PromotionListPage />} />
+          <Route path="promotions/add" element={<PromotionFormPage />} />
+          <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
+        </Route>
+
+        {/* Wildcard */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
+      </Routes>
     </AnimatePresence>
   )
+
+  function RootRedirect() {
+  console.log('✅ RootRedirect called')
+  const introSeen = localStorage.getItem('introSeen')
+  console.log('introSeen:', introSeen)
+  return introSeen ? <Navigate to="/home" replace /> : <Navigate to="/intro" replace />
+}
 }
