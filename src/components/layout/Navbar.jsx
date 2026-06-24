@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { movieService } from '../../services/movieService'
 import { Search, LogOut, User as UserIcon, Settings, ChevronDown, Bell, X, Menu } from 'lucide-react'
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'motion/react'
 import gsap from 'gsap'
@@ -16,6 +17,31 @@ const ROLE_BADGES = {
   MANAGER: { label: 'Manager', color: 'bg-blue-600', shadow: 'shadow-blue-500/30' },
   STAFF: { label: 'Staff', color: 'bg-amber-600', shadow: 'shadow-amber-500/30' },
   MEMBER: { label: 'Member', color: 'bg-emerald-600', shadow: 'shadow-emerald-500/30' }
+}
+
+// Individual nav link item component
+function NavItem({ route, label, index }) {
+  const location = useLocation()
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.4 }}
+    >
+      <NavLink
+        to={route}
+        className={({ isActive }) =>
+          `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 relative ${
+            isActive ? 'text-[#e50914]' : 'text-[rgba(255,255,255,0.7)] hover:text-white'
+          }`
+        }
+        style={{ fontFamily: 'Inter, sans-serif' }}
+      >
+        {label}
+      </NavLink>
+    </motion.div>
+  )
 }
 
 export default function Navbar() {
@@ -59,7 +85,7 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [scrollY])
 
-  // Search suggestions
+  const [showSearchInput, setShowSearchInput] = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const searchRef = useRef(null)
@@ -67,11 +93,9 @@ export default function Navbar() {
   useEffect(() => {
     if (searchTerm.trim().length >= 1) {
       const delayDebounce = setTimeout(() => {
-        // Simulated API call - replace with actual movieService
-        fetch(`/api/v1/movies?search=${encodeURIComponent(searchTerm.trim())}&size=6`)
-          .then(res => res.json())
-          .then(data => {
-            const moviesList = data?.result?.content || data?.result || []
+        movieService.getAll({ search: searchTerm.trim(), size: 6 })
+          .then(res => {
+            const moviesList = res.data?.result?.content || res.data?.result || []
             const formatted = moviesList.map(movie => ({
               id: movie.id,
               title: movie.titleVn || movie.titleEn || 'Phim Chưa Đặt Tên',
@@ -81,7 +105,7 @@ export default function Navbar() {
             setSuggestionsOpen(true)
           })
           .catch(err => {
-            console.error('Error fetching suggestions:', err)
+            console.error('Error fetching search suggestions:', err)
             setSuggestions([])
           })
       }, 300)
@@ -94,6 +118,22 @@ export default function Navbar() {
 
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
+  }
+
+  const handleSearchClose = () => {
+    setShowSearchInput(false)
+    setSearchTerm('')
+    setSuggestions([])
+    setSuggestionsOpen(false)
+  }
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      navigate(`/movies?search=${encodeURIComponent(searchTerm.trim())}`)
+      handleSearchClose()
+    } else if (e.key === 'Escape') {
+      handleSearchClose()
+    }
   }
 
   const handleLogout = () => {
@@ -194,46 +234,15 @@ export default function Navbar() {
 
           {/* ── DESKTOP NAV LINKS ── */}
           <div className="hidden md:flex flex-1 items-center justify-center gap-10" style={{ position: 'relative', left: '60px' }}>
-            {['/movies', '/showtimes', '/cinemas', '/promotions', '/about'].map((route, index) => {
-              const labelMap = {
-                '/movies': 'Phim',
-                '/showtimes': 'Lịch Chiếu',
-                '/cinemas': 'Rạp Chiếu',
-                '/promotions': 'Ưu Đãi',
-                '/about': 'Giới Thiệu'
-              }
-              return (
-                <motion.div
-                  key={route}
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05, duration: 0.4 }}
-                >
-                  <NavLink
-                    to={route}
-                    className={({ isActive }) =>
-                      `nav-link-custom text-xs uppercase tracking-widest font-semibold transition-colors duration-200 relative ${
-                        isActive ? 'text-[#e50914]' : 'text-[rgba(255,255,255,0.7)] hover:text-white'
-                      }`
-                    }
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    {labelMap[route]}
-                    {({ isActive }) => isActive && (
-                      <motion.div
-                        layoutId="navbar-underline"
-                        className="absolute -bottom-1 left-0 right-0 h-0.5 bg-[#e50914] rounded-full"
-                        initial={false}
-                        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        style={{
-                          boxShadow: '0 0 8px rgba(229, 9, 20, 0.6)'
-                        }}
-                      />
-                    )}
-                  </NavLink>
-                </motion.div>
-              )
-            })}
+            {[
+              { route: '/movies', label: 'Phim' },
+              { route: '/showtimes', label: 'Lịch Chiếu' },
+              { route: '/cinemas', label: 'Rạp Chiếu' },
+              { route: '/promotions', label: 'Ưu Đãi' },
+              { route: '/about', label: 'Giới Thiệu' }
+            ].map(({ route, label }, index) => (
+              <NavItem key={route} route={route} label={label} index={index} />
+            ))}
           </div>
 
           {/* ── RIGHT SECTION: Search + User ── */}
@@ -241,19 +250,7 @@ export default function Navbar() {
             {/* Search - Desktop */}
             <div className="hidden md:block relative" ref={searchRef}>
               <AnimatePresence mode="wait">
-                {searchTerm === '' ? (
-                  <motion.button
-                    key="search-icon"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    onClick={() => setSearchTerm('')}
-                    className="w-8 h-8 flex items-center justify-center"
-                    style={{ color: 'rgba(255,255,255,0.7)' }}
-                  >
-                    <Search size={16} />
-                  </motion.button>
-                ) : (
+                {showSearchInput || searchTerm !== '' ? (
                   <motion.div
                     key="search-input"
                     initial={{ width: 36, opacity: 0 }}
@@ -267,25 +264,31 @@ export default function Navbar() {
                       placeholder="Tìm phim..."
                       value={searchTerm}
                       onChange={handleSearchChange}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          navigate(`/movies?search=${encodeURIComponent(searchTerm.trim())}`)
-                          setSuggestionsOpen(false)
-                          setSearchTerm('')
-                        }
-                      }}
+                      onKeyDown={handleSearchKeyDown}
                       className="w-full bg-transparent border-b border-[#e50914] text-white text-sm py-1 px-2 outline-none transition-all"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                       autoFocus
                     />
                     <button
-                      onClick={() => setSearchTerm('')}
+                      onClick={handleSearchClose}
                       className="absolute right-0 top-1/2 -translate-y-1/2"
                       style={{ color: 'rgba(255,255,255,0.5)' }}
                     >
                       <X size={12} />
                     </button>
                   </motion.div>
+                ) : (
+                  <motion.button
+                    key="search-icon"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={() => setShowSearchInput(true)}
+                    className="w-8 h-8 flex items-center justify-center"
+                    style={{ color: 'rgba(255,255,255,0.7)' }}
+                  >
+                    <Search size={16} />
+                  </motion.button>
                 )}
               </AnimatePresence>
 

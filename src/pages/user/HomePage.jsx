@@ -224,6 +224,9 @@ export default function HomePage() {
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
 
+  // Debug: Log component mount and location
+  console.log('🏠 HomePage rendering. Path:', location.pathname, 'Movies count:', movies.length)
+
   // ── Quick Booking state ────────────────────────────────────────
   const [bookingMovieId, setBookingMovieId] = useState('')
   const [bookingDate, setBookingDate] = useState('')
@@ -284,7 +287,7 @@ export default function HomePage() {
     setCurrentBannerIndex(0)
   }, [movies.length])
 
-  const isRoot = location.pathname === '/'
+  const isHomePage = ['/', '/home'].includes(location.pathname)
 
   const slideLeft = () => {
     setCurrentIndex(prev => Math.max(0, prev - 4))
@@ -297,11 +300,18 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    console.log('🔍 Fetching movies...')
     movieService.getAll()
       .then(r => {
-        setMovies(r.data?.result?.content || r.data?.result || [])
+        console.log('✅ API Response:', r.data)
+        const moviesData = r.data?.result?.content || r.data?.result || []
+        console.log('🎬 Movies to set:', moviesData)
+        setMovies(moviesData)
       })
-      .catch(() => { })
+      .catch(err => {
+        console.error('❌ Error fetching movies:', err)
+        setMovies([])
+      })
   }, [])
 
   const getRatingColor = (rating) => {
@@ -319,7 +329,7 @@ export default function HomePage() {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
-      {isRoot && (
+      {isHomePage && (
         <>
           {/* ===== CINEMATIC MOVIE BANNER ===== */}
           <div
@@ -401,12 +411,12 @@ export default function HomePage() {
 
                     {/* Bottom fade into background */}
                     <div
-                      className="absolute bottom-0 left-0 right-0 h-44 z-10 pointer-events-none"
+                      className="absolute bottom-0 left-0 right-0 h-[300px] z-10 pointer-events-none"
                       style={{ background: 'linear-gradient(to top, var(--color-background), transparent)' }}
                     />
 
                     {/* Nội dung */}
-                    <div className="absolute inset-0 z-20 flex flex-col justify-between pt-24 pb-8 h-full">
+                    <div className="absolute inset-0 z-20 flex flex-col justify-between pt-11 pb-24 h-full">
                       
                       {/* Top part: Left Info & Right Poster */}
                       <div className="w-full max-w-7xl mx-auto px-6 md:px-14 flex flex-col lg:flex-row items-center justify-between gap-10 md:gap-14 flex-grow animate-fade-in">
@@ -673,8 +683,8 @@ export default function HomePage() {
 
           {/* ===== QUICK BOOKING WIDGET ===== */}
           <motion.div
-            className="relative z-20 w-full px-4 md:px-14"
-            style={{ marginTop: '24px' }}
+            className="relative w-full px-4 md:px-14"
+            style={{ marginTop: '150px', zIndex: 5 }}
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}

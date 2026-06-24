@@ -6,7 +6,7 @@ import StaffLayout from '../components/layout/StaffLayout'
 import ManagerLayout from '../components/layout/ManagerLayout'
 import ProtectedRoute from './ProtectedRoute'
 
-import IntroPage from '../pages/IntroPage'
+
 
 import LoginPage from '../pages/auth/LoginPage'
 import RegisterPage from '../pages/auth/RegisterPage'
@@ -26,6 +26,7 @@ import FaqPage from '../pages/user/FaqPage'
 import ContactPage from '../pages/user/ContactPage'
 import FeedbackPage from '../pages/user/FeedbackPage'
 import CareersPage from '../pages/user/CareersPage'
+import IntroPage from '../pages/user/IntroPage'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
 import DashboardPage from '../pages/admin/DashboardPage'
@@ -143,9 +144,9 @@ export default function AppRoutes() {
   )
 
   function RootRedirect() {
-  console.log('✅ RootRedirect called')
-  const introSeen = localStorage.getItem('introSeen')
-  console.log('introSeen:', introSeen)
-  return introSeen ? <Navigate to="/home" replace /> : <Navigate to="/intro" replace />
-}
+    console.log('✅ RootRedirect called')
+    const introSeen = localStorage.getItem('introSeen')
+    console.log('introSeen:', introSeen)
+    return introSeen ? <Navigate to="/home" replace /> : <Navigate to="/intro" replace />
+  }
 }
