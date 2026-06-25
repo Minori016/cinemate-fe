@@ -10,6 +10,7 @@ import ProtectedRoute from './ProtectedRoute'
 
 import AuthPage from '../pages/auth/AuthPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
+import FirstLoginPage from '../pages/auth/FirstLoginPage'
 
 import HomePage from '../pages/user/HomePage'
 import ProfilePage from '../pages/user/ProfilePage'
@@ -77,6 +78,7 @@ export default function AppRoutes() {
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/first-login" element={<FirstLoginPage />} />
 
         {/* User Layout */}
         <Route element={<UserLayout />}>

@@ -19,6 +19,8 @@ export default function ShowtimeFormPage() {
   const [roomId, setRoomId] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
+  const [format, setFormat] = useState('2D')
+  const [language, setLanguage] = useState('Phụ đề')
   const [price, setPrice] = useState(90000)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -52,6 +54,8 @@ export default function ShowtimeFormPage() {
           setRoomId(st.roomId || st.room?.id || '')
           setDate(st.date || '')
           setTime(st.time || '')
+          setFormat(st.format || '2D')
+          setLanguage(st.language || 'Phụ đề')
           setPrice(st.price || 90000)
         } else {
           setToast({ message: 'Không tìm thấy lịch chiếu', type: 'danger' })
@@ -82,15 +86,38 @@ export default function ShowtimeFormPage() {
     }
 
     setIsSubmitting(true)
+    
+    // Convert date and time to ISO-8601 string
+    const localDateTime = new Date(`${date}T${time}:00`)
+    const startTimeIso = localDateTime.toISOString()
+
     const payload = {
       movieId,
       roomId,
-      date,
-      time,
-      price: Number(price)
+      startTime: startTimeIso,
+      format,
+      language,
+      basePrice: Number(price)
     }
 
     try {
+      // 1. Validate first
+      const valRes = await showtimeService.validateManual(payload)
+      if (valRes && !valRes.valid) {
+        setToast({ message: valRes.hardErrors?.join(', ') || 'Lỗi không xác định', type: 'danger' })
+        setIsSubmitting(false)
+        return
+      }
+
+      if (valRes && valRes.softWarnings && valRes.softWarnings.length > 0) {
+        const confirmMsg = valRes.softWarnings.join('\n') + '\n\nBạn có muốn tiếp tục lưu không?'
+        if (!window.confirm(confirmMsg)) {
+          setIsSubmitting(false)
+          return
+        }
+      }
+
+      // 2. Create or Update
       if (isEditMode) {
         await showtimeService.delete(id) // delete old
         await showtimeService.create(payload) // create new (simple approach)
@@ -193,23 +220,27 @@ export default function ShowtimeFormPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Input
-                label="Ngày chiếu *"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                error={errors.date}
-              />
-              <Input
-                label="Giờ chiếu *"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                error={errors.time}
-              />
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Giá vé (VNĐ) *</label>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  label="Ngày chiếu *"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  error={errors.date}
+                />
+              </div>
+              <div className="md:col-span-1">
+                <Input
+                  label="Giờ chiếu *"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  error={errors.time}
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-full text-left md:col-span-2">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Giá vé cơ bản (Base Price) *</label>
                 <input
                   type="number"
                   min={0}
@@ -218,6 +249,33 @@ export default function ShowtimeFormPage() {
                   className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full"
                 />
                 {errors.price && <span className="text-xs text-red-400 mt-1">{errors.price}</span>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Định dạng *</label>
+                <select
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                >
+                  <option value="2D">2D</option>
+                  <option value="3D">3D</option>
+                  <option value="IMAX">IMAX</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Ngôn ngữ *</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                >
+                  <option value="Phụ đề">Phụ đề</option>
+                  <option value="Lồng tiếng">Lồng tiếng</option>
+                </select>
               </div>
             </div>
           </div>

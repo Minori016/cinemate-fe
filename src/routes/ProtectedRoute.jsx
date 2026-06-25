@@ -14,6 +14,7 @@ export default function ProtectedRoute({ children, role }) {
   }
 
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />
+  if (user.isFirstLogin) return <Navigate to="/first-login" replace />
   if (role && !hasRole(role)) return <Navigate to="/" replace />
   return children
 }

@@ -1,91 +1,93 @@
 import api from './api'
 
-const STORAGE_KEY = 'manager_showtimes_db'
-
-const INITIAL_SHOWTIMES = [
-  { id: 101, movie: 'Dune: Hành Tinh Cát - Phần 2', room: 'Phòng chiếu 3 (IMAX)', date: '2026-06-18', time: '18:30', price: 120000 },
-  { id: 102, movie: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc', room: 'Phòng chiếu 2 (3D)', date: '2026-06-18', time: '17:00', price: 90000 },
-  { id: 103, movie: 'Lật Mặt 7: Một Điều Ước', room: 'Phòng chiếu 1 (Standard)', date: '2026-06-18', time: '20:15', price: 110000 }
-]
+const mapShowtimeFromBackend = (backendData, requestData = {}) => {
+  try {
+    const startTimeStr = backendData.startTime || '';
+    let date = '';
+    let time = '';
+    if (startTimeStr) {
+      date = startTimeStr.split('T')[0];
+      time = startTimeStr.split('T')[1]?.substring(0, 5) || '';
+    } else if (requestData.date && requestData.time) {
+       date = requestData.date;
+       time = requestData.time;
+    }
+    
+    return {
+      id: backendData.id,
+      movieId: backendData.movieId || backendData.movie?.id || requestData.movieId,
+      movie: backendData.movieTitle || backendData.movie?.titleVn || 'Unknown Movie',
+      roomId: backendData.roomId || backendData.room?.id || requestData.roomId,
+      room: backendData.roomName || backendData.room?.name || 'Unknown Room',
+      date: date,
+      time: time,
+      price: backendData.basePrice || requestData.basePrice || requestData.price || 90000,
+      format: backendData.format || requestData.format || '2D',
+      language: backendData.language || requestData.language || 'Phụ đề'
+    }
+  } catch (err) {
+    return backendData;
+  }
+}
 
 export const showtimeService = {
   // GET /api/v1/admin/showtimes (hoặc /api/v1/showtimes công khai)
   getAll: async () => {
-    try {
-      const res = await api.get('/api/v1/admin/showtimes')
-      return res.data?.result || res.data
-    } catch (err) {
-      console.warn('Backend API offline hoặc chưa có API lịch chiếu. Dùng dữ liệu đệm localStorage.')
-      const local = localStorage.getItem(STORAGE_KEY)
-      if (local) {
-        return JSON.parse(local)
-      } else {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SHOWTIMES))
-        return INITIAL_SHOWTIMES
-      }
-    }
+    const res = await api.get('/api/v1/admin/showtimes')
+    const list = res.data?.result || res.data || []
+    return Array.isArray(list) ? list.map(item => mapShowtimeFromBackend(item)) : []
   },
 
   // GET /api/v1/admin/showtimes/{id}
   getById: async (id) => {
-    try {
-      const res = await api.get(`/api/v1/admin/showtimes/${id}`)
-      return res.data?.result || res.data
-    } catch (err) {
-      console.warn('Backend API offline or getById not supported. Using localStorage fallback.')
-      const local = localStorage.getItem(STORAGE_KEY)
-      if (local) {
-        const list = JSON.parse(local)
-        return list.find(s => s.id === id || String(s.id) === String(id))
-      }
-      return null
-    }
+    const res = await api.get(`/api/v1/admin/showtimes/${id}`)
+    return res.data?.result || res.data
   },
 
   // POST /api/v1/admin/showtimes
   create: async (showtimeData) => {
+    const res = await api.post('/api/v1/admin/showtimes', showtimeData)
+    const backendShowtime = res.data?.result || res.data
+    return mapShowtimeFromBackend(backendShowtime, showtimeData)
+  },
+
+  // POST /api/v1/admin/showtimes/validate
+  validateManual: async (showtimeData) => {
     try {
-      const res = await api.post('/api/v1/admin/showtimes', showtimeData)
-      // Cập nhật lại localStorage nếu thành công (để đồng bộ)
-      const local = localStorage.getItem(STORAGE_KEY)
-      const list = local ? JSON.parse(local) : INITIAL_SHOWTIMES
-      const newList = [res.data?.result || res.data, ...list]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList))
-      return res.data?.result || res.data
+      const res = await api.post('/api/v1/admin/showtimes/validate', showtimeData)
+      return res.data
     } catch (err) {
-      console.warn('Backend API offline hoặc chưa hỗ trợ POST. Cập nhật offline vào localStorage.')
-      const local = localStorage.getItem(STORAGE_KEY)
-      const list = local ? JSON.parse(local) : INITIAL_SHOWTIMES
-      const newShow = {
-        id: Date.now(),
-        ...showtimeData
+      if (err.response && err.response.status === 400) {
+        // Validation errors returned as 400
+        return {
+          valid: false,
+          hardErrors: err.response.data.message ? [err.response.data.message] : ['Dữ liệu không hợp lệ']
+        }
       }
-      const newList = [newShow, ...list]
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newList))
-      return newShow
+      throw err
     }
+  },
+
+  // POST /api/v1/admin/showtimes/auto-generate
+  autoGenerate: async (requestData) => {
+    const res = await api.post('/api/v1/admin/showtimes/auto-generate', requestData)
+    return res.data
+  },
+
+  // POST /api/v1/admin/showtimes/batch
+  batchCreate: async (showtimes) => {
+    const res = await api.post('/api/v1/admin/showtimes/batch', showtimes)
+    const savedItems = res.data?.result || res.data
+    
+    if (Array.isArray(savedItems)) {
+      return savedItems.map(item => mapShowtimeFromBackend(item))
+    }
+    return savedItems
   },
 
   // DELETE /api/v1/admin/showtimes/{id}
   delete: async (id) => {
-    try {
-      await api.delete(`/api/v1/admin/showtimes/${id}`)
-      const local = localStorage.getItem(STORAGE_KEY)
-      if (local) {
-        const list = JSON.parse(local)
-        const filtered = list.filter(item => item.id !== id && String(item.id) !== String(id))
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-      }
-      return true
-    } catch (err) {
-      console.warn('Backend API offline hoặc chưa hỗ trợ DELETE. Cập nhật offline vào localStorage.')
-      const local = localStorage.getItem(STORAGE_KEY)
-      if (local) {
-        const list = JSON.parse(local)
-        const filtered = list.filter(item => item.id !== id && String(item.id) !== String(id))
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered))
-      }
-      return true
-    }
+    await api.delete(`/api/v1/admin/showtimes/${id}`)
+    return true
   }
 }

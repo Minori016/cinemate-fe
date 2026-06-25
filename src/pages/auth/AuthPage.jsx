@@ -64,6 +64,10 @@ export default function AuthPage() {
     setLoginLoading(true)
     try {
       const user = await login(loginForm.email, loginForm.password)
+      if (user.isFirstLogin) {
+        navigate('/first-login', { replace: true })
+        return
+      }
       const roles = Array.isArray(user.roles) ? user.roles : [user.role].filter(Boolean)
       const from = location.state?.from
         ? (location.state.from.pathname + (location.state.from.search || ''))

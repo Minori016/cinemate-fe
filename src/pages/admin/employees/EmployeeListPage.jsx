@@ -15,10 +15,11 @@ export default function EmployeeListPage() {
   const load = () => {
     employeeService.getAll()
       .then(r => {
-        const data = r.data?.result ?? r.data?.data ?? r.data ?? []
-        let allUsers = Array.isArray(data) ? data : []
-        // Filter for users with STAFF role (employees)
-        const staffList = allUsers.filter(u => u.roles?.includes('STAFF'))
+        const resData = r.data?.result ?? r.data?.data ?? r.data ?? {}
+        // Handle paginated content or flat array
+        const list = resData.content ?? (Array.isArray(resData) ? resData : [])
+        // Filter for users with STAFF or MANAGER roles
+        const staffList = list.filter(u => u.roles?.includes('STAFF') || u.roles?.includes('MANAGER'))
         setEmployees(staffList)
       })
       .catch(err => {
@@ -31,7 +32,7 @@ export default function EmployeeListPage() {
   const columns = [
     { key: 'username', label: 'Tài khoản' },
     { key: 'fullName', label: 'Họ tên' },
-    { key: 'dateOfBirth', label: 'Ngày sinh' },
+    { key: 'dayOfBirth', label: 'Ngày sinh' },
     { key: 'gender', label: 'Giới tính' },
     { key: 'email', label: 'Email' },
     { key: 'phoneNumber', label: 'SĐT' },
@@ -73,7 +74,7 @@ export default function EmployeeListPage() {
       >
         <Table columns={columns} data={employees} actions={row => (
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/employees/edit/${row.id}`)}><Pencil size={12}/></Button>
+            <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/employees/edit/${row.id || row.uuid}`)}><Pencil size={12}/></Button>
             <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
           </div>
         )} />
@@ -83,7 +84,7 @@ export default function EmployeeListPage() {
         <p className="text-[var(--color-text-muted)] text-sm mb-4">Xóa nhân viên <span className="text-white font-semibold">"{deleteTarget?.fullName}"</span>?</p>
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy</Button>
-          <Button variant="danger" onClick={async () => { await employeeService.delete(deleteTarget.id); setDeleteTarget(null); load() }}>Xóa</Button>
+          <Button variant="danger" onClick={async () => { await employeeService.delete(deleteTarget.id || deleteTarget.uuid); setDeleteTarget(null); load() }}>Xóa</Button>
         </div>
       </Modal>
     </motion.div>

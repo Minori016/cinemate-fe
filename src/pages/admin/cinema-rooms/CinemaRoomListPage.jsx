@@ -6,13 +6,6 @@ import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Table from '../../../components/common/Table'
 import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw } from 'lucide-react'
 
-// Initial seeds matching current workspace listings
-const INITIAL_ROOMS = [
-  { id: 'CR-01', name: 'Phòng chiếu 1 (Standard)', seatsCount: 80 },
-  { id: 'CR-02', name: 'Phòng chiếu 2 (3D)', seatsCount: 60 },
-  { id: 'CR-03', name: 'Phòng chiếu 3 (IMAX)', seatsCount: 48 },
-  { id: 'CR-04', name: 'Phòng chiếu 4 (Dolby Atmos)', seatsCount: 60 }
-]
 
 export default function CinemaRoomListPage() {
   const { user } = useAuth()
@@ -62,31 +55,14 @@ export default function CinemaRoomListPage() {
 
       try {
         const res = await cinemaRoomService.getAll()
-        // If we got a structured array from the backend API
         if (res && res.data && active) {
           const roomsList = res.data?.result || res.data
           let finalRooms = Array.isArray(roomsList) ? roomsList : []
-          if (finalRooms.length === 0) {
-            const local = localStorage.getItem('admin_cinema_rooms_db')
-            if (local) {
-              const parsed = JSON.parse(local)
-              finalRooms = parsed.length > 0 ? parsed : INITIAL_ROOMS
-            } else {
-              finalRooms = INITIAL_ROOMS
-            }
-          }
           setRooms(finalRooms)
-          localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(finalRooms))
         }
       } catch (err) {
-        console.warn('Backend service offline. Loading mock data from local storage.', err)
-        const local = localStorage.getItem('admin_cinema_rooms_db')
-        if (local && active) {
-          setRooms(JSON.parse(local))
-        } else if (active) {
-          setRooms(INITIAL_ROOMS)
-          localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(INITIAL_ROOMS))
-        }
+        console.warn('Backend service offline.', err)
+        if (active) setRooms([])
       } finally {
         if (active) {
           setLoading(false)
