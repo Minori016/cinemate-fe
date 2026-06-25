@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { userService } from '../../../services/userService'
-import { authService } from '../../../services/authService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
@@ -49,12 +48,18 @@ export default function MemberListPage() {
     setError('')
     try {
       const res = await userService.getAll()
-      const allUsers = res.data?.result ?? res.data ?? []
+      let allUsers = res.data?.result ?? res.data ?? []
+      if (!Array.isArray(allUsers)) {
+        console.warn('userService.getAll returned non-array:', allUsers)
+        allUsers = []
+      }
       // Filter for users with MEMBER role
       const memberList = allUsers.filter(u => u.roles?.includes('MEMBER'))
       setMembers(memberList)
-    } catch {
+    } catch (err) {
+      console.error('Error loading members:', err)
       setError('Không thể tải danh sách thành viên.')
+      setMembers([])
     } finally {
       setLoading(false)
     }
@@ -93,7 +98,7 @@ export default function MemberListPage() {
     if (!isConfirmed) return
 
     try {
-      await authService.register(addForm)
+      await memberService.register(addForm)
       setSuccess('Thêm thành viên mới thành công!')
       setAddOpen(false)
       // Reset form

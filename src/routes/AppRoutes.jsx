@@ -51,7 +51,8 @@ import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 function RootRedirect() {
   const introSeen = localStorage.getItem('cinemate_intro_seen')
-  return introSeen
+  console.log('[RootRedirect] introSeen:', introSeen)
+  return introSeen === 'true'
     ? <Navigate to="/home" replace />
     : <Navigate to="/intro" replace />
 }

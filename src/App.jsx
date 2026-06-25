@@ -33,7 +33,7 @@ function IntroWrapper({ children }) {
   const [showIntro, setShowIntro] = useState(() => {
     try {
       const seen = localStorage.getItem(INTRO_SEEN_KEY) === 'true'
-      console.log('[IntroWrapper] Initial check - hasSeenIntro:', seen)
+      console.log('[IntroWrapper] Initial check - hasSeenIntro:', seen, '| Value:', localStorage.getItem(INTRO_SEEN_KEY))
       return !seen
     } catch {
       console.warn('[IntroWrapper] localStorage error, showing intro')
@@ -51,7 +51,7 @@ function IntroWrapper({ children }) {
     setShowIntro(false)
   }, [])
 
-  console.log('[IntroWrapper] Rendering, showIntro:', showIntro)
+  console.log('[IntroWrapper] Rendering, showIntro:', showIntro, '| introSeen:', localStorage.getItem(INTRO_SEEN_KEY))
 
   return (
     <AnimatePresence mode="wait">

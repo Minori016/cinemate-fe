@@ -12,7 +12,17 @@ export default function EmployeeListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const navigate = useNavigate()
 
-  const load = () => employeeService.getAll().then(r => setEmployees(r.data)).catch(() => {})
+  const load = () => {
+    employeeService.getAll()
+      .then(r => {
+        const data = r.data?.result ?? r.data?.data ?? r.data ?? []
+        setEmployees(Array.isArray(data) ? data : [])
+      })
+      .catch(err => {
+        console.error('Error loading employees:', err)
+        setEmployees([])
+      })
+  }
   useEffect(() => { load() }, [])
 
   const columns = [
