@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import {
   Users,
-  Plus,
   DollarSign,
   Ticket,
   Percent,
@@ -13,7 +12,8 @@ import {
   Download,
   Printer,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  MapPin
 } from 'lucide-react'
 import {
   AreaChart,
@@ -79,6 +79,49 @@ const MOVIE_PERFORMANCE_DATA = [
   { name: 'Furiosa', revenue: 1500000, tickets: 15 }
 ]
 
+// Mock data cho các chi nhánh
+const BRANCH_DATA = [
+  {
+    id: 'hungvuong',
+    name: 'CineMate Hùng Vương Plaza',
+    address: '123 Hùng Vương, Quận 5, TP.HCM',
+    revenue: 45800000,
+    tickets: 420,
+    visitors: 850,
+    occupancy: 78.5,
+    concession: 14500000,
+    growth: 12.5
+  },
+  {
+    id: 'nguyentrai',
+    name: 'CineMate Nguyễn Trãi',
+    address: '456 Nguyễn Trãi, Quận 1, TP.HCM',
+    revenue: 38500000,
+    tickets: 345,
+    visitors: 680,
+    occupancy: 68.2,
+    concession: 11800000,
+    growth: 8.3
+  },
+  {
+    id: 'tranhungdao',
+    name: 'CineMate Trần Hưng Đạo',
+    address: '789 Trần Hưng Đạo, Quận 1, TP.HCM',
+    revenue: 28900000,
+    tickets: 265,
+    visitors: 520,
+    occupancy: 62.4,
+    concession: 8900000,
+    growth: -2.1
+  }
+]
+
+const BRANCH_COMPARISON_DATA = [
+  { branch: 'Hùng Vương', revenue: 45800000, tickets: 420, concession: 14500000 },
+  { branch: 'Nguyễn Trãi', revenue: 38500000, tickets: 345, concession: 11800000 },
+  { branch: 'Trần Hưng Đạo', revenue: 28900000, tickets: 265, concession: 8900000 }
+]
+
 const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 
 const CustomTooltipRevenue = ({ active, payload, label }) => {
@@ -106,6 +149,143 @@ const CustomTooltipMovie = ({ active, payload, label }) => {
     )
   }
   return null
+}
+
+// Branch Performance Card Component
+function BranchCard({ branch, index }) {
+  const isTopPerformer = index === 0
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.1 }}
+      className={`p-5 rounded-2xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg ${
+        index === 0
+          ? 'bg-gradient-to-br from-red-600/10 to-red-900/5 border-red-500/30 shadow-md'
+          : 'bg-[var(--color-surface)] border-[var(--color-border)]'
+      }`}
+    >
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isTopPerformer ? 'bg-red-600 text-white' : 'bg-white/5 text-gray-400'}`}>
+            <MapPin size={18} />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white leading-tight" style={{ fontFamily: 'Montserrat' }}>
+              {branch.name}
+            </h4>
+            <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{branch.address}</p>
+          </div>
+        </div>
+        {isTopPerformer && (
+          <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-gradient-to-r from-yellow-500 to-amber-500 text-black rounded-full">
+            Top Performer
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Doanh thu</p>
+          <p className="text-lg font-black text-white font-mono">{formatVND(branch.revenue)}</p>
+          <div className="flex items-center gap-1">
+            <span className={`text-[10px] font-bold ${branch.growth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+              {branch.growth >= 0 ? '▲' : '▼'} {Math.abs(branch.growth)}%
+            </span>
+            <span className="text-[9px] text-gray-500">so tháng trước</span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Vé bán</p>
+          <p className="text-lg font-black text-white font-mono">{branch.tickets.toLocaleString()}</p>
+          <div className="flex items-center gap-1">
+            <DollarSign size={12} className="text-red-400" />
+            <span className="text-[10px] text-gray-500">avg {(branch.revenue / branch.tickets).toLocaleString('vi-VN', { maximumFractionDigits: 0 })}đ</span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Lượt khách</p>
+          <p className="text-lg font-black text-white font-mono">{branch.visitors.toLocaleString()}</p>
+          <div className="flex items-center gap-1">
+            <Users size={12} className="text-blue-400" />
+            <span className="text-[10px] text-gray-500">tổng khách</span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[10px] uppercase text-gray-400 font-bold tracking-wider">Tỷ lệ lấp đầy</p>
+          <p className={`text-lg font-black font-mono ${branch.occupancy >= 75 ? 'text-green-400' : branch.occupancy >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+            {branch.occupancy}%
+          </p>
+          <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all ${branch.occupancy >= 75 ? 'bg-green-500' : branch.occupancy >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
+              style={{ width: `${branch.occupancy}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// Branch Comparison Chart Component
+function BranchComparisonChart({ data }) {
+  return (
+    <div style={{ width: '100%', height: 320 }}>
+      <ResponsiveContainer>
+        <BarChart
+          data={data}
+          margin={{ top: 10, right: 10, left: 5, bottom: 0 }}
+          layout="vertical"
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0d" horizontal={false} />
+          <XAxis
+            type="number"
+            stroke="#7e8494"
+            fontSize={11}
+            tickLine={false}
+            axisLine={false}
+            tickFormatter={(v) => `${v / 1000000}M`}
+          />
+          <YAxis
+            dataKey="branch"
+            type="category"
+            stroke="#7e8494"
+            fontSize={12}
+            width={80}
+            tickLine={false}
+            tick={{ fill: '#9ca3af' }}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#0f121d',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              fontSize: '12px'
+            }}
+            formatter={(value) => [formatVND(value), 'Doanh thu']}
+            labelStyle={{ color: '#fff', fontWeight: 700 }}
+          />
+          <Legend
+            iconSize={10}
+            iconType="circle"
+            wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+          />
+          <Bar
+            dataKey="revenue"
+            name="Doanh thu"
+            fill="#e50914"
+            radius={[0, 8, 8, 0]}
+            barSize={24}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 function ExportModal({ isOpen, onClose, activeFilters, currentGranularity, displayMetrics, chartData, triggerToast }) {
@@ -702,6 +882,17 @@ export default function ManagerAnalyticsPage() {
     total: Math.round(item.total * scale)
   }))
 
+  // Filter branches based on filterLocation
+  const filteredBranches = filterLocation === 'all'
+    ? BRANCH_DATA
+    : BRANCH_DATA.filter(b => b.id === filterLocation)
+
+  const filteredBranchComparison = BRANCH_COMPARISON_DATA.filter(b => {
+    if (filterLocation === 'all') return true
+    const branchIdMap = { hungvuong: 'Hùng Vương', nguyentrai: 'Nguyễn Trãi', tranhungdao: 'Trần Hưng Đạo' }
+    return b.branch === branchIdMap[filterLocation]
+  })
+
   const formatTimeCountdown = (secs) => {
     const mins = Math.floor(secs / 60)
     const s = secs % 60
@@ -896,6 +1087,56 @@ export default function ManagerAnalyticsPage() {
           <span className="text-[10px] text-yellow-500 font-bold mt-1.5 flex items-center gap-1">
             ● Ổn định <span className="text-[var(--color-text-muted)] font-normal">hiệu suất phòng</span>
           </span>
+        </div>
+      </div>
+
+      {/* Branch Revenue Section */}
+      <div className="space-y-6">
+        {/* Section Header */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight uppercase text-white" style={{ fontFamily: 'Montserrat' }}>
+              📍 Doanh Thu Theo Chi Nhánh
+            </h2>
+            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+              So sánh hiệu suất kinh doanh giữa các rạp chiếu phim trong hệ thống.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+            <button
+              onClick={() => setExportModalOpen(true)}
+              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+            >
+              <Download size={14} />
+              Xuất báo cáo chi nhánh
+            </button>
+          </div>
+        </div>
+
+        {/* Branch Performance Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredBranches.map((branch, index) => (
+            <BranchCard
+              key={branch.id}
+              branch={branch}
+              index={index}
+            />
+          ))}
+        </div>
+
+        {/* Branch Comparison Chart */}
+        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div>
+              <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
+                📊 So Sánh Doanh Thu Chi Nhánh
+              </h3>
+              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Biểu đồ cột so sánh tổng doanh thu giữa các chi nhánh.</p>
+            </div>
+          </div>
+
+          <BranchComparisonChart data={filteredBranchComparison} />
         </div>
       </div>
 

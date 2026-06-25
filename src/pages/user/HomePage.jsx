@@ -28,6 +28,12 @@ const getYoutubeVideoId = (url) => {
   return ''
 }
 
+// Kiểm tra xem URL có hợp lệ không
+const isValidImageUrl = (url) => {
+  if (!url) return false
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')
+}
+
 // ── Quick Booking: 7 ngày tới ─────────────────────────────────────
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
@@ -212,6 +218,19 @@ const MEMBER_PERKS = [
   { icon: Zap, title: 'Flash Sale', desc: 'Nhận thông báo ưu đãi chớp nhoáng sớm nhất' },
 ]
 
+// Default poster khi ảnh load lỗi - Sử dụng placeholder đơn giản
+const DEFAULT_POSTER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"%3E%3Crect fill="%231a1a2e" width="400" height="600"/%3E%3Ctext fill="%23666" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+const DEFAULT_POSTER_SMALL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180"%3E%3Crect fill="%231a1a2e" width="120" height="180"/%3E%3Ctext fill="%23666" font-family="Arial" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
+
+const handleImageError = (e) => {
+  const currentSrc = e.target.src
+  console.log('Image failed to load:', currentSrc)
+  // Nếu đã là default thì không replace nữa (tránh loop)
+  if (currentSrc.includes('No Image') || currentSrc.includes('1489599849927')) return
+  // Thay thế bằng ảnh default SVG
+  e.target.src = currentSrc.includes('w=400') || currentSrc.includes('w=120') ? DEFAULT_POSTER_SMALL : DEFAULT_POSTER
+}
+
 export default function HomePage() {
   const [movies, setMovies] = useState([])
   const location = useLocation()
@@ -308,7 +327,13 @@ export default function HomePage() {
       .then(r => {
         console.log('✅ API Response:', r.data)
         const moviesData = r.data?.result?.content || r.data?.result || []
-        console.log('🎬 Movies to set:', moviesData)
+        console.log('🎬 Movies to set:', moviesData.map(m => ({
+          id: m.id,
+          titleVn: m.titleVn,
+          posterUrl: m.posterUrl,
+          posterUrlType: typeof m.posterUrl,
+          posterUrlLength: m.posterUrl?.length
+        })))
         setMovies(moviesData)
       })
       .catch(err => {
@@ -405,7 +430,7 @@ export default function HomePage() {
                   >
                     {/* Backdrop without blur, recessed look */}
                     <motion.div
-                      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none"
+                      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none bg-gradient-to-br from-red-950/60 to-gray-900"
                       initial={{ scale: 1.03 }}
                       animate={{ scale: 1 }}
                       transition={{ duration: 8, ease: 'linear' }}
@@ -414,7 +439,7 @@ export default function HomePage() {
                       {movie.trailerUrl && getYoutubeVideoId(movie.trailerUrl) ? (
                         <iframe
                           src={`https://www.youtube.com/embed/${getYoutubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&loop=1&playlist=${getYoutubeVideoId(movie.trailerUrl)}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&enablejsapi=1`}
-                          className="absolute pointer-events-none filter brightness-[0.60] saturate(1.15) contrast(1.05)"
+                          className="absolute pointer-events-none filter brightness-[0.85] saturate(1.1) contrast(1.0)"
                           style={{
                             top: '50%',
                             left: '50%',
@@ -422,7 +447,7 @@ export default function HomePage() {
                             height: '100%',
                             minHeight: '100%',
                             minWidth: '100%',
-                            transform: 'translate(-50%, -50%) scale(1.35)',
+                            transform: 'translate(-50%, -50%) scale(1.5)',
                             border: 'none',
                             pointerEvents: 'none',
                           }}
@@ -435,7 +460,8 @@ export default function HomePage() {
                           src={posterUrl}
                           alt=""
                           className="w-full h-full object-cover"
-                          style={{ filter: 'brightness(0.60) saturate(1.15) contrast(1.05)', pointerEvents: 'none' }}
+                          style={{ pointerEvents: 'none' }}
+                          onError={handleImageError}
                         />
                       )}
                     </motion.div>
@@ -444,7 +470,7 @@ export default function HomePage() {
                     <div
                       className="absolute inset-0 z-10"
                       style={{
-                        background: 'radial-gradient(circle at center, transparent 20%, rgba(5,5,10,0.85) 90%), linear-gradient(105deg, rgba(5,5,10,0.96) 0%, rgba(5,5,10,0.7) 40%, rgba(5,5,10,0.2) 70%, rgba(5,5,10,0.6) 100%)',
+                        background: 'radial-gradient(circle at center, transparent 30%, rgba(5,5,10,0.2) 90%), linear-gradient(105deg, rgba(5,5,10,0.25) 0%, rgba(5,5,10,0.15) 40%, transparent 70%, rgba(5,5,10,0.2) 100%)',
                       }}
                     />
 
@@ -595,7 +621,7 @@ export default function HomePage() {
                             className="flex flex-col items-center bg-black/35 p-5 rounded-3xl border border-white/8 backdrop-blur-md"
                             style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.85)' }}
                           >
-                            <div className="relative w-[170px]" style={{ aspectRatio: '2/3' }}>
+                            <div className="relative w-[170px] bg-gray-900" style={{ aspectRatio: '2/3' }}>
                               <img
                                 src={posterUrl}
                                 alt={movie.titleVn}
@@ -603,6 +629,7 @@ export default function HomePage() {
                                 style={{
                                   boxShadow: '0 16px 36px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.08)',
                                 }}
+                                onError={handleImageError}
                               />
                               {/* Rating badge */}
                               <div
@@ -669,7 +696,7 @@ export default function HomePage() {
                                 style={{ width: '92px' }}
                               >
                                 <div
-                                  className="relative aspect-[2/3] w-full rounded-lg overflow-hidden border-2 transition-all duration-300"
+                                  className="relative aspect-[2/3] w-full rounded-lg overflow-hidden border-2 transition-all duration-300 bg-gradient-to-br from-red-900/30 to-gray-900"
                                   style={{
                                     borderColor: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.12)',
                                     boxShadow: i === currentBannerIndex ? '0 0 16px rgba(229,9,20,0.5)' : 'none',
@@ -679,6 +706,7 @@ export default function HomePage() {
                                     src={m.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=120&h=180&fit=crop'}
                                     alt={m.titleVn}
                                     className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+                                    onError={handleImageError}
                                   />
                                   {/* Number Overlay in Gold Gradient style */}
                                   <div
@@ -743,7 +771,7 @@ export default function HomePage() {
           <motion.div
             id="quick-booking"
             className="relative w-full px-4 md:px-14"
-            style={{ marginTop: '100px', zIndex: 5 }}
+            style={{ marginTop: '100px', zIndex: 100 }}
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -918,7 +946,7 @@ export default function HomePage() {
                         whileHover={{ y: -8, transition: { duration: 0.22 } }}
                       >
                         <Link to={detailLink} className="group flex flex-col flex-grow">
-                          <div className="relative w-full aspect-[2/3] flex-shrink-0 overflow-hidden border border-white/10 shadow-lg mb-4">
+                          <div className="relative w-full aspect-[2/3] flex-shrink-0 overflow-hidden border border-white/10 shadow-lg mb-4 bg-gradient-to-br from-red-900/40 to-gray-900">
                             <div className="absolute top-0 left-0 z-30 flex">
                               <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 flex items-center justify-center border-r border-b border-white/5">{movie.version || '2D'}</span>
                               <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 flex items-center justify-center">{movie.rating || 'K'}</span>
@@ -929,6 +957,7 @@ export default function HomePage() {
                               className="w-full h-full object-cover relative z-10"
                               whileHover={{ scale: 1.08 }}
                               transition={{ duration: 0.4 }}
+                              onError={handleImageError}
                             />
                             <motion.div
                               className="absolute inset-0 bg-black/85 z-20 flex flex-col justify-center px-6 text-left"

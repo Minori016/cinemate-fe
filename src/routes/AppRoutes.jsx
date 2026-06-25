@@ -8,9 +8,7 @@ import ProtectedRoute from './ProtectedRoute'
 
 
 
-import LoginPage from '../pages/auth/LoginPage'
-import RegisterPage from '../pages/auth/RegisterPage'
-import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
+import AuthPage from '../pages/auth/AuthPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
 
 import HomePage from '../pages/user/HomePage'
@@ -75,9 +73,9 @@ export default function AppRoutes() {
         <Route path="/intro" element={<VideoIntro onExplore={() => window.location.href = '/home'} />} />
 
         {/* Auth */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/login" element={<AuthPage />} />
+        <Route path="/register" element={<AuthPage />} />
+        <Route path="/forgot-password" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* User Layout */}
