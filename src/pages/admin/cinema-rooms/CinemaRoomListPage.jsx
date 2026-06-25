@@ -326,11 +326,11 @@ export default function CinemaRoomListPage() {
 
         {/* Add Room trigger button (AC-03) */}
         <button
-          onClick={() => setShowAddModal(true)}
+          onClick={() => navigate('/admin/cinema-rooms/add')}
           className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
         >
           <Plus size={16} />
-          <span>Add Cinema Room</span>
+          <span>Thêm phòng chiếu</span>
         </button>
       </div>
 

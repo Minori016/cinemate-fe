@@ -224,6 +224,9 @@ export default function HomePage() {
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
 
+  // State to track if we should scroll from intro
+  const [shouldScrollFromIntro, setShouldScrollFromIntro] = useState(false)
+
   // Debug: Log component mount and location
   console.log('🏠 HomePage rendering. Path:', location.pathname, 'Movies count:', movies.length)
 
@@ -312,13 +315,55 @@ export default function HomePage() {
         console.error('❌ Error fetching movies:', err)
         setMovies([])
       })
+
+    // Check if we need to scroll from intro
+    const shouldScroll = sessionStorage.getItem('intro_scroll_to_booking')
+    if (shouldScroll === 'true') {
+      // Clear the flag
+      sessionStorage.removeItem('intro_scroll_to_booking')
+      setShouldScrollFromIntro(true)
+    }
   }, [])
+
+  // Handle scroll after movies loaded and component rendered
+  useEffect(() => {
+    if (shouldScrollFromIntro) {
+      setShouldScrollFromIntro(false)
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        scrollToQuickBooking()
+      }, 300)
+    }
+  }, [shouldScrollFromIntro])
 
   const getRatingColor = (rating) => {
     if (rating === 'T18') return '#dc2626'
     if (rating === 'T16') return '#ef4444'
     if (rating === 'T13') return '#f97316'
     return '#16a34a'
+  }
+
+  const scrollToQuickBooking = (movieId) => {
+    // Chọn phim nếu có movieId
+    if (movieId) {
+      setBookingMovieId(movieId?.toString() || '')
+      setBookingDate('')
+      setBookingTime('')
+      setBookingErrors({ movie: '', date: '', time: '' })
+    }
+
+    // Delay scroll để đảm bảo trang đã render xong sau khi intro đóng
+    setTimeout(() => {
+      const element = document.getElementById('quick-booking')
+      if (element) {
+        const offset = 20 // thêm một chút padding
+        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset - offset
+        window.scrollTo({
+          top: elementPosition,
+          behavior: 'smooth'
+        })
+      }
+    }, 100)
   }
 
   return (
@@ -402,7 +447,7 @@ export default function HomePage() {
                         background: 'radial-gradient(circle at center, transparent 20%, rgba(5,5,10,0.85) 90%), linear-gradient(105deg, rgba(5,5,10,0.96) 0%, rgba(5,5,10,0.7) 40%, rgba(5,5,10,0.2) 70%, rgba(5,5,10,0.6) 100%)',
                       }}
                     />
-                    
+
                     {/* Top fade */}
                     <div
                       className="absolute top-0 left-0 right-0 h-28 z-10 pointer-events-none"
@@ -417,7 +462,7 @@ export default function HomePage() {
 
                     {/* Nội dung */}
                     <div className="absolute inset-0 z-20 flex flex-col justify-between pt-11 pb-24 h-full">
-                      
+
                       {/* Top part: Left Info & Right Poster */}
                       <div className="w-full max-w-7xl mx-auto px-6 md:px-14 flex flex-col lg:flex-row items-center justify-between gap-10 md:gap-14 flex-grow animate-fade-in">
 
@@ -507,6 +552,10 @@ export default function HomePage() {
                               to={detailLink}
                               className="flex lg:hidden items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white bg-red-600 hover:bg-red-700 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                               style={{ fontFamily: 'Montserrat, sans-serif', boxShadow: '0 4px 14px rgba(229,9,20,0.4)' }}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                scrollToQuickBooking(movie.id)
+                              }}
                             >
                               <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>confirmation_number</span>
                               <span>Đặt Vé Ngay</span>
@@ -569,19 +618,28 @@ export default function HomePage() {
                               />
                             </div>
 
-                            <Link
-                              to={detailLink}
-                              className="mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all duration-200 hover:scale-[1.03] active:scale-[0.97] w-[170px] cursor-pointer"
-                              style={{
-                                background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-                                boxShadow: '0 6px 20px rgba(229,9,20,0.4)',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                fontFamily: 'Montserrat, sans-serif',
-                              }}
+                            <motion.div
+                              whileHover={{ scale: 1.03 }}
+                              whileTap={{ scale: 0.97 }}
                             >
-                              <span className="material-symbols-outlined text-sm font-bold">confirmation_number</span>
-                              <span>Đặt Vé Ngay</span>
-                            </Link>
+                              <Link
+                                to={detailLink}
+                                className="mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all duration-200 w-[170px] cursor-pointer"
+                                style={{
+                                  background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                                  boxShadow: '0 6px 20px rgba(229,9,20,0.4)',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  fontFamily: 'Montserrat, sans-serif',
+                                }}
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  scrollToQuickBooking(movie.id)
+                                }}
+                              >
+                                <span className="material-symbols-outlined text-sm font-bold">confirmation_number</span>
+                                <span>Đặt Vé Ngay</span>
+                              </Link>
+                            </motion.div>
                           </div>
                         </motion.div>
 
@@ -591,7 +649,7 @@ export default function HomePage() {
                       {bannerMovies.length > 1 && (
                         <div className="w-full max-w-7xl mx-auto px-6 md:px-14 mt-auto mb-2 select-none">
                           <div className="flex items-center gap-2 mb-3">
-                            <span 
+                            <span
                               className="text-[9px] font-black uppercase text-white px-2 py-0.5 rounded shadow-[0_0_8px_rgba(229,9,20,0.6)]"
                               style={{ backgroundColor: '#e50914' }}
                             >
@@ -601,7 +659,7 @@ export default function HomePage() {
                               PHIM HOT TRONG THÁNG
                             </h3>
                           </div>
-                          
+
                           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none justify-start">
                             {bannerMovies.map((m, i) => (
                               <button
@@ -610,7 +668,7 @@ export default function HomePage() {
                                 className="flex-shrink-0 group/card text-left transition-all duration-300 focus:outline-none cursor-pointer"
                                 style={{ width: '92px' }}
                               >
-                                <div 
+                                <div
                                   className="relative aspect-[2/3] w-full rounded-lg overflow-hidden border-2 transition-all duration-300"
                                   style={{
                                     borderColor: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.12)',
@@ -623,7 +681,7 @@ export default function HomePage() {
                                     className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
                                   />
                                   {/* Number Overlay in Gold Gradient style */}
-                                  <div 
+                                  <div
                                     className="absolute top-1 left-2 font-black text-2xl select-none"
                                     style={{
                                       fontFamily: 'Montserrat, sans-serif',
@@ -635,7 +693,7 @@ export default function HomePage() {
                                   </div>
                                 </div>
                                 {/* Movie Title */}
-                                <p 
+                                <p
                                   className="mt-1.5 text-[9px] font-bold uppercase tracking-wide truncate transition-colors duration-200"
                                   style={{
                                     color: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.6)',
@@ -683,8 +741,9 @@ export default function HomePage() {
 
           {/* ===== QUICK BOOKING WIDGET ===== */}
           <motion.div
+            id="quick-booking"
             className="relative w-full px-4 md:px-14"
-            style={{ marginTop: '150px', zIndex: 5 }}
+            style={{ marginTop: '100px', zIndex: 5 }}
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -904,11 +963,15 @@ export default function HomePage() {
                           >
                             <Link
                               to={detailLink}
-                              className="text-white text-xs font-extrabold px-5 py-2 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
+                              className="text-white text-xs font-extrabold px-5 py-2 transition-all duration-200 uppercase rounded-sm"
                               style={{
                                 background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
                                 boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
                                 border: '1px solid rgba(255, 255, 255, 0.08)'
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                scrollToQuickBooking(movie.id)
                               }}
                             >
                               ĐẶT VÉ
@@ -962,14 +1025,17 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 transition={{ delay: 0.6 }}
               >
-                <Link
-                  to="/movies"
-                  className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
+                <motion.div
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  XEM THÊM
-                </Link>
+                  <Link
+                    to="/movies"
+                    className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
+                  >
+                    XEM THÊM
+                  </Link>
+                </motion.div>
               </motion.div>
 
             </motion.div>

@@ -130,6 +130,8 @@ export default function VideoIntro({
 
   const handleBuyTicket = useCallback(() => {
     setIsDismissed(true)
+    // Set flag for HomePage to handle scroll after mount
+    sessionStorage.setItem('intro_scroll_to_booking', 'true')
     if (onBuyTicket) onBuyTicket()
     else if (onComplete) onComplete()
   }, [onBuyTicket, onComplete])

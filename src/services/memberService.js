@@ -1,6 +1,6 @@
 import api from './api'
 
-const BASE_URL = '/api/v1/admin/users/members'
+const BASE_URL = '/api/v1/admin/users'
 
 export const memberService = {
   getAll: (params) => api.get(BASE_URL, { params }),

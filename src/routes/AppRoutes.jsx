@@ -33,11 +33,15 @@ import DashboardPage from '../pages/admin/DashboardPage'
 import MovieListPage from '../pages/admin/movies/MovieListPage'
 import MovieFormPage from '../pages/admin/movies/MovieFormPage'
 import EmployeeListPage from '../pages/admin/employees/EmployeeListPage'
+import EmployeeFormPage from '../pages/admin/employees/EmployeeFormPage'
 import MemberListPage from '../pages/admin/members/MemberListPage'
+import MemberFormPage from '../pages/admin/members/MemberFormPage'
 import TicketManagementPage from '../pages/admin/tickets/TicketManagementPage'
 import CinemaRoomListPage from '../pages/admin/cinema-rooms/CinemaRoomListPage'
 import CinemaRoomDetailPage from '../pages/admin/cinema-rooms/CinemaRoomDetailPage'
+import CinemaRoomFormPage from '../pages/admin/cinema-rooms/CinemaRoomFormPage'
 import ShowtimeListPage from '../pages/admin/showtimes/ShowtimeListPage'
+import ShowtimeFormPage from '../pages/admin/showtimes/ShowtimeFormPage'
 import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
 import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
 import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
@@ -127,11 +131,17 @@ export default function AppRoutes() {
           <Route path="movies/add" element={<MovieFormPage />} />
           <Route path="movies/edit/:id" element={<MovieFormPage />} />
           <Route path="employees" element={<EmployeeListPage />} />
+          <Route path="employees/add" element={<EmployeeFormPage />} />
+          <Route path="employees/edit/:id" element={<EmployeeFormPage />} />
           <Route path="members" element={<MemberListPage />} />
+          <Route path="members/add" element={<MemberFormPage />} />
+          <Route path="members/edit/:id" element={<MemberFormPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
           <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
+          <Route path="cinema-rooms/add" element={<CinemaRoomFormPage />} />
           <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
+          <Route path="showtimes/add" element={<ShowtimeFormPage />} />
           <Route path="promotions" element={<PromotionListPage />} />
           <Route path="promotions/add" element={<PromotionFormPage />} />
           <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
@@ -143,11 +153,4 @@ export default function AppRoutes() {
       </Routes>
     </AnimatePresence>
   )
-
-  function RootRedirect() {
-    console.log('✅ RootRedirect called')
-    const introSeen = localStorage.getItem('introSeen')
-    console.log('introSeen:', introSeen)
-    return introSeen ? <Navigate to="/home" replace /> : <Navigate to="/intro" replace />
-  }
 }

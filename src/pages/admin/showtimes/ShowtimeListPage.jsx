@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search, Trash2, Calendar, Clock, AlertTriangle, CheckCircle, X, ArrowLeft, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Clock, AlertTriangle, CheckCircle, X, Calendar } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
@@ -43,19 +42,19 @@ export default function ShowtimeListPage() {
   const [filterRoom, setFilterRoom] = useState('all')
   const [filterDate, setFilterDate] = useState('')
 
-  // Add Modal State
-  const [modalOpen, setModalOpen] = useState(false)
+  // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
 
-  // Form State
+  // Modal and Form state
+  const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState({
     movieId: '',
     roomId: '',
     date: '',
     time: '',
-    price: 90000
+    price: ''
   })
-  const [validationError, setValidationError] = useState('')
+  const [validationError, setValidationError] = useState(null)
 
   const triggerToast = (msg, type = 'success') => {
     setToast({ text: msg, type })
@@ -101,90 +100,63 @@ export default function ShowtimeListPage() {
     }
   }, [isAdmin])
 
-  // Get selected movie info in form
-  const selectedMovie = movies.find(m => m.id === form.movieId || String(m.id) === String(form.movieId))
-  const duration = selectedMovie ? (selectedMovie.durationMinutes || 120) : 120
-
-  // Calculate estimated end time
-  const getEndTime = () => {
-    if (!form.date || !form.time || !selectedMovie) return ''
+  // Get selected movie info for end time calculation (used in table)
+  const getEndTimeForShowtime = (st) => {
+    const mObj = movies.find(m => m.titleVn === st.movie || m.id === st.movieId)
+    const dMin = mObj ? (mObj.durationMinutes || 120) : 120
     try {
-      const startTime = new Date(`${form.date}T${form.time}:00`)
-      if (isNaN(startTime.getTime())) return ''
-      const endTime = new Date(startTime.getTime() + duration * 60 * 1000)
-      return endTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-    } catch {
-      return ''
-    }
+      const startT = new Date(`${st.date}T${st.time}:00`)
+      if (!isNaN(startT.getTime())) {
+        const endT = new Date(startT.getTime() + dMin * 60 * 1000)
+        return endT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+      }
+    } catch (e) {}
+    return '--:--'
   }
 
-  const handleOpenAddModal = () => {
-    setValidationError('')
-    setForm({
-      movieId: movies[0]?.id || '',
-      roomId: rooms[0]?.id || '',
-      date: new Date().toISOString().split('T')[0],
-      time: '19:00',
-      price: 90000
-    })
-    setModalOpen(true)
+  // Computed values for modal
+  const selectedMovie = movies.find(m => m.id === form.movieId)
+  const duration = selectedMovie?.durationMinutes || 120
+
+  const getEndTime = () => {
+    if (!form.date || !form.time) return '--:--'
+    try {
+      const startT = new Date(`${form.date}T${form.time}:00`)
+      if (!isNaN(startT.getTime())) {
+        const endT = new Date(startT.getTime() + duration * 60 * 1000)
+        return endT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+      }
+    } catch (e) {}
+    return '--:--'
   }
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    setValidationError('')
+    setValidationError(null)
 
-    if (!form.movieId || !form.roomId || !form.date || !form.time || form.price < 30000) {
-      setValidationError('Vui lòng điền đầy đủ thông tin và giá vé tối thiểu 30.000đ.')
+    if (!form.movieId || !form.roomId || !form.date || !form.time || !form.price) {
+      setValidationError('Vui lòng điền đầy đủ tất cả các trường bắt buộc!')
       return
-    }
-
-    const movieObj = movies.find(m => m.id === form.movieId || String(m.id) === String(form.movieId))
-    const roomObj = rooms.find(r => r.id === form.roomId || String(r.id) === String(form.roomId))
-
-    const newStart = new Date(`${form.date}T${form.time}:00`)
-    const newEnd = new Date(newStart.getTime() + duration * 60 * 1000)
-
-    // Check conflict overlap (same room, same date)
-    const hasConflict = showtimes.some(st => {
-      // room and date must match
-      if (st.room !== roomObj.name && st.roomId !== roomObj.id) return false
-      if (st.date !== form.date) return false
-
-      // parse existing start & end
-      // existing duration fallback
-      const existMovie = movies.find(m => m.titleVn === st.movie || m.id === st.movieId)
-      const existDuration = existMovie ? (existMovie.durationMinutes || 120) : 120
-
-      const existStart = new Date(`${st.date}T${st.time}:00`)
-      const existEnd = new Date(existStart.getTime() + existDuration * 60 * 1000)
-
-      // Overlap formula: StartA < EndB AND EndA > StartB
-      return newStart < existEnd && newEnd > existStart
-    })
-
-    if (hasConflict) {
-      setValidationError(`Xung đột lịch chiếu! Phòng chiếu này đã có phim chiếu khác trong khoảng thời gian từ ${form.time} đến ${getEndTime()} ngày ${form.date}.`)
-      return
-    }
-
-    const payload = {
-      movieId: form.movieId,
-      movie: movieObj.titleVn,
-      roomId: form.roomId,
-      room: roomObj.name,
-      date: form.date,
-      time: form.time,
-      price: Number(form.price)
     }
 
     try {
-      const created = await showtimeService.create(payload)
-      setShowtimes(prev => [created, ...prev])
+      const payload = {
+        movieId: form.movieId,
+        roomId: form.roomId,
+        date: form.date,
+        time: form.time,
+        price: Number(form.price)
+      }
+
+      await showtimeService.create(payload)
+      triggerToast('Tạo lịch chiếu mới thành công!', 'success')
       setModalOpen(false)
-      triggerToast(`Đã lên lịch chiếu phim "${movieObj.titleVn}" thành công!`, 'success')
+      setForm({ movieId: '', roomId: '', date: '', time: '', price: '' })
+      setValidationError(null)
+      loadData()
     } catch (err) {
-      triggerToast('Thêm lịch chiếu thất bại!', 'error')
+      const msg = err?.response?.data?.message || 'Tạo lịch chiếu thất bại!'
+      setValidationError(Array.isArray(msg) ? msg[0] : msg)
     }
   }
 
@@ -273,11 +245,11 @@ export default function ShowtimeListPage() {
         </div>
 
         <button
-          onClick={handleOpenAddModal}
+          onClick={() => navigate('/admin/showtimes/add')}
           className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
         >
           <Plus size={16} />
-          <span>Tạo lịch chiếu</span>
+          <span>Thêm lịch chiếu</span>
         </button>
       </div>
 
@@ -361,18 +333,8 @@ export default function ShowtimeListPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-xs">
                 {filteredShowtimes.map((st) => {
-                  const mObj = movies.find(m => m.titleVn === st.movie || m.id === st.movieId)
-                  const dMin = mObj ? (mObj.durationMinutes || 120) : 120
-                  
                   // Calculate end time
-                  let endTimeStr = '--:--'
-                  try {
-                    const startT = new Date(`${st.date}T${st.time}:00`)
-                    if (!isNaN(startT.getTime())) {
-                      const endT = new Date(startT.getTime() + dMin * 60 * 1000)
-                      endTimeStr = endT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-                    }
-                  } catch (e) {}
+                  const endTimeStr = getEndTimeForShowtime(st)
 
                   return (
                     <tr key={st.id} className="hover:bg-[var(--color-surface-2)] transition-colors">

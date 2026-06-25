@@ -23,6 +23,7 @@ api.interceptors.request.use((config) => {
   if (token && !isPublic) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  console.log('API Request:', config.method?.toUpperCase(), config.url, config.headers)
   return config
 })
 
@@ -34,6 +35,14 @@ api.interceptors.response.use(
       localStorage.removeItem('token')
       localStorage.removeItem('user')
     }
+    // Log chi tiết lỗi để debug
+    console.error('API Error:', {
+      url: error.config?.url,
+      method: error.config?.method,
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    })
     return Promise.reject(error)
   }
 )

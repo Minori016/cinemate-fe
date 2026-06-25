@@ -16,7 +16,10 @@ export default function EmployeeListPage() {
     employeeService.getAll()
       .then(r => {
         const data = r.data?.result ?? r.data?.data ?? r.data ?? []
-        setEmployees(Array.isArray(data) ? data : [])
+        let allUsers = Array.isArray(data) ? data : []
+        // Filter for users with STAFF role (employees)
+        const staffList = allUsers.filter(u => u.roles?.includes('STAFF'))
+        setEmployees(staffList)
       })
       .catch(err => {
         console.error('Error loading employees:', err)

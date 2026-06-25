@@ -26,6 +26,22 @@ export const showtimeService = {
     }
   },
 
+  // GET /api/v1/admin/showtimes/{id}
+  getById: async (id) => {
+    try {
+      const res = await api.get(`/api/v1/admin/showtimes/${id}`)
+      return res.data?.result || res.data
+    } catch (err) {
+      console.warn('Backend API offline or getById not supported. Using localStorage fallback.')
+      const local = localStorage.getItem(STORAGE_KEY)
+      if (local) {
+        const list = JSON.parse(local)
+        return list.find(s => s.id === id || String(s.id) === String(id))
+      }
+      return null
+    }
+  },
+
   // POST /api/v1/admin/showtimes
   create: async (showtimeData) => {
     try {
