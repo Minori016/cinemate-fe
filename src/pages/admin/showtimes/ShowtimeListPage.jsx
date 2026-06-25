@@ -1,27 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Trash2, Clock, AlertTriangle, CheckCircle, X, Calendar } from 'lucide-react'
+import { Plus, Trash2, Clock, AlertTriangle, CheckCircle, X, Calendar, Settings } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
+import AutoGenerateModal from './AutoGenerateModal'
 import { useAuth } from '../../../contexts/AuthContext'
 
-// Fallback lists in case APIs are empty or offline
-const FALLBACK_MOVIES = [
-  { id: 'm1', titleVn: 'Lật Mặt 7: Một Điều Ước', durationMinutes: 138 },
-  { id: 'm2', titleVn: 'Dune: Hành Tinh Cát - Phần 2', durationMinutes: 166 },
-  { id: 'm3', titleVn: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc', durationMinutes: 96 },
-  { id: 'm4', titleVn: 'Furiosa: Mad Max Saga', durationMinutes: 148 }
-]
 
-const FALLBACK_ROOMS = [
-  { id: 'CR-01', name: 'Phòng chiếu 1 (Standard)' },
-  { id: 'CR-02', name: 'Phòng chiếu 2 (3D)' },
-  { id: 'CR-03', name: 'Phòng chiếu 3 (IMAX)' },
-  { id: 'CR-04', name: 'Phòng chiếu 4 (Dolby Atmos)' }
-]
 
 const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 
@@ -47,6 +35,7 @@ export default function ShowtimeListPage() {
 
   // Modal and Form state
   const [modalOpen, setModalOpen] = useState(false)
+  const [autoGenModalOpen, setAutoGenModalOpen] = useState(false)
   const [form, setForm] = useState({
     movieId: '',
     roomId: '',
@@ -73,18 +62,18 @@ export default function ShowtimeListPage() {
       try {
         const mRes = await movieService.getAll()
         const mList = mRes.data?.result?.content || mRes.data?.result || []
-        setMovies(mList.length > 0 ? mList : FALLBACK_MOVIES)
+        setMovies(mList.length > 0 ? mList : [])
       } catch (err) {
-        setMovies(FALLBACK_MOVIES)
+        setMovies([])
       }
 
       // 3. Fetch Rooms
       try {
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []
-        setRooms(rList.length > 0 ? rList : FALLBACK_ROOMS)
+        setRooms(rList.length > 0 ? rList : [])
       } catch (err) {
-        setRooms(FALLBACK_ROOMS)
+        setRooms([])
       }
     } catch (err) {
       console.error('Error loading showtimes data:', err)
@@ -244,13 +233,23 @@ export default function ShowtimeListPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate('/admin/showtimes/add')}
-          className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>Thêm lịch chiếu</span>
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setAutoGenModalOpen(true)}
+            className="px-5 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
+          >
+            <Settings size={16} />
+            <span>Tạo tự động</span>
+          </button>
+
+          <button
+            onClick={() => navigate('/admin/showtimes/add')}
+            className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>Thêm lịch chiếu</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Control Bar */}
@@ -341,8 +340,10 @@ export default function ShowtimeListPage() {
                       <td className="px-6 py-4 font-bold text-white max-w-xs truncate">{st.movie}</td>
                       <td className="px-6 py-4 text-gray-400 font-semibold">{st.room}</td>
                       <td className="px-6 py-4 font-medium text-gray-300">{st.date}</td>
-                      <td className="px-6 py-4 font-bold text-red-500 flex items-center gap-1">
-                        <Clock size={12} /> {st.time}
+                      <td className="px-6 py-4 font-bold text-red-500">
+                        <div className="flex items-center gap-1">
+                          <Clock size={12} /> {st.time}
+                        </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-400">{endTimeStr}</td>
                       <td className="px-6 py-4 font-extrabold font-mono text-green-400">{formatVND(st.price)}</td>
@@ -518,6 +519,18 @@ export default function ShowtimeListPage() {
           <Button variant="danger" onClick={handleDelete}>Xóa lịch</Button>
         </div>
       </Modal>
+
+      {/* Auto Generate Modal */}
+      <AutoGenerateModal 
+        open={autoGenModalOpen} 
+        onClose={() => setAutoGenModalOpen(false)} 
+        movies={movies} 
+        rooms={rooms}
+        onSuccess={(msg) => {
+          triggerToast(msg, 'success')
+          loadData()
+        }}
+      />
 
     </div>
   )

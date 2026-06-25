@@ -81,12 +81,13 @@ export function AuthProvider({ children }) {
       const token = res.data?.result?.token ?? res.data?.token
       if (!token) throw new Error('No token in response')
 
-      // Decode JWT claims: { sub: email, userId, roles: string[] }
+      // Decode JWT claims: { sub: email, userId, roles: string[], isFirstLogin: boolean }
       const claims = decodeJwt(token)
       const userData = {
         uuid: claims?.userId,
         email: claims?.sub,
         roles: claims?.roles ?? [],
+        isFirstLogin: claims?.isFirstLogin ?? res.data?.result?.isFirstLogin ?? false,
       }
 
       localStorage.setItem('token', token)

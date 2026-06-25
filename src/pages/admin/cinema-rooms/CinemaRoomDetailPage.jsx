@@ -120,17 +120,7 @@ export default function CinemaRoomDetailPage() {
       }
 
       if (!fetchedRoom) {
-        // Check if it's one of the initial seeds
-        const initialRooms = [
-          { id: 'CR-01', name: 'Phòng chiếu 1 (Standard)', seatsCount: 80 },
-          { id: 'CR-02', name: 'Phòng chiếu 2 (3D)', seatsCount: 60 },
-          { id: 'CR-03', name: 'Phòng chiếu 3 (IMAX)', seatsCount: 48 },
-          { id: 'CR-04', name: 'Phòng chiếu 4 (Dolby Atmos)', seatsCount: 60 }
-        ]
-        fetchedRoom = initialRooms.find(r => r.id === roomId)
-        if (fetchedRoom && active) {
-          setRoom(fetchedRoom)
-        } else if (active) {
+        if (active) {
           setError('Không tìm thấy thông tin phòng chiếu.')
           setLoading(false)
           return

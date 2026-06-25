@@ -21,6 +21,11 @@ export default function EmployeeFormPage() {
   const [address, setAddress] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [identityCard, setIdentityCard] = useState('')
+  const [salary, setSalary] = useState('8000000')
+  const [cinemaId, setCinemaId] = useState('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11')
+  const [role, setRole] = useState('STAFF')
+  const [status, setStatus] = useState('ACTIVE')
 
   // UI feedback states
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -28,7 +33,6 @@ export default function EmployeeFormPage() {
   const [errors, setErrors] = useState({})
   const [isDirty, setIsDirty] = useState(false)
 
-  // Validation
   const validateForm = () => {
     const tempErrors = {}
     if (!username.trim()) tempErrors.username = 'Tài khoản không được để trống'
@@ -38,6 +42,9 @@ export default function EmployeeFormPage() {
     if (!dateOfBirth) tempErrors.dateOfBirth = 'Ngày sinh không được để trống'
     if (!phoneNumber.trim()) tempErrors.phoneNumber = 'Số điện thoại không được để trống'
     if (!address.trim()) tempErrors.address = 'Địa chỉ không được để trống'
+    if (!identityCard.trim()) tempErrors.identityCard = 'CMND/CCCD không được để trống'
+    if (!salary || Number(salary) <= 0) tempErrors.salary = 'Lương phải lớn hơn 0'
+    if (!cinemaId) tempErrors.cinemaId = 'Vui lòng chọn rạp chiếu phim'
 
     if (!isEditMode) {
       if (!password) {
@@ -70,14 +77,23 @@ export default function EmployeeFormPage() {
       username: username.trim(),
       email: email.trim(),
       fullName: fullName.trim(),
-      dateOfBirth: dateOfBirth,
+      dayOfBirth: dateOfBirth,
       gender: gender,
       phoneNumber: phoneNumber.trim(),
       address: address.trim(),
+      identityCard: identityCard.trim(),
+      salary: Number(salary),
+      cinemaId: cinemaId,
+      role: role,
     }
 
     if (password) {
       employeeData.password = password
+      employeeData.confirmPassword = confirmPassword
+    }
+
+    if (isEditMode) {
+      employeeData.status = status
     }
 
     try {
@@ -100,7 +116,6 @@ export default function EmployeeFormPage() {
     }
   }
 
-  // Fetch employee data if editing
   useEffect(() => {
     if (isEditMode) {
       employeeService.getById(id)
@@ -114,6 +129,11 @@ export default function EmployeeFormPage() {
             setGender(employee.gender ? employee.gender.toUpperCase() : 'MALE')
             setPhoneNumber(employee.phoneNumber || '')
             setAddress(employee.address || '')
+            setIdentityCard(employee.identityCard || '')
+            setSalary(employee.salary ? String(employee.salary) : '')
+            setCinemaId(employee.cinemaId || '')
+            setRole(employee.roles && employee.roles.includes('MANAGER') ? 'MANAGER' : 'STAFF')
+            setStatus(employee.status || 'ACTIVE')
           }
         })
         .catch(err => {
@@ -281,6 +301,57 @@ export default function EmployeeFormPage() {
                 onChange={(e) => setAddress(e.target.value)}
                 error={errors.address}
               />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Số CMND / CCCD *"
+                placeholder="Nhập số CMND hoặc CCCD"
+                value={identityCard}
+                onChange={(e) => setIdentityCard(e.target.value)}
+                error={errors.identityCard}
+              />
+              <Input
+                label="Mức lương (VNĐ) *"
+                type="number"
+                placeholder="Ví dụ: 8000000"
+                value={salary}
+                onChange={(e) => setSalary(e.target.value)}
+                error={errors.salary}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Rạp chiếu phim *</label>
+                <select
+                  value={cinemaId}
+                  onChange={(e) => setCinemaId(e.target.value)}
+                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                >
+                  <option value="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11">Cinemate HQ</option>
+                  <option value="b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22">Cinemate Q7</option>
+                  <option value="c0eebc99-9c0b-4ef8-bb6d-6bb9bd380a33">Cinemate Bình Tân</option>
+                  <option value="d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44">Cinemate Quận 9</option>
+                  <option value="e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55">Cinemate Bình Thạnh</option>
+                  <option value="f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a66">Cinemate Cần Thơ</option>
+                </select>
+                {errors.cinemaId && <span className="text-xs text-red-400 mt-1">{errors.cinemaId}</span>}
+              </div>
+
+              {isEditMode && (
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Trạng thái tài khoản *</label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                  >
+                    <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                    <option value="LOCKED">Bị khóa (LOCKED)</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
         </div>
