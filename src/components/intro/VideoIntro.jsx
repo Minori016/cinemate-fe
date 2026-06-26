@@ -29,9 +29,10 @@ export default function VideoIntro({
 
   const markIntroSeen = useCallback(() => {
     try {
-      localStorage.setItem(INTRO_SEEN_KEY, 'true')
-    } catch (e) {
-      console.warn('[VideoIntro] localStorage not available')
+      const storage = import.meta.env.DEV ? sessionStorage : localStorage
+      storage.setItem(INTRO_SEEN_KEY, 'true')
+    } catch {
+      console.warn('[VideoIntro] storage not available')
     }
   }, [])
 

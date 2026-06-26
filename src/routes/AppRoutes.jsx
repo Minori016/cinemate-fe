@@ -53,8 +53,9 @@ import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 function RootRedirect() {
-  const introSeen = localStorage.getItem('cinemate_intro_seen')
-  console.log('[RootRedirect] introSeen:', introSeen)
+  const storage = import.meta.env.DEV ? sessionStorage : localStorage
+  const introSeen = storage.getItem('cinemate_intro_seen')
+  console.log('[RootRedirect] introSeen:', introSeen, '| storage:', import.meta.env.DEV ? 'sessionStorage' : 'localStorage')
   return introSeen === 'true'
     ? <Navigate to="/home" replace />
     : <Navigate to="/intro" replace />
