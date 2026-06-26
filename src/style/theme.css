@@ -203,6 +203,7 @@
 }
 
 /* ── Light Mode override for Admin, Manager, and Staff workspaces ── */
+
 .theme-light {
   --color-background:               #f8f9fa;
   --color-surface:                  #ffffff;

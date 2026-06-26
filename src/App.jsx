@@ -75,17 +75,26 @@ function IntroWrapper({ children }) {
   )
 }
 
+function AppContent() {
+  const location = useLocation()
+  const isDashboard = /^\/(admin|staff|manager)(\/|$)/.test(location.pathname)
+
+  return (
+    <AuthProvider>
+      <ScrollToTop />
+      {/* Padding top để tránh bị navbar che — chỉ áp dụng cho trang user có Navbar */}
+      <div style={{ paddingTop: isDashboard ? '0px' : '72px', minHeight: '100vh' }}>
+        <AppRoutes />
+      </div>
+    </AuthProvider>
+  )
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <IntroWrapper>
-        <ScrollToTop />
-        <AuthProvider>
-          {/* Padding top để tránh bị navbar che (72px expanded, 56px scrolled) */}
-          <div style={{ paddingTop: '72px', minHeight: '100vh' }}>
-            <AppRoutes />
-          </div>
-        </AuthProvider>
+        <AppContent />
       </IntroWrapper>
     </BrowserRouter>
   )

@@ -156,7 +156,21 @@ export default function ShowtimeListPage() {
       setShowtimes(prev => prev.filter(st => st.id !== deleteTarget.id))
       triggerToast(`Đã xóa suất chiếu của phim "${deleteTarget.movie}"`, 'success')
     } catch (err) {
-      triggerToast('Xóa lịch chiếu thất bại!', 'error')
+      console.error('Delete showtime error:', err)
+
+      // Check for specific error patterns
+      const status = err?.response?.status
+      const message = err?.response?.data?.message || err?.response?.data || 'Xóa lịch chiếu thất bại!'
+
+      // Provide actionable feedback based on error type
+      let userMessage = message
+      if (status === 400 && message.includes('Uncategorized')) {
+        userMessage = 'Không thể xóa suất chiếu này vì có vé đã được đánh giá hoặc đang được giữ. Vui lòng hủy tất cả các đơn đặt vé liên quan trước khi xóa.'
+      } else if (status === 400 || status === 409) {
+        userMessage = `Lỗi: ${message}. Có thể suất chiếu này đã có khách đặt vé.`
+      }
+
+      triggerToast(userMessage, 'error')
     } finally {
       setDeleteTarget(null)
     }
@@ -511,12 +525,20 @@ export default function ShowtimeListPage() {
 
       {/* Delete Confirmation Modal */}
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa suất chiếu">
-        <p className="text-[var(--color-text-muted)] text-sm mb-4">
-          Bạn có chắc muốn xóa suất chiếu phim <span className="text-white font-semibold">"{deleteTarget?.movie}"</span> lúc <span className="text-red-400 font-bold">{deleteTarget?.time}</span> ngày <span className="text-white font-semibold">{deleteTarget?.date}</span> tại <span className="text-white font-semibold">{deleteTarget?.room}</span>?
-        </p>
-        <div className="flex gap-2 justify-end">
-          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy</Button>
-          <Button variant="danger" onClick={handleDelete}>Xóa lịch</Button>
+        <div className="space-y-4">
+          <p className="text-[var(--color-text-muted)] text-sm">
+            Bạn có chắc muốn xóa suất chiếu phim <span className="text-white font-semibold">"{deleteTarget?.movie}"</span> lúc <span className="text-red-400 font-bold">{deleteTarget?.time}</span> ngày <span className="text-white font-semibold">{deleteTarget?.date}</span> tại <span className="text-white font-semibold">{deleteTarget?.room}</span>?
+          </p>
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+            <p className="text-yellow-400 text-xs font-semibold flex items-start gap-2">
+              <span className="material-symbols-outlined shrink-0">warning</span>
+              <span>Lưu ý: Không thể xóa suất chiếu nếu đã có vé được bán hoặc đặt. Bạn cần hủy tất cả các đơn đặt vé trước khi xóa.</span>
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy</Button>
+            <Button variant="danger" onClick={handleDelete}>Xóa lịch</Button>
+          </div>
         </div>
       </Modal>
 

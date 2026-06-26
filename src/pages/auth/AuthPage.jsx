@@ -188,10 +188,10 @@ export default function AuthPage() {
   const showForgotForm = mode === 'forgot'
 
   // Calculate orders and initial x offsets for swap animation
-  const brandingOrder = mode === 'login' ? 2 : 1
-  const formOrder = mode === 'login' ? 1 : 2
-  const initialXBranding = mode === 'login' ? 50 : -50
-  const initialXForm = mode === 'login' ? -50 : 50
+  const brandingOrder = mode === 'login' ? 1 : 2
+  const formOrder = mode === 'login' ? 2 : 1
+  const initialXBranding = mode === 'login' ? -50 : 50
+  const initialXForm = mode === 'login' ? 50 : -50
 
   return (
     <>
