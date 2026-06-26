@@ -1,272 +1,498 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { memberService } from '../../../services/memberService'
-import Button from '../../../components/common/Button'
-import Input from '../../../components/common/Input'
-import { ArrowLeft, Plus, User, Mail, Phone, Calendar, CheckCircle, AlertCircle, X } from 'lucide-react'
+import {
+  ArrowLeft, User, Eye, EyeOff, CheckCircle, XCircle,
+  Info, UserPlus, Save, X, Star,
+} from 'lucide-react'
+
+const INPUT_STYLE = {
+  width: '100%',
+  padding: '10px 14px',
+  background: '#ffffff',
+  border: '2px solid #e5e7eb',
+  borderRadius: '10px',
+  color: '#0f172a',
+  fontSize: '14px',
+  outline: 'none',
+  boxSizing: 'border-box',
+  transition: 'border-color 0.2s, box-shadow 0.2s',
+  fontFamily: 'inherit',
+}
+const INPUT_FOCUS = {
+  borderColor: '#7c3aed',
+  boxShadow: '0 0 0 3px rgba(124, 58, 237, 0.1)',
+}
+const INPUT_ERROR = {
+  borderColor: '#ef4444',
+}
+const ERROR_TEXT = {
+  color: '#ef4444',
+  fontSize: '12px',
+  fontWeight: '500',
+  marginTop: '4px',
+  display: 'block',
+}
 
 export default function MemberFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditMode = !!id
+  const formRef = useRef(null)
 
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [fullName, setFullName] = useState('')
-  const [dayOfBirth, setDayOfBirth] = useState('')
-  const [gender, setGender] = useState('MALE')
-  const [phoneNumber, setPhoneNumber] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-
+  const [form, setForm] = useState({
+    username: '', email: '', fullName: '', dateOfBirth: '',
+    gender: 'MALE', phoneNumber: '',
+    password: '', confirmPassword: '', status: 'ACTIVE',
+  })
+  const [focused, setFocused] = useState({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
-  const [errors, setErrors] = useState({})
+  const [dataLoaded, setDataLoaded] = useState(false)
 
   useEffect(() => {
     if (isEditMode) {
       memberService.getById(id)
         .then(res => {
-          const member = res.data?.result || res.data
-          if (member) {
-            setUsername(member.username || '')
-            setEmail(member.email || '')
-            setFullName(member.fullName || '')
-            setDayOfBirth(member.dayOfBirth || '')
-            setGender(member.gender ? member.gender.toUpperCase() : 'MALE')
-            setPhoneNumber(member.phoneNumber || '')
+          const m = res.data?.result || res.data
+          if (m) {
+            setForm({
+              username: m.username || '', email: m.email || '',
+              fullName: m.fullName || '',
+              dateOfBirth: m.dateOfBirth || m.dayOfBirth || '',
+              gender: m.gender ? m.gender.toUpperCase() : 'MALE',
+              phoneNumber: m.phoneNumber || '',
+              status: m.status || 'ACTIVE',
+              password: '', confirmPassword: '',
+            })
+            setDataLoaded(true)
           }
         })
-        .catch(err => {
-          console.error('Failed to load member', err)
-          setToast({ message: 'Không thể tải thông tin thành viên', type: 'danger' })
-        })
+        .catch(() => showToast('Không thể tải thông tin thành viên', 'danger'))
+    } else {
+      setDataLoaded(true)
     }
   }, [id, isEditMode])
 
-  const validateForm = () => {
-    const tempErrors = {}
-    if (!username.trim()) tempErrors.username = 'Tài khoản không được để trống'
-    if (!email.trim()) tempErrors.email = 'Email không được để trống'
-    if (!/^\S+@\S+\.\S+$/.test(email)) tempErrors.email = 'Email không hợp lệ'
-    if (!fullName.trim()) tempErrors.fullName = 'Họ tên không được để trống'
-    if (!dayOfBirth) tempErrors.dayOfBirth = 'Ngày sinh không được để trống'
-    if (!phoneNumber.trim()) tempErrors.phoneNumber = 'Số điện thoại không được để trống'
+  const showToast = (message, type) => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
+
+  const getInputStyle = (field) => {
+    const base = { ...INPUT_STYLE }
+    if (errors[field]) Object.assign(base, INPUT_ERROR)
+    else if (focused[field]) Object.assign(base, INPUT_FOCUS)
+    return base
+  }
+
+  const validate = () => {
+    const errs = {}
+    if (!form.username.trim()) errs.username = 'Tài khoản không được để trống'
+    if (!form.email.trim()) errs.email = 'Email không được để trống'
+    else if (!/^\S+@\S+\.\S+$/.test(form.email)) errs.email = 'Email không hợp lệ'
+    if (!form.fullName.trim()) errs.fullName = 'Họ tên không được để trống'
+    if (!form.dateOfBirth) errs.dateOfBirth = 'Ngày sinh không được để trống'
+    if (!form.phoneNumber.trim()) errs.phoneNumber = 'SĐT không được để trống'
     if (!isEditMode) {
-      if (!password) tempErrors.password = 'Mật khẩu không được để trống'
-      else if (password.length < 8) tempErrors.password = 'Mật khẩu tối thiểu 8 ký tự'
-      if (password !== confirmPassword) tempErrors.confirmPassword = 'Mật khẩu xác nhận không khớp'
-    } else if (password && password.length < 8) {
-      tempErrors.password = 'Mật khẩu tối thiểu 8 ký tự'
+      if (!form.password) errs.password = 'Mật khẩu không được để trống'
+      else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+      if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp'
+    } else if (form.password && form.password.length < 8) {
+      errs.password = 'Mật khẩu tối thiểu 8 ký tự'
     }
-    setErrors(tempErrors)
-    return Object.keys(tempErrors).length === 0
+    setErrors(errs)
+    return Object.keys(errs).length === 0
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!validateForm()) {
-      setToast({ message: 'Vui lòng kiểm tra lại thông tin.', type: 'danger' })
+    if (!validate()) {
+      showToast('Vui lòng kiểm tra lại thông tin nhập liệu.', 'danger')
       return
     }
-
     setIsSubmitting(true)
-    const memberData = {
-      username: username.trim(),
-      email: email.trim(),
-      fullName: fullName.trim(),
-      dayOfBirth,
-      gender: gender,
-      phoneNumber: phoneNumber.trim(),
+    const data = {
+      username: form.username.trim(), email: form.email.trim(),
+      fullName: form.fullName.trim(), dayOfBirth: form.dateOfBirth,
+      gender: form.gender, phoneNumber: form.phoneNumber.trim(),
+      ...(form.password ? { password: form.password, confirmPassword: form.confirmPassword } : {}),
+      ...(isEditMode ? { status: form.status } : {}),
     }
-
-    if (password) {
-      memberData.password = password
-      memberData.confirmPassword = confirmPassword
-    }
-
     try {
-      if (isEditMode) {
-        await memberService.update(id, memberData)
-        setToast({ message: 'Cập nhật thành viên thành công!', type: 'success' })
-      } else {
-        await memberService.register(memberData)
-        setToast({ message: 'Thêm thành viên mới thành công!', type: 'success' })
-      }
-      setTimeout(() => {
-        navigate('/admin/members')
-      }, 1500)
+      if (isEditMode) await memberService.update(id, data)
+      else await memberService.register(data)
+      showToast(isEditMode ? 'Cập nhật thành viên thành công!' : 'Thêm thành viên mới thành công!', 'success')
+      setTimeout(() => navigate('/admin/members'), 1600)
     } catch (err) {
-      console.error('Failed to save member', err)
-      const serverMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
-      setToast({ message: `Không thể lưu: ${serverMsg}`, type: 'danger' })
-    } finally {
+      console.error('Save error:', err.response?.data)
+      showToast(`Không thể lưu: ${err.response?.data?.code === 1007 ? 'Bạn không có quyền thực hiện thao tác này' : (err.response?.data?.message || err.message || 'Lỗi hệ thống')}`, 'danger')
       setIsSubmitting(false)
     }
   }
 
-  const handleCancel = () => {
-    navigate('/admin/members')
+  if (!dataLoaded) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <span style={{ fontSize: '40px', color: '#7c3aed', animation: 'spin 1s linear infinite' }}>&#9696;</span>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6 text-[#e2e2e2] text-left relative pb-12">
+    <div style={{ maxWidth: '1100px' }}>
+      {/* Toast */}
       {toast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm max-w-md transition-all duration-300 animate-slide-in-up"
-          style={{
-            backgroundColor: toast.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-            borderColor: toast.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)',
-            color: toast.type === 'success' ? '#10b981' : '#ef4444',
-            backdropFilter: 'blur(16px)'
-          }}
-        >
-          {toast.type === 'success' ? <CheckCircle className="shrink-0" size={20} /> : <AlertCircle className="shrink-0" size={20} />}
-          <span className="font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-auto hover:opacity-80">
+        <div style={{
+          position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999,
+          display: 'flex', alignItems: 'center', gap: '12px',
+          padding: '16px 20px', borderRadius: '12px',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+          fontSize: '14px', fontWeight: '500', maxWidth: '420px',
+          background: toast.type === 'success' ? '#ecfdf5' : '#fef2f2',
+          border: `1px solid ${toast.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
+          color: toast.type === 'success' ? '#065f46' : '#991b1b',
+        }}>
+          {toast.type === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+          <span>{toast.message}</span>
+          <button onClick={() => setToast(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', marginLeft: 'auto', display: 'flex' }}>
             <X size={16} />
           </button>
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <button
-            onClick={handleCancel}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Quay lại Quản lý Thành viên</span>
-          </button>
-          <h1 className="text-4xl text-white font-black tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            {isEditMode ? 'Cập nhật thành viên' : 'Thêm thành viên mới'}
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            {isEditMode ? 'Chỉnh sửa thông tin tài khoản thành viên.' : 'Tạo tài khoản thành viên mới.'}
-          </p>
+      {/* Header */}
+      <div style={{ marginBottom: '32px' }}>
+        <button
+          onClick={() => navigate('/admin/members')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            background: 'transparent', border: 'none', cursor: 'pointer',
+            fontSize: '13px', fontWeight: '600', color: '#94a4a8', padding: 0, marginBottom: '12px',
+            transition: 'color 0.2s',
+          }}
+          onMouseEnter={e => e.target.style.color = '#7c3aed'}
+          onMouseLeave={e => e.target.style.color = '#94a4a8'}
+        >
+          <ArrowLeft size={15} />
+          Quay lại Quản lý Thành viên
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{
+            width: '48px', height: '48px', borderRadius: '12px',
+            background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
+          }}>
+            {isEditMode ? <User size={22} color="#fff" /> : <UserPlus size={22} color="#fff" />}
+          </div>
+          <div>
+            <h1 style={{ fontSize: '22px', fontWeight: '700', color: '#1e293b', lineHeight: '1.3', margin: 0 }}>
+              {isEditMode ? 'Cập nhật thành viên' : 'Thêm thành viên mới'}
+            </h1>
+            <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0' }}>
+              {isEditMode ? 'Chỉnh sửa thông tin tài khoản thành viên.' : 'Tạo tài khoản thành viên mới với thông tin cá nhân và quyền truy cập.'}
+            </p>
+          </div>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
-              <User className="text-red-500" size={18} />
-              Thông tin tài khoản
-            </h3>
+      {/* Form */}
+      <form ref={formRef} onSubmit={handleSubmit} noValidate>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px', alignItems: 'start' }}>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Tài khoản *"
-                placeholder="Ví dụ: member001"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                error={errors.username}
-              />
-              <Input
-                label="Email *"
-                type="email"
-                placeholder="member@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                error={errors.email}
-              />
-            </div>
+          {/* Left column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-            {!isEditMode && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Mật khẩu *"
-                  type="password"
-                  placeholder="Tối thiểu 8 ký tự"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={errors.password}
-                />
-                <Input
-                  label="Xác nhận mật khẩu *"
-                  type="password"
-                  placeholder="Nhập lại mật khẩu"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  error={errors.confirmPassword}
-                />
+            {/* Account info card */}
+            <div style={{
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '16px', padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <User size={18} color="#7c3aed" />
+                </div>
+                <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Thông tin tài khoản</h2>
               </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Họ tên *"
-                placeholder="Ví dụ: Nguyễn Văn B"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                error={errors.fullName}
-              />
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Giới tính *</label>
-                <select
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
-                >
-                  <option value="MALE">Nam</option>
-                  <option value="FEMALE">Nữ</option>
-                  <option value="OTHER">Khác</option>
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Tài khoản <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="username" type="text" placeholder="mb001" value={form.username}
+                    onChange={e => update('username', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, username: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, username: false }))}
+                    style={getInputStyle('username')}
+                    onMouseEnter={e => { if (!focused.username && !errors.username) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.username && !errors.username) e.target.style.borderColor = errors.username ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.username && <span style={ERROR_TEXT}>{errors.username}</span>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Email <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="email" type="email" placeholder="member@cinemate.com" value={form.email}
+                    onChange={e => update('email', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, email: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, email: false }))}
+                    style={getInputStyle('email')}
+                    onMouseEnter={e => { if (!focused.email && !errors.email) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.email && !errors.email) e.target.style.borderColor = errors.email ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.email && <span style={ERROR_TEXT}>{errors.email}</span>}
+                </div>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Ngày sinh *"
-                type="date"
-                value={dayOfBirth}
-                onChange={(e) => setDayOfBirth(e.target.value)}
-                error={errors.dayOfBirth}
-              />
-              <Input
-                label="Số điện thoại *"
-                placeholder="Ví dụ: 0912345678"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                error={errors.phoneNumber}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-3 shadow-xl">
-            <Button type="submit" disabled={isSubmitting} className="w-full py-3.5 uppercase tracking-wider font-extrabold">
-              {isSubmitting ? (
-                <span className="flex items-center gap-2 justify-center">
-                  <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                  Đang lưu...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 justify-center">
-                  <Plus size={16} /> {isEditMode ? 'Cập nhật' : 'Thêm mới'}
-                </span>
+              {!isEditMode && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                      Mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        name="password" type={showPassword ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự" value={form.password}
+                        onChange={e => update('password', e.target.value)}
+                        onFocus={() => setFocused(f => ({ ...f, password: true }))}
+                        onBlur={() => setFocused(f => ({ ...f, password: false }))}
+                        style={{ ...getInputStyle('password'), paddingRight: '40px' }}
+                        onMouseEnter={e => { if (!focused.password && !errors.password) e.target.style.borderColor = '#a78bfa' }}
+                        onMouseLeave={e => { if (!focused.password && !errors.password) e.target.style.borderColor = errors.password ? '#ef4444' : '#e5e7eb' }}
+                      />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: 0 }}>
+                        {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                    {errors.password && <span style={ERROR_TEXT}>{errors.password}</span>}
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                      Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        name="confirmPassword" type={showConfirm ? 'text' : 'password'} placeholder="Nhập lại mật khẩu" value={form.confirmPassword}
+                        onChange={e => update('confirmPassword', e.target.value)}
+                        onFocus={() => setFocused(f => ({ ...f, confirmPassword: true }))}
+                        onBlur={() => setFocused(f => ({ ...f, confirmPassword: false }))}
+                        style={{ ...getInputStyle('confirmPassword'), paddingRight: '40px' }}
+                        onMouseEnter={e => { if (!focused.confirmPassword && !errors.confirmPassword) e.target.style.borderColor = '#a78bfa' }}
+                        onMouseLeave={e => { if (!focused.confirmPassword && !errors.confirmPassword) e.target.style.borderColor = errors.confirmPassword ? '#ef4444' : '#e5e7eb' }}
+                      />
+                      <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                        style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', padding: 0 }}>
+                        {showConfirm ? <EyeOff size={17} /> : <Eye size={17} />}
+                      </button>
+                    </div>
+                    {errors.confirmPassword && <span style={ERROR_TEXT}>{errors.confirmPassword}</span>}
+                  </div>
+                </div>
               )}
-            </Button>
-            <Button type="button" variant="secondary" disabled={isSubmitting} onClick={handleCancel} className="w-full py-3.5 uppercase tracking-wider font-extrabold">
-              Hủy bỏ
-            </Button>
+            </div>
+
+            {/* Personal info card */}
+            <div style={{
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '16px', padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Info size={18} color="#059669" />
+                </div>
+                <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Thông tin cá nhân</h2>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Họ tên <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="fullName" type="text" placeholder="Nguyễn Văn A" value={form.fullName}
+                    onChange={e => update('fullName', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, fullName: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, fullName: false }))}
+                    style={getInputStyle('fullName')}
+                    onMouseEnter={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = errors.fullName ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.fullName && <span style={ERROR_TEXT}>{errors.fullName}</span>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Giới tính <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select name="gender" value={form.gender} onChange={e => update('gender', e.target.value)} style={INPUT_STYLE}>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Ngày sinh <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="dateOfBirth" type="date" value={form.dateOfBirth}
+                    onChange={e => update('dateOfBirth', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, dateOfBirth: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, dateOfBirth: false }))}
+                    style={getInputStyle('dateOfBirth')}
+                    onMouseEnter={e => { if (!focused.dateOfBirth && !errors.dateOfBirth) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.dateOfBirth && !errors.dateOfBirth) e.target.style.borderColor = errors.dateOfBirth ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.dateOfBirth && <span style={ERROR_TEXT}>{errors.dateOfBirth}</span>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Số điện thoại <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="phoneNumber" type="tel" placeholder="0901234567" value={form.phoneNumber}
+                    onChange={e => update('phoneNumber', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, phoneNumber: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, phoneNumber: false }))}
+                    style={getInputStyle('phoneNumber')}
+                    onMouseEnter={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = errors.phoneNumber ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.phoneNumber && <span style={ERROR_TEXT}>{errors.phoneNumber}</span>}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-3 shadow-xl">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2 mb-3" style={{ fontFamily: 'Montserrat' }}>
-              <CheckCircle className="text-green-500" size={16} />
-              Lưu ý
-            </h4>
-            <ul className="text-xs text-gray-400 space-y-2">
-              <li>• Tài khoản và email phải là duy nhất</li>
-              <li>• Mật khẩu tối thiểu 8 ký tự</li>
-              <li>• Thành viên sẽ được gán quyền MEMBER</li>
-            </ul>
+          {/* Right column */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', position: 'sticky', top: '24px' }}>
+
+            {/* Member role card */}
+            <div style={{
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '16px', padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Star size={18} color="#7c3aed" />
+                </div>
+                <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Vai trò thành viên</h2>
+              </div>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '16px', borderRadius: '12px',
+                border: '2px solid #7c3aed',
+                background: 'rgba(124,58,237,0.05)',
+              }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Star size={20} color="#fff" />
+                </div>
+                <div>
+                  <p style={{ fontWeight: '700', fontSize: '15px', color: '#1e293b', margin: 0 }}>Thành viên</p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '3px 0 0' }}>Quyền hạn MEMBER</p>
+                </div>
+              </div>
+              {isEditMode && (
+                <div style={{ marginTop: '16px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Trạng thái tài khoản
+                  </label>
+                  <select name="status" value={form.status} onChange={e => update('status', e.target.value)} style={INPUT_STYLE}>
+                    <option value="ACTIVE">Hoạt động (ACTIVE)</option>
+                    <option value="LOCKED">Bị khóa (LOCKED)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Actions card */}
+            <div style={{
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '16px', padding: '24px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                style={{
+                  width: '100%', padding: '12px',
+                  borderRadius: '12px', border: 'none', cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontWeight: '700', fontSize: '15px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  opacity: isSubmitting ? 0.6 : 1,
+                  background: isSubmitting ? '#c4b5fd' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  color: '#fff',
+                  boxShadow: isSubmitting ? 'none' : '0 4px 14px rgba(124,58,237,0.35)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <><Save size={17} /> {isEditMode ? 'Cập nhật thành viên' : 'Thêm thành viên'}</>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/admin/members')}
+                disabled={isSubmitting}
+                style={{
+                  width: '100%', padding: '12px', marginTop: '10px',
+                  borderRadius: '12px', border: '2px solid #e5e7eb',
+                  cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                  fontWeight: '600', fontSize: '15px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                  background: '#fff', color: '#64748b',
+                  opacity: isSubmitting ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c3aed'; e.currentTarget.style.color = '#7c3aed' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.color = '#64748b' }}
+              >
+                Hủy bỏ
+              </button>
+            </div>
+
+            {/* Notes card */}
+            <div style={{
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: '16px', padding: '20px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                <Info size={16} color="#7c3aed" />
+                <h3 style={{ fontWeight: '700', fontSize: '13px', color: '#1e293b', margin: 0 }}>Lưu ý</h3>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {['Mật khẩu tối thiểu 8 ký tự', 'Tài khoản phải là duy nhất', 'Email phải đúng định dạng', 'Thành viên có quyền MEMBER'].map((note, i) => (
+                  <li key={i} style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>{note}</li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </form>
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
