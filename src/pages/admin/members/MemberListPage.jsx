@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { memberService } from '../../../services/memberService'
 import Button from '../../../components/common/Button'
@@ -8,23 +8,18 @@ import {
   X, Mail, Phone, Calendar, Star,
 } from 'lucide-react'
 
-const DEBOUNCE_MS = 400
-
 export default function MemberListPage() {
   const navigate = useNavigate()
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isSearching, setIsSearching] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [debouncedTerm, setDebouncedTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const debounceRef = useRef(null)
 
-  const load = useCallback((params = {}) => {
+  const load = useCallback(() => {
     setLoading(true)
-    memberService.getAll(params)
+    memberService.getAll()
       .then(r => {
         const resData = r.data?.result ?? r.data?.data ?? r.data ?? {}
         const list = resData.content ?? (Array.isArray(resData) ? resData : [])
@@ -37,34 +32,10 @@ export default function MemberListPage() {
       })
       .finally(() => {
         setLoading(false)
-        setIsSearching(false)
       })
   }, [])
 
-  useEffect(() => {
-    load()
-  }, [load])
-
-  // Debounce: sau DEBOUNCE_MS ms không gõ nữa mới gọi API
-  useEffect(() => {
-    clearTimeout(debounceRef.current)
-    if (searchTerm !== debouncedTerm) {
-      setIsSearching(true)
-    }
-    debounceRef.current = setTimeout(() => {
-      setDebouncedTerm(searchTerm)
-    }, DEBOUNCE_MS)
-    return () => clearTimeout(debounceRef.current)
-  }, [searchTerm])
-
-  // Khi debouncedTerm hoặc statusFilter thay đổi → gọi lại API
-  useEffect(() => {
-    const params = {}
-    if (debouncedTerm.trim()) params.search = debouncedTerm.trim()
-    if (statusFilter !== 'all') params.status = statusFilter
-    setIsSearching(true)
-    load(params)
-  }, [debouncedTerm, statusFilter, load])
+  useEffect(() => { load() }, [load])
 
   const stats = {
     total: members.length,
@@ -73,8 +44,9 @@ export default function MemberListPage() {
   }
 
   const filteredMembers = members.filter(m => {
-    const term = debouncedTerm.toLowerCase()
-    const matchesSearch = !term ||
+    const term = searchTerm.toLowerCase()
+    const matchesSearch =
+      !term ||
       m.fullName?.toLowerCase().includes(term) ||
       m.username?.toLowerCase().includes(term) ||
       m.email?.toLowerCase().includes(term) ||
@@ -150,6 +122,13 @@ export default function MemberListPage() {
         setShowModal(false)
       })
   }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+  }
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'all'
 
   return (
     <motion.div
@@ -230,14 +209,14 @@ export default function MemberListPage() {
         flexWrap: 'wrap', alignItems: 'center'
       }}>
         <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', transition: 'opacity 0.2s' }} />
+          <Search size={18} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
           <input
             type="text"
             placeholder="Tìm kiếm tên, tài khoản, email, SĐT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
-              width: '100%', paddingLeft: '2.75rem', paddingRight: searchTerm ? '2.5rem' : '1rem',
+              width: '100%', paddingLeft: '2.75rem', paddingRight: '2.75rem',
               paddingTop: '0.75rem', paddingBottom: '0.75rem',
               background: '#fff', border: '1px solid #e2e8f0',
               borderRadius: '0.75rem', color: '#1e293b',
@@ -249,19 +228,6 @@ export default function MemberListPage() {
             onFocus={(e) => { e.target.style.borderColor = '#7c3aed'; e.target.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.1)' }}
             onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)' }}
           />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute', right: '2.5rem', top: '50%',
-                transform: 'translateY(-50%)', background: 'none', border: 'none',
-                color: '#94a3b8', cursor: 'pointer', padding: '0.125rem',
-                display: 'flex', alignItems: 'center'
-              }}
-            >
-              <span style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid #e2e8f0', borderTopColor: '#7c3aed', borderRadius: '50%', animation: 'searchSpin 0.7s linear infinite' }} />
-            </button>
-          )}
           {searchTerm ? (
             <button
               onClick={() => setSearchTerm('')}
@@ -285,10 +251,7 @@ export default function MemberListPage() {
           ].map(filter => (
             <button
               key={filter.key}
-              onClick={() => {
-                setStatusFilter(filter.key)
-                setIsSearching(true)
-              }}
+              onClick={() => setStatusFilter(filter.key)}
               style={{
                 padding: '0.625rem 1rem', borderRadius: '0.625rem',
                 fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
@@ -304,6 +267,22 @@ export default function MemberListPage() {
             </button>
           ))}
         </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            style={{
+              padding: '0.625rem 1rem', borderRadius: '0.625rem',
+              fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
+              border: '1px solid #e2e8f0', background: '#fff',
+              color: '#64748b', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s', display: 'flex', alignItems: 'center',
+            }}
+          >
+            <X size={14} style={{ marginRight: '0.3rem' }} />
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       {/* Member Grid */}
@@ -321,7 +300,7 @@ export default function MemberListPage() {
           <AnimatePresence mode="popLayout">
             {filteredMembers.map((member, index) => (
               <motion.div
-                key={member.id || member.uuid}
+                key={member.uuid || member.id}
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -465,12 +444,12 @@ export default function MemberListPage() {
             Không tìm thấy thành viên
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.25rem', textAlign: 'center' }}>
-            {searchTerm || statusFilter !== 'all'
+            {hasActiveFilters
               ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
               : 'Danh sách thành viên trống'}
           </p>
-          {(searchTerm || statusFilter !== 'all') && (
-            <Button variant="secondary" onClick={() => { setSearchTerm(''); setStatusFilter('all') }}>
+          {hasActiveFilters && (
+            <Button variant="secondary" onClick={clearFilters}>
               Xóa bộ lọc
             </Button>
           )}
@@ -483,7 +462,9 @@ export default function MemberListPage() {
           textAlign: 'center', color: '#94a3b8', fontSize: '0.8125rem',
           marginTop: '1.25rem'
         }}>
-          Hiển thị {filteredMembers.length} / {members.length} thành viên
+          {hasActiveFilters
+            ? `Hiển thị ${filteredMembers.length} / ${members.length} thành viên`
+            : `${members.length} thành viên`}
         </p>
       )}
 
@@ -562,12 +543,6 @@ export default function MemberListPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <style>{`
-        @keyframes searchSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </motion.div>
   )
 }

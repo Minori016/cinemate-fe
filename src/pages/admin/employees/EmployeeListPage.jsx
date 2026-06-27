@@ -1,68 +1,59 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { employeeService } from '../../../services/employeeService'
 import Button from '../../../components/common/Button'
 import { motion, AnimatePresence } from 'motion/react'
 import {
-  Plus,
-  Search,
-  Pencil,
-  Trash2,
-  Users,
-  UserCheck,
-  Crown,
-  X,
-  Mail,
-  Phone,
-  Calendar,
+  Plus, Search, Pencil, Trash2, Users,
+  UserCheck, Crown, X,
+  Mail, Phone, Calendar,
 } from 'lucide-react'
 
 export default function EmployeeListPage() {
+  const navigate = useNavigate()
   const [employees, setEmployees] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
-  const navigate = useNavigate()
 
-  const load = () => {
-    employeeService.getAll()
+  const load = useCallback((pageNum = 0) => {
+    setLoading(true)
+    const params = { page: pageNum, size: 10 }
+    if (searchTerm.trim()) params.search = searchTerm.trim()
+    if (roleFilter !== 'all') params.role = roleFilter
+    employeeService.getAll(params)
       .then(r => {
-        const resData = r.data?.result ?? r.data?.data ?? r.data ?? {}
-        const list = resData.content ?? (Array.isArray(resData) ? resData : [])
-        const staffList = list.filter(u => u.roles?.includes('STAFF') || u.roles?.includes('MANAGER'))
-        setEmployees(staffList)
+        const resData = r.data?.result ?? r.data ?? {}
+        const list = resData.content ?? []
+        let filtered = list
+        if (statusFilter !== 'all') {
+          filtered = list.filter(e => e.status === statusFilter)
+        }
+        setEmployees(filtered)
+        setPage(resData.pageNumber ?? pageNum)
+        setTotalPages(resData.totalPages ?? 1)
+        setTotalElements(resData.totalElements ?? list.length)
       })
       .catch(err => {
         console.error('Error loading employees:', err)
         setEmployees([])
       })
-  }
-  useEffect(() => { load() }, [])
+      .finally(() => setLoading(false))
+  }, [searchTerm, roleFilter, statusFilter])
+
+  useEffect(() => { load(0) }, [load])
 
   const stats = {
     total: employees.length,
     managers: employees.filter(e => e.roles?.includes('MANAGER')).length,
     staff: employees.filter(e => e.roles?.includes('STAFF')).length,
   }
-
-  const filteredEmployees = employees.filter(emp => {
-    const matchesSearch =
-      emp.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.phoneNumber?.includes(searchTerm)
-
-    const matchesRole = roleFilter === 'all' ||
-      (roleFilter === 'MANAGER' && emp.roles?.includes('MANAGER')) ||
-      (roleFilter === 'STAFF' && emp.roles?.includes('STAFF'))
-
-    const matchesStatus = statusFilter === 'all' ||
-      emp.status === statusFilter
-
-    return matchesSearch && matchesRole && matchesStatus
-  })
 
   const getRoleBadge = (roles) => {
     if (roles?.includes('MANAGER')) {
@@ -148,11 +139,12 @@ export default function EmployeeListPage() {
 
   const confirmDelete = () => {
     if (!deleteTarget) return
-    employeeService.delete(deleteTarget.id || deleteTarget.uuid)
+    const empId = deleteTarget.uuid || deleteTarget.id
+    employeeService.delete(empId)
       .then(() => {
         setDeleteTarget(null)
         setShowModal(false)
-        load()
+        load(page)
       })
       .catch(err => {
         console.error('Delete error:', err)
@@ -160,6 +152,14 @@ export default function EmployeeListPage() {
         setShowModal(false)
       })
   }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setRoleFilter('all')
+    setStatusFilter('all')
+  }
+
+  const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
 
   return (
     <motion.div
@@ -207,9 +207,9 @@ export default function EmployeeListPage() {
         gap: '1rem', marginBottom: '1.5rem'
       }}>
         {[
-          { icon: Users, label: 'Tổng nhân viên', value: stats.total, gradient: '135deg, #7c3aed, #6d28d9', bg: 'rgba(124,58,237,0.08)' },
-          { icon: Crown, label: 'Quản lý', value: stats.managers, gradient: '135deg, #d97706, #b45309', bg: 'rgba(217,119,6,0.08)' },
-          { icon: UserCheck, label: 'Nhân viên', value: stats.staff, gradient: '135deg, #059669, #047857', bg: 'rgba(5,150,105,0.08)' },
+          { icon: Users, label: 'Tổng nhân viên', value: totalElements, gradient: '135deg, #7c3aed, #6d28d9', bg: 'rgba(124,58,237,0.08)' },
+          { icon: Crown, label: 'Quản lý', value: employees.filter(e => e.roles?.includes('MANAGER')).length, gradient: '135deg, #d97706, #b45309', bg: 'rgba(217,119,6,0.08)' },
+          { icon: UserCheck, label: 'Nhân viên', value: employees.filter(e => e.roles?.includes('STAFF')).length, gradient: '135deg, #059669, #047857', bg: 'rgba(5,150,105,0.08)' },
         ].map((stat, i) => (
           <div key={i} style={{
             background: '#fff', border: '1px solid #e2e8f0',
@@ -246,8 +246,9 @@ export default function EmployeeListPage() {
             placeholder="Tìm kiếm tên, tài khoản, email, SĐT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') load(0) }}
             style={{
-              width: '100%', paddingLeft: '2.75rem', paddingRight: searchTerm ? '2.5rem' : '1rem',
+              width: '100%', paddingLeft: '2.75rem', paddingRight: '2.75rem',
               paddingTop: '0.75rem', paddingBottom: '0.75rem',
               background: '#fff', border: '1px solid #e2e8f0',
               borderRadius: '0.75rem', color: '#1e293b',
@@ -323,133 +324,196 @@ export default function EmployeeListPage() {
             </button>
           ))}
         </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            style={{
+              padding: '0.625rem 1rem', borderRadius: '0.625rem',
+              fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
+              border: '1px solid #e2e8f0', background: '#fff',
+              color: '#64748b', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              transition: 'all 0.2s', display: 'flex', alignItems: 'center',
+            }}
+          >
+            <X size={14} style={{ marginRight: '0.3rem' }} />
+            Xóa bộ lọc
+          </button>
+        )}
       </div>
 
       {/* Employee Grid */}
-      {filteredEmployees.length > 0 ? (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: '1rem'
-        }}>
-          <AnimatePresence mode="popLayout">
-            {filteredEmployees.map((employee, index) => (
-              <motion.div
-                key={employee.id || employee.uuid}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.3) }}
-                style={{
-                  background: '#fff', border: '1px solid #e2e8f0',
-                  borderRadius: '1rem', padding: '1.25rem',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                  transition: 'box-shadow 0.25s, border-color 0.25s, transform 0.25s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.1)'
-                  e.currentTarget.style.borderColor = '#c4b5fd'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'
-                  e.currentTarget.style.borderColor = '#e2e8f0'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
-              >
-                {/* Avatar & Name */}
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                  marginBottom: '0.75rem'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                    <div style={{
-                      width: '3.25rem', height: '3.25rem', borderRadius: '0.75rem',
-                      background: getAvatarGradient(employee.id),
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      flexShrink: 0, position: 'relative'
-                    }}>
-                      <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                        {getInitials(employee.fullName)}
-                      </span>
+      {loading ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
+          <span style={{ fontSize: '40px', color: '#7c3aed', animation: 'spin 1s linear infinite' }}>&#9696;</span>
+          <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : employees.length > 0 ? (
+        <>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '1rem'
+          }}>
+            <AnimatePresence mode="popLayout">
+              {employees.map((employee, index) => (
+                <motion.div
+                  key={employee.uuid || employee.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.3) }}
+                  style={{
+                    background: '#fff', border: '1px solid #e2e8f0',
+                    borderRadius: '1rem', padding: '1.25rem',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                    transition: 'box-shadow 0.25s, border-color 0.25s, transform 0.25s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.1)'
+                    e.currentTarget.style.borderColor = '#c4b5fd'
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'
+                    e.currentTarget.style.borderColor = '#e2e8f0'
+                    e.currentTarget.style.transform = 'translateY(0)'
+                  }}
+                >
+                  {/* Avatar & Name */}
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                    marginBottom: '0.75rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
                       <div style={{
-                        position: 'absolute', bottom: '-0.2rem', right: '-0.2rem',
-                        width: '0.875rem', height: '0.875rem', borderRadius: '50%',
-                        background: getStatusDotColor(employee.status),
-                        border: '2px solid #fff'
-                      }} />
-                    </div>
-                    <div>
-                      <h3 style={{
-                        fontWeight: 600, fontSize: '1rem', color: '#1e293b',
-                        margin: 0, lineHeight: 1.3
+                        width: '3.25rem', height: '3.25rem', borderRadius: '0.75rem',
+                        background: getAvatarGradient(employee.id),
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        flexShrink: 0, position: 'relative'
                       }}>
-                        {employee.fullName || 'Chưa cập nhật'}
-                      </h3>
-                      <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: '0.15rem 0 0' }}>
-                        @{employee.username}
-                      </p>
-                      <div style={{ marginTop: '0.35rem' }}>
-                        {getStatusBadge(employee.status)}
+                        <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
+                          {getInitials(employee.fullName)}
+                        </span>
+                        <div style={{
+                          position: 'absolute', bottom: '-0.2rem', right: '-0.2rem',
+                          width: '0.875rem', height: '0.875rem', borderRadius: '50%',
+                          background: getStatusDotColor(employee.status),
+                          border: '2px solid #fff'
+                        }} />
+                      </div>
+                      <div>
+                        <h3 style={{
+                          fontWeight: 600, fontSize: '1rem', color: '#1e293b',
+                          margin: 0, lineHeight: 1.3
+                        }}>
+                          {employee.fullName || 'Chưa cập nhật'}
+                        </h3>
+                        <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: '0.15rem 0 0' }}>
+                          @{employee.username}
+                        </p>
+                        <div style={{ marginTop: '0.35rem' }}>
+                          {getStatusBadge(employee.status)}
+                        </div>
                       </div>
                     </div>
+                    {getRoleBadge(employee.roles)}
                   </div>
-                  {getRoleBadge(employee.roles)}
-                </div>
 
-                {/* Info */}
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: '0.4rem',
-                  marginBottom: '1rem', paddingLeft: '0.25rem'
-                }}>
-                  {[
-                    { icon: Mail, value: employee.email },
-                    { icon: Phone, value: employee.phoneNumber },
-                    { icon: Calendar, value: `${formatDate(employee.dayOfBirth)}${employee.gender ? ' | ' + (employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác') : ''}` },
-                  ].map((item, idx) => (
-                    <div key={idx} style={{
-                      display: 'flex', alignItems: 'center', gap: '0.5rem',
-                      fontSize: '0.8125rem', color: '#64748b'
-                    }}>
-                      <item.icon size={13} style={{ flexShrink: 0, color: '#94a3b8' }} />
-                      <span style={{
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        color: item.value ? '#475569' : '#cbd5e1'
+                  {/* Info */}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: '0.4rem',
+                    marginBottom: '1rem', paddingLeft: '0.25rem'
+                  }}>
+                    {[
+                      { icon: Mail, value: employee.email },
+                      { icon: Phone, value: employee.phoneNumber },
+                      { icon: Calendar, value: `${formatDate(employee.dayOfBirth)}${employee.gender ? ' | ' + (employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác') : ''}` },
+                    ].map((item, idx) => (
+                      <div key={idx} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        fontSize: '0.8125rem', color: '#64748b'
                       }}>
-                        {item.value || 'Chưa cập nhật'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                        <item.icon size={13} style={{ flexShrink: 0, color: '#94a3b8' }} />
+                        <span style={{
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          color: item.value ? '#475569' : '#cbd5e1'
+                        }}>
+                          {item.value || 'Chưa cập nhật'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
 
-                {/* Actions */}
-                <div style={{
-                  display: 'flex', gap: '0.5rem',
-                  paddingTop: '0.875rem',
-                  borderTop: '1px solid #f1f5f9'
-                }}>
-                  <Button
-                    variant="secondary"
-                    style={{ flex: 1, fontSize: '0.8125rem' }}
-                    onClick={() => navigate(`/admin/employees/edit/${employee.id || employee.uuid}`)}
-                  >
-                    <Pencil size={13} style={{ marginRight: '0.3rem' }} />
-                    Chỉnh sửa
-                  </Button>
-                  <Button
-                    variant="danger"
-                    style={{ fontSize: '0.8125rem' }}
-                    onClick={() => { setDeleteTarget(employee); setShowModal(true) }}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+                  {/* Actions */}
+                  <div style={{
+                    display: 'flex', gap: '0.5rem',
+                    paddingTop: '0.875rem',
+                    borderTop: '1px solid #f1f5f9'
+                  }}>
+                    <Button
+                      variant="secondary"
+                      style={{ flex: 1, fontSize: '0.8125rem' }}
+                      onClick={() => navigate(`/admin/employees/edit/${employee.uuid || employee.id}`)}
+                    >
+                      <Pencil size={13} style={{ marginRight: '0.3rem' }} />
+                      Chỉnh sửa
+                    </Button>
+                    <Button
+                      variant="danger"
+                      style={{ fontSize: '0.8125rem' }}
+                      onClick={() => { setDeleteTarget(employee); setShowModal(true) }}
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              gap: '0.5rem', marginTop: '1.5rem'
+            }}>
+              <button
+                onClick={() => load(page - 1)}
+                disabled={page <= 0}
+                style={{
+                  padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  color: page <= 0 ? '#cbd5e1' : '#475569',
+                  cursor: page <= 0 ? 'not-allowed' : 'pointer',
+                  fontWeight: 600, fontSize: '0.875rem',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Trước
+              </button>
+              <span style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600 }}>
+                Trang {page + 1} / {totalPages}
+              </span>
+              <button
+                onClick={() => load(page + 1)}
+                disabled={page >= totalPages - 1}
+                style={{
+                  padding: '0.5rem 1rem', borderRadius: '0.5rem',
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  color: page >= totalPages - 1 ? '#cbd5e1' : '#475569',
+                  cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer',
+                  fontWeight: 600, fontSize: '0.875rem',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Sau
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         /* Empty State */
         <div style={{
@@ -469,12 +533,12 @@ export default function EmployeeListPage() {
             Không tìm thấy nhân viên
           </h3>
           <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.25rem', textAlign: 'center' }}>
-            {searchTerm || roleFilter !== 'all'
+            {hasActiveFilters
               ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
               : 'Danh sách nhân viên trống'}
           </p>
-          {(searchTerm || roleFilter !== 'all') && (
-            <Button variant="secondary" onClick={() => { setSearchTerm(''); setRoleFilter('all'); setStatusFilter('all') }}>
+          {hasActiveFilters && (
+            <Button variant="secondary" onClick={clearFilters}>
               Xóa bộ lọc
             </Button>
           )}
@@ -482,12 +546,14 @@ export default function EmployeeListPage() {
       )}
 
       {/* Results Count */}
-      {filteredEmployees.length > 0 && (
+      {!loading && employees.length > 0 && (
         <p style={{
           textAlign: 'center', color: '#94a3b8', fontSize: '0.8125rem',
           marginTop: '1.25rem'
         }}>
-          Hiển thị {filteredEmployees.length} / {employees.length} nhân viên
+          {hasActiveFilters
+            ? `Hiển thị ${employees.length} / ${totalElements} nhân viên`
+            : `${totalElements} nhân viên`}
         </p>
       )}
 

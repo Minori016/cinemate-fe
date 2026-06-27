@@ -43,6 +43,7 @@ export default function MemberFormPage() {
   const [form, setForm] = useState({
     username: '', email: '', fullName: '', dateOfBirth: '',
     gender: 'MALE', phoneNumber: '',
+    identityCard: '', address: '',
     password: '', confirmPassword: '', status: 'ACTIVE',
   })
   const [focused, setFocused] = useState({})
@@ -65,6 +66,8 @@ export default function MemberFormPage() {
               dateOfBirth: m.dateOfBirth || m.dayOfBirth || '',
               gender: m.gender ? m.gender.toUpperCase() : 'MALE',
               phoneNumber: m.phoneNumber || '',
+              identityCard: m.identityCard || '',
+              address: m.address || '',
               status: m.status || 'ACTIVE',
               password: '', confirmPassword: '',
             })
@@ -99,12 +102,21 @@ export default function MemberFormPage() {
     if (!form.fullName.trim()) errs.fullName = 'Họ tên không được để trống'
     if (!form.dateOfBirth) errs.dateOfBirth = 'Ngày sinh không được để trống'
     if (!form.phoneNumber.trim()) errs.phoneNumber = 'SĐT không được để trống'
+    if (!form.identityCard.trim()) errs.identityCard = 'CMND/CCCD không được để trống'
+    if (!form.address.trim()) errs.address = 'Địa chỉ không được để trống'
     if (!isEditMode) {
       if (!form.password) errs.password = 'Mật khẩu không được để trống'
       else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+      else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(form.password)) {
+        errs.password = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt'
+      }
       if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp'
-    } else if (form.password && form.password.length < 8) {
-      errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+    } else if (form.password) {
+      if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+      else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(form.password)) {
+        errs.password = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt'
+      }
+      if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp'
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -118,9 +130,14 @@ export default function MemberFormPage() {
     }
     setIsSubmitting(true)
     const data = {
-      username: form.username.trim(), email: form.email.trim(),
-      fullName: form.fullName.trim(), dayOfBirth: form.dateOfBirth,
-      gender: form.gender, phoneNumber: form.phoneNumber.trim(),
+      username: form.username.trim(),
+      email: form.email.trim(),
+      fullName: form.fullName.trim(),
+      dayOfBirth: form.dateOfBirth,
+      gender: form.gender,
+      phoneNumber: form.phoneNumber.trim(),
+      identityCard: form.identityCard.trim(),
+      address: form.address.trim(),
       ...(form.password ? { password: form.password, confirmPassword: form.confirmPassword } : {}),
       ...(isEditMode ? { status: form.status } : {}),
     }
@@ -131,7 +148,19 @@ export default function MemberFormPage() {
       setTimeout(() => navigate('/admin/members'), 1600)
     } catch (err) {
       console.error('Save error:', err.response?.data)
-      showToast(`Không thể lưu: ${err.response?.data?.code === 1007 ? 'Bạn không có quyền thực hiện thao tác này' : (err.response?.data?.message || err.message || 'Lỗi hệ thống')}`, 'danger')
+      const errCode = err.response?.data?.code
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
+      if (errCode === 1007) {
+        showToast('Bạn không có quyền thực hiện thao tác này', 'danger')
+      } else if (errCode === 1002) {
+        showToast('Tài khoản hoặc email đã tồn tại trong hệ thống', 'danger')
+      } else if (errCode === 1004) {
+        showToast('Mật khẩu phải có ít nhất 8 ký tự', 'danger')
+      } else if (errCode === 1012) {
+        showToast('Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt', 'danger')
+      } else {
+        showToast(`Không thể lưu: ${errMsg}`, 'danger')
+      }
       setIsSubmitting(false)
     }
   }
@@ -255,15 +284,15 @@ export default function MemberFormPage() {
                 </div>
               </div>
 
-              {!isEditMode && (
+              {(!isEditMode || form.password) && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                      Mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                      Mật khẩu {isEditMode ? '(để trống nếu không đổi)' : ''} <span style={{ color: '#ef4444' }}>{!isEditMode && '*'}</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
-                        name="password" type={showPassword ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự" value={form.password}
+                        name="password" type={showPassword ? 'text' : 'password'} placeholder={isEditMode ? 'Để trống nếu giữ mật khẩu cũ' : 'Tối thiểu 8 ký tự'} value={form.password}
                         onChange={e => update('password', e.target.value)}
                         onFocus={() => setFocused(f => ({ ...f, password: true }))}
                         onBlur={() => setFocused(f => ({ ...f, password: false }))}
@@ -280,7 +309,7 @@ export default function MemberFormPage() {
                   </div>
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                      Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                      Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>{!isEditMode && '*'}</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
@@ -370,6 +399,36 @@ export default function MemberFormPage() {
                     onMouseLeave={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = errors.phoneNumber ? '#ef4444' : '#e5e7eb' }}
                   />
                   {errors.phoneNumber && <span style={ERROR_TEXT}>{errors.phoneNumber}</span>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Số CMND / CCCD <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="identityCard" type="text" placeholder="123456789012" value={form.identityCard}
+                    onChange={e => update('identityCard', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, identityCard: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, identityCard: false }))}
+                    style={getInputStyle('identityCard')}
+                    onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.identityCard && <span style={ERROR_TEXT}>{errors.identityCard}</span>}
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                    Địa chỉ <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    name="address" type="text" placeholder="123 Đường ABC, Quận XYZ, TP.HCM" value={form.address}
+                    onChange={e => update('address', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, address: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, address: false }))}
+                    style={getInputStyle('address')}
+                    onMouseEnter={e => { if (!focused.address && !errors.address) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.address && !errors.address) e.target.style.borderColor = errors.address ? '#ef4444' : '#e5e7eb' }}
+                  />
+                  {errors.address && <span style={ERROR_TEXT}>{errors.address}</span>}
                 </div>
               </div>
             </div>
@@ -483,7 +542,13 @@ export default function MemberFormPage() {
                 <h3 style={{ fontWeight: '700', fontSize: '13px', color: '#1e293b', margin: 0 }}>Lưu ý</h3>
               </div>
               <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Mật khẩu tối thiểu 8 ký tự', 'Tài khoản phải là duy nhất', 'Email phải đúng định dạng', 'Thành viên có quyền MEMBER'].map((note, i) => (
+                {[
+                  isEditMode ? 'Mật khẩu: để trống nếu giữ nguyên' : 'Mật khẩu tối thiểu 8 ký tự',
+                  'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
+                  'Tài khoản và email phải là duy nhất',
+                  'CMND/CCCD và địa chỉ là bắt buộc',
+                  'Thành viên có quyền MEMBER',
+                ].map((note, i) => (
                   <li key={i} style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>{note}</li>
                 ))}
               </ul>

@@ -34,6 +34,8 @@ const ERROR_TEXT = {
   display: 'block',
 }
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+
 export default function EmployeeFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
@@ -110,9 +112,16 @@ export default function EmployeeFormPage() {
     if (!isEditMode) {
       if (!form.password) errs.password = 'Mật khẩu không được để trống'
       else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+      else if (!PASSWORD_REGEX.test(form.password)) {
+        errs.password = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt'
+      }
       if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp'
-    } else if (form.password && form.password.length < 8) {
-      errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+    } else if (form.password) {
+      if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
+      else if (!PASSWORD_REGEX.test(form.password)) {
+        errs.password = 'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt'
+      }
+      if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp'
     }
     setErrors(errs)
     return Object.keys(errs).length === 0
@@ -140,7 +149,22 @@ export default function EmployeeFormPage() {
       showToast(isEditMode ? 'Cập nhật nhân viên thành công!' : 'Thêm nhân viên mới thành công!', 'success')
       setTimeout(() => navigate('/admin/employees'), 1600)
     } catch (err) {
-      showToast(`Không thể lưu: ${err.response?.data?.message || err.message || 'Lỗi hệ thống'}`, 'danger')
+      console.error('Save error:', err.response?.data)
+      const errCode = err.response?.data?.code
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
+      if (errCode === 1007) {
+        showToast('Bạn không có quyền thực hiện thao tác này', 'danger')
+      } else if (errCode === 3001) {
+        showToast('Tài khoản đã tồn tại trong hệ thống', 'danger')
+      } else if (errCode === 1002) {
+        showToast('Email đã tồn tại trong hệ thống', 'danger')
+      } else if (errCode === 1012) {
+        showToast('Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt', 'danger')
+      } else if (errCode === 1004) {
+        showToast('Mật khẩu phải có ít nhất 8 ký tự', 'danger')
+      } else {
+        showToast(`Không thể lưu: ${errMsg}`, 'danger')
+      }
       setIsSubmitting(false)
     }
   }
@@ -244,8 +268,12 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('username')}
                     onMouseEnter={e => { if (!focused.username && !errors.username) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.username && !errors.username) e.target.style.borderColor = errors.username ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={28}
+                    readOnly={isEditMode}
+                    title={isEditMode ? 'Không thể thay đổi tài khoản khi cập nhật' : ''}
                   />
                   {errors.username && <span style={ERROR_TEXT}>{errors.username}</span>}
+                  {isEditMode && <span style={{ color: '#94a3b8', fontSize: '11px', display: 'block', marginTop: '2px' }}>Không thể thay đổi khi cập nhật</span>}
                 </div>
                 <div>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
@@ -259,20 +287,21 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('email')}
                     onMouseEnter={e => { if (!focused.email && !errors.email) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.email && !errors.email) e.target.style.borderColor = errors.email ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={28}
                   />
                   {errors.email && <span style={ERROR_TEXT}>{errors.email}</span>}
                 </div>
               </div>
 
-              {!isEditMode && (
+              {(!isEditMode || form.password) && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                      Mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                      Mật khẩu {isEditMode ? '(để trống nếu không đổi)' : ''} <span style={{ color: '#ef4444' }}>{!isEditMode && '*'}</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
-                        name="password" type={showPassword ? 'text' : 'password'} placeholder="Tối thiểu 8 ký tự" value={form.password}
+                        name="password" type={showPassword ? 'text' : 'password'} placeholder={isEditMode ? 'Để trống nếu giữ mật khẩu cũ' : 'Tối thiểu 8 ký tự'} value={form.password}
                         onChange={e => update('password', e.target.value)}
                         onFocus={() => setFocused(f => ({ ...f, password: true }))}
                         onBlur={() => setFocused(f => ({ ...f, password: false }))}
@@ -289,7 +318,7 @@ export default function EmployeeFormPage() {
                   </div>
                   <div>
                     <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                      Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>*</span>
+                      Xác nhận mật khẩu <span style={{ color: '#ef4444' }}>{!isEditMode && '*'}</span>
                     </label>
                     <div style={{ position: 'relative' }}>
                       <input
@@ -337,6 +366,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('fullName')}
                     onMouseEnter={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = errors.fullName ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={28}
                   />
                   {errors.fullName && <span style={ERROR_TEXT}>{errors.fullName}</span>}
                 </div>
@@ -377,6 +407,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('phoneNumber')}
                     onMouseEnter={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = errors.phoneNumber ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={28}
                   />
                   {errors.phoneNumber && <span style={ERROR_TEXT}>{errors.phoneNumber}</span>}
                 </div>
@@ -393,6 +424,7 @@ export default function EmployeeFormPage() {
                   style={getInputStyle('address')}
                   onMouseEnter={e => { if (!focused.address && !errors.address) e.target.style.borderColor = '#a78bfa' }}
                   onMouseLeave={e => { if (!focused.address && !errors.address) e.target.style.borderColor = errors.address ? '#ef4444' : '#e5e7eb' }}
+                  maxLength={28}
                 />
                 {errors.address && <span style={ERROR_TEXT}>{errors.address}</span>}
               </div>
@@ -409,6 +441,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('identityCard')}
                     onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={28}
                   />
                   {errors.identityCard && <span style={ERROR_TEXT}>{errors.identityCard}</span>}
                 </div>
@@ -564,7 +597,13 @@ export default function EmployeeFormPage() {
                 <h3 style={{ fontWeight: '700', fontSize: '13px', color: '#1e293b', margin: 0 }}>Lưu ý</h3>
               </div>
               <ul style={{ margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {['Mật khẩu tối thiểu 8 ký tự', 'Tài khoản phải là duy nhất', 'Email phải đúng định dạng', 'CMND/CCCD phải có 9-12 số'].map((note, i) => (
+                {[
+                  isEditMode ? 'Mật khẩu: để trống nếu giữ nguyên' : 'Mật khẩu tối thiểu 8 ký tự',
+                  'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
+                  'Tài khoản phải là duy nhất (3-28 ký tự)',
+                  'Tài khoản không thể thay đổi khi cập nhật',
+                  'CMND/CCCD và địa chỉ tối đa 28 ký tự',
+                ].map((note, i) => (
                   <li key={i} style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>{note}</li>
                 ))}
               </ul>
