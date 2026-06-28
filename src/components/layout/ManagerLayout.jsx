@@ -105,7 +105,7 @@ export default function ManagerLayout({ children }) {
       <main 
         className="flex-1 min-w-0 p-8 overflow-y-auto bg-[var(--color-background)] text-[var(--color-on-surface)]"
         style={{
-          backgroundImage: `linear-gradient(to bottom, rgba(6, 8, 15, 0.92), rgba(6, 8, 15, 0.96)), url(${bgImg})`,
+          backgroundImage: `linear-gradient(to bottom, rgba(6, 8, 15, 0.45), rgba(6, 8, 15, 0.65)), url(${bgImg})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundAttachment: 'fixed'
