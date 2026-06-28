@@ -2,6 +2,7 @@ import { Link, useNavigate, Outlet } from 'react-router-dom'
 import { TrendingUp, Calendar, Users, FileText, LogOut, Home } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
+import bgImg from '../../assets/BR.png'
 
 export default function ManagerLayout({ children }) {
   const { user, logout } = useAuth()
@@ -101,7 +102,15 @@ export default function ManagerLayout({ children }) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-8 overflow-y-auto bg-[var(--color-background)] text-[var(--color-on-surface)]">
+      <main 
+        className="flex-1 min-w-0 p-8 overflow-y-auto bg-[var(--color-background)] text-[var(--color-on-surface)]"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, rgba(6, 8, 15, 0.92), rgba(6, 8, 15, 0.96)), url(${bgImg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
         {children || <Outlet />}
       </main>
     </div>
