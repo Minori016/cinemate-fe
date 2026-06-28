@@ -32,8 +32,8 @@ export default function ShowtimeFormPage() {
       try {
         // Fetch movies
         const mRes = await movieService.getAll()
-        const mList = mRes.data?.result?.content || mRes.data?.result || mRes.data || []
-        setMovies(Array.isArray(mList) ? mList : [])
+        const mList = mRes.data || []
+        setMovies(mList)
         // Fetch rooms
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []

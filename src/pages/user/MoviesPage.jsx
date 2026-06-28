@@ -17,7 +17,8 @@ export default function MoviesPage() {
     const status = activeTab === 'now' ? 'now-showing' : 'coming-soon'
     movieService.getAll({ status, search: searchQuery, size: 100 })
       .then(res => {
-        setMovies(res.data?.result?.content || res.data?.result || [])
+        const list = res.data || []
+        setMovies(list)
       })
       .catch(() => {
         setMovies([])
@@ -120,7 +121,7 @@ export default function MoviesPage() {
           {sortedMovies.map((movie) => {
             const genresStr = movie.genres?.map(g => g.name).join(', ') || 'Chưa phân loại'
             const countriesStr = movie.countries?.map(c => c.name).join(', ') || 'N/A'
-            const titleStr = movie.titleVn || movie.titleEn || ''
+            const titleStr = movie.title || ''
 
             return (
               <motion.div
@@ -142,7 +143,7 @@ export default function MoviesPage() {
                       <span className="bg-red-600 text-white text-xs font-bold px-2 py-1">{movie.rating || 'K'}</span>
                     </div>
                     <img
-                      src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
+                      src={movie.poster || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
                       alt={titleStr}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -158,7 +159,7 @@ export default function MoviesPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Clock size={14} className="text-red-500" />
-                          <span className="text-white text-xs font-semibold">{movie.durationMinutes || 120} phút</span>
+                          <span className="text-white text-xs font-semibold">{movie.duration || 120} phút</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Globe size={14} className="text-red-500" />

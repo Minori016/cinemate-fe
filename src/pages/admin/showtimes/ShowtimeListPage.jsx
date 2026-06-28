@@ -8,6 +8,7 @@ import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import AutoGenerateModal from './AutoGenerateModal'
 import { useAuth } from '../../../contexts/AuthContext'
+import { toast } from 'sonner'
 
 
 
@@ -23,7 +24,6 @@ export default function ShowtimeListPage() {
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
 
   // Filters state
   const [filterMovie, setFilterMovie] = useState('all')
@@ -46,8 +46,11 @@ export default function ShowtimeListPage() {
   const [validationError, setValidationError] = useState(null)
 
   const triggerToast = (msg, type = 'success') => {
-    setToast({ text: msg, type })
-    setTimeout(() => setToast(null), 3500)
+    if (type === 'success') {
+      toast.success(msg)
+    } else {
+      toast.error(msg)
+    }
   }
 
   // Load Data
@@ -61,8 +64,8 @@ export default function ShowtimeListPage() {
       // 2. Fetch Movies
       try {
         const mRes = await movieService.getAll()
-        const mList = mRes.data?.result?.content || mRes.data?.result || []
-        setMovies(mList.length > 0 ? mList : [])
+        const mList = mRes.data || []
+        setMovies(mList)
       } catch (err) {
         setMovies([])
       }
@@ -210,29 +213,6 @@ export default function ShowtimeListPage() {
   return (
     <div className="space-y-6 text-[#e2e2e2] text-left animate-fade-in relative">
       
-      {/* Toast Alert */}
-      {toast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border text-sm max-w-sm transition-all duration-300 animate-slide-in-up"
-          style={{
-            backgroundColor: toast.type === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
-            borderColor: toast.type === 'success' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)',
-            color: toast.type === 'success' ? '#10b981' : '#ef4444',
-            backdropFilter: 'blur(16px)'
-          }}
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle className="shrink-0" size={20} />
-          ) : (
-            <AlertTriangle className="shrink-0" size={20} />
-          )}
-          <span className="font-medium">{toast.text}</span>
-          <button onClick={() => setToast(null)} className="ml-auto hover:opacity-80">
-            <X size={16} />
-          </button>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>

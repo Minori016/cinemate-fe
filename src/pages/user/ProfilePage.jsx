@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
 import { movieService } from '../../services/movieService'
@@ -183,13 +183,14 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
   const [bookings, setBookings] = useState(MOCK_BOOKINGS)
   const [moviePosters, setMoviePosters] = useState({})
+  const [cancelingTicketId, setCancelingTicketId] = useState(null)
 
   // Fetch movie posters map
   useEffect(() => {
     const fetchPosters = async () => {
       try {
         const res = await movieService.getAll({ size: 100 })
-        const moviesList = res.data?.result?.content || res.data?.result || []
+        const moviesList = res.data || []
         const posterMap = {}
         moviesList.forEach(m => {
           const titleVn = m.titleVn ? m.titleVn.toLowerCase().trim() : ''
@@ -331,8 +332,25 @@ export default function ProfilePage() {
 
 
   const handleCancelTicket = (ticketId) => {
-    const confirmCancel = window.confirm(`Bạn có chắc chắn muốn hủy vé ${ticketId} không? Hoạt động này không thể hoàn tác.`);
-    if (!confirmCancel) return;
+    setCancelingTicketId(ticketId)
+  }
+
+  const confirmCancelTicket = (ticketId) => {
+    const local = localStorage.getItem('staff_bookings_db')
+    if (local) {
+      try {
+        const parsed = JSON.parse(local)
+        const updated = parsed.map(b => {
+          if (b.id === ticketId) {
+            return { ...b, status: 'Đã hủy' }
+          }
+          return b
+        })
+        localStorage.setItem('staff_bookings_db', JSON.stringify(updated))
+      } catch (e) {
+        console.error('Failed to update local bookings db', e)
+      }
+    }
 
     setBookings(prevBookings => 
       prevBookings.map(b => 
@@ -342,7 +360,7 @@ export default function ProfilePage() {
     
     setSuccess(`Hủy vé ${ticketId} thành công!`);
     setTimeout(() => setSuccess(''), 4000);
-  };
+  }
 
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({
@@ -912,9 +930,13 @@ export default function ProfilePage() {
             </div>
           </GlassCard>
           {/* ── End Profile Card ── */}
+        </div>
 
-          {/* ── Tab Selector ── */}
-          <div className="w-full flex gap-6 mb-2 border-b border-white/10 pb-px overflow-x-auto scrollbar-none">
+        {/* ── Main Dashboard Layout ── */}
+        <div className="w-full flex flex-col md:flex-row gap-6 mt-6">
+          
+          {/* ── Sidebar Navigation ── */}
+          <div className="w-full md:w-[260px] flex-shrink-0 flex flex-col gap-2.5">
             {['info', 'history', 'booked', 'canceled'].map((tabKey) => {
               const tabLabels = {
                 info: 'Thông tin tài khoản',
@@ -922,34 +944,58 @@ export default function ProfilePage() {
                 booked: 'Vé đã đặt',
                 canceled: 'Vé đã hủy'
               }
+              const tabIcons = {
+                info: 'account_circle',
+                history: 'stars',
+                booked: 'confirmation_number',
+                canceled: 'cancel'
+              }
               const isActive = activeTab === tabKey
               return (
                 <button
                   key={tabKey}
                   onClick={() => setActiveTab(tabKey)}
-                  className="pb-3 text-sm font-bold tracking-wider uppercase transition-all px-1 cursor-pointer shrink-0 relative"
-                  style={{ 
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm font-bold text-left cursor-pointer group border outline-none"
+                  style={{
                     fontFamily: 'Montserrat, sans-serif',
-                    color: isActive ? '#fff' : '#9ca3af',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    outline: 'none'
+                    background: isActive ? 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)' : 'rgba(255,255,255,0.03)',
+                    color: isActive ? '#white' : '#9ca3af',
+                    borderColor: isActive ? 'rgba(229,9,20,0.3)' : 'rgba(255,255,255,0.05)',
+                    boxShadow: isActive ? '0 8px 24px rgba(229,9,20,0.25)' : 'none',
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)';
+                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
+                      e.currentTarget.style.color = '#9ca3af';
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                    }
                   }}
                 >
-                  <span className="relative z-10">{tabLabels[tabKey]}</span>
-                  {isActive && (
-                    <motion.div 
-                      layoutId="activeTabUnderline"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-500"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
+                  <span 
+                    className="material-symbols-outlined text-lg transition-transform duration-200 group-hover:scale-110"
+                    style={{ 
+                      color: isActive ? '#fff' : 'var(--color-primary)',
+                      fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0"
+                    }}
+                  >
+                    {tabIcons[tabKey]}
+                  </span>
+                  <span className="truncate">{tabLabels[tabKey]}</span>
                 </button>
               )
             })}
           </div>
 
-          {activeTab === 'info' && (
+          {/* ── Content Pane ── */}
+          <div className="flex-1 min-w-0 flex flex-wrap gap-6 justify-start content-start items-stretch">
+            {activeTab === 'info' && (
             <>
               {/* ── Personal Information Card ── */}
               <GlassCard
@@ -1210,7 +1256,7 @@ export default function ProfilePage() {
                           {(profile?.roles || []).map((role) => (
                             <span
                               key={role}
-                              className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                              className="px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
                               style={{
                                 backgroundColor: role === 'ADMIN' ? 'rgba(229,9,20,0.15)' : 'rgba(34,197,94,0.15)',
                                 color: role === 'ADMIN' ? 'var(--color-primary)' : '#22c55e',
@@ -1228,7 +1274,7 @@ export default function ProfilePage() {
                       label: 'Trạng thái',
                       content: (
                         <span
-                          className="px-2.5 py-0.5 rounded-full text-xs font-semibold"
+                          className="px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap"
                           style={{
                             backgroundColor: profile?.status === 'ACTIVE' ? 'rgba(34,197,94,0.15)' : 'rgba(229,9,20,0.15)',
                             color: profile?.status === 'ACTIVE' ? '#22c55e' : 'var(--color-primary)',
@@ -1942,13 +1988,61 @@ export default function ProfilePage() {
               </div>
             )
           })()}
-
-
-
+          </div>
+          {/* ── End Content Pane ── */}
         </div>
-        {/* ── End Card Grid ── */}
-
+        {/* ── End Main Dashboard Layout ── */}
       </div>
+
+      {/* ── Custom Confirm Cancel Modal ── */}
+      <AnimatePresence>
+        {cancelingTicketId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.92, opacity: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="w-full max-w-md p-6 rounded-2xl border text-left"
+              style={{
+                background: 'rgba(23, 23, 23, 0.95)',
+                borderColor: 'rgba(255, 255, 255, 0.08)',
+                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)'
+              }}
+            >
+              <div className="flex items-center gap-3 text-red-500 mb-4">
+                <span className="material-symbols-outlined text-3xl">warning</span>
+                <h3 className="text-lg font-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  Xác nhận hủy vé
+                </h3>
+              </div>
+              <p className="text-sm text-white/70 leading-relaxed mb-6" style={{ fontFamily: 'Inter, sans-serif' }}>
+                Bạn có chắc chắn muốn hủy vé <strong className="text-white font-black">{cancelingTicketId}</strong> không? 
+                Hành động này <span className="text-red-500 font-bold">không thể hoàn tác</span>.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setCancelingTicketId(null)}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-white/10 hover:bg-white/5 text-white/80 cursor-pointer"
+                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={() => {
+                    confirmCancelTicket(cancelingTicketId)
+                    setCancelingTicketId(null)
+                  }}
+                  className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/35 cursor-pointer"
+                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                >
+                  Xác nhận hủy
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         @keyframes fadeInScale {

@@ -13,10 +13,8 @@ export default function MovieListPage() {
   const navigate = useNavigate()
 
   const load = () => movieService.getAll().then(r => {
-    // BE mới trả về ApiResponse<PageResponse<MovieResponse>>
-    // r.data = { code, result: { content, pageNumber, pageSize, totalElements, ... } }
-    const result = r.data?.result
-    setMovies(result?.content || (Array.isArray(result) ? result : []))
+    const list = r.data || []
+    setMovies(list)
   }).catch(() => {})
   useEffect(() => { load() }, [])
 

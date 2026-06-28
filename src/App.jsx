@@ -1,6 +1,7 @@
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import AppRoutes from './routes/AppRoutes'
+import { Toaster } from 'sonner'
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import VideoIntro from './components/intro/VideoIntro'
@@ -102,6 +103,7 @@ function AppContent() {
       <div style={{ paddingTop: isDashboard ? '0px' : '72px', minHeight: '100vh' }}>
         <AppRoutes />
       </div>
+      <Toaster richColors closeButton position="top-right" />
     </AuthProvider>
   )
 }
