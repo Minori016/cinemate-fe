@@ -827,20 +827,21 @@ export default function HomePage() {
                 />
                 <div className="flex flex-col gap-2 w-full">
                   <span className="hidden md:block text-[10px] uppercase font-bold tracking-wider" style={{ color: 'transparent' }}>Đặt vé</span>
-                  <button
+                  <motion.button
                     type="submit"
-                    className="w-full font-black text-white rounded-xl text-xs uppercase tracking-wider transition-all h-[44px] cursor-pointer flex items-center justify-center gap-2"
+                    className="w-full font-black text-white rounded-xl text-xs uppercase tracking-wider h-[44px] cursor-pointer flex items-center justify-center gap-2 border-none outline-none"
                     style={{
                       background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
                       boxShadow: '0 6px 24px rgba(229,9,20,0.4)',
                       fontFamily: 'Montserrat, sans-serif',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 30px rgba(229,9,20,0.6)'; e.currentTarget.style.transform = 'scale(1.02)' }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 24px rgba(229,9,20,0.4)'; e.currentTarget.style.transform = 'scale(1)' }}
+                    whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(229,9,20,0.6)' }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
                     <span className="material-symbols-outlined font-bold" style={{ fontSize: '15px' }}>confirmation_number</span>
                     Đặt Vé Ngay
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             </div>
