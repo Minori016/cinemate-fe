@@ -479,7 +479,7 @@ export default function MovieDetailPage() {
         <div className="absolute bottom-0 w-full left-0 px-6 md:px-12 pb-10 z-20 cursor-default" onClick={(e) => e.stopPropagation()}>
           <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-end">
             <motion.div className="hidden md:block w-44 lg:w-52 flex-shrink-0 z-30" initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}>
-              <img src={movie.poster} alt={`${movie.title} poster`} className="w-full rounded-xl shadow-2xl border border-white/10 hover:scale-[1.02] transition-transform duration-300" style={{ aspectRatio: '2/3', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.7)' }} />
+              <img src={movie.poster} alt={`${movie.title} poster`} fetchPriority="high" decoding="async" className="w-full rounded-xl shadow-2xl border border-white/10 hover:scale-[1.02] transition-transform duration-300 will-change-transform transform-gpu" style={{ aspectRatio: '2/3', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.7)' }} />
             </motion.div>
             <motion.div className="flex flex-col gap-3 z-30 text-left flex-1 w-full" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}>
               <h1 className="text-glow-red" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(28px, 5vw, 56px)', fontWeight: 900, color: 'white', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1.1, margin: 0 }}>{movie.title}</h1>
