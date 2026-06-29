@@ -2,11 +2,15 @@ import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { Play, Calendar, Globe, DollarSign, User, Subtitles } from 'lucide-react'
 
-function GlassCard({ children, className = '' }) {
+function GlassCard({ children, className = '', ...props }) {
   return (
-    <div className={`rounded-xl ${className}`} style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px 0 rgba(0,0,0,0.35)' }}>
+    <motion.div 
+      className={`rounded-xl ${className}`} 
+      style={{ background: 'rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px 0 rgba(0,0,0,0.35)' }}
+      {...props}
+    >
       {children}
-    </div>
+    </motion.div>
   )
 }
 
@@ -32,22 +36,38 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
   const genreNames = movie.genres?.map(g => g.name) || []
   const actors = movie.actors || []
 
+  const itemVariants = {
+    hidden: { opacity: 0, x: 20, scale: 0.98 },
+    visible: { opacity: 1, x: 0, scale: 1, transition: { duration: 0.5, ease: "easeOut" } }
+  }
+
   return (
-    <div className="flex flex-col gap-6 lg:border-l lg:border-white/5 lg:pl-8">
+    <motion.div 
+      className="flex flex-col gap-6 lg:border-l lg:border-white/5 lg:pl-8"
+      initial="hidden"
+      animate="visible"
+      variants={{
+        hidden: {},
+        visible: { transition: { staggerChildren: 0.1, delayChildren: 0.3 } }
+      }}
+    >
       {/* Trailer button */}
       {trailerUrl && (
-        <button
+        <motion.button
+          variants={itemVariants}
           onClick={() => {/* trailer open handled by parent */}}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all hover:scale-[1.02] active:scale-95 cursor-pointer border-none text-white"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border-none text-white outline-none"
           style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+          whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
+          whileTap={{ scale: 0.97 }}
         >
           <Play size={18} style={{ color: 'var(--color-primary)' }} />
           Xem Trailer
-        </button>
+        </motion.button>
       )}
 
       {/* Thông Tin Phim */}
-      <GlassCard className="p-6">
+      <GlassCard className="p-6" variants={itemVariants}>
         <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>Thông Tin Phim</h2>
         <div className="flex flex-col gap-0">
           {[
@@ -68,7 +88,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
 
       {/* Thể Loại */}
       {genreNames.length > 0 && (
-        <GlassCard className="p-6">
+        <GlassCard className="p-6" variants={itemVariants}>
           <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm mb-3" style={{ fontFamily: 'Montserrat, sans-serif' }}>Thể Loại</h2>
           <div className="flex flex-wrap gap-2">
             {genreNames.map(g => (
@@ -79,7 +99,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
       )}
 
       {/* Đánh Giá Khán Giả */}
-      <GlassCard className="p-6 flex flex-col">
+      <GlassCard className="p-6 flex flex-col" variants={itemVariants}>
         <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>Đánh Giá Khán Giả</h2>
         <div className="flex items-center gap-4 mb-2">
           <span className="text-glow-gold text-5xl font-black text-white" style={{ fontFamily: 'Montserrat, sans-serif', lineHeight: 1 }}>{movie.score || movie.rating || 'N/A'}</span>
@@ -96,7 +116,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
 
       {/* Tóm Tắt Nội Dung */}
       {movie.description && (
-        <GlassCard className="p-6">
+        <GlassCard className="p-6" variants={itemVariants}>
           <h2 className="mb-3 text-[var(--color-primary)] font-extrabold uppercase tracking-wider text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>Tóm Tắt Nội Dung</h2>
           <p className="leading-relaxed text-xs text-[var(--color-on-surface-variant)]" style={{ fontFamily: 'Inter, sans-serif', margin: 0 }}>{movie.description}</p>
         </GlassCard>
@@ -104,7 +124,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
 
       {/* Diễn Viên */}
       {actors.length > 0 && (
-        <GlassCard className="p-6">
+        <GlassCard className="p-6" variants={itemVariants}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>Diễn Viên</h2>
           </div>
@@ -130,7 +150,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
 
       {/* Hình Ảnh */}
       {movie.media && movie.media.length > 0 && (
-        <GlassCard className="p-6">
+        <GlassCard className="p-6" variants={itemVariants}>
           <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>Hình Ảnh</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {movie.media.filter(m => m.mediaType === 'POSTER' || m.mediaType === 'BANNER').map(m => (
@@ -139,6 +159,6 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
           </div>
         </GlassCard>
       )}
-    </div>
+    </motion.div>
   )
 }
