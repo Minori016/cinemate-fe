@@ -113,7 +113,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
               <div key={fullName} className="flex items-center gap-3 group">
                 <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 border border-white/10 group-hover:border-[var(--color-primary)] transition-all duration-300" style={{ boxShadow: '0 4px 12px rgba(0,0,0,0.4)' }}>
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={fullName} className="w-full h-full object-cover" />
+                    <img src={avatarUrl} alt={fullName} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-white/10 text-xs font-bold text-gray-400">{fullName.charAt(0)}</div>
                   )}
@@ -134,7 +134,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
           <h2 className="font-extrabold uppercase tracking-wider text-[var(--color-primary)] text-sm mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>Hình Ảnh</h2>
           <div className="flex gap-3 overflow-x-auto pb-2">
             {movie.media.filter(m => m.mediaType === 'POSTER' || m.mediaType === 'BANNER').map(m => (
-              <img key={m.id} src={m.url} alt={m.title || ''} className="h-32 rounded-lg object-cover flex-shrink-0 border border-white/10" />
+              <img key={m.id} src={m.url} alt={m.title || ''} loading="lazy" decoding="async" className="h-32 rounded-lg object-cover flex-shrink-0 border border-white/10" />
             ))}
           </div>
         </GlassCard>

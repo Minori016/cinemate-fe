@@ -1,391 +1,444 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
+import { 
+  motion, 
+  AnimatePresence, 
+  useMotionValue, 
+  useSpring, 
+  useMotionValueEvent,
+  useVelocity,
+  useTransform,
+  useMotionTemplate
+} from 'motion/react'
 
 // Constants
 const INTRO_SEEN_KEY = 'cinemate_intro_seen'
+const TOTAL_FRAMES = 192
 
-/**
- * VideoIntro Component
- * Cinematic fullscreen intro video với skip + CTA overlay
- */
-export default function VideoIntro({
-  videoSrc = '/Intro.mp4',
-  onComplete,
-  onExplore,
-  onBuyTicket,
-  skipButtonText = 'SKIP INTRO',
-  showProgress = true,
-  minDisplayTime = 3000
-}) {
-  const videoRef = useRef(null)
+export default function VideoIntro({ onComplete, onExplore, onBuyTicket }) {
   const containerRef = useRef(null)
-
-  const [isDismissed, setIsDismissed] = useState(false)
+  const canvasRef = useRef(null)
+  const audioRef = useRef(null)
+  const canReplayRef = useRef(true)
+  
+  const [images, setImages] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [loadProgress, setLoadProgress] = useState(0)
+  const currentFrameFloatRef = useRef(1)
   const [showCTA, setShowCTA] = useState(false)
-  const [showSkip, setShowSkip] = useState(true)
-  const [progress, setProgress] = useState(0)
-  const [canSkip, setCanSkip] = useState(false)
-  const [needsManualPlay, setNeedsManualPlay] = useState(false)
 
-  const markIntroSeen = useCallback(() => {
-    try {
-      const storage = import.meta.env.DEV ? sessionStorage : localStorage
-      storage.setItem(INTRO_SEEN_KEY, 'true')
-    } catch {
-      console.warn('[VideoIntro] storage not available')
-    }
-  }, [])
+  // 1. PHYSICS ENGINE: Ultra-premium cinematic inertia
+  const targetFrame = useMotionValue(1)
+  const smoothFrame = useSpring(targetFrame, {
+    damping: 50,      // High damping to stop smoothly without bounce
+    stiffness: 100,   // Low stiffness for a heavier, cinematic feel
+    mass: 1.5         // High mass for momentum
+  })
 
-  // Auto-play video on mount
+  // 2. MOTION FX: Dynamic Blur based on scroll velocity (Motion Blur)
+  const frameVelocity = useVelocity(smoothFrame)
+  const blurAmount = useTransform(frameVelocity, [-150, 0, 150], [3, 0, 3]) // Subtle max 3px blur
+  const blurFilter = useMotionTemplate`blur(${blurAmount}px)`
+
+  // 3. CINEMATIC ZOOM: Slow dolly-in effect as the sequence progresses
+  const canvasScale = useTransform(smoothFrame, [1, TOTAL_FRAMES], [1, 1.15])
+
+  // Image Preloader
   useEffect(() => {
-    console.log('[VideoIntro] Mounted, starting autoplay...')
-    const video = videoRef.current
-    if (!video) {
-      console.warn('[VideoIntro] No video element found')
-      return
-    }
-
-    const playPromise = video.play()
-    if (playPromise !== undefined) {
-      playPromise
-        .then(() => {
-          console.log('[VideoIntro] Autoplay successful')
-          setTimeout(() => setCanSkip(true), minDisplayTime)
-        })
-        .catch((err) => {
-          console.warn('[VideoIntro] Autoplay blocked:', err)
-          setNeedsManualPlay(true)
-          setTimeout(() => setCanSkip(true), minDisplayTime)
-        })
-    }
-
-    const skipTimeout = setTimeout(() => setShowSkip(false), 3000)
-    return () => clearTimeout(skipTimeout)
-  }, [minDisplayTime])
-
-  // Manual play handler
-  const handleManualPlay = () => {
-    const video = videoRef.current
-    if (video) {
-      video.play()
-        .then(() => {
-          setNeedsManualPlay(false)
-        })
-        .catch(err => console.error('[VideoIntro] Manual play failed:', err))
-    }
-  }
-
-  // Track video progress + handle end
-  useEffect(() => {
-    const video = videoRef.current
-    if (!video) return
-
-    const handleTimeUpdate = () => {
-      if (video.duration) {
-        setProgress(video.currentTime / video.duration)
+    let isMounted = true;
+    
+    const loadImages = async () => {
+      const loadedImages = new Array(TOTAL_FRAMES + 1);
+      let loadedCount = 0;
+      
+      const promises = Array.from({ length: TOTAL_FRAMES }, (_, i) => {
+        const frameNumber = i + 1;
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.src = `/frames/frame_${frameNumber.toString().padStart(3, '0')}.jpg`;
+          
+          img.onload = () => {
+            if (!isMounted) return;
+            loadedImages[frameNumber] = img;
+            loadedCount++;
+            setLoadProgress(Math.round((loadedCount / TOTAL_FRAMES) * 100));
+            resolve();
+          };
+          img.onerror = resolve; 
+        });
+      });
+      
+      await Promise.all(promises);
+      if (isMounted) {
+        setImages(loadedImages);
+        // Small delay before showing to ensure smooth transition
+        setTimeout(() => setLoaded(true), 400); 
       }
-    }
+    };
+    
+    loadImages();
+    return () => { isMounted = false; };
+  }, []);
 
-    const handleEnded = () => {
-      console.log('[VideoIntro] Video ended')
-      markIntroSeen()
-      setShowCTA(true)
-    }
+  // Frame Renderer (with Frame Blending)
+  const renderFrame = useCallback((frameFloat) => {
+    if (!canvasRef.current || images.length === 0) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    const frame1 = Math.floor(frameFloat);
+    const frame2 = Math.min(frame1 + 1, TOTAL_FRAMES);
+    const blendFactor = frameFloat - frame1; 
 
-    video.addEventListener('timeupdate', handleTimeUpdate)
-    video.addEventListener('ended', handleEnded)
+    const img1 = images[frame1];
+    const img2 = images[frame2];
+    if (!img1) return;
+
+    const drawImageScaled = (img, alpha = 1.0) => {
+      const canvasRatio = canvas.width / canvas.height;
+      const imgRatio = img.width / img.height;
+      
+      let drawWidth = canvas.width;
+      let drawHeight = canvas.height;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (canvasRatio > imgRatio) {
+        drawHeight = canvas.width / imgRatio;
+        offsetY = (canvas.height - drawHeight) / 2;
+      } else {
+        drawWidth = canvas.height * imgRatio;
+        offsetX = (canvas.width - drawWidth) / 2;
+      }
+
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    };
+
+    // Optimization: avoid clearRect if we draw full opacity
+    drawImageScaled(img1, 1.0);
+    
+    if (img2 && blendFactor > 0.02) { // 2% threshold to save GPU
+      drawImageScaled(img2, blendFactor);
+    }
+  }, [images]);
+
+  // Event Listeners (Scroll-jacking)
+  useEffect(() => {
+    if (!loaded) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      // Ultra-fine sensitivity tuning
+      const delta = e.deltaY * 0.08;
+      
+      let next = targetFrame.get() + delta;
+      next = Math.max(1, Math.min(next, TOTAL_FRAMES));
+      targetFrame.set(next);
+    };
+
+    let lastTouchY = 0;
+    const handleTouchStart = (e) => lastTouchY = e.touches[0].clientY;
+    const handleTouchMove = (e) => {
+      e.preventDefault();
+      const currentY = e.touches[0].clientY;
+      const deltaY = lastTouchY - currentY;
+      lastTouchY = currentY;
+      
+      let next = targetFrame.get() + (deltaY * 0.25);
+      next = Math.max(1, Math.min(next, TOTAL_FRAMES));
+      targetFrame.set(next);
+    };
+
+    const options = { passive: false };
+    window.addEventListener('wheel', handleWheel, options);
+    window.addEventListener('touchstart', handleTouchStart, options);
+    window.addEventListener('touchmove', handleTouchMove, options);
 
     return () => {
-      video.removeEventListener('timeupdate', handleTimeUpdate)
-      video.removeEventListener('ended', handleEnded)
-    }
-  }, [markIntroSeen])
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [loaded, targetFrame]);
 
-  // Skip video handler
-  const handleSkip = useCallback(() => {
-    if (!canSkip) return
-    const video = videoRef.current
-    if (video) video.pause()
-    markIntroSeen()
-    setShowCTA(true)
-  }, [canSkip, markIntroSeen])
-
-  // Fallback timer - auto-show CTA sau 15s
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!showCTA) {
-        console.log('[VideoIntro] Fallback: showing CTA after timeout')
-        markIntroSeen()
-        setShowCTA(true)
+  // Audio Scrubbing Logic
+  useMotionValueEvent(smoothFrame, "change", (latest) => {
+    if (!loaded) return;
+    
+    let nextFrameFloat = Math.max(1, Math.min(latest, TOTAL_FRAMES));
+    
+    // Smart Audio Replay Logic
+    if (nextFrameFloat < 3 && !canReplayRef.current) {
+      // User scrolled all the way back to the start. Arm the replay.
+      canReplayRef.current = true;
+      if (audioRef.current && !audioRef.current.paused) {
+        let vol = audioRef.current.volume;
+        const fade = setInterval(() => {
+          vol -= 0.1;
+          if (vol <= 0) {
+            clearInterval(fade);
+            if (audioRef.current) audioRef.current.pause();
+          } else if (audioRef.current) audioRef.current.volume = Math.max(0, vol);
+        }, 50);
       }
-    }, 15000)
+    } else if (nextFrameFloat >= 5 && canReplayRef.current && audioRef.current) {
+      // User started scrolling forward. Trigger audio.
+      canReplayRef.current = false;
+      audioRef.current.currentTime = 0;
+      audioRef.current.volume = 0;
+      audioRef.current.play().catch(() => {});
+      
+      let vol = 0;
+      const fade = setInterval(() => {
+        vol += 0.05;
+        if (vol >= 0.5) {
+          clearInterval(fade);
+        } else if (audioRef.current) {
+          audioRef.current.volume = Math.max(0, Math.min(1, vol));
+        }
+      }, 100);
+    }
 
-    return () => clearTimeout(timer)
-  }, [showCTA, markIntroSeen])
+    if (Math.abs(nextFrameFloat - currentFrameFloatRef.current) > 0.005) {
+      currentFrameFloatRef.current = nextFrameFloat;
+      renderFrame(nextFrameFloat);
+      
+      // CTA Logic
+      if (nextFrameFloat >= TOTAL_FRAMES - 12 && !showCTA) {
+        setShowCTA(true);
+      } else if (nextFrameFloat < TOTAL_FRAMES - 12 && showCTA) {
+        setShowCTA(false);
+      }
+    }
+  });
 
-  const handleExplore = useCallback(() => {
-    setIsDismissed(true)
-    if (onExplore) onExplore()
-    else if (onComplete) onComplete()
-  }, [onExplore, onComplete])
+  // Canvas Sizing
+  useEffect(() => {
+    if (loaded && canvasRef.current) {
+      const resizeCanvas = () => {
+        // Double resolution for Retina displays (super crisp)
+        const dpr = window.devicePixelRatio || 1;
+        canvasRef.current.width = window.innerWidth * dpr;
+        canvasRef.current.height = window.innerHeight * dpr;
+        // Fix: Do NOT use ctx.scale(dpr, dpr) because renderFrame already uses canvas.width (physical pixels).
+        renderFrame(currentFrameFloatRef.current);
+      };
+      
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+      return () => window.removeEventListener('resize', resizeCanvas);
+    }
+  }, [loaded, renderFrame]);
 
-  const handleBuyTicket = useCallback(() => {
-    setIsDismissed(true)
-    // Set flag for HomePage to handle scroll after mount
-    sessionStorage.setItem('intro_scroll_to_booking', 'true')
-    if (onBuyTicket) onBuyTicket()
-    else if (onComplete) onComplete()
-  }, [onBuyTicket, onComplete])
+  // Lock body scroll
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = 'auto'; };
+  }, []);
+
+  const handleComplete = useCallback((action) => {
+    // Fade out audio before completing
+    if (audioRef.current) {
+      let vol = audioRef.current.volume;
+      const fade = setInterval(() => {
+        vol -= 0.1;
+        if (vol <= 0) {
+          clearInterval(fade);
+          if (audioRef.current) audioRef.current.pause();
+        } else if (audioRef.current) {
+          audioRef.current.volume = vol;
+        }
+      }, 50);
+    }
+
+    try { (import.meta.env.DEV ? sessionStorage : localStorage).setItem(INTRO_SEEN_KEY, 'true'); } catch {}
+    if (action === 'buy' && onBuyTicket) {
+      sessionStorage.setItem('intro_scroll_to_booking', 'true');
+      onBuyTicket();
+    } else if (action === 'explore' && onExplore) {
+      onExplore();
+    } else if (onComplete) onComplete();
+  }, [onBuyTicket, onExplore, onComplete]);
 
   return (
-    <AnimatePresence>
-      {!isDismissed && (
-        <motion.div
-          ref={containerRef}
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
-          className="fixed inset-0 z-[9999] bg-black"
-          style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}
-        >
-          {/* Fullscreen Video */}
-          <video
-            ref={videoRef}
-            src={videoSrc}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{
-              objectFit: 'cover',
-              width: '100%',
-              height: '100%',
-              transform: 'translateZ(0)'
-            }}
-            muted
-            playsInline
-            autoPlay
-          />
+    <motion.div 
+      ref={containerRef} 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 1.2, ease: "easeInOut" } }}
+      className="fixed inset-0 w-full h-full bg-[#050505] z-[9999] overflow-hidden flex items-center justify-center overscroll-none touch-none"
+    >
+      {/* Background Audio from MP4 */}
+      <audio ref={audioRef} src="/Intro.mp4" preload="auto" />
 
-          {/* Manual play button if autoplay blocked */}
-          {needsManualPlay && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              onClick={handleManualPlay}
-              className="absolute inset-0 z-50 flex items-center justify-center bg-black/60"
-            >
-              <div className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center hover:bg-red-700 transition-colors">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
+      {/* 4. FILM GRAIN OVERLAY: Adds cinematic texture */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-10 opacity-[0.04]" 
+        style={{ 
+          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' 
+        }}
+      />
+
+      {/* Loading State */}
+      <AnimatePresence>
+        {!loaded && (
+          <motion.div 
+            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#050505]"
+          >
+            <div className="relative w-20 h-20 mb-8">
+              <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="transparent" stroke="rgba(255,255,255,0.05)" strokeWidth="2" />
+                <circle 
+                  cx="50" cy="50" r="45" fill="transparent" 
+                  stroke="#e50914" strokeWidth="2" 
+                  strokeDasharray="283" 
+                  strokeDashoffset={283 - (283 * loadProgress) / 100}
+                  style={{ transition: 'stroke-dashoffset 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center text-white text-xs font-medium font-inter tracking-widest">
+                {loadProgress}
               </div>
-            </motion.button>
-          )}
+            </div>
+            <p className="text-white/40 font-inter text-[10px] tracking-[0.5em] uppercase">Khởi tạo không gian</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Cinematic Gradient Overlay */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 30%, transparent 60%, rgba(0,0,0,0.7) 100%)'
-            }}
-          />
+      {/* Canvas Frame Renderer with GPU Blur & Scale */}
+      <motion.canvas 
+        ref={canvasRef}
+        className="absolute inset-0 w-full h-full origin-center"
+        style={{ 
+          opacity: loaded ? 1 : 0,
+          filter: blurFilter,
+          scale: canvasScale,
+        }}
+        initial={{ filter: "blur(20px)", scale: 1.1 }}
+        animate={{ filter: loaded ? "blur(0px)" : "blur(20px)", scale: loaded ? 1 : 1.1 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+      />
 
-          {/* Logo */}
-          <div className="absolute top-8 left-8 z-20 pointer-events-none">
-            <h1
-              className="text-2xl font-black tracking-widest"
-              style={{
-                color: '#ffffff',
-                fontFamily: 'Montserrat, sans-serif',
-                textShadow: '0 2px 20px rgba(229, 9, 20, 0.5)'
-              }}
-            >
-              CINE<span style={{ color: '#e50914' }}>MATE</span>
-            </h1>
-          </div>
+      {/* Premium Vignette */}
+      <div 
+        className="absolute inset-0 pointer-events-none z-10" 
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, transparent 20%, rgba(0,0,0,0.7) 120%), linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 15%, transparent 70%, rgba(0,0,0,0.9) 100%)'
+        }}
+      />
 
-          {/* Skip Button */}
-          <AnimatePresence>
-            {showSkip && canSkip && !showCTA && (
-              <motion.button
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                onClick={handleSkip}
-                className="absolute top-6 right-6 z-50 px-6 py-2.5 text-xs font-bold tracking-widest uppercase text-white/80 bg-white/10 backdrop-blur-md border border-white/20 rounded-full hover:bg-white/20 hover:text-white transition-all duration-300"
-                style={{
-                  WebkitTapHighlightColor: 'transparent',
-                  fontFamily: 'Inter, sans-serif'
-                }}
-              >
-                {skipButtonText}
-              </motion.button>
-            )}
-          </AnimatePresence>
+      {/* Brand Logo */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: loaded ? 1 : 0, y: loaded ? 0 : -20 }}
+        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+        className="absolute top-10 left-10 z-30 pointer-events-none"
+      >
+        <h1 className="text-2xl font-black tracking-[0.15em] text-white drop-shadow-2xl" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          CINE<span className="text-[#e50914]">MATE</span>
+        </h1>
+      </motion.div>
 
-          {/* CTA Overlay */}
-          <AnimatePresence>
-            {showCTA && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="absolute inset-0 z-30 flex flex-col items-center justify-end"
-                style={{
-                  background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.6) 45%, transparent 100%)',
-                  paddingBottom: '10vh'
-                }}
-              >
-                {/* Eyebrow text */}
-                <motion.p
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15, duration: 0.5 }}
-                  style={{
-                    color: '#e50914',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    letterSpacing: '4px',
-                    textTransform: 'uppercase',
-                    marginBottom: '12px'
-                  }}
-                >
-                  Bắt đầu hành trình của bạn
-                </motion.p>
+      {/* Skip Button */}
+      <motion.button 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: loaded ? 1 : 0 }}
+        transition={{ duration: 1, delay: 1 }}
+        onClick={() => handleComplete('explore')}
+        className="absolute top-10 right-10 z-50 px-6 py-3 text-[9px] font-bold tracking-[0.3em] uppercase text-white/50 hover:text-white transition-colors duration-500 font-inter"
+      >
+        Bỏ qua
+      </motion.button>
 
-                {/* Headline */}
-                <motion.h2
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25, duration: 0.55 }}
-                  style={{
-                    fontFamily: 'Montserrat, sans-serif',
-                    fontWeight: 900,
-                    fontSize: 'clamp(24px, 4vw, 38px)',
-                    color: '#ffffff',
-                    textAlign: 'center',
-                    lineHeight: 1.2,
-                    marginBottom: '10px',
-                    letterSpacing: '1px'
-                  }}
-                >
-                  Rạp chiếu phim<br />trong tầm tay bạn
-                </motion.h2>
-
-                {/* Subtext */}
-                <motion.p
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.5 }}
-                  style={{
-                    color: 'rgba(255,255,255,0.45)',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '14px',
-                    marginBottom: '32px',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  Hàng nghìn bộ phim đang chờ đón bạn
-                </motion.p>
-
-                {/* CTA Buttons */}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.45, duration: 0.5 }}
-                  style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}
-                >
-                  {/* Khám phá ngay — primary */}
-                  <button
-                    onClick={handleExplore}
-                    style={{
-                      background: '#e50914',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '14px 32px',
-                      borderRadius: '4px',
-                      fontFamily: 'Montserrat, sans-serif',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      letterSpacing: '1.5px',
-                      textTransform: 'uppercase',
-                      cursor: 'pointer',
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                      WebkitTapHighlightColor: 'transparent'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                      e.currentTarget.style.boxShadow = '0 8px 28px rgba(229,9,20,0.55)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)'
-                      e.currentTarget.style.boxShadow = 'none'
-                    }}
-                  >
-                    ▶ Khám phá ngay
-                  </button>
-
-                  {/* Mua vé ngay — secondary */}
-                  <button
-                    onClick={handleBuyTicket}
-                    style={{
-                      background: 'transparent',
-                      color: '#fff',
-                      border: '1.5px solid rgba(255,255,255,0.45)',
-                      padding: '14px 32px',
-                      borderRadius: '4px',
-                      fontFamily: 'Montserrat, sans-serif',
-                      fontWeight: 800,
-                      fontSize: '13px',
-                      letterSpacing: '1.5px',
-                      textTransform: 'uppercase',
-                      cursor: 'pointer',
-                      backdropFilter: 'blur(6px)',
-                      transition: 'border-color 0.15s, background 0.15s, transform 0.15s',
-                      WebkitTapHighlightColor: 'transparent'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.9)'
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.45)'
-                      e.currentTarget.style.background = 'transparent'
-                      e.currentTarget.style.transform = 'translateY(0)'
-                    }}
-                  >
-                    Mua vé ngay
-                  </button>
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Progress Bar */}
-          {showProgress && !showCTA && (
-            <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-white/10" style={{ transformOrigin: 'left' }}>
-              <motion.div
-                className="h-full"
-                style={{
-                  background: 'linear-gradient(90deg, #e50914, #ff4444)',
-                  transform: `scaleX(${progress})`,
-                  transformOrigin: 'left',
-                  willChange: 'transform'
-                }}
+      {/* Scroll Indicator */}
+      <AnimatePresence>
+        {!showCTA && loaded && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+            transition={{ duration: 0.8 }}
+            className="absolute bottom-16 flex flex-col items-center gap-6 z-20 pointer-events-none"
+          >
+            <span className="text-white/40 font-inter text-[9px] tracking-[0.5em] uppercase text-center">
+              Lăn chuột
+            </span>
+            <div className="w-[1px] h-16 bg-white/10 relative overflow-hidden">
+              <motion.div 
+                animate={{ y: ['-100%', '100%'] }} 
+                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 bg-gradient-to-b from-transparent via-white/80 to-transparent"
               />
             </div>
-          )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-          {/* Click-to-skip zone */}
-          {canSkip && !showCTA && (
-            <div
-              className="absolute inset-0 cursor-pointer"
-              onClick={handleSkip}
-              style={{ zIndex: 10 }}
-            />
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+      {/* Ultra-Premium CTA Overlay */}
+      <AnimatePresence>
+        {showCTA && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm"
+          >
+            <div className="flex flex-col items-center max-w-4xl px-6">
+              <motion.p
+                initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ delay: 0.2, duration: 0.8, ease: "easeOut" }}
+                className="text-[#e50914] text-[10px] font-bold tracking-[0.6em] uppercase mb-6"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                Hành Trình Bắt Đầu
+              </motion.p>
+              
+              <motion.h2
+                initial={{ opacity: 0, y: 30, filter: "blur(10px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                transition={{ delay: 0.3, duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                className="text-5xl md:text-7xl text-white text-center leading-[1.1] mb-8 tracking-tighter font-black"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >
+                Tuyệt Tác <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-white/80 to-white/40">
+                  Màn Ảnh Rộng
+                </span>
+              </motion.h2>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.8 }}
+                className="flex flex-col sm:flex-row gap-6 mt-8"
+              >
+                <button
+                  onClick={() => handleComplete('explore')}
+                  className="group relative px-12 py-5 bg-white text-black overflow-hidden rounded-none font-bold text-xs tracking-[0.2em] uppercase transition-all duration-500"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  <span className="relative z-10 group-hover:text-white transition-colors duration-500">Khám Phá Ngay</span>
+                  <div className="absolute inset-0 bg-[#e50914] translate-y-[100%] group-hover:translate-y-0 transition-transform duration-500 ease-[0.16,1,0.3,1]" />
+                </button>
+                
+                <button
+                  onClick={() => handleComplete('buy')}
+                  className="group relative px-12 py-5 bg-transparent text-white border border-white/20 overflow-hidden rounded-none font-bold text-xs tracking-[0.2em] uppercase transition-all duration-500"
+                  style={{ fontFamily: 'Inter, sans-serif' }}
+                >
+                  <span className="relative z-10">Mua Vé Ngay</span>
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                </button>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

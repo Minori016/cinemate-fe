@@ -838,7 +838,7 @@ export default function ProfilePage() {
                   }}
                 >
                   {profile?.image ? (
-                    <img src={profile.image} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={profile.image} alt="Avatar" fetchPriority="high" decoding="async" className="w-full h-full object-cover" />
                   ) : (
                     <span style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 800, fontSize: '32px', color: '#fff' }}>
                       {initials}
