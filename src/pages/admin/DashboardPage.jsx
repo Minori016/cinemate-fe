@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity, Search, ArrowRight, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+
+const DEBOUNCE_MS = 400
+const MIN_QUERY_LEN = 2
 
 const stats = [
   {
@@ -60,33 +63,80 @@ export default function DashboardPage() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
-  const [searched, setSearched] = useState(false)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(-1)
+  const timerRef = useRef(null)
+  const inputRef = useRef(null)
+  const dropdownRef = useRef(null)
   const navigate = useNavigate()
 
-  const handleSearch = async (e) => {
-    if (e) e.preventDefault()
-    const keyword = query.trim()
-    if (!keyword) return
-
-    setLoading(true)
-    setSearched(true)
+  const fetchResults = useCallback(async (keyword) => {
+    if (!keyword.trim()) {
+      setResults([])
+      setLoading(false)
+      return
+    }
     try {
       const r = await movieService.getAll({ search: keyword })
       const result = r.data?.result
       const list = result?.content || (Array.isArray(result) ? result : [])
-      setResults(list.slice(0, 5))
+      setResults(list.slice(0, 8))
     } catch (err) {
       console.error('Search error:', err)
       setResults([])
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  const handleInputChange = (e) => {
+    const val = e.target.value
+    setQuery(val)
+    setActiveIndex(-1)
+    clearTimeout(timerRef.current)
+    if (val.trim().length >= MIN_QUERY_LEN) {
+      setLoading(true)
+      timerRef.current = setTimeout(() => {
+        fetchResults(val)
+        setShowDropdown(true)
+      }, DEBOUNCE_MS)
+    } else {
+      setResults([])
+      setShowDropdown(false)
+    }
+  }
+
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault()
+    clearTimeout(timerRef.current)
+    setShowDropdown(false)
+    if (query.trim().length >= MIN_QUERY_LEN) {
+      navigate(`/admin/movies?search=${encodeURIComponent(query.trim())}`)
+    }
   }
 
   const handleClear = () => {
     setQuery('')
     setResults([])
-    setSearched(false)
+    setShowDropdown(false)
+    setActiveIndex(-1)
+    inputRef.current?.focus()
+  }
+
+  const handleMovieClick = (movieId) => {
+    clearTimeout(timerRef.current)
+    setShowDropdown(false)
+    navigate(`/admin/movies/edit/${movieId}`)
+  }
+
+  const handleViewAll = () => {
+    clearTimeout(timerRef.current)
+    setShowDropdown(false)
+    if (query.trim()) {
+      navigate(`/admin/movies?search=${encodeURIComponent(query.trim())}`)
+    } else {
+      navigate('/admin/movies')
+    }
   }
 
   const highlight = (text) => {
@@ -102,6 +152,20 @@ export default function DashboardPage() {
       )
     )
   }
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+        inputRef.current && !inputRef.current.contains(e.target)
+      ) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   return (
     <motion.div
@@ -154,131 +218,122 @@ export default function DashboardPage() {
           </h2>
         </div>
 
-        <form onSubmit={handleSearch} className="relative">
-          <div className="relative flex items-center">
-            <Search className="absolute left-4 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nhập tên phim (VN hoặc ENG) rồi nhấn Enter..."
-              className="w-full pl-11 pr-32 py-3 rounded-lg bg-[var(--color-surface-2)] border border-white/10 text-sm text-white placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
-              style={{ fontFamily: 'Inter, sans-serif' }}
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={handleClear}
-                className="absolute right-24 text-xs text-[var(--color-text-muted)] hover:text-white px-2 py-1"
-              >
-                Xóa
-              </button>
-            )}
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              className="absolute right-1.5 flex items-center gap-1.5 px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-bold uppercase tracking-wider transition-colors"
-              style={{ fontFamily: 'Montserrat, sans-serif' }}
-            >
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-              <span>{loading ? 'Đang tìm...' : 'Tìm'}</span>
-            </button>
-          </div>
-        </form>
-
-        {/* Search Results */}
-        <AnimatePresence mode="wait">
-          {loading && (
-            <motion.div
-              key="loading"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-center py-8 text-sm text-[var(--color-text-muted)]"
-            >
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang tìm kiếm...
-            </motion.div>
-          )}
-
-          {!loading && searched && results.length === 0 && (
-            <motion.div
-              key="empty"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-center py-8 text-sm text-[var(--color-text-muted)]"
-            >
-              Không tìm thấy phim nào với từ khóa "<span className="text-white font-semibold">{query}</span>".
-            </motion.div>
-          )}
-
-          {!loading && results.length > 0 && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="space-y-2"
-            >
-              <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest px-1">
-                <span>Kết quả ({results.length})</span>
+        <div className="relative" ref={dropdownRef}>
+          <form onSubmit={handleSubmit} className="relative">
+            <div className="relative flex items-center">
+              <Search className="absolute left-4 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (!showDropdown || results.length === 0) return
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault()
+                    setActiveIndex(prev => Math.min(prev + 1, results.length - 1))
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault()
+                    setActiveIndex(prev => Math.max(prev - 1, -1))
+                  } else if (e.key === 'Enter' && activeIndex >= 0) {
+                    e.preventDefault()
+                    handleMovieClick(results[activeIndex].id)
+                  } else if (e.key === 'Escape') {
+                    setShowDropdown(false)
+                  }
+                }}
+                onFocus={() => { if (results.length > 0) setShowDropdown(true) }}
+                placeholder="Nhập tên phim (VN hoặc ENG) để tìm nhanh..."
+                className="w-full pl-11 pr-32 py-3 rounded-lg bg-[var(--color-surface-2)] border border-white/10 text-sm text-white placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              />
+              {query && (
                 <button
                   type="button"
-                  onClick={() => navigate('/admin/movies')}
-                  className="text-red-400 hover:text-red-300 flex items-center gap-1 normal-case tracking-normal"
+                  onClick={handleClear}
+                  className="absolute right-24 text-xs text-[var(--color-text-muted)] hover:text-white px-2 py-1 transition-colors"
                 >
-                  Xem tất cả <ArrowRight size={10} />
+                  Xóa
                 </button>
-              </div>
+              )}
+              <button
+                type="submit"
+                disabled={loading || query.trim().length < MIN_QUERY_LEN}
+                className="absolute right-1.5 flex items-center gap-1.5 px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-bold uppercase tracking-wider transition-colors"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                <span>{loading ? 'Đang tìm...' : 'Tìm'}</span>
+              </button>
+            </div>
+          </form>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {results.map((m) => (
-                  <motion.button
-                    key={m.id}
-                    type="button"
-                    onClick={() => navigate(`/admin/movies/edit/${m.id}`)}
-                    whileHover={{ y: -2 }}
-                    transition={{ duration: 0.15 }}
-                    className="group flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-red-500/40 hover:bg-[var(--color-surface-2)]/80 text-left transition-all"
-                  >
-                    {m.posterUrl ? (
-                      <img
-                        src={m.posterUrl}
-                        alt={m.titleVn}
-                        className="w-12 h-16 object-cover rounded shadow border border-white/10 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-12 h-16 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[9px] font-bold text-gray-500 uppercase shrink-0">
-                        N/A
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-white truncate" title={m.titleVn}>
-                        {highlight(m.titleVn)}
-                      </h4>
-                      {m.titleEn && (
-                        <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={m.titleEn}>
-                          {highlight(m.titleEn)}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">
-                          {m.durationMinutes || 120} phút
-                        </span>
-                        {m.version && (
-                          <span className="text-[10px] text-[var(--color-text-muted)] truncate">
-                            • {m.version}
-                          </span>
-                        )}
-                      </div>
+          {/* Dropdown Results */}
+          <AnimatePresence>
+            {showDropdown && (
+              <motion.div
+                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -4, scale: 0.98 }}
+                transition={{ duration: 0.15 }}
+                className="absolute top-full left-0 right-0 mt-2 rounded-xl border border-[var(--color-border)] overflow-hidden z-50 shadow-2xl"
+                style={{ backgroundColor: 'var(--color-surface)', maxHeight: '480px', overflowY: 'auto' }}
+              >
+                {loading ? (
+                  <div className="flex items-center justify-center py-8 text-sm text-[var(--color-text-muted)]">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang tìm kiếm...
+                  </div>
+                ) : results.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-[var(--color-text-muted)]">
+                    Không tìm thấy phim nào với "<span className="text-white font-semibold">{query}</span>"
+                  </div>
+                ) : (
+                  <>
+                    <div className="divide-y divide-white/5">
+                      {results.map((m, i) => (
+                        <button
+                          key={m.id}
+                          onClick={() => handleMovieClick(m.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-all ${
+                            i === activeIndex
+                              ? 'bg-red-500/10 border-l-2 border-red-500'
+                              : 'hover:bg-[var(--color-surface-2)] border-l-2 border-transparent'
+                          }`}
+                        >
+                          {m.posterUrl ? (
+                            <img src={m.posterUrl} alt={m.titleVn} className="w-10 h-14 object-cover rounded shadow border border-white/10 shrink-0" />
+                          ) : (
+                            <div className="w-10 h-14 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[8px] font-bold text-gray-500 uppercase shrink-0">N/A</div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-semibold text-white truncate" title={m.titleVn}>{highlight(m.titleVn)}</h4>
+                            {m.titleEn && (
+                              <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={m.titleEn}>{highlight(m.titleEn)}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[10px] font-bold text-red-400">{m.durationMinutes || 120} phút</span>
+                              {m.version && <span className="text-[10px] text-[var(--color-text-muted)]">• {m.version}</span>}
+                              {m.fromDate && <span className="text-[10px] text-[var(--color-text-muted)]">• {m.fromDate}</span>}
+                            </div>
+                          </div>
+                          <ArrowRight size={14} className="text-[var(--color-text-muted)] shrink-0" />
+                        </button>
+                      ))}
                     </div>
-                    <ArrowRight size={14} className="text-[var(--color-text-muted)] group-hover:text-red-400 group-hover:translate-x-0.5 transition-all shrink-0" />
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                    <div className="p-3 border-t border-white/5 text-center">
+                      <button
+                        onClick={handleViewAll}
+                        className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center justify-center gap-1 w-full transition-colors"
+                      >
+                        Xem tất cả kết quả <ArrowRight size={12} />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
 
       {/* Stats Counter Section */}
