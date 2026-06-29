@@ -145,7 +145,9 @@ export default function MoviesPage() {
                     <img
                       src={movie.poster || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
                       alt={titleStr}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 will-change-transform transform-gpu"
                     />
                     {/* Overlay details */}
                     <div className="absolute inset-0 bg-black/85 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-center px-4">

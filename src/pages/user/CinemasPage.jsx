@@ -136,7 +136,7 @@ export default function CinemasPage() {
               }}
             >
               <div className="relative flex-shrink-0 w-24 rounded-xl overflow-hidden">
-                <img src={cinema.img} alt={cinema.name} className="w-full h-full object-cover" style={{ filter: 'brightness(0.65)' }} />
+                <img src={cinema.img} alt={cinema.name} loading="lazy" decoding="async" className="w-full h-full object-cover will-change-transform transform-gpu" style={{ filter: 'brightness(0.65)' }} />
                 <div className="absolute inset-0 flex flex-col justify-end p-1 gap-1">
                   <div className="flex flex-wrap gap-1">
                     {cinema.screens.slice(0, 2).map(s => (
@@ -197,7 +197,7 @@ export default function CinemasPage() {
             }}
           >
             <div className="relative aspect-video overflow-hidden">
-              <img src={cinema.img} alt={cinema.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+              <img src={cinema.img} alt={cinema.name} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 will-change-transform transform-gpu" />
               {cinema.badge && (
                 <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-black uppercase text-white shadow-lg" style={{ backgroundColor: '#d97706' }}>
                   {cinema.badge}
