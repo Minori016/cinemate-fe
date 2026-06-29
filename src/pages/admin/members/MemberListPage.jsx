@@ -11,7 +11,12 @@ import {
 export default function MemberListPage() {
   const navigate = useNavigate()
   const [members, setMembers] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+
+  // Status Modal
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [statusTarget, setStatusTarget] = useState(null)
+  const [pendingStatus, setPendingStatus] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -71,6 +76,19 @@ export default function MemberListPage() {
         </span>
       )
     }
+    if (status === 'INACTIVE') {
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+          padding: '0.2rem 0.6rem', borderRadius: '9999px',
+          fontSize: '0.7rem', fontWeight: 600,
+          background: 'rgba(100,116,139,0.1)', color: '#475569',
+          border: '1px solid rgba(100,116,139,0.25)'
+        }}>
+          Đã xóa (Vô hiệu)
+        </span>
+      )
+    }
     return (
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
@@ -84,7 +102,11 @@ export default function MemberListPage() {
     )
   }
 
-  const getStatusDotColor = (status) => status === 'ACTIVE' ? '#10b981' : '#ef4444'
+  const getStatusDotColor = (status) => {
+    if (status === 'ACTIVE') return '#10b981'
+    if (status === 'INACTIVE') return '#64748b'
+    return '#ef4444'
+  }
 
   const getInitials = (name) => {
     if (!name) return '?'
@@ -126,6 +148,30 @@ export default function MemberListPage() {
   const clearFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
+  }
+
+  const confirmUpdateStatus = (member, newStatus) => {
+    if (member.status === newStatus) return
+    setStatusTarget(member)
+    setPendingStatus(newStatus)
+    setShowStatusModal(true)
+  }
+
+  const handleUpdateStatus = () => {
+    if (!statusTarget || !pendingStatus) return
+    setLoading(true)
+    memberService.updateStatus(statusTarget.uuid || statusTarget.id, pendingStatus)
+      .then(() => {
+        setShowStatusModal(false)
+        setStatusTarget(null)
+        setPendingStatus(null)
+        load()
+      })
+      .catch(err => {
+        console.error('Update status error:', err)
+        alert('Cập nhật trạng thái thất bại!')
+        setLoading(false)
+      })
   }
 
   const hasActiveFilters = searchTerm || statusFilter !== 'all'
@@ -248,6 +294,7 @@ export default function MemberListPage() {
             { key: 'all', label: 'Tất cả', color: '#7c3aed' },
             { key: 'ACTIVE', label: 'Hoạt động', color: '#059669' },
             { key: 'LOCKED', label: 'Bị khóa', color: '#ef4444' },
+            { key: 'INACTIVE', label: 'Đã xóa', color: '#64748b' },
           ].map(filter => (
             <button
               key={filter.key}
@@ -405,6 +452,20 @@ export default function MemberListPage() {
                   paddingTop: '0.875rem',
                   borderTop: '1px solid #f1f5f9'
                 }}>
+                  <select
+                    value={member.status}
+                    onChange={(e) => confirmUpdateStatus(member, e.target.value)}
+                    style={{
+                      padding: '0 0.5rem', borderRadius: '0.375rem',
+                      border: '1px solid #e2e8f0', fontSize: '0.8125rem',
+                      background: '#f8fafc', outline: 'none', cursor: 'pointer',
+                      color: '#475569', fontWeight: 500
+                    }}
+                  >
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="LOCKED">Khóa</option>
+                    <option value="INACTIVE">Vô hiệu</option>
+                  </select>
                   <Button
                     variant="secondary"
                     style={{ flex: 1, fontSize: '0.8125rem' }}
@@ -507,7 +568,7 @@ export default function MemberListPage() {
                 </div>
                 <div>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                    Xóa thành viên
+                    Vô hiệu hóa thành viên
                   </h3>
                   <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.15rem 0 0' }}>
                     Hành động này không thể hoàn tác
@@ -516,9 +577,9 @@ export default function MemberListPage() {
               </div>
 
               <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                Bạn có chắc chắn muốn xóa thành viên{' '}
+                Bạn có chắc chắn muốn vô hiệu hóa thành viên{' '}
                 <strong style={{ color: '#1e293b' }}>"{deleteTarget.fullName}"</strong>?
-                Tất cả dữ liệu liên quan sẽ bị mất vĩnh viễn.
+                Tài khoản sẽ bị vô hiệu hóa (Đã xóa) và không thể đăng nhập vào hệ thống.
               </p>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -536,7 +597,7 @@ export default function MemberListPage() {
                     border: 'none', color: '#fff'
                   }}
                 >
-                  Xóa thành viên
+                  Vô hiệu hóa thành viên
                 </Button>
               </div>
             </motion.div>

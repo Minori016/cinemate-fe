@@ -12,7 +12,12 @@ import {
 export default function EmployeeListPage() {
   const navigate = useNavigate()
   const [employees, setEmployees] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+
+  // Status Modal
+  const [showStatusModal, setShowStatusModal] = useState(false)
+  const [statusTarget, setStatusTarget] = useState(null)
+  const [pendingStatus, setPendingStatus] = useState(null)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
@@ -98,6 +103,19 @@ export default function EmployeeListPage() {
         </span>
       )
     }
+    if (status === 'INACTIVE') {
+      return (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+          padding: '0.2rem 0.6rem', borderRadius: '9999px',
+          fontSize: '0.7rem', fontWeight: 600,
+          background: 'rgba(100,116,139,0.1)', color: '#475569',
+          border: '1px solid rgba(100,116,139,0.25)'
+        }}>
+          Đã xóa (Vô hiệu)
+        </span>
+      )
+    }
     return (
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
@@ -112,7 +130,9 @@ export default function EmployeeListPage() {
   }
 
   const getStatusDotColor = (status) => {
-    return status === 'ACTIVE' ? '#10b981' : '#ef4444'
+    if (status === 'ACTIVE') return '#10b981'
+    if (status === 'INACTIVE') return '#64748b'
+    return '#ef4444'
   }
 
   const getInitials = (name) => {
@@ -157,6 +177,30 @@ export default function EmployeeListPage() {
     setSearchTerm('')
     setRoleFilter('all')
     setStatusFilter('all')
+  }
+
+  const confirmUpdateStatus = (employee, newStatus) => {
+    if (employee.status === newStatus) return
+    setStatusTarget(employee)
+    setPendingStatus(newStatus)
+    setShowStatusModal(true)
+  }
+
+  const handleUpdateStatus = () => {
+    if (!statusTarget || !pendingStatus) return
+    setLoading(true)
+    employeeService.updateStatus(statusTarget.uuid || statusTarget.id, pendingStatus)
+      .then(() => {
+        setShowStatusModal(false)
+        setStatusTarget(null)
+        setPendingStatus(null)
+        load(page)
+      })
+      .catch(err => {
+        console.error('Update status error:', err)
+        alert('Cập nhật trạng thái thất bại!')
+        setLoading(false)
+      })
   }
 
   const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
@@ -305,6 +349,7 @@ export default function EmployeeListPage() {
             { key: 'all', label: 'Tất cả trạng thái', color: '#7c3aed' },
             { key: 'ACTIVE', label: 'Hoạt động', color: '#059669' },
             { key: 'LOCKED', label: 'Bị khóa', color: '#ef4444' },
+            { key: 'INACTIVE', label: 'Đã xóa', color: '#64748b' },
           ].map(filter => (
             <button
               key={filter.key}
@@ -453,6 +498,20 @@ export default function EmployeeListPage() {
                     paddingTop: '0.875rem',
                     borderTop: '1px solid #f1f5f9'
                   }}>
+                    <select
+                      value={employee.status}
+                      onChange={(e) => confirmUpdateStatus(employee, e.target.value)}
+                      style={{
+                        padding: '0 0.5rem', borderRadius: '0.375rem',
+                        border: '1px solid #e2e8f0', fontSize: '0.8125rem',
+                        background: '#f8fafc', outline: 'none', cursor: 'pointer',
+                        color: '#475569', fontWeight: 500
+                      }}
+                    >
+                      <option value="ACTIVE">Hoạt động</option>
+                      <option value="LOCKED">Khóa</option>
+                      <option value="INACTIVE">Vô hiệu</option>
+                    </select>
                     <Button
                       variant="secondary"
                       style={{ flex: 1, fontSize: '0.8125rem' }}
@@ -605,9 +664,9 @@ export default function EmployeeListPage() {
               </div>
 
               <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                Bạn có chắc chắn muốn xóa nhân viên{' '}
+                Bạn có chắc chắn muốn vô hiệu hóa nhân viên{' '}
                 <strong style={{ color: '#1e293b' }}>"{deleteTarget.fullName}"</strong>?
-                Tất cả dữ liệu liên quan sẽ bị mất vĩnh viễn.
+                Tài khoản sẽ bị vô hiệu hóa (Đã xóa) và không thể đăng nhập vào hệ thống.
               </p>
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -625,7 +684,93 @@ export default function EmployeeListPage() {
                     border: 'none', color: '#fff'
                   }}
                 >
-                  Xóa nhân viên
+                  Vô hiệu hóa nhân viên
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Status Confirmation Modal */}
+      <AnimatePresence>
+        {showStatusModal && statusTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '1rem'
+            }}
+            onClick={() => { setShowStatusModal(false); setStatusTarget(null); setPendingStatus(null); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              style={{
+                background: '#fff', borderRadius: '1rem', padding: '1.75rem',
+                width: '100%', maxWidth: '26rem',
+                boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem'
+              }}>
+                <div style={{
+                  width: '3rem', height: '3rem', borderRadius: '50%',
+                  background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                    Thay đổi trạng thái
+                  </h3>
+                  <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.15rem 0 0' }}>
+                    Xác nhận hành động của bạn
+                  </p>
+                </div>
+              </div>
+
+              <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                Bạn có chắc chắn muốn thay đổi trạng thái của nhân viên{' '}
+                <strong style={{ color: '#1e293b' }}>"{statusTarget.fullName}"</strong> thành{' '}
+                <strong style={{ color: '#1e293b' }}>
+                  {pendingStatus === 'ACTIVE' ? 'Hoạt động' : pendingStatus === 'LOCKED' ? 'Khóa' : 'Vô hiệu'}
+                </strong>?
+              </p>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowStatusModal(false)
+                    setStatusTarget(null)
+                    setPendingStatus(null)
+                  }}
+                  style={{ background: '#f1f5f9', color: '#475569', border: 'none' }}
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleUpdateStatus}
+                  style={{
+                    background: '#f59e0b',
+                    border: 'none', color: '#fff'
+                  }}
+                >
+                  Xác nhận
                 </Button>
               </div>
             </motion.div>

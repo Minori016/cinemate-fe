@@ -326,7 +326,7 @@ export default function HomePage() {
     movieService.getAll()
       .then(r => {
         console.log('✅ API Response:', r.data)
-        const moviesData = r.data?.result?.content || r.data?.result || []
+        const moviesData = r.data || []
         console.log('🎬 Movies to set:', moviesData.map(m => ({
           id: m.id,
           titleVn: m.titleVn,
@@ -416,7 +416,7 @@ export default function HomePage() {
             <AnimatePresence mode="sync">
               {bannerMovies.map((movie, index) => {
                 if (index !== currentBannerIndex) return null
-                const posterUrl = movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
+                const posterUrl = movie.poster || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
                 const detailLink = `/movies/${movie.id}`
 
                 return (
@@ -452,7 +452,7 @@ export default function HomePage() {
                             pointerEvents: 'none',
                           }}
                           allow="autoplay; encrypted-media"
-                          title={`${movie.titleVn || movie.titleEn} Trailer Backdrop`}
+                          title={`${movie.title || ''} Trailer Backdrop`}
                           tabIndex="-1"
                         />
                       ) : (
@@ -534,7 +534,7 @@ export default function HomePage() {
                               margin: 0,
                             }}
                           >
-                            {movie.titleVn || movie.titleEn}
+                            {movie.title || ''}
                           </h1>
 
                           {/* Meta */}
@@ -624,7 +624,7 @@ export default function HomePage() {
                             <div className="relative w-[170px] bg-gray-900" style={{ aspectRatio: '2/3' }}>
                               <img
                                 src={posterUrl}
-                                alt={movie.titleVn}
+                                alt={movie.title || ''}
                                 className="w-full h-full object-cover rounded-2xl"
                                 style={{
                                   boxShadow: '0 16px 36px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.08)',
@@ -953,7 +953,7 @@ export default function HomePage() {
                             </div>
                             <motion.img
                               src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
-                              alt={movie.titleVn}
+                              alt={movie.title || ''}
                               className="w-full h-full object-cover relative z-10"
                               whileHover={{ scale: 1.08 }}
                               transition={{ duration: 0.4 }}
@@ -968,7 +968,7 @@ export default function HomePage() {
                               <h3 className="text-white font-bold text-xl mb-6 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>{movie.titleVn}</h3>
                               <div className="flex flex-col gap-4">
                                 <div className="flex items-center gap-3"><Tag size={18} className="text-red-500" /><span className="text-white text-sm font-semibold line-clamp-1">{genresStr}</span></div>
-                                <div className="flex items-center gap-3"><Clock size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.durationMinutes || 120} phút</span></div>
+                                <div className="flex items-center gap-3"><Clock size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.duration || 120} phút</span></div>
                                 <div className="flex items-center gap-3"><Globe size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{countriesStr}</span></div>
                                 <div className="flex items-center gap-3"><MessageSquare size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.language || 'Phụ Đề'}</span></div>
                               </div>

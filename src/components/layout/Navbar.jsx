@@ -95,10 +95,10 @@ export default function Navbar() {
       const delayDebounce = setTimeout(() => {
         movieService.getAll({ search: searchTerm.trim(), size: 6 })
           .then(res => {
-            const moviesList = res.data?.result?.content || res.data?.result || []
+            const moviesList = res.data || []
             const formatted = moviesList.map(movie => ({
               id: movie.id,
-              title: movie.titleVn || movie.titleEn || 'Phim Chưa Đặt Tên',
+              title: movie.title || movie.titleEn || 'Phim Chưa Đặt Tên',
               route: `/movies/${movie.id}`
             }))
             setSuggestions(formatted)

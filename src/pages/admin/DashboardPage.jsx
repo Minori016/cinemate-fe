@@ -1,38 +1,41 @@
-import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity } from 'lucide-react'
-import { motion } from 'motion/react'
+import { useState } from 'react'
+import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity, Search, ArrowRight, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'motion/react'
+import { useNavigate } from 'react-router-dom'
+import { movieService } from '../../services/movieService'
 
 const stats = [
-  { 
-    label: 'Tổng phim', 
-    value: '24', 
-    icon: Film, 
-    color: 'from-red-500/20 to-red-500/5', 
-    iconColor: 'text-red-500', 
-    borderColor: 'group-hover:border-red-500/30' 
+  {
+    label: 'Tổng phim',
+    value: '24',
+    icon: Film,
+    color: 'from-red-500/20 to-red-500/5',
+    iconColor: 'text-red-500',
+    borderColor: 'group-hover:border-red-500/30'
   },
-  { 
-    label: 'Nhân viên', 
-    value: '12', 
-    icon: Users, 
-    color: 'from-blue-500/20 to-blue-500/5', 
-    iconColor: 'text-blue-400', 
-    borderColor: 'group-hover:border-blue-500/30' 
+  {
+    label: 'Nhân viên',
+    value: '12',
+    icon: Users,
+    color: 'from-blue-500/20 to-blue-500/5',
+    iconColor: 'text-blue-400',
+    borderColor: 'group-hover:border-blue-500/30'
   },
-  { 
-    label: 'Vé bán hôm nay', 
-    value: '148', 
-    icon: Ticket, 
-    color: 'from-green-500/20 to-green-500/5', 
-    iconColor: 'text-green-400', 
-    borderColor: 'group-hover:border-green-500/30' 
+  {
+    label: 'Vé bán hôm nay',
+    value: '148',
+    icon: Ticket,
+    color: 'from-green-500/20 to-green-500/5',
+    iconColor: 'text-green-400',
+    borderColor: 'group-hover:border-green-500/30'
   },
-  { 
-    label: 'Khuyến mãi hoạt động', 
-    value: '5', 
-    icon: Tag, 
-    color: 'from-yellow-500/20 to-yellow-500/5', 
-    iconColor: 'text-yellow-400', 
-    borderColor: 'group-hover:border-yellow-500/30' 
+  {
+    label: 'Khuyến mãi hoạt động',
+    value: '5',
+    icon: Tag,
+    color: 'from-yellow-500/20 to-yellow-500/5',
+    iconColor: 'text-yellow-400',
+    borderColor: 'group-hover:border-yellow-500/30'
   },
 ]
 
@@ -54,6 +57,52 @@ const revenueData = [
 ]
 
 export default function DashboardPage() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
+  const navigate = useNavigate()
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault()
+    const keyword = query.trim()
+    if (!keyword) return
+
+    setLoading(true)
+    setSearched(true)
+    try {
+      const r = await movieService.getAll({ search: keyword })
+      const result = r.data?.result
+      const list = result?.content || (Array.isArray(result) ? result : [])
+      setResults(list.slice(0, 5))
+    } catch (err) {
+      console.error('Search error:', err)
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleClear = () => {
+    setQuery('')
+    setResults([])
+    setSearched(false)
+  }
+
+  const highlight = (text) => {
+    if (!query.trim() || !text) return text
+    const keyword = query.trim()
+    const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+    const parts = String(text).split(regex)
+    return parts.map((p, i) =>
+      regex.test(p) ? (
+        <mark key={i} className="bg-red-500/30 text-white rounded px-0.5">{p}</mark>
+      ) : (
+        <span key={i}>{p}</span>
+      )
+    )
+  }
+
   return (
     <motion.div
       className="space-y-8"
@@ -62,15 +111,15 @@ export default function DashboardPage() {
       transition={{ duration: 0.35 }}
     >
       {/* Welcome & Overview Header */}
-      <motion.div 
+      <motion.div
         className="flex flex-col md:flex-row md:items-center justify-between gap-4"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
         <div>
-          <h1 
-            className="text-4xl text-white font-bold tracking-wider uppercase" 
+          <h1
+            className="text-4xl text-white font-bold tracking-wider uppercase"
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Tổng Quan Hệ Thống
@@ -79,7 +128,7 @@ export default function DashboardPage() {
             Báo cáo thống kê thời gian thực & hoạt động bán vé hôm nay.
           </p>
         </div>
-        <div 
+        <div
           className="flex items-center gap-2.5 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md"
           style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
         >
@@ -88,6 +137,148 @@ export default function DashboardPage() {
             Hệ thống trực tuyến
           </span>
         </div>
+      </motion.div>
+
+      {/* Movie Search Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.1 }}
+        className="rounded-xl border border-[var(--color-border)] p-5 space-y-4"
+        style={{ backgroundColor: 'var(--color-surface)' }}
+      >
+        <div className="flex items-center gap-2">
+          <Search className="w-4 h-4 text-red-500" />
+          <h2 className="text-sm font-bold text-white uppercase tracking-widest" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            Tìm kiếm phim nhanh
+          </h2>
+        </div>
+
+        <form onSubmit={handleSearch} className="relative">
+          <div className="relative flex items-center">
+            <Search className="absolute left-4 w-4 h-4 text-[var(--color-text-muted)] pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Nhập tên phim (VN hoặc ENG) rồi nhấn Enter..."
+              className="w-full pl-11 pr-32 py-3 rounded-lg bg-[var(--color-surface-2)] border border-white/10 text-sm text-white placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-red-500/50 focus:ring-2 focus:ring-red-500/20 transition-all"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="absolute right-24 text-xs text-[var(--color-text-muted)] hover:text-white px-2 py-1"
+              >
+                Xóa
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="absolute right-1.5 flex items-center gap-1.5 px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-bold uppercase tracking-wider transition-colors"
+              style={{ fontFamily: 'Montserrat, sans-serif' }}
+            >
+              {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+              <span>{loading ? 'Đang tìm...' : 'Tìm'}</span>
+            </button>
+          </div>
+        </form>
+
+        {/* Search Results */}
+        <AnimatePresence mode="wait">
+          {loading && (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center py-8 text-sm text-[var(--color-text-muted)]"
+            >
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Đang tìm kiếm...
+            </motion.div>
+          )}
+
+          {!loading && searched && results.length === 0 && (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="text-center py-8 text-sm text-[var(--color-text-muted)]"
+            >
+              Không tìm thấy phim nào với từ khóa "<span className="text-white font-semibold">{query}</span>".
+            </motion.div>
+          )}
+
+          {!loading && results.length > 0 && (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="space-y-2"
+            >
+              <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest px-1">
+                <span>Kết quả ({results.length})</span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/movies')}
+                  className="text-red-400 hover:text-red-300 flex items-center gap-1 normal-case tracking-normal"
+                >
+                  Xem tất cả <ArrowRight size={10} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {results.map((m) => (
+                  <motion.button
+                    key={m.id}
+                    type="button"
+                    onClick={() => navigate(`/admin/movies/edit/${m.id}`)}
+                    whileHover={{ y: -2 }}
+                    transition={{ duration: 0.15 }}
+                    className="group flex items-center gap-3 p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-red-500/40 hover:bg-[var(--color-surface-2)]/80 text-left transition-all"
+                  >
+                    {m.posterUrl ? (
+                      <img
+                        src={m.posterUrl}
+                        alt={m.titleVn}
+                        className="w-12 h-16 object-cover rounded shadow border border-white/10 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-12 h-16 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[9px] font-bold text-gray-500 uppercase shrink-0">
+                        N/A
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-white truncate" title={m.titleVn}>
+                        {highlight(m.titleVn)}
+                      </h4>
+                      {m.titleEn && (
+                        <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={m.titleEn}>
+                          {highlight(m.titleEn)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider">
+                          {m.durationMinutes || 120} phút
+                        </span>
+                        {m.version && (
+                          <span className="text-[10px] text-[var(--color-text-muted)] truncate">
+                            • {m.version}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <ArrowRight size={14} className="text-[var(--color-text-muted)] group-hover:text-red-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Stats Counter Section */}
@@ -124,9 +315,9 @@ export default function DashboardPage() {
 
       {/* Main Analysis Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Revenue chart mockup */}
-        <div 
+        <div
           className="lg:col-span-2 rounded-xl border border-[var(--color-border)] p-6 space-y-6"
           style={{ backgroundColor: 'var(--color-surface)' }}
         >
@@ -165,7 +356,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent booking list */}
-        <div 
+        <div
           className="rounded-xl border border-[var(--color-border)] p-6 space-y-6"
           style={{ backgroundColor: 'var(--color-surface)' }}
         >
@@ -201,7 +392,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="text-right">
                   <span className="text-xs font-bold text-white block" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {b.price}
