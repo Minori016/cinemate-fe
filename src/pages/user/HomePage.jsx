@@ -428,42 +428,23 @@ export default function HomePage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.8, ease: 'easeInOut' }}
                   >
-                    {/* Backdrop without blur, recessed look */}
+                    {/* Backdrop with cinematic zoom - Replaced YouTube iframe with HD image to fix lag and remove ugly YouTube playlist UI */}
                     <motion.div
                       className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none bg-gradient-to-br from-red-950/60 to-gray-900"
-                      initial={{ scale: 1.03 }}
+                      initial={{ scale: 1.08 }}
                       animate={{ scale: 1 }}
-                      transition={{ duration: 8, ease: 'linear' }}
+                      transition={{ duration: 10, ease: 'linear' }}
                       style={{ pointerEvents: 'none' }}
                     >
-                      {movie.trailerUrl && getYoutubeVideoId(movie.trailerUrl) ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${getYoutubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&loop=1&playlist=${getYoutubeVideoId(movie.trailerUrl)}&controls=0&showinfo=0&rel=0&iv_load_policy=3&modestbranding=1&enablejsapi=1`}
-                          className="absolute pointer-events-none filter brightness-[0.85] saturate(1.1) contrast(1.0)"
-                          style={{
-                            top: '50%',
-                            left: '50%',
-                            width: '100%',
-                            height: '100%',
-                            minHeight: '100%',
-                            minWidth: '100%',
-                            transform: 'translate(-50%, -50%) scale(1.5)',
-                            border: 'none',
-                            pointerEvents: 'none',
-                          }}
-                          allow="autoplay; encrypted-media"
-                          title={`${movie.title || ''} Trailer Backdrop`}
-                          tabIndex="-1"
-                        />
-                      ) : (
-                        <img
-                          src={posterUrl}
-                          alt=""
-                          className="w-full h-full object-cover"
-                          style={{ pointerEvents: 'none' }}
-                          onError={handleImageError}
-                        />
-                      )}
+                      <img
+                        src={posterUrl}
+                        alt=""
+                        fetchPriority="high"
+                        decoding="async"
+                        className="w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] will-change-transform transform-gpu"
+                        style={{ pointerEvents: 'none' }}
+                        onError={handleImageError}
+                      />
                     </motion.div>
 
                     {/* Dark Vignette / Recessed Gradients */}
@@ -919,7 +900,7 @@ export default function HomePage() {
 
               <div className="w-full overflow-hidden">
                 <div
-                  className="flex gap-6 transition-transform duration-500 ease-in-out pb-8 w-max"
+                  className="flex gap-6 transition-transform duration-500 ease-in-out pb-8 w-max will-change-transform transform-gpu"
                   style={{ transform: `translateX(-${currentIndex * (240 + 24)}px)` }}
                 >
                   {movies.map((movie, index) => {
@@ -954,7 +935,9 @@ export default function HomePage() {
                             <motion.img
                               src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
                               alt={movie.title || ''}
-                              className="w-full h-full object-cover relative z-10"
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover relative z-10 will-change-transform transform-gpu"
                               whileHover={{ scale: 1.08 }}
                               transition={{ duration: 0.4 }}
                               onError={handleImageError}
