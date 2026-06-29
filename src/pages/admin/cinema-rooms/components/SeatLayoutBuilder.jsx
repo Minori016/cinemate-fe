@@ -876,18 +876,18 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
                       if (cell.type === 'STANDARD') {
                         seatStyle = isMaintenance 
                           ? 'bg-amber-50/40 border-2 border-amber-500 text-amber-600 shadow-sm font-semibold' 
-                          : 'bg-slate-50 border border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-700 shadow-sm'
+                          : 'bg-slate-500 border border-slate-600 text-white hover:bg-slate-600 shadow-sm'
                       } else if (cell.type === 'VIP') {
                         seatStyle = isMaintenance 
                           ? 'bg-amber-50/40 border-2 border-amber-500 text-amber-600 shadow-sm font-semibold' 
-                          : 'bg-blue-50 border border-blue-200 text-blue-500 hover:bg-blue-100/70 shadow-[0_0_8px_rgba(59,130,246,0.05)]'
+                          : 'bg-blue-500 border border-blue-600 text-white hover:bg-blue-600 shadow-[0_0_8px_rgba(59,130,246,0.2)]'
                       } else if (cell.type === 'COUPLE') {
                         seatStyle = isMaintenance 
                           ? 'bg-amber-50/40 border-2 border-amber-500 text-amber-600 shadow-sm font-semibold' 
-                          : 'bg-red-500 border border-red-600 text-white hover:bg-red-600 shadow-[0_0_8px_rgba(239,68,68,0.1)]'
+                          : 'bg-red-600 border border-red-700 text-white hover:bg-red-700 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
                       } else {
                         // Empty / Walkway
-                        seatStyle = 'border border-dashed border-slate-100 bg-transparent text-slate-300 hover:bg-slate-50 hover:border-slate-400 transition-colors'
+                        seatStyle = 'border border-dashed border-slate-200 bg-transparent text-slate-400 hover:bg-slate-100 hover:border-slate-400 transition-colors'
                       }
 
                       return (
@@ -1004,15 +1004,15 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
               <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Chú thích loại ghế</div>
               <div className="flex flex-wrap items-center gap-8">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded bg-slate-50 border border-slate-200" />
+                  <div className="w-5 h-5 rounded bg-slate-500 border border-slate-600" />
                   <span className="text-xs text-slate-600 font-semibold">Standard (Thường)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded bg-blue-50 border border-blue-200" />
+                  <div className="w-5 h-5 rounded bg-blue-500 border border-blue-600" />
                   <span className="text-xs text-slate-600 font-semibold">VIP (Cao cấp)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-5 rounded bg-red-500 border border-red-600" />
+                  <div className="w-10 h-5 rounded bg-red-600 border border-red-700" />
                   <span className="text-xs text-slate-600 font-semibold">Couple (Ghế đôi)</span>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -1088,25 +1088,25 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
             <span className="text-3xl font-extrabold text-slate-900 font-mono leading-none">{stats.totalPhysical}</span>
           </div>
           
-          <div className="flex justify-between items-center p-3 rounded-xl border border-slate-150 bg-slate-50 shadow-sm">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-slate-150 bg-slate-100 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="w-3.5 h-3.5 rounded bg-slate-200 border border-slate-350 shadow-sm" />
+              <div className="w-3.5 h-3.5 rounded bg-slate-500 border border-slate-600 shadow-sm" />
               <span className="text-xs text-slate-600 font-semibold">Ghế Standard</span>
             </div>
             <span className="font-bold text-slate-800 text-sm font-mono">{stats.standard}</span>
           </div>
 
-          <div className="flex justify-between items-center p-3 rounded-xl border border-blue-150 bg-blue-50/50 text-blue-700 shadow-sm">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-blue-150 bg-blue-100 text-blue-700 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="w-3.5 h-3.5 rounded bg-blue-200 border border-blue-350 shadow-sm" />
+              <div className="w-3.5 h-3.5 rounded bg-blue-500 border border-blue-600 shadow-sm" />
               <span className="text-xs text-blue-600 font-semibold">Ghế VIP</span>
             </div>
             <span className="font-bold text-blue-800 text-sm font-mono">{stats.vip}</span>
           </div>
 
-          <div className="flex justify-between items-center p-3 rounded-xl border border-red-150 bg-red-50 text-red-700 shadow-sm">
+          <div className="flex justify-between items-center p-3 rounded-xl border border-red-150 bg-red-100 text-red-700 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-3.5 rounded bg-red-200 border border-red-350 shadow-sm" />
+              <div className="w-7 h-3.5 rounded bg-red-600 border border-red-700 shadow-sm" />
               <span className="text-xs text-red-650 font-semibold">Ghế Đôi</span>
             </div>
             <span className="font-bold text-red-800 text-sm font-mono">{stats.couple}</span>
