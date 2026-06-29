@@ -952,43 +952,43 @@ export default function ProfilePage() {
               }
               const isActive = activeTab === tabKey
               return (
-                <button
-                  key={tabKey}
-                  onClick={() => setActiveTab(tabKey)}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm font-bold text-left cursor-pointer group border outline-none"
-                  style={{
-                    fontFamily: 'Montserrat, sans-serif',
-                    background: isActive ? 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)' : 'rgba(255,255,255,0.03)',
-                    color: isActive ? '#white' : '#9ca3af',
-                    borderColor: isActive ? 'rgba(229,9,20,0.3)' : 'rgba(255,255,255,0.05)',
-                    boxShadow: isActive ? '0 8px 24px rgba(229,9,20,0.25)' : 'none',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)';
-                      e.currentTarget.style.color = '#fff';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!isActive) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)';
-                      e.currentTarget.style.color = '#9ca3af';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
-                    }
-                  }}
-                >
-                  <span 
-                    className="material-symbols-outlined text-lg transition-transform duration-200 group-hover:scale-110"
-                    style={{ 
-                      color: isActive ? '#fff' : 'var(--color-primary)',
-                      fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0"
+                <div key={tabKey} className="relative">
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeProfileTabIndicator"
+                      className="absolute inset-0 rounded-xl"
+                      style={{
+                        background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
+                        boxShadow: '0 8px 24px rgba(229,9,20,0.25)',
+                      }}
+                      initial={false}
+                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <motion.button
+                    onClick={() => setActiveTab(tabKey)}
+                    className="relative z-10 w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm font-bold text-left cursor-pointer group border outline-none"
+                    style={{
+                      fontFamily: 'Montserrat, sans-serif',
+                      backgroundColor: isActive ? 'transparent' : 'rgba(255,255,255,0.03)',
+                      color: isActive ? '#fff' : '#9ca3af',
+                      borderColor: isActive ? 'rgba(229,9,20,0.3)' : 'rgba(255,255,255,0.05)',
                     }}
+                    whileHover={!isActive ? { backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', borderColor: 'rgba(255,255,255,0.1)' } : {}}
+                    whileTap={{ scale: 0.98 }}
                   >
-                    {tabIcons[tabKey]}
-                  </span>
-                  <span className="truncate">{tabLabels[tabKey]}</span>
-                </button>
+                    <span 
+                      className="material-symbols-outlined text-lg transition-transform duration-200 group-hover:scale-110"
+                      style={{ 
+                        color: isActive ? '#fff' : 'var(--color-primary)',
+                        fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0"
+                      }}
+                    >
+                      {tabIcons[tabKey]}
+                    </span>
+                    <span className="truncate">{tabLabels[tabKey]}</span>
+                  </motion.button>
+                </div>
               )
             })}
           </div>
