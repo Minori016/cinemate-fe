@@ -307,7 +307,7 @@ export default function PromotionListPage() {
         ) : (
           <Table columns={columns} data={filtered} actions={row => (
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/promotions/edit/${row.id}`)}>
+              <Button size="sm" variant="info" onClick={() => navigate(`/admin/promotions/edit/${row.id}`)}>
                 <Pencil size={12} />
               </Button>
               <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>

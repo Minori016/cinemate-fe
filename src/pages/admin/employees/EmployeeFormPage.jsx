@@ -35,6 +35,10 @@ const ERROR_TEXT = {
 }
 
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+const USERNAME_REGEX = /^[a-zA-Z0-9._-]{3,28}$/
+const PHONE_REGEX = /^0[3|5|7|8|9][0-9]{8}$/
+const IDENTITY_REGEX = /^\d{9}$|^\d{12}$/
 
 export default function EmployeeFormPage() {
   const navigate = useNavigate()
@@ -100,13 +104,41 @@ export default function EmployeeFormPage() {
   const validate = () => {
     const errs = {}
     if (!form.username.trim()) errs.username = 'Tài khoản không được để trống'
+    else if (!USERNAME_REGEX.test(form.username)) {
+      errs.username = 'Tài khoản 3-28 ký tự, chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang'
+    }
     if (!form.email.trim()) errs.email = 'Email không được để trống'
-    else if (!/^\S+@\S+\.\S+$/.test(form.email)) errs.email = 'Email không hợp lệ'
+    else if (!EMAIL_REGEX.test(form.email)) errs.email = 'Email không hợp lệ (vd: ten@example.com)'
     if (!form.fullName.trim()) errs.fullName = 'Họ tên không được để trống'
-    if (!form.dateOfBirth) errs.dateOfBirth = 'Ngày sinh không được để trống'
+    else if (form.fullName.trim().length < 2) errs.fullName = 'Họ tên tối thiểu 2 ký tự'
+    if (!form.dateOfBirth) {
+      errs.dateOfBirth = 'Ngày sinh không được để trống'
+    } else {
+      const dob = new Date(form.dateOfBirth)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      if (isNaN(dob.getTime())) {
+        errs.dateOfBirth = 'Ngày sinh không hợp lệ'
+      } else if (dob > today) {
+        errs.dateOfBirth = 'Ngày sinh không được ở tương lai'
+      } else {
+        const age = today.getFullYear() - dob.getFullYear()
+        const m = today.getMonth() - dob.getMonth()
+        const isUnder18 = m < 0 || (m === 0 && today.getDate() < dob.getDate())
+        const realAge = isUnder18 ? age - 1 : age
+        if (realAge < 18) errs.dateOfBirth = `Nhân viên phải từ 18 tuổi trở lên (hiện tại ${realAge} tuổi)`
+      }
+    }
     if (!form.phoneNumber.trim()) errs.phoneNumber = 'SĐT không được để trống'
+    else if (!PHONE_REGEX.test(form.phoneNumber.trim())) {
+      errs.phoneNumber = 'SĐT phải có 10 chữ số và bắt đầu bằng 0 (vd: 0912345678)'
+    }
     if (!form.address.trim()) errs.address = 'Địa chỉ không được để trống'
+    else if (form.address.trim().length < 5) errs.address = 'Địa chỉ quá ngắn (tối thiểu 5 ký tự)'
     if (!form.identityCard.trim()) errs.identityCard = 'CMND/CCCD không được để trống'
+    else if (!IDENTITY_REGEX.test(form.identityCard.trim())) {
+      errs.identityCard = 'CMND phải 9 chữ số hoặc CCCD phải 12 chữ số'
+    }
     if (!isEditMode) {
       if (!form.password) errs.password = 'Mật khẩu không được để trống'
       else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
@@ -266,7 +298,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('username')}
                     onMouseEnter={e => { if (!focused.username && !errors.username) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.username && !errors.username) e.target.style.borderColor = errors.username ? '#ef4444' : '#e5e7eb' }}
-                    maxLength={28}
+                    maxLength={50}
                     readOnly={isEditMode}
                     title={isEditMode ? 'Không thể thay đổi tài khoản khi cập nhật' : ''}
                   />
@@ -285,7 +317,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('email')}
                     onMouseEnter={e => { if (!focused.email && !errors.email) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.email && !errors.email) e.target.style.borderColor = errors.email ? '#ef4444' : '#e5e7eb' }}
-                    maxLength={28}
+                    maxLength={100}
                   />
                   {errors.email && <span style={ERROR_TEXT}>{errors.email}</span>}
                 </div>
@@ -364,7 +396,7 @@ export default function EmployeeFormPage() {
                     style={getInputStyle('fullName')}
                     onMouseEnter={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.fullName && !errors.fullName) e.target.style.borderColor = errors.fullName ? '#ef4444' : '#e5e7eb' }}
-                    maxLength={28}
+                    maxLength={100}
                   />
                   {errors.fullName && <span style={ERROR_TEXT}>{errors.fullName}</span>}
                 </div>
@@ -399,13 +431,13 @@ export default function EmployeeFormPage() {
                   </label>
                   <input
                     name="phoneNumber" type="tel" placeholder="0901234567" value={form.phoneNumber}
-                    onChange={e => update('phoneNumber', e.target.value)}
+                    onChange={e => update('phoneNumber', e.target.value.replace(/\D/g, ''))}
                     onFocus={() => setFocused(f => ({ ...f, phoneNumber: true }))}
                     onBlur={() => setFocused(f => ({ ...f, phoneNumber: false }))}
                     style={getInputStyle('phoneNumber')}
                     onMouseEnter={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = '#a78bfa' }}
                     onMouseLeave={e => { if (!focused.phoneNumber && !errors.phoneNumber) e.target.style.borderColor = errors.phoneNumber ? '#ef4444' : '#e5e7eb' }}
-                    maxLength={28}
+                    maxLength={10}
                   />
                   {errors.phoneNumber && <span style={ERROR_TEXT}>{errors.phoneNumber}</span>}
                 </div>
@@ -414,32 +446,32 @@ export default function EmployeeFormPage() {
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
                   Địa chỉ <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <input
-                  name="address" type="text" placeholder="123 Đường ABC, Quận XYZ, TP.HCM" value={form.address}
-                  onChange={e => update('address', e.target.value)}
-                  onFocus={() => setFocused(f => ({ ...f, address: true }))}
-                  onBlur={() => setFocused(f => ({ ...f, address: false }))}
-                  style={getInputStyle('address')}
-                  onMouseEnter={e => { if (!focused.address && !errors.address) e.target.style.borderColor = '#a78bfa' }}
-                  onMouseLeave={e => { if (!focused.address && !errors.address) e.target.style.borderColor = errors.address ? '#ef4444' : '#e5e7eb' }}
-                  maxLength={28}
-                />
+<input
+                    name="address" type="text" placeholder="123 Đường ABC, Quận XYZ, TP.HCM" value={form.address}
+                    onChange={e => update('address', e.target.value)}
+                    onFocus={() => setFocused(f => ({ ...f, address: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, address: false }))}
+                    style={getInputStyle('address')}
+                    onMouseEnter={e => { if (!focused.address && !errors.address) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.address && !errors.address) e.target.style.borderColor = errors.address ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={255}
+                  />
                 {errors.address && <span style={ERROR_TEXT}>{errors.address}</span>}
               </div>
               <div style={{ marginTop: '16px' }}>
                 <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
                   Số CMND / CCCD <span style={{ color: '#ef4444' }}>*</span>
                 </label>
-                <input
-                  name="identityCard" type="text" placeholder="123456789012" value={form.identityCard}
-                  onChange={e => update('identityCard', e.target.value)}
-                  onFocus={() => setFocused(f => ({ ...f, identityCard: true }))}
-                  onBlur={() => setFocused(f => ({ ...f, identityCard: false }))}
-                  style={getInputStyle('identityCard')}
-                  onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
-                  onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
-                  maxLength={28}
-                />
+<input
+                    name="identityCard" type="text" placeholder="123456789012" value={form.identityCard}
+                    onChange={e => update('identityCard', e.target.value.replace(/\D/g, ''))}
+                    onFocus={() => setFocused(f => ({ ...f, identityCard: true }))}
+                    onBlur={() => setFocused(f => ({ ...f, identityCard: false }))}
+                    style={getInputStyle('identityCard')}
+                    onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
+                    onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
+                    maxLength={12}
+                  />
                 {errors.identityCard && <span style={ERROR_TEXT}>{errors.identityCard}</span>}
               </div>
             </div>
@@ -584,9 +616,11 @@ export default function EmployeeFormPage() {
                 {[
                   isEditMode ? 'Mật khẩu: để trống nếu giữ nguyên' : 'Mật khẩu tối thiểu 8 ký tự',
                   'Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt',
-                  'Tài khoản phải là duy nhất (3-28 ký tự)',
+                  'Tài khoản 3-28 ký tự, chỉ gồm chữ, số, dấu chấm, gạch dưới hoặc gạch ngang',
                   'Tài khoản không thể thay đổi khi cập nhật',
-                  'CMND/CCCD và địa chỉ tối đa 28 ký tự',
+                  'CMND 9 chữ số hoặc CCCD 12 chữ số',
+                  'SĐT VN 10 chữ số, bắt đầu bằng 0',
+                  'Nhân viên phải từ 18 tuổi trở lên',
                 ].map((note, i) => (
                   <li key={i} style={{ fontSize: '12px', color: '#94a3b8', lineHeight: '1.5' }}>{note}</li>
                 ))}

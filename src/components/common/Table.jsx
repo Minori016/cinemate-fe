@@ -53,7 +53,7 @@ export default function Table({ columns, data, actions, emptyMessage = 'Không c
                     <td
                       key={col.key}
                       className="px-5 py-3.5"
-                      style={{ color: 'var(--color-text)' }}
+                      style={{ color: '#1e293b' }}
                     >
                       {col.render ? col.render(row) : row[col.key]}
                     </td>

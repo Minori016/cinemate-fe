@@ -357,8 +357,7 @@ export default function SeatSelectionPage() {
 
   return (
     <motion.div className="bg-[#06080F] text-[#e2e2e2] min-h-screen flex flex-col font-sans selection:bg-red-900 selection:text-white pb-32" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
-        .seat-btn { transition: all 0.2s ease; cursor: pointer; }
+      <style>{`.seat-btn { transition: all 0.2s ease; cursor: pointer; }
         .seat-btn:hover:not(.occupied):not(:disabled) { transform: scale(1.15); box-shadow: 0 0 8px rgba(255, 255, 255, 0.2); }
         .seat-btn.selected { background-color: var(--color-primary) !important; border-color: var(--color-primary) !important; color: #fff !important; box-shadow: 0 0 12px var(--color-primary); }
         .seat-btn.occupied { background-color: #282a2b !important; border-color: #4e4353 !important; color: #6b7280 !important; cursor: not-allowed; opacity: 0.4; }

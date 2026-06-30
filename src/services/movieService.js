@@ -36,6 +36,32 @@ const mapMovieFromBackend = (data) => {
 }
 
 export const movieService = {
+  // POST /api/v1/admin/movies (multipart/form-data)
+  createAdmin: async (movieData, posterFile = null) => {
+    const formData = new FormData()
+    formData.append('movie', JSON.stringify(movieData))
+    if (posterFile) {
+      formData.append('posterFile', posterFile)
+    }
+    const res = await api.post('/api/v1/admin/movies', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return res.data
+  },
+
+  // PUT /api/v1/admin/movies/{id} (multipart/form-data)
+  updateAdmin: async (id, movieData, posterFile = null) => {
+    const formData = new FormData()
+    formData.append('movie', JSON.stringify(movieData))
+    if (posterFile) {
+      formData.append('posterFile', posterFile)
+    }
+    const res = await api.put(`/api/v1/admin/movies/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return res.data
+  },
+
   // GET /api/v1/movies?page=0&size=10&search=&genreId=&status=
   getAll: async (params = {}) => {
     const res = await api.get('/api/v1/movies', { params })
@@ -63,5 +89,25 @@ export const movieService = {
   getActors: async (id) => {
     const res = await api.get(`/api/v1/movies/${id}/actors`)
     return res.data?.result || res.data || []
+  },
+
+  // GET /api/v1/genres
+  getGenres: async () => {
+    const res = await api.get('/api/v1/genres')
+    return res.data
+  },
+
+  // GET /api/v1/countries
+  getCountries: async () => {
+    const res = await api.get('/api/v1/countries')
+    return res.data
+  },
+
+  // GET /api/v1/cinema-rooms
+  getCinemaRooms: async (cinemaId = null) => {
+    const res = await api.get('/api/v1/cinema-rooms', {
+      params: cinemaId ? { cinemaId } : {}
+    })
+    return res.data
   },
 }

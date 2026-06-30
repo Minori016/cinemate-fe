@@ -290,7 +290,7 @@ export default function CinemaRoomListPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h1 
-            className="text-4xl text-white font-black tracking-wider uppercase" 
+            className="text-4xl text-gray-900 font-black tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif' }}
           >
             Quản lý phòng chiếu
@@ -347,9 +347,9 @@ export default function CinemaRoomListPage() {
         </div>
         <button
           type="submit"
-          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:bg-[var(--color-surface-container-highest)] hover:border-red-500/40 text-white font-bold px-6 rounded-xl flex items-center gap-2 transition-all cursor-pointer text-xs uppercase tracking-wider"
+          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:bg-[var(--color-surface-container-highest)] hover:border-red-500/40 text-[#1e293b] font-bold px-6 rounded-xl flex items-center gap-2 transition-all cursor-pointer text-xs uppercase tracking-wider"
         >
-          <Search size={14} />
+          <Search size={14} className="text-[#1e293b]" />
           Tìm kiếm
         </button>
         {activeSearch && (
@@ -380,7 +380,7 @@ export default function CinemaRoomListPage() {
                 <select
                   value={row.status || 'ACTIVE'}
                   onChange={(e) => handleStatusChange(row, e.target.value)}
-                  className="bg-[#181c2c] border border-white/10 rounded-lg text-xs py-1 px-2.5 text-white font-semibold focus:outline-none focus:border-red-500 cursor-pointer shadow-sm"
+                  className="bg-white border border-gray-200 rounded-lg text-xs py-1 px-2.5 text-gray-800 font-semibold focus:outline-none focus:border-red-500 cursor-pointer shadow-sm"
                 >
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="MAINTENANCE">MAINTENANCE</option>

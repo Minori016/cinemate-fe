@@ -13,9 +13,11 @@ const variantClasses = {
   ghost:
     'bg-transparent text-[var(--color-text-muted)] hover:text-white hover:bg-white/5',
   danger:
-    'bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/30 hover:text-red-300',
+    'bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/50 hover:text-red-200 hover:border-red-400/60',
   success:
     'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25',
+  info:
+    'bg-blue-500/20 text-blue-300 border border-blue-400/30 hover:bg-blue-600/50 hover:text-blue-100 hover:border-blue-400/60',
 }
 
 const sizeClasses = {
@@ -38,7 +40,6 @@ export default function Button({
 
   return (
     <motion.button
-      whileHover={{ scale: 1.03, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
       whileTap={{ scale: 0.97, transition: { type: 'spring', stiffness: 500, damping: 25 } }}
       className={`${baseClasses} ${variantStyle} ${sizeClasses[size]} ${className}`}
       {...props}

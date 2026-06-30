@@ -255,10 +255,10 @@ export default function EmployeeListPage() {
         marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem'
       }}>
         <div>
-          <h1 style={{
-            fontSize: '1.75rem', fontWeight: 700, color: '#1e293b',
-            letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2
-          }}>
+          <h1
+            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+          >
             Quản lý nhân viên
           </h1>
           <p style={{
@@ -530,7 +530,7 @@ export default function EmployeeListPage() {
 
                   {/* Actions */}
                   <div style={{
-                    display: 'flex', gap: '0.5rem',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     paddingTop: '0.875rem',
                     borderTop: '1px solid #f1f5f9'
                   }}>
@@ -548,21 +548,22 @@ export default function EmployeeListPage() {
                       <option value="LOCKED">Khóa</option>
                       <option value="INACTIVE">Vô hiệu</option>
                     </select>
-                    <Button
-                      variant="secondary"
-                      style={{ flex: 1, fontSize: '0.8125rem' }}
-                      onClick={() => navigate(`/admin/employees/edit/${employee.uuid || employee.id}`)}
-                    >
-                      <Pencil size={13} style={{ marginRight: '0.3rem' }} />
-                      Chỉnh sửa
-                    </Button>
-                    <Button
-                      variant="danger"
-                      style={{ fontSize: '0.8125rem' }}
-                      onClick={() => { setDeleteTarget(employee); setShowModal(true) }}
-                    >
-                      <Trash2 size={13} />
-                    </Button>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <Button
+                        variant="info"
+                        style={{ fontSize: '0.8125rem' }}
+                        onClick={() => navigate(`/admin/employees/edit/${employee.uuid || employee.id}`)}
+                      >
+                        <Pencil size={13} />
+                      </Button>
+                      <Button
+                        variant="danger"
+                        style={{ fontSize: '0.8125rem' }}
+                        onClick={() => { setDeleteTarget(employee); setShowModal(true) }}
+                      >
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -638,18 +639,6 @@ export default function EmployeeListPage() {
             </Button>
           )}
         </div>
-      )}
-
-      {/* Results Count */}
-      {!loading && employees.length > 0 && (
-        <p style={{
-          textAlign: 'center', color: '#94a3b8', fontSize: '0.8125rem',
-          marginTop: '1.25rem'
-        }}>
-          {hasActiveFilters
-            ? `Hiển thị ${employees.length} / ${totalElements} nhân viên`
-            : `${totalElements} nhân viên`}
-        </p>
       )}
 
       {/* Delete Modal */}
