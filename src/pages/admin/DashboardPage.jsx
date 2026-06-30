@@ -3,42 +3,51 @@ import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity, Search, Arr
 import { motion, AnimatePresence } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import api from '../../services/api'
 
 const DEBOUNCE_MS = 400
-const MIN_QUERY_LEN = 2
+const MIN_QUERY_LEN = 1
 
-const stats = [
+const STAT_DEFS = [
   {
+    key: 'movies',
     label: 'Tổng phim',
-    value: '24',
+    fallback: '0',
     icon: Film,
     color: 'from-red-500/20 to-red-500/5',
     iconColor: 'text-red-500',
-    borderColor: 'group-hover:border-red-500/30'
+    borderColor: 'group-hover:border-red-500/30',
+    route: '/admin/movies'
   },
   {
+    key: 'employees',
     label: 'Nhân viên',
-    value: '12',
+    fallback: '0',
     icon: Users,
     color: 'from-blue-500/20 to-blue-500/5',
     iconColor: 'text-blue-400',
-    borderColor: 'group-hover:border-blue-500/30'
+    borderColor: 'group-hover:border-blue-500/30',
+    route: '/admin/employees'
   },
   {
+    key: 'tickets',
     label: 'Vé bán hôm nay',
-    value: '148',
+    fallback: '0',
     icon: Ticket,
     color: 'from-green-500/20 to-green-500/5',
     iconColor: 'text-green-400',
-    borderColor: 'group-hover:border-green-500/30'
+    borderColor: 'group-hover:border-green-500/30',
+    route: '/admin/bookings'
   },
   {
+    key: 'promotions',
     label: 'Khuyến mãi hoạt động',
-    value: '5',
+    fallback: '0',
     icon: Tag,
     color: 'from-yellow-500/20 to-yellow-500/5',
     iconColor: 'text-yellow-400',
-    borderColor: 'group-hover:border-yellow-500/30'
+    borderColor: 'group-hover:border-yellow-500/30',
+    route: '/admin/promotions'
   },
 ]
 
@@ -65,10 +74,50 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false)
   const [showDropdown, setShowDropdown] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
+  const [stats, setStats] = useState(
+    STAT_DEFS.reduce((acc, s) => ({ ...acc, [s.key]: s.fallback }), {})
+  )
+  const [statsLoading, setStatsLoading] = useState(true)
   const timerRef = useRef(null)
   const inputRef = useRef(null)
   const dropdownRef = useRef(null)
   const navigate = useNavigate()
+
+  // Fetch dashboard stats from API
+  useEffect(() => {
+    const update = (key, value) => setStats(prev => ({ ...prev, [key]: String(value) }))
+
+    // Interceptor sẽ tự gắn Bearer token từ localStorage
+    Promise.allSettled([
+      // Tổng phim - endpoint public
+      api.get('/api/v1/movies', { params: { size: 1 } })
+        .then(r => update('movies', r.data?.result?.totalElements ?? r.data?.result?.length ?? 0)),
+
+      // Nhân viên (endpoint admin) — chỉ đếm STAFF, loại trừ MANAGER
+      api.get('/api/v1/admin/employees', { params: { page: 0, size: 1, role: 'STAFF' } })
+        .then(r => {
+          const result = r.data?.result
+          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
+          update('employees', count)
+        }),
+
+      // Vé bán hôm nay
+      api.get('/api/v1/bookings/today')
+        .then(r => {
+          const result = r.data?.result
+          const count = result?.totalElements ?? result?.length ?? (typeof result === 'number' ? result : 0)
+          update('tickets', count)
+        }),
+
+      // Khuyến mãi đang hoạt động
+      api.get('/api/v1/promotions', { params: { status: 'ACTIVE', size: 1 } })
+        .then(r => {
+          const result = r.data?.result
+          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
+          update('promotions', count)
+        }),
+    ]).finally(() => setStatsLoading(false))
+  }, [])
 
   const fetchResults = useCallback(async (keyword) => {
     if (!keyword.trim()) {
@@ -78,8 +127,7 @@ export default function DashboardPage() {
     }
     try {
       const r = await movieService.getAll({ search: keyword })
-      const result = r.data?.result
-      const list = result?.content || (Array.isArray(result) ? result : [])
+      const list = r.data || []
       setResults(list.slice(0, 8))
     } catch (err) {
       console.error('Search error:', err)
@@ -109,9 +157,10 @@ export default function DashboardPage() {
   const handleSubmit = (e) => {
     if (e) e.preventDefault()
     clearTimeout(timerRef.current)
-    setShowDropdown(false)
     if (query.trim().length >= MIN_QUERY_LEN) {
-      navigate(`/admin/movies?search=${encodeURIComponent(query.trim())}`)
+      setLoading(true)
+      fetchResults(query.trim())
+      setShowDropdown(true)
     }
   }
 
@@ -139,19 +188,7 @@ export default function DashboardPage() {
     }
   }
 
-  const highlight = (text) => {
-    if (!query.trim() || !text) return text
-    const keyword = query.trim()
-    const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
-    const parts = String(text).split(regex)
-    return parts.map((p, i) =>
-      regex.test(p) ? (
-        <mark key={i} className="bg-red-500/30 text-white rounded px-0.5">{p}</mark>
-      ) : (
-        <span key={i}>{p}</span>
-      )
-    )
-  }
+  const highlight = (text) => text
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -257,7 +294,8 @@ export default function DashboardPage() {
                 </button>
               )}
               <button
-                type="submit"
+                type="button"
+                onClick={handleSubmit}
                 disabled={loading || query.trim().length < MIN_QUERY_LEN}
                 className="absolute right-1.5 flex items-center gap-1.5 px-4 py-2 rounded-md bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-bold uppercase tracking-wider transition-colors"
                 style={{ fontFamily: 'Montserrat, sans-serif' }}
@@ -311,7 +349,7 @@ export default function DashboardPage() {
                               <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={m.titleEn}>{highlight(m.titleEn)}</p>
                             )}
                             <div className="flex items-center gap-2 mt-1">
-                              <span className="text-[10px] font-bold text-red-400">{m.durationMinutes || 120} phút</span>
+                              <span className="text-[10px] font-bold text-red-400">{m.duration || 120} phút</span>
                               {m.version && <span className="text-[10px] text-[var(--color-text-muted)]">• {m.version}</span>}
                               {m.fromDate && <span className="text-[10px] text-[var(--color-text-muted)]">• {m.fromDate}</span>}
                             </div>
@@ -343,12 +381,15 @@ export default function DashboardPage() {
         animate="visible"
         variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } } }}
       >
-        {stats.map(s => {
+        {STAT_DEFS.map(s => {
           const Icon = s.icon
+          const value = stats[s.key]
           return (
             <motion.div
-              key={s.label}
-              className={`group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_30px_rgba(229,9,20,0.08)] ${s.borderColor}`}
+              key={s.key}
+              onDoubleClick={() => s.route && navigate(s.route)}
+              title={s.route ? 'Double-click để xem chi tiết' : undefined}
+              className={`group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_30px_rgba(229,9,20,0.08)] ${s.borderColor} ${s.route ? 'cursor-pointer select-none' : ''}`}
               variants={{ hidden: { opacity: 0, y: 24, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } } }}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
@@ -357,7 +398,7 @@ export default function DashboardPage() {
                   {s.label}
                 </p>
                 <p className="text-3xl font-extrabold text-white tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  {s.value}
+                  {statsLoading ? '...' : value}
                 </p>
               </div>
               <div className={`p-4 rounded-xl bg-gradient-to-br ${s.color} transition-all duration-300 group-hover:scale-110`}>

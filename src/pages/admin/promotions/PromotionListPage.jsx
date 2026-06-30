@@ -1,11 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { promotionService } from '../../../services/promotionService'
+import {
+  promotionService,
+  PROMOTION_TYPE_LABELS,
+  PROMOTION_STATUS,
+  PROMOTION_STATUS_LABELS,
+  PROMOTION_STATUS_COLORS,
+  computePromotionStatus,
+  formatDiscountValue,
+  getDaysRemaining,
+} from '../../../services/promotionService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import Input from '../../../components/common/Input'
-import { Plus, Pencil, Trash2, Search, Tag, Calendar, AlertCircle } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, Tag, Calendar, AlertCircle, Filter, X } from 'lucide-react'
 import { motion } from 'motion/react'
 
 export default function PromotionListPage() {
@@ -13,13 +22,17 @@ export default function PromotionListPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
+
+  // ===== Bộ lọc client-side (không phụ thuộc backend) =====
+  const [typeFilter, setTypeFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+
   const navigate = useNavigate()
 
   const loadPromotions = (search = '') => {
     setLoading(true)
     promotionService.getAll(search ? { search } : {})
       .then(res => {
-        // Handle standard wrapper ApiResponse: res.data = { code, message, result: [...] }
         const data = res.data?.result || res.data || []
         setPromotions(Array.isArray(data) ? data : [])
       })
@@ -31,11 +44,10 @@ export default function PromotionListPage() {
       })
   }
 
-  // Trigger search on query change
   useEffect(() => {
     const delayDebounce = setTimeout(() => {
       loadPromotions(searchQuery)
-    }, 300) // 300ms debounce
+    }, 300)
     return () => clearTimeout(delayDebounce)
   }, [searchQuery])
 
@@ -67,36 +79,100 @@ export default function PromotionListPage() {
     }
   }
 
+  // Áp dụng filter phía client (vì backend cũ chưa hỗ trợ filter)
+  const filtered = useMemo(() => {
+    return promotions.filter(p => {
+      const status = computePromotionStatus(p)
+      if (statusFilter !== 'ALL' && status !== statusFilter) return false
+      if (typeFilter !== 'ALL' && p.type !== typeFilter) return false
+      return true
+    })
+  }, [promotions, typeFilter, statusFilter])
+
+  // Thống kê nhanh cho dashboard mini phía trên
+  const stats = useMemo(() => {
+    const now = new Date()
+    let active = 0, expired = 0, draft = 0
+    promotions.forEach(p => {
+      const s = computePromotionStatus(p)
+      if (s === PROMOTION_STATUS.ACTIVE) active++
+      else if (s === PROMOTION_STATUS.EXPIRED) expired++
+      else draft++
+    })
+    return {
+      total: promotions.length,
+      active,
+      expired,
+      draft,
+    }
+  }, [promotions])
+
+  const hasFilter = typeFilter !== 'ALL' || statusFilter !== 'ALL'
+
   const columns = [
-    { 
-      key: 'title', 
+    {
+      key: 'title',
       label: 'Tiêu đề',
       render: r => (
-        <div className="font-bold text-white max-w-[200px] truncate" title={r.title}>
-          {r.title}
+        <div className="font-bold text-white max-w-[240px]">
+          <div className="truncate" title={r.title}>{r.title}</div>
+          {r.code && (
+            <div className="flex items-center gap-1 mt-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-[10px] font-mono font-bold uppercase tracking-wider">
+                <Tag size={10} />
+                {r.code}
+              </span>
+            </div>
+          )}
         </div>
       )
     },
-    { 
-      key: 'startTime', 
+    {
+      key: 'type',
+      label: 'Loại KM',
+      render: r => (
+        <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[var(--color-text-muted)] text-xs font-semibold whitespace-nowrap">
+          {PROMOTION_TYPE_LABELS[r.type] || 'Voucher'}
+        </span>
+      )
+    },
+    {
+      key: 'discount',
+      label: 'Mức giảm',
+      render: r => {
+        const text = formatDiscountValue(r)
+        if (!text) return <span className="text-gray-500 text-xs">-</span>
+        return <span className="text-red-400 font-extrabold font-mono text-sm">{text}</span>
+      }
+    },
+    {
+      key: 'status',
+      label: 'Trạng thái',
+      render: r => {
+        const s = computePromotionStatus(r)
+        const days = getDaysRemaining(r.endTime)
+        return (
+          <div className="flex flex-col gap-1 items-start">
+            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wider ${PROMOTION_STATUS_COLORS[s]}`}>
+              {PROMOTION_STATUS_LABELS[s]}
+            </span>
+            {s === PROMOTION_STATUS.ACTIVE && days != null && (
+              <span className="text-[10px] text-[var(--color-text-muted)]">còn {days} ngày</span>
+            )}
+          </div>
+        )
+      }
+    },
+    {
+      key: 'startTime',
       label: 'Bắt đầu',
       render: r => <span className="whitespace-nowrap text-gray-300 font-mono text-xs">{formatDate(r.startTime)}</span>
     },
-    { 
-      key: 'endTime', 
+    {
+      key: 'endTime',
       label: 'Kết thúc',
       render: r => <span className="whitespace-nowrap text-gray-300 font-mono text-xs">{formatDate(r.endTime)}</span>
     },
-    { 
-      key: 'content', 
-      label: 'Nội dung ngắn',
-      render: r => <div className="max-w-[300px] truncate text-gray-400 text-xs" title={r.content}>{r.content}</div>
-    },
-    { 
-      key: 'description', 
-      label: 'Chi tiết khuyến mãi',
-      render: r => <div className="max-w-[300px] truncate text-gray-400 text-xs" title={r.description}>{r.description}</div>
-    }
   ]
 
   return (
@@ -114,10 +190,7 @@ export default function PromotionListPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <div>
-          <h1
-            className="text-4xl text-white font-bold tracking-wider uppercase flex items-center gap-3"
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
-          >
+          <h1 className="text-4xl text-white font-bold tracking-wider uppercase flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}>
             <Tag className="text-red-500" size={32} />
             Quản lý khuyến mãi
           </h1>
@@ -130,7 +203,27 @@ export default function PromotionListPage() {
         </Button>
       </motion.div>
 
-      {/* Control panel (Search & Statistics) */}
+      {/* Stats mini-cards */}
+      <motion.div
+        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.12 }}
+      >
+        {[
+          { label: 'Tổng KM', value: stats.total, color: 'text-white' },
+          { label: 'Đang chạy', value: stats.active, color: 'text-green-400' },
+          { label: 'Bản nháp / sắp', value: stats.draft, color: 'text-yellow-400' },
+          { label: 'Đã hết hạn', value: stats.expired, color: 'text-red-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3.5">
+            <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">{s.label}</p>
+            <p className={`text-2xl font-extrabold mt-1 font-mono ${s.color}`}>{s.value}</p>
+          </div>
+        ))}
+      </motion.div>
+
+      {/* Control panel */}
       <motion.div
         className="flex flex-col md:flex-row items-center gap-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-lg"
         initial={{ opacity: 0, y: 20 }}
@@ -139,29 +232,60 @@ export default function PromotionListPage() {
       >
         <div className="w-full md:w-96 relative flex items-center">
           <Input
-            placeholder="Tìm kiếm theo tiêu đề, nội dung... (tối đa 28 ký tự)"
+            placeholder="Tìm kiếm theo tiêu đề, nội dung..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            maxLength={28}
             className="pl-10 pr-10"
           />
           <Search size={16} className="absolute left-3 text-gray-500" />
           {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 text-gray-400 hover:text-white text-xs cursor-pointer"
-            >
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 text-gray-400 hover:text-white text-xs cursor-pointer">
               Xóa
             </button>
           )}
         </div>
-        <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Filter size={14} className="text-[var(--color-text-muted)]" />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
+          >
+            <option value="ALL">Tất cả trạng thái</option>
+            {Object.entries(PROMOTION_STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
+          >
+            <option value="ALL">Tất cả loại</option>
+            {Object.entries(PROMOTION_TYPE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+
+          {hasFilter && (
+            <button
+              onClick={() => { setTypeFilter('ALL'); setStatusFilter('ALL') }}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs text-red-400 hover:bg-red-500/10 border border-red-500/20 cursor-pointer"
+            >
+              <X size={12} /> Bỏ lọc
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-2 md:ml-auto">
           <AlertCircle size={14} className="text-red-500" />
-          <span>Tìm kiếm được giới hạn tối đa 28 ký tự (AC-02).</span>
+          <span>{filtered.length} / {promotions.length} KM</span>
         </div>
       </motion.div>
 
-      {/* Promotions Table */}
+      {/* Table */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -173,28 +297,28 @@ export default function PromotionListPage() {
             <span className="material-symbols-outlined animate-spin text-3xl text-red-500">progress_activity</span>
           </div>
         )}
-        
-        {promotions.length === 0 ? (
+
+        {filtered.length === 0 ? (
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl py-12 text-center text-gray-400">
             <Tag size={40} className="mx-auto text-gray-600 mb-3" />
-            <p className="text-sm font-semibold">Không tìm thấy khuyến mãi nào</p>
-            <p className="text-xs text-gray-500 mt-1">Thử thay đổi từ khóa hoặc nhấn "Thêm khuyến mãi" để tạo mới.</p>
+            <p className="text-sm font-semibold">{hasFilter ? 'Không có KM nào khớp bộ lọc' : 'Không tìm thấy khuyến mãi nào'}</p>
+            <p className="text-xs text-gray-500 mt-1">Thử thay đổi từ khóa hoặc bộ lọc.</p>
           </div>
         ) : (
-          <Table columns={columns} data={promotions} actions={row => (
+          <Table columns={columns} data={filtered} actions={row => (
             <div className="flex gap-2 justify-end">
               <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/promotions/edit/${row.id}`)}>
-                <Pencil size={12}/>
+                <Pencil size={12} />
               </Button>
               <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>
-                <Trash2 size={12}/>
+                <Trash2 size={12} />
               </Button>
             </div>
           )} />
         )}
       </motion.div>
 
-      {/* Custom Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa khuyến mãi">
         <div className="space-y-4">
           <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
@@ -203,6 +327,12 @@ export default function PromotionListPage() {
               "{deleteTarget?.title}"
             </span>
           </p>
+          {deleteTarget?.code && (
+            <div className="flex items-center gap-2 text-xs bg-yellow-500/5 p-3 rounded-lg border border-yellow-500/10 text-yellow-300">
+              <Tag size={14} />
+              <span>Mã voucher: <b className="font-mono">{deleteTarget.code}</b> (sẽ bị xóa vĩnh viễn)</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/5 p-3 rounded-lg border border-red-500/10">
             <Calendar size={14} />
             <span>Thời hạn chiến dịch: {formatDate(deleteTarget?.startTime)} - {formatDate(deleteTarget?.endTime)}</span>

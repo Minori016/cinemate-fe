@@ -5,7 +5,7 @@ import Button from '../../../components/common/Button'
 import { motion, AnimatePresence } from 'motion/react'
 import {
   Plus, Search, Pencil, Trash2, Users,
-  UserCheck, Crown, X,
+  UserCheck, X,
   Mail, Phone, Calendar,
 } from 'lucide-react'
 
@@ -18,6 +18,17 @@ export default function EmployeeListPage() {
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [statusTarget, setStatusTarget] = useState(null)
   const [pendingStatus, setPendingStatus] = useState(null)
+  // Lưu status tạm theo uuid để <select> hiển thị đúng option user vừa chọn
+  // khi modal xác nhận đang mở (tránh dropdown "không hoạt động" do employee.status
+  // chưa được cập nhật từ backend).
+  const [pendingStatusMap, setPendingStatusMap] = useState({})
+
+  // Trả về status hiện tại đang hiển thị cho từng nhân viên — ưu tiên giá trị tạm
+  // mà user vừa chọn (nếu đang mở modal); fallback về status thực tế.
+  const getCurrentStatus = (employee) => {
+    const key = employee.uuid || employee.id
+    return pendingStatusMap[key] ?? employee.status
+  }
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
@@ -36,9 +47,10 @@ export default function EmployeeListPage() {
       .then(r => {
         const resData = r.data?.result ?? r.data ?? {}
         const list = resData.content ?? []
-        let filtered = list
+        // Loại bỏ user có role MANAGER (chỉ hiển thị STAFF cho admin quản lý)
+        let filtered = list.filter(e => !e.roles?.includes('MANAGER'))
         if (statusFilter !== 'all') {
-          filtered = list.filter(e => e.status === statusFilter)
+          filtered = filtered.filter(e => e.status === statusFilter)
         }
         setEmployees(filtered)
         setPage(resData.pageNumber ?? pageNum)
@@ -56,7 +68,6 @@ export default function EmployeeListPage() {
 
   const stats = {
     total: employees.length,
-    managers: employees.filter(e => e.roles?.includes('MANAGER')).length,
     staff: employees.filter(e => e.roles?.includes('STAFF')).length,
   }
 
@@ -181,6 +192,8 @@ export default function EmployeeListPage() {
 
   const confirmUpdateStatus = (employee, newStatus) => {
     if (employee.status === newStatus) return
+    const key = employee.uuid || employee.id
+    setPendingStatusMap(prev => ({ ...prev, [key]: newStatus }))
     setStatusTarget(employee)
     setPendingStatus(newStatus)
     setShowStatusModal(true)
@@ -189,18 +202,43 @@ export default function EmployeeListPage() {
   const handleUpdateStatus = () => {
     if (!statusTarget || !pendingStatus) return
     setLoading(true)
+    // Gọi PATCH /status endpoint (đồng bộ với gitlab main) — không cần gửi
+    // lại toàn bộ payload như PUT /{id}.
     employeeService.updateStatus(statusTarget.uuid || statusTarget.id, pendingStatus)
       .then(() => {
+        const key = statusTarget.uuid || statusTarget.id
+        setPendingStatusMap(prev => {
+          const next = { ...prev }
+          delete next[key]
+          return next
+        })
         setShowStatusModal(false)
         setStatusTarget(null)
         setPendingStatus(null)
         load(page)
       })
       .catch(err => {
-        console.error('Update status error:', err)
-        alert('Cập nhật trạng thái thất bại!')
+        console.error('Update status error:', err.response?.data || err)
+        const errCode = err.response?.data?.code
+        const errMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
+        if (errCode === 1007) alert('Bạn không có quyền thực hiện thao tác này')
+        else alert(`Cập nhật trạng thái thất bại: ${errMsg}`)
         setLoading(false)
       })
+  }
+
+  const closeStatusModal = () => {
+    if (statusTarget) {
+      const key = statusTarget.uuid || statusTarget.id
+      setPendingStatusMap(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }
+    setShowStatusModal(false)
+    setStatusTarget(null)
+    setPendingStatus(null)
   }
 
   const hasActiveFilters = searchTerm || roleFilter !== 'all' || statusFilter !== 'all'
@@ -251,9 +289,8 @@ export default function EmployeeListPage() {
         gap: '1rem', marginBottom: '1.5rem'
       }}>
         {[
-          { icon: Users, label: 'Tổng nhân viên', value: totalElements, gradient: '135deg, #7c3aed, #6d28d9', bg: 'rgba(124,58,237,0.08)' },
-          { icon: Crown, label: 'Quản lý', value: employees.filter(e => e.roles?.includes('MANAGER')).length, gradient: '135deg, #d97706, #b45309', bg: 'rgba(217,119,6,0.08)' },
-          { icon: UserCheck, label: 'Nhân viên', value: employees.filter(e => e.roles?.includes('STAFF')).length, gradient: '135deg, #059669, #047857', bg: 'rgba(5,150,105,0.08)' },
+          { icon: Users, label: 'Tổng nhân viên', value: stats.total, gradient: '135deg, #7c3aed, #6d28d9', bg: 'rgba(124,58,237,0.08)' },
+          { icon: UserCheck, label: 'Nhân viên', value: stats.staff, gradient: '135deg, #059669, #047857', bg: 'rgba(5,150,105,0.08)' },
         ].map((stat, i) => (
           <div key={i} style={{
             background: '#fff', border: '1px solid #e2e8f0',
@@ -322,7 +359,6 @@ export default function EmployeeListPage() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {[
             { key: 'all', label: 'Tất cả', color: '#7c3aed' },
-            { key: 'MANAGER', label: 'Quản lý', color: '#d97706' },
             { key: 'STAFF', label: 'Nhân viên', color: '#059669' },
           ].map(filter => (
             <button
@@ -499,7 +535,7 @@ export default function EmployeeListPage() {
                     borderTop: '1px solid #f1f5f9'
                   }}>
                     <select
-                      value={employee.status}
+                      value={getCurrentStatus(employee)}
                       onChange={(e) => confirmUpdateStatus(employee, e.target.value)}
                       style={{
                         padding: '0 0.5rem', borderRadius: '0.375rem',
@@ -705,7 +741,7 @@ export default function EmployeeListPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               zIndex: 1000, padding: '1rem'
             }}
-            onClick={() => { setShowStatusModal(false); setStatusTarget(null); setPendingStatus(null); }}
+            onClick={closeStatusModal}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -753,11 +789,7 @@ export default function EmployeeListPage() {
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <Button
                   variant="secondary"
-                  onClick={() => {
-                    setShowStatusModal(false)
-                    setStatusTarget(null)
-                    setPendingStatus(null)
-                  }}
+                  onClick={closeStatusModal}
                   style={{ background: '#f1f5f9', color: '#475569', border: 'none' }}
                 >
                   Hủy bỏ
