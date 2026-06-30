@@ -536,7 +536,7 @@ export default function HomePage() {
                             className="flex flex-col items-center bg-black/35 p-5 rounded-3xl border border-white/8 backdrop-blur-md"
                             style={{ boxShadow: '0 24px 60px rgba(0,0,0,0.85)' }}
                           >
-                            <div className="relative w-[170px] bg-gray-900" style={{ aspectRatio: '2/3' }}>
+                            <div className="relative w-[220px] bg-gray-900" style={{ aspectRatio: '2/3' }}>
                               <img
                                 src={posterUrl}
                                 alt={movie.title || ''}
@@ -566,7 +566,7 @@ export default function HomePage() {
                             >
                               <Link
                                 to={detailLink}
-                                className="mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all duration-200 w-[170px] cursor-pointer"
+                                className="mt-3 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-white transition-all duration-200 w-[220px] cursor-pointer"
                                 style={{
                                   background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
                                   boxShadow: '0 6px 20px rgba(229,9,20,0.4)',

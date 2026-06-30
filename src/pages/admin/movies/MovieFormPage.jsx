@@ -298,7 +298,7 @@ export default function MovieFormPage() {
   }
 
   return (
-    <div className="space-y-6 text-[#e2e2e2] text-left relative pb-12">
+    <div className="space-y-6 text-[var(--color-on-surface-variant)] text-left relative pb-12">
       {/* Toast Alert */}
       {toast && (
         <div
@@ -333,7 +333,7 @@ export default function MovieFormPage() {
             <span>Quay lại Quản lý Phim</span>
           </button>
           <h1 
-            className="text-4xl text-white font-black tracking-wider uppercase" 
+            className="text-4xl text-[var(--color-on-surface)] font-black tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif' }}
           >
             {isEditMode ? 'Cập nhật phim' : 'Thêm phim mới'}
@@ -357,7 +357,7 @@ export default function MovieFormPage() {
             
             {/* General Information Section */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 mb-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
                 <Film className="text-red-500" size={18} />
                 Thông tin chung
               </h3>
@@ -501,7 +501,7 @@ export default function MovieFormPage() {
             {/* Cast & Crew Section */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
               <div className="flex justify-between items-center border-b border-[var(--color-border)] pb-3">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
+                <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
                   <User className="text-red-500" size={18} />
                   Dàn diễn viên (Cast)
                 </h3>
@@ -557,7 +557,7 @@ export default function MovieFormPage() {
             {/* Showtimes Section */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
               <div className="flex justify-between items-center border-b border-[var(--color-border)] pb-3">
-                <h3 className="text-lg font-bold text-white flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
+                <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
                   <Calendar className="text-red-500" size={18} />
                   Lịch chiếu phim (Showtimes)
                 </h3>
@@ -634,7 +634,7 @@ export default function MovieFormPage() {
             
             {/* Movie Poster Upload */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl text-center">
-              <h3 className="text-lg font-bold text-white flex items-center justify-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center justify-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
                 <Upload className="text-red-500" size={18} />
                 Ảnh Poster phim
               </h3>
@@ -676,7 +676,7 @@ export default function MovieFormPage() {
 
             {/* Genres Selector */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
                 <Tag className="text-red-500" size={18} />
                 Thể loại *
               </h3>
@@ -711,7 +711,7 @@ export default function MovieFormPage() {
 
             {/* Countries Selector */}
             <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
                 <Globe className="text-red-500" size={18} />
                 Quốc gia
               </h3>
@@ -783,7 +783,7 @@ export default function MovieFormPage() {
           }}
         >
           <div className="bg-[#0B0F19] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-left">
-            <h4 className="font-bold text-white text-sm uppercase tracking-wider mb-2">
+            <h4 className="font-bold text-[var(--color-on-surface)] text-sm uppercase tracking-wider mb-2">
               Xác nhận thoát
             </h4>
             <p className="text-xs text-gray-400 mb-6 leading-relaxed font-sans">

@@ -55,7 +55,7 @@ export default function MovieListPage() {
       >
         <div>
           <h1
-            className="text-4xl text-white font-bold tracking-wider uppercase"
+            className="text-4xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase"
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Quản lý phim
@@ -81,7 +81,7 @@ export default function MovieListPage() {
         )} />
       </motion.div>
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa">
-        <p className="text-[var(--color-text-muted)] text-sm mb-4">Bạn có chắc muốn xóa phim <span className="text-white font-semibold">"{deleteTarget?.titleVn}"</span>?</p>
+        <p className="text-[var(--color-text-muted)] text-sm mb-4">Bạn có chắc muốn xóa phim <span className="text-[var(--color-on-surface)] font-semibold">"{deleteTarget?.titleVn}"</span>?</p>
         <div className="flex gap-2 justify-end">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy</Button>
           <Button variant="danger" onClick={handleDelete}>Xóa</Button>
