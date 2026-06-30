@@ -89,6 +89,31 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
     return defaultPoster
   })
 
+  const [isVideoReady, setIsVideoReady] = useState(false)
+
+  // Reset states when movie changes
+  useEffect(() => {
+    setIsVideoReady(false)
+    if (videoId) {
+      setThumbUrl(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`)
+    } else {
+      setThumbUrl(defaultPoster)
+    }
+  }, [movie.id, videoId])
+
+  // Delay crossfade of static overlay by 2 seconds after video mounts to avoid flash of loading screens
+  useEffect(() => {
+    if (shouldPlayVideo && videoId) {
+      setIsVideoReady(false)
+      const timer = setTimeout(() => {
+        setIsVideoReady(true)
+      }, 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setIsVideoReady(false)
+    }
+  }, [shouldPlayVideo, videoId])
+
   const handleThumbError = () => {
     if (videoId && thumbUrl.includes('maxresdefault')) {
       setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)
@@ -105,27 +130,31 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
       transition={{ duration: 10, ease: 'linear' }}
       style={{ pointerEvents: 'none' }}
     >
-      {shouldPlayVideo && videoId ? (
+      {shouldPlayVideo && videoId && (
         <LiteYouTubeEmbed
           id={videoId}
           title={movie.titleVn || movie.titleEn || ''}
           autoplay={true}
-          params={`autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&rel=0&playsinline=1`}
+          noCookie={true}
+          params={`autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${videoId}&playsinline=1`}
           wrapperClass="homepage-banner-video-wrapper"
           iframeClass="homepage-banner-video-iframe"
           poster="maxresdefault"
         />
-      ) : (
-        <img
-          src={thumbUrl}
-          alt=""
-          fetchPriority="high"
-          decoding="async"
-          className="w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] will-change-transform transform-gpu"
-          style={{ pointerEvents: 'none' }}
-          onError={handleThumbError}
-        />
       )}
+
+      <img
+        src={thumbUrl}
+        alt=""
+        fetchPriority="high"
+        decoding="async"
+        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] transition-opacity duration-1000 ease-out"
+        style={{
+          opacity: isVideoReady ? 0 : 1,
+          pointerEvents: 'none',
+        }}
+        onError={handleThumbError}
+      />
     </motion.div>
   )
 }
