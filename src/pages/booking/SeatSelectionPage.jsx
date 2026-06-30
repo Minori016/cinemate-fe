@@ -194,13 +194,13 @@ export default function SeatSelectionPage() {
         if (data) {
           setSeatLayout(data)
         } else {
-          setSeatError('Khong tai duoc so do ghe')
+          setSeatError('Không tải được sơ đồ ghế')
           setSeatLayout(null)
         }
       } catch (err) {
         if (cancelled) return
         console.error('Failed to fetch seat layout:', err)
-        setSeatError('Khong tai duoc so do ghe')
+        setSeatError('Không tải được sơ đồ ghế')
         setSeatLayout(null)
       }
     }
@@ -261,7 +261,7 @@ export default function SeatSelectionPage() {
     return (
       <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
-        {isVip && !isSelected && !occupied ? 'V' : seat.number != null ? seat.number : seat.id}
+        {seat.row ? `${seat.row}${seat.number}` : seat.id}
       </label>
     )
   }
@@ -316,6 +316,33 @@ export default function SeatSelectionPage() {
           <div className="flex gap-2 w-[112px] justify-start">{rightCouple.map(seat => renderCoupleButton(seat))}</div>
         </div>
         <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">{rowLabel}</span>
+      </div>
+    )
+  }
+
+  function renderDynamicRow(row) {
+    return (
+      <div key={row.rowLabel} className="flex items-center justify-center gap-3.5 w-full">
+        <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{row.rowLabel}</span>
+        <div className="flex items-center gap-2">
+          {row.seats.map(seat => {
+            if (seat.type === 'AISLE') {
+              return (
+                <div key={seat.id} className="w-8 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">
+                  │
+                </div>
+              )
+            }
+            if (seat.type === 'COUPLE_EXTENSION') {
+              return null
+            }
+            if (seat.type === 'COUPLE') {
+              return renderCoupleButton(seat)
+            }
+            return renderSeatButton(seat, seat.type.toLowerCase())
+          })}
+        </div>
+        <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{row.rowLabel}</span>
       </div>
     )
   }
@@ -389,22 +416,18 @@ export default function SeatSelectionPage() {
 
           {/* Seat Rows Grid Container */}
           <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
-            <div className="min-w-[850px] flex flex-col gap-3.5 items-center">
-              {/* Render Standard & VIP Rows */}
-              {dynamicSeatRows
-                ? dynamicSeatRows.map(r => renderRow(r.row, r.type))
-                : SEAT_ROWS.map(r => renderRow(r.row, r.type))}
-
-              {/* Spacer between VIP and Couple rows */}
-              <div className="h-4" />
-
-              {/* Render Couple Rows (Row G & H) — only if no dynamic layout */}
-              {dynamicSeatRows ? null : (
-                <>
-                  {renderCoupleRow('G')}
-                  {renderCoupleRow('H')}
-                </>
-              )}
+            <div className="min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
+              {/* Render Rows Dynamically from API or fallback */}
+              {seatLayout?.seatMatrix
+                ? seatLayout.seatMatrix.map(row => renderDynamicRow(row))
+                : (
+                  <>
+                    {SEAT_ROWS.map(r => renderRow(r.row, r.type))}
+                    <div className="h-4" />
+                    {renderCoupleRow('G')}
+                    {renderCoupleRow('H')}
+                  </>
+                )}
 
               {/* Entrance / Exit Indicators */}
               <div className="w-full max-w-[620px] flex justify-between items-center mt-6 px-2">

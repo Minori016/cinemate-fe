@@ -15,7 +15,7 @@ const navItems = [
 
 export default function AdminLayout() {
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--color-background)' }}>
+    <div className="theme-light flex min-h-screen" style={{ background: 'var(--color-background)' }}>
       <Sidebar navItems={navItems} workspaceLabel="Admin Workspace" />
       <main className="flex-1 min-w-0 overflow-y-auto" style={{ marginLeft: '260px' }}>
         <div className="p-8 lg:p-10 max-w-[1400px]">

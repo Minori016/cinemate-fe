@@ -3,11 +3,18 @@ import { motion } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
-const ROLE_BADGE_STYLES = {
-  ADMIN: { label: 'Admin', bg: 'rgba(168,85,247,0.12)', color: '#c084fc', border: 'rgba(168,85,247,0.25)' },
-  MANAGER: { label: 'Manager', bg: 'rgba(59,130,246,0.12)', color: '#60a5fa', border: 'rgba(59,130,246,0.25)' },
-  STAFF: { label: 'Staff', bg: 'rgba(245,158,11,0.12)', color: '#fbbf24', border: 'rgba(245,158,11,0.25)' },
-  MEMBER: { label: 'Member', bg: 'rgba(52,211,153,0.12)', color: '#34d399', border: 'rgba(52,211,153,0.25)' },
+const ROLE_LABELS = {
+  ADMIN: 'Admin',
+  MANAGER: 'Manager',
+  STAFF: 'Staff',
+  MEMBER: 'Member',
+}
+
+const ROLE_BADGE_CLASSES = {
+  ADMIN: 'role-badge-admin',
+  MANAGER: 'role-badge-manager',
+  STAFF: 'role-badge-staff',
+  MEMBER: 'role-badge-member',
 }
 
 export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Workspace' }) {
@@ -17,15 +24,15 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
     <aside
       className="w-[260px] min-h-screen flex flex-col fixed left-0 top-0 z-40"
       style={{
-        background: 'rgba(14,14,14,0.92)',
+        background: 'var(--color-sidebar)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(255,255,255,0.05)',
-        paddingTop: '80px',
+        borderRight: '1px solid var(--color-sidebar-border)',
+        paddingTop: '40px',
       }}
     >
       {/* Brand Header */}
-      <div className="px-6 pb-5 mb-2" style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+      <div className="px-6 pb-5 mb-2" style={{ borderBottom: '1px solid var(--color-sidebar-border)' }}>
         <div className="flex items-center gap-2.5">
           <img src={logoImg} alt="Logo" className="w-9 h-9 object-contain" />
           <div>
@@ -33,12 +40,12 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
               className="text-lg font-black tracking-wider leading-none"
               style={{ fontFamily: 'Montserrat, sans-serif' }}
             >
-              <span className="text-white">CINE</span>
+              <span className="text-[var(--color-sidebar-foreground)]">CINE</span>
               <span className="text-[#e50914]">MATE</span>
             </h1>
             <p
-              className="text-[9px] uppercase tracking-[0.2em] font-bold mt-1"
-              style={{ color: 'var(--color-text-muted)' }}
+              className="text-[9px] uppercase tracking-[0.2em] font-bold mt-1 text-[var(--color-text-muted)]"
+              style={{ fontFamily: 'Inter, sans-serif' }}
             >
               {workspaceLabel}
             </p>
@@ -54,7 +61,7 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
             to={to}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
-                isActive ? 'text-white' : 'text-white/45 hover:text-white/80 hover:bg-white/[0.03]'
+                isActive ? 'text-[var(--color-sidebar-foreground)] font-semibold' : 'text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)]'
               }`
             }
             style={{ fontFamily: 'Inter, sans-serif' }}
@@ -66,8 +73,8 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
                     layoutId="sidebar-active"
                     className="absolute inset-0 rounded-xl"
                     style={{
-                      background: 'rgba(229,9,20,0.1)',
-                      border: '1px solid rgba(229,9,20,0.2)',
+                      background: 'rgba(229,9,20,0.08)',
+                      border: '1px solid rgba(229,9,20,0.15)',
                     }}
                     transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                   />
@@ -76,8 +83,9 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
                   <Icon
                     size={18}
                     style={{
-                      color: isActive ? '#e50914' : 'rgba(255,255,255,0.4)',
-                      transition: 'color 0.2s ease',
+                      color: isActive ? 'var(--color-sidebar-primary)' : 'var(--color-sidebar-foreground)',
+                      opacity: isActive ? 1 : 0.4,
+                      transition: 'color 0.2s ease, opacity 0.2s ease',
                     }}
                   />
                   {label}
@@ -96,15 +104,15 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
           </NavLink>
         ))}
 
-        <div className="my-3 mx-4 h-px" style={{ background: 'rgba(255,255,255,0.04)' }} />
+        <div className="my-3 mx-4 h-px" style={{ background: 'var(--color-sidebar-border)' }} />
 
         {/* Home Link */}
         <Link
           to={homeLink}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-white/45 hover:text-white/80 hover:bg-white/[0.03] transition-all duration-200"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)] transition-all duration-200"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'rgba(255,255,255,0.4)' }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--color-sidebar-foreground)', opacity: 0.4 }}>
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <polyline points="9 22 9 12 15 12 15 22" />
           </svg>
@@ -116,8 +124,8 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
       <div
         className="p-4 mx-3 mb-4 rounded-2xl"
         style={{
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.05)',
+          background: 'var(--color-sidebar-accent)',
+          border: '1px solid var(--color-sidebar-border)',
         }}
       >
         <div className="flex items-center gap-3 px-2 py-1.5 mb-3">
@@ -125,7 +133,7 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
             className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-extrabold flex-shrink-0"
             style={{
               background: 'linear-gradient(135deg, #e50914, #8b0000)',
-              border: '2px solid rgba(255,255,255,0.1)',
+              border: '2px solid var(--color-sidebar-border)',
               fontFamily: 'Montserrat, sans-serif',
               color: '#fff',
             }}
@@ -134,24 +142,18 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
           </div>
           <div className="flex-1 min-w-0">
             <p
-              className="text-sm font-semibold text-white truncate"
+              className="text-sm font-semibold text-[var(--color-sidebar-foreground)] truncate"
               style={{ fontFamily: 'Inter, sans-serif' }}
             >
               {user?.email ? user.email.split('@')[0] : user?.username}
             </p>
             {(() => {
               const role = user?.roles?.[0] || 'MEMBER'
-              const badge = ROLE_BADGE_STYLES[role] || ROLE_BADGE_STYLES.MEMBER
+              const badgeClass = ROLE_BADGE_CLASSES[role] || ROLE_BADGE_CLASSES.MEMBER
+              const badgeLabel = ROLE_LABELS[role] || ROLE_LABELS.MEMBER
               return (
-                <span
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider mt-1"
-                  style={{
-                    background: badge.bg,
-                    color: badge.color,
-                    border: `1px solid ${badge.border}`,
-                  }}
-                >
-                  {badge.label}
+                <span className={`${badgeClass} border text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md mt-1 inline-flex items-center`}>
+                  {badgeLabel}
                 </span>
               )
             })()}

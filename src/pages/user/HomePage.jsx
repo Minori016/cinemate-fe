@@ -686,7 +686,7 @@ export default function HomePage() {
           <motion.div
             id="quick-booking"
             className="relative w-full px-4 md:px-14"
-            style={{ marginTop: '100px', zIndex: 100 }}
+            style={{ marginTop: '100px', zIndex: 10 }}
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}

@@ -211,13 +211,13 @@ export default function ShowtimeListPage() {
   }
 
   return (
-    <div className="space-y-6 text-[#e2e2e2] text-left animate-fade-in relative">
+    <div className="space-y-6 text-[var(--color-on-surface-variant)] text-left animate-fade-in relative">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
           <h1 
-            className="text-4xl text-white font-black tracking-wider uppercase" 
+            className="text-4xl text-[var(--color-on-surface)] font-black tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif' }}
           >
             Quản lý lịch chiếu phim
@@ -256,7 +256,7 @@ export default function ShowtimeListPage() {
             <select
               value={filterMovie}
               onChange={(e) => setFilterMovie(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-[var(--color-on-surface)] focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả phim</option>
               {movies.map(m => (
@@ -271,7 +271,7 @@ export default function ShowtimeListPage() {
             <select
               value={filterRoom}
               onChange={(e) => setFilterRoom(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-3 px-4 outline-none text-xs text-[var(--color-on-surface)] focus:border-red-500 cursor-pointer font-medium"
             >
               <option value="all">Tất cả phòng chiếu</option>
               {rooms.map(r => (
@@ -288,12 +288,12 @@ export default function ShowtimeListPage() {
                 type="date"
                 value={filterDate}
                 onChange={(e) => setFilterDate(e.target.value)}
-                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2.5 px-4 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2.5 px-4 outline-none text-xs text-[var(--color-on-surface)] focus:border-red-500 cursor-pointer font-medium"
               />
               {filterDate && (
                 <button
                   onClick={() => setFilterDate('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs bg-transparent border-none outline-none"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--color-on-surface)] text-xs bg-transparent border-none outline-none"
                 >
                   <X size={14} />
                 </button>
@@ -331,16 +331,16 @@ export default function ShowtimeListPage() {
 
                   return (
                     <tr key={st.id} className="hover:bg-[var(--color-surface-2)] transition-colors">
-                      <td className="px-6 py-4 font-bold text-white max-w-xs truncate">{st.movie}</td>
-                      <td className="px-6 py-4 text-gray-400 font-semibold">{st.room}</td>
-                      <td className="px-6 py-4 font-medium text-gray-300">{st.date}</td>
+                      <td className="px-6 py-4 font-bold text-[var(--color-on-surface)] max-w-xs truncate">{st.movie}</td>
+                      <td className="px-6 py-4 text-[var(--color-text-muted)] font-semibold">{st.room}</td>
+                      <td className="px-6 py-4 font-medium text-[var(--color-on-surface-variant)]">{st.date}</td>
                       <td className="px-6 py-4 font-bold text-red-500">
                         <div className="flex items-center gap-1">
                           <Clock size={12} /> {st.time}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-gray-400">{endTimeStr}</td>
-                      <td className="px-6 py-4 font-extrabold font-mono text-green-400">{formatVND(st.price)}</td>
+                      <td className="px-6 py-4 font-bold text-[var(--color-text-muted)]">{endTimeStr}</td>
+                      <td className="px-6 py-4 font-extrabold font-mono text-green-500">{formatVND(st.price)}</td>
                       <td className="px-6 py-4 text-right">
                         <button
                           onClick={() => setDeleteTarget(st)}

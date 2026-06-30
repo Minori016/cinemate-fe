@@ -93,11 +93,11 @@ export default function SeatStep({
     const isSelected = selectedSeats.includes(seat.id)
     const seatType = seat.type || type
     const isVip = seatType === 'VIP'
-    const displayLabel = seat.number != null ? String(seat.number) : seat.id
+    const displayLabel = seat.row ? `${seat.row}${seat.number}` : seat.id
     return (
       <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={isOccupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
-        {isVip && !isSelected && !isOccupied ? 'V' : displayLabel}
+        {displayLabel}
       </label>
     )
   }
@@ -171,6 +171,33 @@ export default function SeatStep({
     )
   }
 
+  function renderDynamicRow(row) {
+    return (
+      <div key={row.rowLabel} className="flex items-center justify-center gap-3 w-full">
+        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{row.rowLabel}</span>
+        <div className="flex items-center gap-2">
+          {row.seats.map(seat => {
+            if (seat.type === 'AISLE') {
+              return (
+                <div key={seat.id} className="w-8 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">
+                  │
+                </div>
+              )
+            }
+            if (seat.type === 'COUPLE_EXTENSION') {
+              return null
+            }
+            if (seat.type === 'COUPLE') {
+              return <CoupleButton key={seat.id} seat={seat} />
+            }
+            return <SeatButton key={seat.id} seat={seat} type={seat.type} />
+          })}
+        </div>
+        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{row.rowLabel}</span>
+      </div>
+    )
+  }
+
   return (
     <motion.div key="step2" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.35 }}>
       {/* Summary bar */}
@@ -179,7 +206,7 @@ export default function SeatStep({
         <span className="text-gray-300">{movie?.title} · <strong className="text-white">{selectedTime}</strong> · {formatDate(selectedDate)} · {roomName}</span>
       </div>
 
-      <GlassCard className="p-6 md:p-8">
+      <div className="w-full flex flex-col justify-between p-1 sm:p-2">
         {/* Seat selection status */}
         {selectedSeats.length > 0 && (
           <div className={`mb-6 text-xs font-bold px-4 py-2.5 rounded-xl border text-center transition-all ${violations.length > 0 ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
@@ -213,22 +240,23 @@ export default function SeatStep({
 
           {/* Seat grid */}
           <div className="overflow-x-auto w-full pb-6">
-            <div className="min-w-[620px] flex flex-col gap-3 items-center">
+            <div className="min-w-max mx-auto px-4 flex flex-col gap-3 items-center">
               {loadingSeats ? (
                 <div className="flex justify-center py-8">
                   <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
                 </div>
               ) : seatError ? (
                 <p className="text-sm text-red-400 italic py-4 text-center">{seatError}</p>
-              ) : dynamicSeatRows.length > 0 ? (
-                dynamicSeatRows.map(r => <SeatRow key={r.row} rowLabel={r.row} type={r.type} />
-                )
+              ) : layout?.seatMatrix ? (
+                layout.seatMatrix.map(row => renderDynamicRow(row))
               ) : (
-                SEAT_ROWS?.map(r => <SeatRow key={r.row} rowLabel={r.row} type={r.type} />)
+                <>
+                  {SEAT_ROWS?.map(r => <SeatRow key={r.row} rowLabel={r.row} type={r.type} />)}
+                  <div className="h-3" />
+                  <CoupleRow rowLabel="G" />
+                  <CoupleRow rowLabel="H" />
+                </>
               )}
-              {dynamicSeatRows.length === 0 && <div className="h-3" />}
-             {dynamicSeatRows.length === 0 && <CoupleRow rowLabel="G" />}
-             {dynamicSeatRows.length === 0 && <CoupleRow rowLabel="H" />}
              {/* Entrance/Exit */}
               <div className="w-full max-w-[580px] flex justify-between mt-5">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
@@ -271,7 +299,7 @@ export default function SeatStep({
             </button>
           </div>
         </div>
-      </GlassCard>
+      </div>
     </motion.div>
   )
 }

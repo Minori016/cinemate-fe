@@ -220,6 +220,55 @@ body {
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: rgba(229, 9, 20, 0.4);
+
+  /* Sidebar Light Theme overrides */
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #0f172a;
+  --color-sidebar-border: #e2e8f0;
+  --color-sidebar-accent: #f1f5f9;
+  --color-sidebar-primary: #e50914;
+}
+
+/* ── Role Badges (Adaptive styles) ── */
+.role-badge-admin {
+  background: rgba(168,85,247,0.12);
+  color: #c084fc;
+  border-color: rgba(168,85,247,0.25);
+}
+.theme-light .role-badge-admin {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border-color: #d8b4fe;
+}
+.role-badge-manager {
+  background: rgba(59,130,246,0.12);
+  color: #60a5fa;
+  border-color: rgba(59,130,246,0.25);
+}
+.theme-light .role-badge-manager {
+  background: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+}
+.role-badge-staff {
+  background: rgba(245,158,11,0.12);
+  color: #fbbf24;
+  border-color: rgba(245,158,11,0.25);
+}
+.theme-light .role-badge-staff {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+.role-badge-member {
+  background: rgba(52,211,153,0.12);
+  color: #34d399;
+  border-color: rgba(52,211,153,0.25);
+}
+.theme-light .role-badge-member {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
 }
 
 /* Light mode — glass panels become white */

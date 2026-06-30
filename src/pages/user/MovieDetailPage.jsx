@@ -160,13 +160,13 @@ function ErrorState({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
       <CloudOff size={48} className="mb-4" style={{ color: 'var(--color-primary)' }} />
-      <h2 className="text-xl font-bold text-white mb-2">Khong tai duoc thong tin phim</h2>
-      <p className="text-sm text-gray-400 mb-6 max-w-md">{message || 'Vui long kiem tra ket noi va thu lai.'}</p>
+      <h2 className="text-xl font-bold text-white mb-2">Không tải được thông tin phim</h2>
+      <p className="text-sm text-gray-400 mb-6 max-w-md">{message || 'Vui lòng kiểm tra kết nối và thử lại.'}</p>
       <div className="flex gap-3">
         {onRetry && (
-          <button onClick={onRetry} className="px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider border cursor-pointer" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'transparent' }}>Thu lai</button>
+          <button onClick={onRetry} className="px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider border cursor-pointer" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', background: 'transparent' }}>Thử lại</button>
         )}
-        <Link to="/movies" className="px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider text-white cursor-pointer border-none" style={{ background: 'var(--color-primary)' }}>Xem phim khac</Link>
+        <Link to="/movies" className="px-6 py-2.5 rounded-xl text-sm font-bold uppercase tracking-wider text-white cursor-pointer border-none" style={{ background: 'var(--color-primary)' }}>Xem phim khác</Link>
       </div>
     </div>
   )
@@ -209,7 +209,7 @@ const DetailThreeBackground = () => {
     scene.add(darkRedLight)
 
     // Flat reflective background mesh
-    const wallGeo = new THREE.PlaneGeometry(16, 12)
+    const wallGeo = new THREE.PlaneGeometry(60, 40)
     const wallMat = new THREE.MeshPhysicalMaterial({
       color: 0x06080f,
       roughness: 0.7,
@@ -411,12 +411,12 @@ export default function MovieDetailPage() {
         const res = await movieService.getById(movieId)
         if (cancelled) return
         const data = res.data
-        if (!data) throw new Error('Khong tim thay phim')
+        if (!data) throw new Error('Không tìm thấy phim')
         setMovie(data)
       } catch (err) {
         if (cancelled) return
         console.error('Failed to fetch movie:', err)
-        setFetchError(err.message || 'Khong tai duoc thong tin phim.')
+        setFetchError(err.message || 'Không tải được thông tin phim.')
         setMovie(null)
       } finally {
         if (!cancelled) setLoading(false)
@@ -497,9 +497,9 @@ export default function MovieDetailPage() {
   const validateCardDetails = () => {
     const errors = {}
     if (paymentMethod === 'card') {
-      if (cardNumber.replace(/\s/g, '').length !== 16) errors.cardNumber = 'So the khong hop le. Vui long nhap du 16 chu so.'
-      if (!cardHolder.trim()) errors.cardHolder = 'Ten chu the khong duoc de trong.'
-      else if (!/^[A-Z\s]+$/.test(cardHolder)) errors.cardHolder = 'Ten chu the viet hoa khong dau va chi chua chu cai.'
+      if (cardNumber.replace(/\s/g, '').length !== 16) errors.cardNumber = 'Số thẻ không hợp lệ. Vui lòng nhập đủ 16 chữ số.'
+      if (!cardHolder.trim()) errors.cardHolder = 'Tên chủ thẻ không được để trống.'
+      else if (!/^[A-Z\s]+$/.test(cardHolder)) errors.cardHolder = 'Tên chủ thẻ viết hoa không dấu và chỉ chứa chữ cái.'
       if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) errors.expiryDate = 'Ngay het han khong dung dinh dang MM/YY.'
       else {
         const [month, year] = expiryDate.split('/').map(Number)
@@ -516,7 +516,7 @@ export default function MovieDetailPage() {
     setSubmitError('')
     if (paymentMethod === 'card' && !validateCardDetails()) return
     setSubmitting(true)
-    const steps = ['Dang ma hoa thong tin the giao dich...', 'Dang gui yeu cau xac thuc bao mat...', 'Dang xu ly ket qua giao dich thanh toan...']
+    const steps = ['Đang mã hóa thông tin thẻ giao dịch...', 'Đang gửi yêu cầu xác thực bảo mật...', 'Đang xử lý kết quả giao dịch thanh toán...']
     for (let i = 0; i < steps.length; i++) {
       setProcessingStep(steps[i])
       await new Promise(r => setTimeout(r, 600))
@@ -524,8 +524,8 @@ export default function MovieDetailPage() {
     if (simulatedOutcome !== 'success') {
       setSubmitting(false)
       setProcessingStep('')
-      const msgs = { fail_funds: 'So du tai khoan khong du de thuc hien giao dich.', fail_cvv: 'Ma bao mat CVV/CVC khong hop le.', fail_expired: 'The da het han su dung hoac bi khoa.', fail_timeout: 'Het thoi gian ket noi voi cong thanh toan ngan hang.' }
-      setSubmitError('Thanh toan that bai: ' + (msgs[simulatedOutcome] || 'Loi khong xac dinh.'))
+      const msgs = { fail_funds: 'Số dư tài khoản không đủ để thực hiện giao dịch.', fail_cvv: 'Mã bảo mật CVV/CVC không hợp lệ.', fail_expired: 'Thẻ đã hết hạn sử dụng hoặc bị khóa.', fail_timeout: 'Hết thời gian kết nối với cổng thanh toán ngân hàng.' }
+      setSubmitError('Thanh toán thất bại: ' + (msgs[simulatedOutcome] || 'Lỗi không xác định.'))
       return
     }
     const payload = {
@@ -725,7 +725,7 @@ export default function MovieDetailPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4 }}
-          className="relative z-10 max-w-7xl mx-auto px-6 py-24 min-h-screen grid grid-cols-1 lg:grid-cols-4 gap-8"
+          className="relative z-10 max-w-full mx-auto px-4 lg:px-12 py-24 min-h-screen grid grid-cols-1 lg:grid-cols-4 gap-8"
         >
           {/* Column 1: Poster & Summary info */}
           <div className="lg:col-span-1 flex flex-col gap-5 text-left">
@@ -777,7 +777,7 @@ export default function MovieDetailPage() {
             </div>
 
             {/* Step Panels Container with AnimatePresence */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 min-h-[460px] relative overflow-hidden flex flex-col justify-between">
+            <div className={`bg-white/5 border border-white/10 rounded-2xl min-h-[460px] relative overflow-hidden flex flex-col justify-between ${bookingStep === 2 ? 'p-2 sm:p-4' : 'p-6'}`}>
               <AnimatePresence mode="wait">
                 {bookingStep === 1 && (
                   <ShowtimeStep
