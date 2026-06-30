@@ -1,411 +1,154 @@
-@custom-variant dark (&:is(.dark *));
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
 
-/* ── Material-style dark tokens used by ProfilePage ── */
-:root {
-  --color-background:               #0d0d0d;
-  --color-surface:                  #141414;
-  --color-surface-container:        #1a1a1a;
-  --color-surface-container-highest:#252525;
-  --color-surface-2:                #1e1e1e;
-  --color-on-surface:               #f0f0f0;
-  --color-on-surface-variant:       #9a9a9a;
-  --color-primary:                  #e50914;
-  --color-primary-container:        #8b0000;
-  --color-on-primary-container:     #ffffff;
-  --color-error:                    #f87171;
-  --color-error-container:          #450a0a;
-  --color-border:                   rgba(255,255,255,0.10);
-  --color-text-muted:               #666666;
-  --color-text:                     var(--foreground);
-}
+@import 'tw-animate-css';
 
-:root {
-  --font-size: 16px;
-  --background: #0a0a0f;
-  --foreground: #f1faee;
-  --card: #12121a;
-  --card-foreground: #f1faee;
-  --popover: #12121a;
-  --popover-foreground: #f1faee;
-  --primary: #e63946;
-  --primary-foreground: #ffffff;
-  --secondary: #1c1c2e;
-  --secondary-foreground: #f1faee;
-  --muted: #1c1c2e;
-  --muted-foreground: #8d99ae;
-  --accent: #2d2d44;
-  --accent-foreground: #f1faee;
-  --destructive: #d4183d;
-  --destructive-foreground: #ffffff;
-  --border: rgba(255, 255, 255, 0.08);
-  --input: transparent;
-  --input-background: #f3f3f5;
-  --switch-background: #cbced4;
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
-  --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
-}
+/* ============================================================
+   CINEMATE — Cinematic Theme Tokens
+   ============================================================ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-input-background: var(--input-background);
-  --color-switch-background: var(--switch-background);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  /* ── Core palette ── */
+  --color-background: #070707;
+  --color-foreground: #f1faee;
+  --color-primary: #e50914;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #8b0000;
+  --color-secondary-foreground: #ffffff;
+  --color-accent: rgba(229, 9, 20, 0.15);
+  --color-accent-foreground: #e50914;
+  --color-destructive: #d4183d;
+  --color-destructive-foreground: #ffffff;
+
+  /* ── Surface system ── */
+  --color-surface: #111111;
+  --color-surface-2: #171717;
+  --color-surface-3: #1e1e1e;
+  --color-surface-container: #111111;
+  --color-surface-container-highest: #1a1a1a;
+
+  /* ── Text system ── */
+  --color-on-surface: #f1faee;
+  --color-on-surface-variant: #b5b5b5;
+  --color-text: #ffffff;
+  --color-text-muted: #8d99ae;
+  --color-text-dim: rgba(255, 255, 255, 0.5);
+
+  /* ── Borders ── */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+  --color-border-accent: rgba(229, 9, 20, 0.3);
+
+  /* ── Inputs ── */
+  --color-input: rgba(255, 255, 255, 0.06);
+  --color-input-background: #111111;
+  --color-input-focus: rgba(229, 9, 20, 0.5);
+
+  /* ── Misc ── */
+  --color-ring: rgba(229, 9, 20, 0.5);
+  --color-popover: #111111;
+  --color-popover-foreground: #f1faee;
+  --color-card: #171717;
+  --color-card-foreground: #f1faee;
+  --color-switch-background: #2a2a2a;
+  --color-chart-1: #e50914;
+  --color-chart-2: #8b0000;
+  --color-chart-3: #b91c1c;
+  --color-chart-4: #dc2626;
+  --color-chart-5: #f87171;
+
+  /* ── Radius system ── */
+  --radius: 0.75rem;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* ── Sidebar tokens ── */
+  --color-sidebar: #111111;
+  --color-sidebar-foreground: #f1faee;
+  --color-sidebar-primary: #e50914;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: rgba(229, 9, 20, 0.1);
+  --color-sidebar-accent-foreground: #e50914;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-ring: rgba(229, 9, 20, 0.4);
 }
 
+/* ── Base element styles ── */
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
 
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    min-height: 100vh;
   }
 
-  /**
-  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
-  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
-  */
-
+  /* Typography scale */
   html {
-    font-size: var(--font-size);
+    font-size: 16px;
     overflow-x: hidden;
     width: 100%;
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: clamp(1.75rem, 3vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
   }
 
   h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: clamp(1.125rem, 1.5vw, 1.5rem);
+    font-weight: 600;
+    line-height: 1.3;
   }
 
   h4 {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
-    line-height: 1.5;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.4;
   }
 
   label {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-size: 0.875rem;
+    font-weight: 500;
     line-height: 1.5;
   }
 
   button {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-medium);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+
+  input, textarea, select {
+    font-size: 0.875rem;
+    font-weight: 400;
     line-height: 1.5;
   }
 
-  input {
-    font-size: var(--text-base);
-    font-weight: var(--font-weight-normal);
-    line-height: 1.5;
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
   }
 }
-
-/* ── Light Mode override for Admin, Manager, and Staff workspaces ── */
-
-.theme-light {
-  --color-background:               #f8f9fa;
-  --color-surface:                  #ffffff;
-  --color-surface-container:        #f3f4f6;
-  --color-surface-container-highest:#e5e7eb;
-  --color-surface-2:                #f3f4f6;
-  --color-on-surface:               #0f172a;
-  --color-on-surface-variant:       #475569;
-  --color-primary:                  #e50914;
-  --color-primary-container:        #fee2e2;
-  --color-on-primary-container:     #991b1b;
-  --color-error:                    #dc2626;
-  --color-error-container:          #fef2f2;
-  --color-border:                   #e2e8f0;
-  --color-text-muted:               #475569;
-  --color-text:                     var(--foreground);
-  --color-bg:                       #f8f9fa;
-
-  --background:                     #f8f9fa;
-  --foreground:                     #0f172a;
-  --card:                           #ffffff;
-  --card-foreground:                #0f172a;
-  --popover:                        #ffffff;
-  --popover-foreground:             #0f172a;
-  --primary:                        #e50914;
-  --primary-foreground:             #ffffff;
-  --secondary:                      #f1f5f9;
-  --secondary-foreground:           #0f172a;
-  --muted:                          #f1f5f9;
-  --muted-foreground:               #475569;
-  --accent:                         #e2e8f0;
-  --accent-foreground:              #0f172a;
-  --destructive:                    #dc2626;
-  --destructive-foreground:         #ffffff;
-  --border:                         #e2e8f0;
-
-  --sidebar:                        #ffffff;
-  --sidebar-foreground:             #0f172a;
-  --sidebar-border:                 #e2e8f0;
-  --sidebar-accent:                 #f1f5f9;
-  --sidebar-accent-foreground:      #0f172a;
-}
-
-/* Light mode specific element overrides for CineMate components */
-.theme-light .text-white {
-  color: var(--color-on-surface) !important;
-}
-.theme-light .text-white-force {
-  color: #ffffff !important;
-}
-.theme-light aside h1 .text-white {
-  color: #000000 !important;
-}
-.theme-light aside a.bg-red-600,
-.theme-light aside a.bg-\[var\(--color-primary\)\],
-.theme-light .bg-red-600,
-.theme-light .bg-\[var\(--color-primary\)\],
-.theme-light .bg-red-600 *,
-.theme-light .bg-\[var\(--color-primary\)\] *,
-.theme-light button.bg-red-600,
-.theme-light button.bg-\[var\(--color-primary\)\],
-.theme-light button.bg-red-700,
-.theme-light button.bg-red-700 *,
-.theme-light button.bg-gradient-to-r,
-.theme-light button.bg-gradient-to-r *,
-.theme-light button.bg-emerald-500,
-.theme-light button.bg-emerald-500 *,
-.theme-light button.bg-green-600,
-.theme-light button.bg-green-600 *,
-.theme-light button.bg-blue-600,
-.theme-light button.bg-blue-600 *,
-.theme-light button.bg-slate-800,
-.theme-light button.bg-slate-800 *,
-.theme-light .text-white-keep,
-.theme-light select option {
-  color: #ffffff !important;
-}
-.theme-light .text-red-500,
-.theme-light .text-[var(--color-primary)] {
-  color: #e50914 !important;
-}
-.theme-light .border-white\/5,
-.theme-light .border-white\/8,
-.theme-light .border-white\/10,
-.theme-light .border-white\/20,
-.theme-light .border-[var\(--color-border\)] {
-  border-color: #e2e8f0 !important;
-}
-.theme-light .bg-black\/20,
-.theme-light .bg-white\/5 {
-  background-color: #f1f5f9 !important;
-}
-.theme-light .bg-black\/40 {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-}
-.theme-light select {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-}
-.theme-light select option {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-}
-.theme-light input {
-  color: #0f172a !important;
-}
-.theme-light input::placeholder {
-  color: #94a3b8 !important;
-}
-.theme-light textarea {
-  color: #0f172a !important;
-}
-.theme-light textarea::placeholder {
-  color: #94a3b8 !important;
-}
-.theme-light .hover\:text-white:hover {
-  color: #0f172a !important;
-}
-.theme-light aside .hover\:text-white:hover {
-  color: #0f172a !important;
-}
-.theme-light aside a.bg-red-600:hover,
-.theme-light aside a.bg-[var\(--color-primary\)]:hover {
-  color: #ffffff !important;
-}
-.theme-light aside button:hover {
-  color: #e50914 !important;
-}
-
-/* Better contrast for gray text on light theme inside admin, staff and manager dashboards */
-.theme-light .text-gray-300 {
-  color: #334155 !important; /* slate-700 */
-}
-.theme-light .text-gray-400 {
-  color: #475569 !important; /* slate-600 */
-}
-.theme-light .text-gray-500 {
-  color: #64748b !important; /* slate-500 */
-}
-.theme-light .text-gray-600 {
-  color: #334155 !important; /* slate-700 */
-}
-.theme-light .text-gray-700 {
-  color: #1e293b !important; /* slate-800 */
-}
-.theme-light .text-gray-800 {
-  color: #0f172a !important; /* slate-900 */
-}
-
-/* Form labels or helper texts that use text-gray-400 or text-gray-500 */
-.theme-light label.text-gray-400,
-.theme-light span.text-gray-400,
-.theme-light p.text-gray-400,
-.theme-light label.text-gray-500,
-.theme-light span.text-gray-500,
-.theme-light p.text-gray-500 {
-  color: #334155 !important;
-  font-weight: 600; /* slightly bolder for better legibility on white bg */
-}
-
-/* Light mode overrides for specific containers, labels, and text colors */
-.theme-light .text-\[\#e2e2e2\] {
-  color: var(--color-on-surface) !important;
-}
-
-.theme-light label {
-  color: #1e293b !important; /* slate-800 label text */
-  font-weight: 600;
-}
-
-/* Modals & Form overlays that had hardcoded dark backgrounds under light dashboard layout */
-.theme-light .fixed.inset-0.z-50 form,
-.theme-light .fixed.inset-0.z-50 .bg-\[\#0f121d\],
-.theme-light .bg-\[\#0f121d\],
-.theme-light .bg-gradient-to-b.from-\[\#161b2a\].to-\[\#0f121f\],
-.theme-light .bg-\[\#161b2a\],
-.theme-light .bg-\[\#0f121f\],
-.theme-light .bg-\[\#131725\],
-.theme-light div[style*="linear-gradient(145deg"] {
-  background: var(--color-surface) !important;
-  background-color: var(--color-surface) !important;
-  border-color: var(--color-border) !important;
-}
-
-.theme-light .text-blue-300 {
-  color: #1e3a8a !important; /* blue-900 */
-}
-.theme-light .text-blue-400 {
-  color: #1d4ed8 !important; /* blue-700 */
-}
-
-.theme-light .bg-slate-900\/40,
-.theme-light .bg-slate-900\/20 {
-  background: var(--color-surface-container) !important;
-  background-color: var(--color-surface-container) !important;
-  border-color: var(--color-border) !important;
-}
-
-.theme-light .text-green-400 {
-  color: #15803d !important; /* green-700 */
-}
-.theme-light .text-green-500 {
-  color: #166534 !important; /* green-800 */
-}
-

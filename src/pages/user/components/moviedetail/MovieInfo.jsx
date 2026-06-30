@@ -28,7 +28,7 @@ function StarRating({ filled = 4, half = true }) {
   )
 }
 
-export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChange }) {
+export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChange, onTrailerClick }) {
   if (!movie) return null
 
   const trailerUrl = movie.trailerUrl || movie.media?.find(m => m.mediaType === 'TRAILER')?.url || ''
@@ -43,7 +43,7 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
 
   return (
     <motion.div 
-      className="flex flex-col gap-6 lg:border-l lg:border-white/5 lg:pl-8"
+      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full"
       initial="hidden"
       animate="visible"
       variants={{
@@ -51,20 +51,6 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
         visible: { transition: { staggerChildren: 0.1, delayChildren: 0.3 } }
       }}
     >
-      {/* Trailer button */}
-      {trailerUrl && (
-        <motion.button
-          variants={itemVariants}
-          onClick={() => {/* trailer open handled by parent */}}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold uppercase tracking-wider transition-all cursor-pointer border-none text-white outline-none"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-          whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.1)' }}
-          whileTap={{ scale: 0.97 }}
-        >
-          <Play size={18} style={{ color: 'var(--color-primary)' }} />
-          Xem Trailer
-        </motion.button>
-      )}
 
       {/* Thông Tin Phim */}
       <GlassCard className="p-6" variants={itemVariants}>
@@ -114,13 +100,6 @@ export default function MovieInfo({ movie, movieId, onShowtimeSelect, onDateChan
         </div>
       </GlassCard>
 
-      {/* Tóm Tắt Nội Dung */}
-      {movie.description && (
-        <GlassCard className="p-6" variants={itemVariants}>
-          <h2 className="mb-3 text-[var(--color-primary)] font-extrabold uppercase tracking-wider text-sm" style={{ fontFamily: 'Montserrat, sans-serif' }}>Tóm Tắt Nội Dung</h2>
-          <p className="leading-relaxed text-xs text-[var(--color-on-surface-variant)]" style={{ fontFamily: 'Inter, sans-serif', margin: 0 }}>{movie.description}</p>
-        </GlassCard>
-      )}
 
       {/* Diễn Viên */}
       {actors.length > 0 && (

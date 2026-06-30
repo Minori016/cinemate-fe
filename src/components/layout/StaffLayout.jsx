@@ -1,108 +1,32 @@
-import { Link, useNavigate, Outlet } from 'react-router-dom'
-import { LayoutGrid, Ticket, ShoppingBag, FileText, LogOut, Home, Armchair } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import logoImg from '../../assets/Cinematelogo.png'
+import { Outlet, useLocation } from 'react-router-dom'
+import { LayoutGrid, Armchair, Ticket, ShoppingBag, FileText } from 'lucide-react'
+import Sidebar from './Sidebar'
 
-export default function StaffLayout({ children }) {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+const NAV_ITEMS = [
+  { to: '/staff/overview', icon: LayoutGrid, label: 'Tổng quan & Lịch chiếu' },
+  { to: '/staff/ticketing', icon: Armchair, label: 'Bán vé tại quầy' },
+  { to: '/staff/checkin', icon: Ticket, label: 'Soát vé nhanh' },
+  { to: '/staff/concessions', icon: ShoppingBag, label: 'Quầy bắp nước' },
+  { to: '/staff/tickets', icon: FileText, label: 'Quản lý đặt vé' },
+]
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
+export default function StaffLayout() {
+  const location = useLocation()
 
-  const pathname = window.location.pathname
-  const navItems = [
-    { id: 'overview', label: 'Tổng quan & Lịch chiếu', icon: LayoutGrid, to: '/staff/overview', active: pathname === '/staff/overview' },
-    { id: 'ticketing', label: 'Bán vé tại quầy', icon: Armchair, to: '/staff/ticketing', active: pathname === '/staff/ticketing' },
-    { id: 'scan', label: 'Soát vé nhanh', icon: Ticket, to: '/staff/checkin', active: pathname === '/staff/checkin' },
-    { id: 'concessions', label: 'Quầy bắp nước', icon: ShoppingBag, to: '/staff/concessions', active: pathname === '/staff/concessions' },
-    { id: 'list', label: 'Quản lý đặt vé', icon: FileText, to: '/staff/tickets', active: pathname.includes('/staff/tickets') },
-  ]
+  const navItems = NAV_ITEMS.map((item) => ({
+    ...item,
+    active: item.to === '/staff/tickets'
+      ? location.pathname.includes('/staff/tickets')
+      : location.pathname === item.to,
+  }))
 
   return (
-    <div className="theme-light flex min-h-screen bg-[var(--color-background)] text-[var(--color-on-surface)]">
-      {/* Staff Sidebar */}
-      <aside className="w-64 min-h-screen flex flex-col bg-[var(--color-surface)] border-r border-[var(--color-border)] shrink-0">
-        {/* Brand Header */}
-        <div className="px-6 py-5 border-b border-[var(--color-border)]">
-          <div className="flex items-center gap-2">
-            <img src={logoImg} alt="Logo" className="w-9 h-9 object-contain" />
-            <div>
-              <h1 className="text-xl font-black tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                <span className="text-white">CINE</span>
-                <span className="text-[var(--color-primary)]">MATE</span>
-              </h1>
-              <p className="text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] font-semibold">
-                Staff Workspace
-              </p>
-            </div>
-          </div>
+    <div className="theme-light flex min-h-screen" style={{ background: 'var(--color-background)' }}>
+      <Sidebar navItems={navItems} workspaceLabel="Staff Workspace" />
+      <main className="flex-1 min-w-0 overflow-y-auto" style={{ marginLeft: '260px' }}>
+        <div className="p-8 lg:p-10 max-w-[1400px]">
+          <Outlet />
         </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 py-6 px-4 flex flex-col gap-1.5">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            const isActive = item.active
-            return (
-              <Link
-                key={item.id}
-                to={item.to}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[rgba(229,9,20,0.25)]'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-white'
-                }`}
-              >
-                <Icon size={18} className={isActive ? 'text-white' : 'text-[var(--color-text-muted)]'} />
-                {item.label}
-              </Link>
-            )
-          })}
-
-          <div className="h-px bg-[var(--color-border)] my-4" />
-
-          {/* Home Link */}
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-white transition-all duration-200"
-          >
-            <Home size={18} />
-            Quay lại Trang chủ
-          </Link>
-        </nav>
-
-        {/* User Profile & Logout */}
-        <div className="p-4 border-t border-[var(--color-border)] bg-color-mix(in srgb, var(--color-surface-container) 40%, transparent)">
-          <div className="flex items-center gap-3 px-2 py-1.5 mb-3">
-            <div className="w-10 h-10 rounded-full bg-[var(--color-primary)] flex items-center justify-center text-sm font-bold shadow-md">
-              {user?.email?.[0]?.toUpperCase() || 'S'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate" style={{ fontFamily: 'Inter, sans-serif' }}>
-                {user?.email?.split('@')[0]}
-              </p>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 uppercase tracking-wider">
-                Nhân viên
-              </span>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 w-full text-xs font-semibold text-red-400 hover:text-white hover:bg-red-600/10 border border-red-500/10 hover:border-red-500/30 rounded-xl transition-all duration-200"
-          >
-            <LogOut size={14} />
-            Đăng xuất hệ thống
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 min-w-0 p-8 overflow-y-auto bg-[var(--color-background)] text-[var(--color-on-surface)]">
-        {children || <Outlet />}
       </main>
     </div>
   )

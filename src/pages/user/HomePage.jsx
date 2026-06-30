@@ -1,11 +1,48 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { useAuth } from '../../contexts/AuthContext'
-import { ChevronLeft, ChevronRight, Tag, Clock, Globe, MessageSquare, MapPin, Phone, Calendar, Star, Gift, Crown, Ticket, Zap, Users, ArrowRight } from 'lucide-react'
+import {
+  Search, LogOut, User, Settings, ChevronDown, Bell, X, Menu,
+  Clock, Globe, MessageSquare, MapPin, Phone, Calendar,
+  Star, Crown, Ticket, Zap, Users, ArrowRight, ChevronLeft, ChevronRight, Play, Check, Info, Gift
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import gsap from 'gsap'
+import MovieCard from '../../components/common/MovieCard'
+import Badge from '../../components/common/Badge'
 import TrailerModal from './components/moviedetail/TrailerModal'
+import MovieArcCarousel3D from '../../components/common/MovieArcCarousel3D'
 
+// ── Constants ──────────────────────────────────────────────────
+const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
+const DEFAULT_POSTER_SMALL = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'
+
+// ── Static Data ────────────────────────────────────────────────
+const PROMOTIONS = [
+  { id: 1, tag: 'HOT', tagColor: '#e50914', title: 'Happy Monday — Đồng Giá 45K', desc: 'Ưu đãi đồng giá vé 2D chỉ 45.000đ cho mọi thành viên vào mỗi ngày Thứ Hai hàng tuần.', date: 'Mỗi Thứ Hai', img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700' },
+  { id: 2, tag: 'MỚI', tagColor: '#2563eb', title: 'Khai Trương CineMate Thủ Đức', desc: 'Giảm 50% bắp nước khi mua kèm 2 vé tại chi nhánh Thủ Đức.', date: 'Đến 30/06/2026', img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700' },
+  { id: 3, tag: 'VIP', tagColor: '#d97706', title: 'Hội Viên Vàng — Tích Điểm Đôi', desc: 'Tích lũy điểm thành viên gấp đôi và nhận thêm bắp nước miễn phí vào tháng sinh nhật.', date: 'Chương trình thường niên', img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700' },
+  { id: 4, tag: 'COMBO', tagColor: '#16a34a', title: 'Combo Cuối Tuần — Tiết Kiệm 30%', desc: 'Mua combo 2 vé + 2 bắp lớn + 2 nước vào Thứ 7 & Chủ Nhật, tiết kiệm đến 30%.', date: 'Thứ 7 & Chủ Nhật', img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700' },
+]
+
+const CINEMAS = [
+  { id: 1, name: 'CineMate Quận 1', badge: 'CHI NHÁNH TỔNG', badgeColor: '#d97706', address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh', phone: '1900 1234', rooms: 10, screens: ['2D', '3D', 'IMAX', '4DX'], img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800' },
+  { id: 2, name: 'CineMate Bình Thạnh', badge: null, badgeColor: null, address: '156 Xo Vìt Nghệ Tĩnh, Phường 26, Quận Bình Thạnh, TP. Hồ Chí Minh', phone: '1900 1235', rooms: 8, screens: ['2D', '3D', '4DX'], img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800' },
+  { id: 3, name: 'CineMate Gò Vấp', badge: null, badgeColor: null, address: '12 Quang Trung, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh', phone: '1900 1236', rooms: 6, screens: ['2D', '3D'], img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800' },
+  { id: 4, name: 'CineMate Thủ Đức', badge: null, badgeColor: null, address: 'Võ Văn Ngân, Phường Bình Thọ, TP. Thủ Đức, TP. Hồ Chí Minh', phone: '1900 1237', rooms: 7, screens: ['2D', '3D', 'IMAX'], img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=800' },
+]
+
+const MEMBER_PERKS = [
+  { icon: Ticket, title: 'Vé Ưu Đãi', desc: 'Giảm đến 30% vé mọi suất chiếu trong tuần' },
+  { icon: Star, title: 'Tích Điểm', desc: 'Đổi điểm lấy vé, bắp nước & quà tặng hấp dẫn' },
+  { icon: Crown, title: 'Ghế Ưu Tiên', desc: 'Đặt ghế VIP trước 48 giờ so với khách thường' },
+  { icon: Gift, title: 'Quà Sinh Nhật', desc: 'Combo vé + bắp miễn phí vào tháng sinh nhật' },
+  { icon: Users, title: 'Cộng Đồng', desc: 'Tham gia club & các sự kiện chiếu phim riêng' },
+  { icon: Zap, title: 'Flash Sale', desc: 'Nhận thông báo ưu đãi chớp nhoáng sớm nhất' },
+]
+
+// ── Helpers ─────────────────────────────────────────────────────
 const getEmbedUrl = (url) => {
   if (!url) return ''
   if (url.includes('youtube.com/embed/')) return url
@@ -28,20 +65,27 @@ const getYoutubeVideoId = (url) => {
   return ''
 }
 
-// Kiểm tra xem URL có hợp lệ không
-const isValidImageUrl = (url) => {
-  if (!url) return false
-  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')
+const getRatingColor = (rating) => {
+  if (rating === 'T18') return '#dc2626'
+  if (rating === 'T16') return '#ef4444'
+  if (rating === 'T13') return '#f97316'
+  return '#16a34a'
 }
 
-// ── Quick Booking: 7 ngày tới ─────────────────────────────────────
+const handleImageError = (e, fallback = DEFAULT_POSTER_SMALL) => {
+  if (!e.target.src.includes('No Image') && !e.target.src.includes('w=400') && !e.target.src.includes('w=120')) {
+    e.target.src = fallback
+  }
+}
+
+// ── Quick Booking: 7 ngày tới ──────────────────────────────────
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
   d.setDate(d.getDate() + i)
   return {
     date: d.toISOString().slice(0, 10),
     label: d.getDate(),
-    day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()]
+    day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()],
   }
 })
 
@@ -80,12 +124,7 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
         <span className="truncate font-medium" style={{ color: selectedOption ? '#fff' : 'rgba(255,255,255,0.4)' }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span
-          className="material-symbols-outlined text-sm select-none transition-transform duration-200"
-          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', color: 'rgba(255,255,255,0.5)' }}
-        >
-          keyboard_arrow_down
-        </span>
+<ChevronDown size={14} className="transition-transform duration-200" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', color: 'rgba(255,255,255,0.5)' }} />
       </button>
       {error && <span className="text-[10px] text-red-400 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
       {isOpen && !disabled && (
@@ -115,7 +154,7 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
                   }}
                 >
                   <span className="truncate">{opt.label}</span>
-                  {isSelected && <span className="material-symbols-outlined text-sm font-bold" style={{ color: '#e50914' }}>check</span>}
+                  {isSelected && <Check size={14} className="text-sm font-bold" style={{ color: '#e50914' }} />}
                 </div>
               )
             })
@@ -124,111 +163,6 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
       )}
     </div>
   )
-}
-
-// ── Static data cho các section homepage ─────────────────────────
-const PROMOTIONS = [
-  {
-    id: 1, tag: 'HOT', tagColor: '#e50914',
-    title: 'Happy Monday — Đồng Giá 45K',
-    desc: 'Ưu đãi đồng giá vé 2D chỉ 45.000đ cho mọi thành viên vào mỗi ngày Thứ Hai hàng tuần.',
-    date: 'Mỗi Thứ Hai',
-    img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700',
-  },
-  {
-    id: 2, tag: 'MỚI', tagColor: '#2563eb',
-    title: 'Khai Trương CineMate Thủ Đức',
-    desc: 'Giảm 50% bắp nước khi mua kèm 2 vé tại chi nhánh Thủ Đức. Ưu đãi trong thời gian khai trương!',
-    date: 'Đến 30/06/2026',
-    img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700',
-  },
-  {
-    id: 3, tag: 'VIP', tagColor: '#d97706',
-    title: 'Hội Viên Vàng — Tích Điểm Đôi',
-    desc: 'Tích lũy điểm thành viên gấp đôi và nhận thêm bắp nước miễn phí vào tháng sinh nhật của bạn.',
-    date: 'Chương trình thường niên',
-    img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700',
-  },
-  {
-    id: 4, tag: 'COMBO', tagColor: '#16a34a',
-    title: 'Combo Cuối Tuần — Tiết Kiệm 30%',
-    desc: 'Mua combo 2 vé + 2 bắp lớn + 2 nước vào Thứ 7 & Chủ Nhật, tiết kiệm đến 30% so với giá lẻ.',
-    date: 'Thứ 7 & Chủ Nhật',
-    img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700',
-  },
-]
-
-const CINEMAS = [
-  {
-    id: 1,
-    name: 'CineMate Quận 1',
-    badge: 'CHI NHÁNH TỔNG',
-    badgeColor: '#d97706',
-    address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-    phone: '1900 1234',
-    rooms: 10,
-    screens: ['2D', '3D', 'IMAX', '4DX'],
-    img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800',
-    mapLink: 'https://maps.google.com/?q=135+Dong+Khoi+Q1+HCMC',
-  },
-  {
-    id: 2,
-    name: 'CineMate Bình Thạnh',
-    badge: null,
-    badgeColor: null,
-    address: '156 Xo Vìt Nghệ Tĩnh, Phường 26, Quận Bình Thạnh, TP. Hồ Chí Minh',
-    phone: '1900 1235',
-    rooms: 8,
-    screens: ['2D', '3D', '4DX'],
-    img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800',
-    mapLink: 'https://maps.google.com/?q=Binh+Thanh+HCMC',
-  },
-  {
-    id: 3,
-    name: 'CineMate Gò Vấp',
-    badge: null,
-    badgeColor: null,
-    address: '12 Quang Trung, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh',
-    phone: '1900 1236',
-    rooms: 6,
-    screens: ['2D', '3D'],
-    img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800',
-    mapLink: 'https://maps.google.com/?q=Go+Vap+HCMC',
-  },
-  {
-    id: 4,
-    name: 'CineMate Thủ Đức',
-    badge: null,
-    badgeColor: null,
-    address: 'Võ Văn Ngân, Phường Bình Thọ, TP. Thủ Đức, TP. Hồ Chí Minh',
-    phone: '1900 1237',
-    rooms: 7,
-    screens: ['2D', '3D', 'IMAX'],
-    img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=800',
-    mapLink: 'https://maps.google.com/?q=Thu+Duc+HCMC',
-  },
-]
-
-const MEMBER_PERKS = [
-  { icon: Ticket, title: 'Vé Ưu Đãi', desc: 'Giảm đến 30% vé mọi suất chiếu trong tuần' },
-  { icon: Star, title: 'Tích Điểm', desc: 'Đổi điểm lấy vé, bắp nước & quà tặng hấp dẫn' },
-  { icon: Crown, title: 'Ghế Ưu Tiên', desc: 'Đặt ghế VIP trước 48 giờ so với khách thường' },
-  { icon: Gift, title: 'Quà Sinh Nhật', desc: 'Combo vé + bắp miễn phí vào tháng sinh nhật' },
-  { icon: Users, title: 'Cộng Đồng', desc: 'Tham gia club & các sự kiện chiếu phim riêng' },
-  { icon: Zap, title: 'Flash Sale', desc: 'Nhận thông báo ưu đãi chớp nhoáng sớm nhất' },
-]
-
-// Default poster khi ảnh load lỗi - Sử dụng placeholder đơn giản
-const DEFAULT_POSTER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="600" viewBox="0 0 400 600"%3E%3Crect fill="%231a1a2e" width="400" height="600"/%3E%3Ctext fill="%23666" font-family="Arial" font-size="24" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-const DEFAULT_POSTER_SMALL = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="120" height="180" viewBox="0 0 120 180"%3E%3Crect fill="%231a1a2e" width="120" height="180"/%3E%3Ctext fill="%23666" font-family="Arial" font-size="14" x="50%25" y="50%25" text-anchor="middle" dominant-baseline="middle"%3ENo Image%3C/text%3E%3C/svg%3E'
-
-const handleImageError = (e) => {
-  const currentSrc = e.target.src
-  console.log('Image failed to load:', currentSrc)
-  // Nếu đã là default thì không replace nữa (tránh loop)
-  if (currentSrc.includes('No Image') || currentSrc.includes('1489599849927')) return
-  // Thay thế bằng ảnh default SVG
-  e.target.src = currentSrc.includes('w=400') || currentSrc.includes('w=120') ? DEFAULT_POSTER_SMALL : DEFAULT_POSTER
 }
 
 export default function HomePage() {
@@ -473,7 +407,7 @@ export default function HomePage() {
                       {/* Top part: Left Info & Right Poster */}
                       <div className="w-full max-w-7xl mx-auto px-6 md:px-14 flex flex-col lg:flex-row items-center justify-between gap-10 md:gap-14 flex-grow animate-fade-in">
 
-                        {/* Text info - Left Column */}
+                        {/* Text Info - Left Column */}
                         <motion.div
                           className="flex flex-col gap-4 text-white flex-1 text-left"
                           initial={{ opacity: 0, y: 28 }}
@@ -564,7 +498,7 @@ export default function HomePage() {
                                 scrollToQuickBooking(movie.id)
                               }}
                             >
-                              <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>confirmation_number</span>
+                              <Ticket size={16} className="font-bold" />
                               <span>Đặt Vé Ngay</span>
                             </Link>
                             {movie.trailerUrl && (
@@ -576,7 +510,7 @@ export default function HomePage() {
                                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white border border-white/20 bg-white/5 hover:bg-white/10 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                                 style={{ fontFamily: 'Montserrat, sans-serif' }}
                               >
-                                <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>play_circle</span>
+                                <Play size={16} className="font-bold" />
                                 <span>Xem Trailer</span>
                               </button>
                             )}
@@ -585,7 +519,7 @@ export default function HomePage() {
                               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider text-white border border-red-500/25 bg-red-500/5 hover:bg-red-500/15 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer"
                               style={{ fontFamily: 'Montserrat, sans-serif' }}
                             >
-                              <span className="material-symbols-outlined font-bold" style={{ fontSize: '16px' }}>info</span>
+                              <Info size={16} className="font-bold" />
                               <span>Chi Tiết</span>
                             </Link>
                           </div>
@@ -644,7 +578,7 @@ export default function HomePage() {
                                   scrollToQuickBooking(movie.id)
                                 }}
                               >
-                                <span className="material-symbols-outlined text-sm font-bold">confirmation_number</span>
+                                <Ticket size={14} className="text-sm font-bold" />
                                 <span>Đặt Vé Ngay</span>
                               </Link>
                             </motion.div>
@@ -772,7 +706,7 @@ export default function HomePage() {
                   className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 4px 16px rgba(229,9,20,0.4)' }}
                 >
-                  <span className="material-symbols-outlined text-white font-bold" style={{ fontSize: '18px' }}>confirmation_number</span>
+                  <Ticket size={18} className="text-white font-bold" />
                 </div>
                 <div>
                   <h2 className="text-white font-black text-base uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
@@ -839,7 +773,7 @@ export default function HomePage() {
                     whileTap={{ scale: 0.98 }}
                     transition={{ type: "spring", stiffness: 400, damping: 17 }}
                   >
-                    <span className="material-symbols-outlined font-bold" style={{ fontSize: '15px' }}>confirmation_number</span>
+                    <Ticket size={15} className="font-bold" />
                     Đặt Vé Ngay
                   </motion.button>
                 </div>
@@ -879,178 +813,13 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div
-              className="relative group/slider w-full max-w-[1100px] px-6"
+              className="w-full max-w-5xl z-10"
               variants={{
-                hidden: { opacity: 0 },
-                visible: { opacity: 1, transition: { delay: 0.15 } }
+                hidden: { opacity: 0, y: 25 },
+                visible: { opacity: 1, y: 0, transition: { delay: 0.15, duration: 0.6 } }
               }}
             >
-
-              {movies.length > 4 && (
-                <motion.button
-                  onClick={slideLeft}
-                  className="absolute left-2 md:-left-6 top-[40%] -translate-y-1/2 z-40 w-12 h-16 bg-black/60 hover:bg-black/90 text-white flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 rounded-sm backdrop-blur-sm"
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 }}
-                >
-                  <ChevronLeft size={36} />
-                </motion.button>
-              )}
-
-              <div className="w-full overflow-hidden">
-                <div
-                  className="flex gap-6 transition-transform duration-500 ease-in-out pb-8 w-max will-change-transform transform-gpu"
-                  style={{ transform: `translateX(-${currentIndex * (240 + 24)}px)` }}
-                >
-                  {movies.map((movie, index) => {
-                    const genresStr = movie.genres?.map(g => g.name).join(', ') || 'Chưa phân loại'
-                    const countriesStr = movie.countries?.map(c => c.name).join(', ') || 'N/A'
-                    const detailLink = `/movies/${movie.id}`
-                    return (
-                      <motion.div
-                        key={movie.id}
-                        className="w-[240px] flex-shrink-0 snap-center flex flex-col h-full cursor-pointer"
-                        variants={{
-                          hidden: { opacity: 0, y: 40, scale: 0.95 },
-                          visible: {
-                            opacity: 1,
-                            y: 0,
-                            scale: 1,
-                            transition: {
-                              duration: 0.5,
-                              ease: [0.25, 0.46, 0.45, 0.94],
-                              delay: index * 0.08
-                            }
-                          }
-                        }}
-                        whileHover={{ y: -8, transition: { duration: 0.22 } }}
-                      >
-                        <Link to={detailLink} className="group flex flex-col flex-grow">
-                          <div className="relative w-full aspect-[2/3] flex-shrink-0 overflow-hidden border border-white/10 shadow-lg mb-4 bg-gradient-to-br from-red-900/40 to-gray-900">
-                            <div className="absolute top-0 left-0 z-30 flex">
-                              <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-bold px-2 py-1 flex items-center justify-center border-r border-b border-white/5">{movie.version || '2D'}</span>
-                              <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 flex items-center justify-center">{movie.rating || 'K'}</span>
-                            </div>
-                            <motion.img
-                              src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'}
-                              alt={movie.title || ''}
-                              loading="lazy"
-                              decoding="async"
-                              className="w-full h-full object-cover relative z-10 will-change-transform transform-gpu"
-                              whileHover={{ scale: 1.08 }}
-                              transition={{ duration: 0.4 }}
-                              onError={handleImageError}
-                            />
-                            <motion.div
-                              className="absolute inset-0 bg-black/85 z-20 flex flex-col justify-center px-6 text-left"
-                              initial={{ opacity: 0 }}
-                              whileHover={{ opacity: 1 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              <h3 className="text-white font-bold text-xl mb-6 uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>{movie.titleVn}</h3>
-                              <div className="flex flex-col gap-4">
-                                <div className="flex items-center gap-3"><Tag size={18} className="text-red-500" /><span className="text-white text-sm font-semibold line-clamp-1">{genresStr}</span></div>
-                                <div className="flex items-center gap-3"><Clock size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.duration || 120} phút</span></div>
-                                <div className="flex items-center gap-3"><Globe size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{countriesStr}</span></div>
-                                <div className="flex items-center gap-3"><MessageSquare size={18} className="text-red-500" /><span className="text-white text-sm font-semibold">{movie.language || 'Phụ Đề'}</span></div>
-                              </div>
-                            </motion.div>
-                          </div>
-                          <motion.h3
-                            className="text-white text-center font-bold text-sm mb-4 uppercase line-clamp-2 min-h-[40px] flex items-center justify-center group-hover:text-red-500 transition-colors"
-                            whileHover={{ scale: 1.02 }}
-                          >
-                            {movie.titleVn}
-                          </motion.h3>
-                        </Link>
-                        <div className="flex items-center justify-between mt-auto px-1">
-                          <Link to={detailLink} className="flex items-center gap-1 text-sm text-gray-300 hover:text-white transition-colors">
-                            <span className="material-symbols-outlined text-lg text-red-500">play_circle</span>
-                            <span className="underline decoration-1 underline-offset-2 text-xs font-semibold">Chi Tiết</span>
-                          </Link>
-                          <motion.div
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <Link
-                              to={detailLink}
-                              className="text-white text-xs font-extrabold px-5 py-2 transition-all duration-200 uppercase rounded-sm"
-                              style={{
-                                background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',
-                                boxShadow: '0 4px 10px rgba(229, 9, 20, 0.3)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)'
-                              }}
-                              onClick={(e) => {
-                                e.preventDefault()
-                                scrollToQuickBooking(movie.id)
-                              }}
-                            >
-                              ĐẶT VÉ
-                            </Link>
-                          </motion.div>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                  {movies.length === 0 && (
-                    <motion.div
-                      className="w-[1100px] py-16 text-center text-gray-400 font-semibold"
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      viewport={{ once: true }}
-                    >
-                      Hiện chưa có phim đang chiếu.
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-
-              {movies.length > 4 && (
-                <motion.div
-                  className="flex justify-center gap-2 mt-2 w-full"
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.5 }}
-                >
-                  {Array.from({ length: Math.ceil(movies.length / 4) }).map((_, pageIdx) => {
-                    const targetIndex = pageIdx * 4
-                    const isActive = currentIndex === targetIndex || (currentIndex > targetIndex && currentIndex < targetIndex + 4)
-                    return (
-                      <motion.button
-                        key={pageIdx}
-                        className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${isActive ? 'bg-red-500 scale-125 shadow-[0_0_8px_rgba(229,9,20,0.6)]' : 'bg-white/30 hover:bg-white/50'}`}
-                        onClick={() => setCurrentIndex(targetIndex)}
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 0.9 }}
-                      />
-                    )
-                  })}
-                </motion.div>
-              )}
-
-              <motion.div
-                className="flex justify-center mt-8 w-full"
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.6 }}
-              >
-                <motion.div
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Link
-                    to="/movies"
-                    className="border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-300 font-bold uppercase tracking-wider px-10 py-2.5 text-sm"
-                  >
-                    XEM THÊM
-                  </Link>
-                </motion.div>
-              </motion.div>
-
+              <MovieArcCarousel3D movies={movies} />
             </motion.div>
           </motion.section>
           {/* ================= HẾT PHẦN PHIM ĐANG CHIẾU ================= */}
@@ -1095,7 +864,7 @@ export default function HomePage() {
                 {PROMOTIONS.map((promo) => (
                   <motion.div
                     key={promo.id}
-                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer"
+                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card"
                     variants={{ hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
                     whileHover={{ y: -6, transition: { duration: 0.22 } }}
                     style={{

@@ -1,18 +1,14 @@
 import { motion } from 'motion/react'
 
-/**
- * PageTransition - Wrapper component dùng chung cho tất cả các trang.
- * Tạo hiệu ứng fade + slideUp khi trang được mount.
- */
 export default function PageTransition({ children, className = '' }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -16 }}
+      exit={{ opacity: 0, y: -12 }}
       transition={{
-        duration: 0.45,
+        duration: 0.4,
         ease: [0.25, 0.46, 0.45, 0.94],
       }}
     >
@@ -21,9 +17,6 @@ export default function PageTransition({ children, className = '' }) {
   )
 }
 
-/**
- * FadeIn - Simple fade in wrapper
- */
 export function FadeIn({ children, delay = 0, className = '' }) {
   return (
     <motion.div
@@ -37,14 +30,11 @@ export function FadeIn({ children, delay = 0, className = '' }) {
   )
 }
 
-/**
- * SlideUp - Slide up from below with fade
- */
 export function SlideUp({ children, delay = 0, className = '' }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 32 }}
+      initial={{ opacity: 0, y: 28 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay, ease: [0.25, 0.46, 0.45, 0.94] }}
     >
@@ -53,9 +43,6 @@ export function SlideUp({ children, delay = 0, className = '' }) {
   )
 }
 
-/**
- * StaggerContainer - Container kích hoạt stagger cho children
- */
 export function StaggerContainer({ children, className = '', staggerDelay = 0.07 }) {
   return (
     <motion.div
@@ -76,15 +63,12 @@ export function StaggerContainer({ children, className = '', staggerDelay = 0.07
   )
 }
 
-/**
- * StaggerItem - Item bên trong StaggerContainer
- */
 export function StaggerItem({ children, className = '' }) {
   return (
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: 28, scale: 0.96 },
+        hidden: { opacity: 0, y: 24, scale: 0.97 },
         visible: {
           opacity: 1,
           y: 0,
@@ -98,20 +82,34 @@ export function StaggerItem({ children, className = '' }) {
   )
 }
 
-/**
- * ScaleIn - Scale + fade in, dùng cho modal, card, overlay
- */
 export function ScaleIn({ children, delay = 0, className = '' }) {
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, scale: 0.88 }}
+      initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
+      exit={{ opacity: 0, scale: 0.94 }}
       transition={{
-        duration: 0.38,
+        duration: 0.35,
         delay,
-        ease: [0.34, 1.56, 0.64, 1], // spring-like bounce
+        ease: [0.34, 1.2, 0.64, 1],
+      }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+export function CinematicReveal({ children, className = '' }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, clipPath: 'inset(8% 0% 8% 0%)' }}
+      animate={{ opacity: 1, clipPath: 'inset(0% 0% 0% 0%)' }}
+      exit={{ opacity: 0, clipPath: 'inset(8% 0% 8% 0%)' }}
+      transition={{
+        duration: 0.5,
+        ease: [0.25, 0.46, 0.45, 0.94],
       }}
     >
       {children}

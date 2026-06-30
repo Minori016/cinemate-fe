@@ -328,7 +328,7 @@ export default function ProfilePage() {
         })
       }
     }
-  }, [activeTab, fromDateStr, toDateStr, scoreFilterType])
+  }, [activeTab])
 
 
   const handleCancelTicket = (ticketId) => {

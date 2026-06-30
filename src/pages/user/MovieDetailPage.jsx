@@ -5,11 +5,14 @@ import { bookingService } from '../../services/bookingService'
 import { showtimeService } from '../../services/showtimeService'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
+import { Ticket, CalendarDays, Armchair, CreditCard, Check, CloudOff, ArrowLeft, Play } from 'lucide-react'
+import * as THREE from 'three'
 
 // Import split presenter components
 import MovieInfo from './components/moviedetail/MovieInfo'
 import ShowtimeStep from './components/moviedetail/ShowtimeStep'
 import SeatStep from './components/moviedetail/SeatStep'
+import ComboStep from './components/moviedetail/ComboStep'
 import PaymentStep from './components/moviedetail/PaymentStep'
 import SuccessModal from './components/moviedetail/SuccessModal'
 import TrailerModal from './components/moviedetail/TrailerModal'
@@ -55,8 +58,8 @@ const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
   const rows = ['A', 'B', 'C', 'D', 'E', 'F']
   const coupleRows = ['G', 'H']
   const getRowSections = (rowLabel) => {
-    if (rows.includes(rowLabel)) return [['1','2','3'],['4','5','6','7','8','9'],['10','11','12']]
-    if (coupleRows.includes(rowLabel)) return [['1'],['2','3','4'],['5']]
+    if (rows.includes(rowLabel)) return [['1', '2', '3'], ['4', '5', '6', '7', '8', '9'], ['10', '11', '12']]
+    if (coupleRows.includes(rowLabel)) return [['1'], ['2', '3', '4'], ['5']]
     return []
   }
   const allRows = [...rows, ...coupleRows]
@@ -142,11 +145,11 @@ function MovieDetailSkeleton() {
         <div className="lg:col-span-2 flex flex-col gap-6">
           <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
           <div className="space-y-4">
-            {[1,2,3].map(i => <div key={i} className="h-32 bg-white/5 rounded-xl animate-pulse" />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white/5 rounded-xl animate-pulse" />)}
           </div>
         </div>
         <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="h-40 bg-white/5 rounded-xl animate-pulse" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-40 bg-white/5 rounded-xl animate-pulse" />)}
         </div>
       </section>
     </>
@@ -156,7 +159,7 @@ function MovieDetailSkeleton() {
 function ErrorState({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <span className="material-symbols-outlined text-6xl mb-4" style={{ color: 'var(--color-primary)' }}>cloud_off</span>
+      <CloudOff size={48} className="mb-4" style={{ color: 'var(--color-primary)' }} />
       <h2 className="text-xl font-bold text-white mb-2">Khong tai duoc thong tin phim</h2>
       <p className="text-sm text-gray-400 mb-6 max-w-md">{message || 'Vui long kiem tra ket noi va thu lai.'}</p>
       <div className="flex gap-3">
@@ -167,6 +170,99 @@ function ErrorState({ message, onRetry }) {
       </div>
     </div>
   )
+}
+
+const DetailThreeBackground = () => {
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    const container = containerRef.current
+    const width = container.clientWidth
+    const height = container.clientHeight
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(70, width / height, 0.1, 100)
+    camera.position.set(0, 0, 5)
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(width, height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    container.appendChild(renderer.domElement)
+
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.08)
+    scene.add(ambientLight)
+
+    // Orbiting point lights for gradient flows
+    const redLight = new THREE.PointLight(0xe50914, 3.5, 12)
+    redLight.position.set(-2, 1, 1.5)
+    scene.add(redLight)
+
+    const blueLight = new THREE.PointLight(0x00d2ff, 1.5, 10)
+    blueLight.position.set(2, -1, 1.5)
+    scene.add(blueLight)
+
+    const darkRedLight = new THREE.PointLight(0xb3070f, 3.0, 10)
+    darkRedLight.position.set(0, 2, 1.0)
+    scene.add(darkRedLight)
+
+    // Flat reflective background mesh
+    const wallGeo = new THREE.PlaneGeometry(16, 12)
+    const wallMat = new THREE.MeshPhysicalMaterial({
+      color: 0x06080f,
+      roughness: 0.7,
+      metalness: 0.1,
+      clearcoat: 0.3,
+      clearcoatRoughness: 0.5,
+    })
+    const wall = new THREE.Mesh(wallGeo, wallMat)
+    wall.position.z = -2
+    scene.add(wall)
+
+    let animId
+    let time = 0
+
+    const tick = () => {
+      time += 0.007
+
+      // Move point lights in slow organic orbits
+      redLight.position.x = Math.sin(time * 0.4) * 3.5
+      redLight.position.y = Math.cos(time * 0.3) * 2.0
+      blueLight.position.x = -Math.sin(time * 0.5) * 3.5
+      blueLight.position.y = -Math.cos(time * 0.4) * 2.0
+      darkRedLight.position.x = Math.cos(time * 0.35) * 2.0
+      darkRedLight.position.y = Math.sin(time * 0.45) * 1.5
+
+      renderer.render(scene, camera)
+      animId = requestAnimationFrame(tick)
+    }
+
+    tick()
+
+    const handleResize = () => {
+      if (!container) return
+      const w = container.clientWidth
+      const h = container.clientHeight
+      renderer.setSize(w, h)
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
+    }
+
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', handleResize)
+      renderer.dispose()
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement)
+      }
+    }
+  }, [])
+
+  return <div ref={containerRef} className="fixed inset-0 z-0 pointer-events-none bg-[#06080F]" />
 }
 
 export default function MovieDetailPage() {
@@ -203,13 +299,16 @@ export default function MovieDetailPage() {
   const queryDate = searchParams.get('date')
   const queryTime = searchParams.get('time')
 
-  // Booking stepper
+  // Booking states
+  const [isBookingMode, setIsBookingMode] = useState((queryDate && queryTime) ? true : false)
   const [bookingStep, setBookingStep] = useState((queryDate && queryTime) ? 2 : 1)
   const [selectedDate, setSelectedDate] = useState(queryDate || DAYS[0].date)
   const [selectedTime, setSelectedTime] = useState(queryTime || '')
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+  const [promoCode, setPromoCode] = useState('')
+  const [discount, setDiscount] = useState(0)
 
   // Sync state with query parameters
   useEffect(() => {
@@ -219,6 +318,7 @@ export default function MovieDetailPage() {
       setSelectedDate(qDate)
       setSelectedTime(qTime)
       setBookingStep(2)
+      setIsBookingMode(true)
     }
   }, [searchParams])
 
@@ -352,6 +452,28 @@ export default function MovieDetailPage() {
   }, 0)
   const totalPrice = ticketPrice + comboPrice
 
+  const discountAmount = useMemo(() => {
+    if (discount <= 0) return 0
+    if (discount < 1) {
+      return Math.round((ticketPrice + comboPrice) * discount)
+    }
+    return discount
+  }, [discount, ticketPrice, comboPrice])
+
+  const finalPrice = Math.max(0, ticketPrice + comboPrice - discountAmount)
+
+  const onApplyPromo = (code, val) => {
+    setPromoCode(code)
+    setDiscount(val)
+  }
+
+  const onChangeCombo = (id, change) => {
+    setSelectedCombos(prev => ({
+      ...prev,
+      [id]: Math.max(0, prev[id] + change)
+    }))
+  }
+
   const handleCardNumberChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 16)
     setCardNumber(value.replace(/(\d{4})(?=\d)/g, '$1 '))
@@ -408,7 +530,7 @@ export default function MovieDetailPage() {
     }
     const payload = {
       bookingId, movieId, movieName: movie.title, showTime: selectedTime, showDate: selectedDate,
-      seats: selectedSeats, totalPrice, room: 'Phong Chieu 03 (IMAX)',
+      seats: selectedSeats, totalPrice: finalPrice, room: 'Phong Chieu 03 (IMAX)',
       fullName: user?.fullName || 'Thanh vien CineMate', email: user?.email || '',
       identityCard: 'Chua cap nhat', phoneNumber: 'Chua cap nhat'
     }
@@ -419,7 +541,7 @@ export default function MovieDetailPage() {
         id: bookingId, movie: movie.title, screen: 'Phong Chieu 03 (IMAX)',
         date: new Date(selectedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
         time: selectedTime, seats: selectedSeats.join(', '), price: getSeatPrice(selectedSeats[0] || 'A1'),
-        total: totalPrice, convertTickets: 0, scoreUsed: 0,
+        total: finalPrice, convertTickets: 0, scoreUsed: 0,
         memberId: 'MEM-' + Math.floor(100000 + Math.random() * 900000),
         customerName: user?.fullName || 'Thanh vien CineMate', phone: '0123456789',
         email: user?.email || '', idCard: '012345678901', status: 'Da thanh toan',
@@ -472,137 +594,377 @@ export default function MovieDetailPage() {
   }
 
   return (
-    <>
-      {/* ── Hero Section ── */}
-      <section className="relative min-h-[70vh] flex items-end overflow-hidden">
-        <div className="absolute inset-0 z-10 hero-gradient" />
-        <div className="absolute bottom-0 w-full left-0 px-6 md:px-12 pb-10 z-20 cursor-default" onClick={(e) => e.stopPropagation()}>
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8 items-end">
-            <motion.div className="hidden md:block w-44 lg:w-52 flex-shrink-0 z-30" initial={{ opacity: 0, x: -40 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}>
-              <img src={movie.poster} alt={`${movie.title} poster`} fetchPriority="high" decoding="async" className="w-full rounded-xl shadow-2xl border border-white/10 hover:scale-[1.02] transition-transform duration-300 will-change-transform transform-gpu" style={{ aspectRatio: '2/3', objectFit: 'cover', boxShadow: '0 20px 60px rgba(0,0,0,0.7)' }} />
-            </motion.div>
-            <motion.div className="flex flex-col gap-3 z-30 text-left flex-1 w-full" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65, delay: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}>
-              <h1 className="text-glow-red" style={{ fontFamily: 'Montserrat, sans-serif', fontSize: 'clamp(28px, 5vw, 56px)', fontWeight: 900, color: 'white', letterSpacing: '0.04em', textTransform: 'uppercase', lineHeight: 1.1, margin: 0 }}>{movie.title}</h1>
-              <div className="flex flex-wrap items-center gap-2" style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-text-muted)' }}>
-                {getRatingBadge(movie.rating)}
-                <span className="opacity-40">•</span>
-                <span>{movie.duration} phut</span>
-                <span className="opacity-40">•</span>
-                <span>{movie.genre}</span>
-                <span className="opacity-40">•</span>
-                <span className="border border-white/15 px-2 py-0.5 rounded text-xs text-white bg-white/5">{movie.format}</span>
-              </div>
-              <div className="flex flex-wrap gap-3 mt-4">
-                <button onClick={() => bookingSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="flex items-center gap-2 py-3 px-8 rounded-full font-bold uppercase tracking-widest text-xs transition-all duration-200 hover:scale-105 active:scale-95 text-white cursor-pointer border-none" style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 6px 20px rgba(229,9,20,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>confirmation_number</span>
-                  Dat Ve Ngay
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+    <div className="relative min-h-screen text-white bg-[#06080F] overflow-x-hidden selection:bg-red-900 selection:text-white pb-16">
+      {/* Permanent Red-Black WebGL Background */}
+      <DetailThreeBackground />
 
-      {/* ── Master Grid Layout ── */}
-      <section className="max-w-6xl mx-auto px-4 md:px-12 py-10 grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-30">
-        {/* Left Column: Booking Flow */}
-        <div id="booking-section" ref={bookingSectionRef} className="lg:col-span-2 flex flex-col gap-6">
-          {/* Section Header */}
-          <div className="mb-4 text-center lg:text-left">
-            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl font-black uppercase tracking-widest text-white mb-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-              <span style={{ color: 'var(--color-primary)' }}>Đặt</span> Vé
-            </motion.h2>
-            <p className="text-xs text-gray-400 font-medium text-center lg:text-left">Chọn lịch chiếu, ghế ngồi và thanh toán trực tiếp tại đây</p>
-          </div>
-
-          {/* Stepper Progress */}
-          <div className="flex items-center justify-center lg:justify-start mb-6 select-none">
-            {[
-              { step: 1, label: 'Lịch chiếu', icon: 'calendar_today' },
-              { step: 2, label: 'Chọn ghế', icon: 'event_seat' },
-              { step: 3, label: 'Thanh toán', icon: 'payment' },
-            ].map(({ step, label, icon }, idx) => (
-              <div key={step} className="flex items-center">
-                <button onClick={() => bookingStep > step && setBookingStep(step)} className={`flex flex-col items-center gap-1.5 ${bookingStep > step ? 'cursor-pointer' : 'cursor-default'}`} style={{ background: 'none', border: 'none' }}>
-                  <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${bookingStep > step ? 'step-done-style bg-transparent' : bookingStep === step ? 'step-active-style bg-transparent' : 'step-inactive-style bg-transparent'}`}>
-                    {bookingStep > step ? <span className="material-symbols-outlined text-sm font-black">done</span> : <span className="material-symbols-outlined text-sm">{icon}</span>}
-                  </div>
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${bookingStep > step ? 'text-green-500' : bookingStep === step ? 'text-[var(--color-primary)]' : 'text-gray-600'}`}>{label}</span>
-                </button>
-                {idx < 2 && <div className="booking-stepper-line" style={{ background: bookingStep > idx + 1 ? '#10b981' : '#374151', transition: 'background 0.4s' }} />}
+      {/* Main Switchable Detail / Booking Layout */}
+      {!isBookingMode && (
+        <motion.div
+          key="detail-view"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative w-full min-h-screen flex flex-col justify-between"
+        >
+          {/* ── Hero Section ── */}
+          <section className="relative min-h-[85vh] flex items-center overflow-hidden bg-black/40">
+            {/* Background YouTube Trailer Video */}
+            {movie.trailerUrl && (
+              <div className="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none select-none opacity-30">
+                <iframe
+                  title={`${movie.title} Background Trailer`}
+                  src={`${getEmbedUrl(movie.trailerUrl)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYoutubeVideoId(movie.trailerUrl)}&showinfo=0&rel=0&playsinline=1`}
+                  className="absolute top-1/2 left-1/2 w-[120vw] h-[120vh] min-w-full min-h-full -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ border: 'none', objectFit: 'cover' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                />
               </div>
-            ))}
-          </div>
+            )}
+            <div className="absolute inset-0 z-10 hero-gradient" />
+            
+            <div className="relative z-20 w-full max-w-6xl mx-auto px-6 md:px-12 py-20 flex flex-col md:flex-row gap-10 items-center md:items-end text-left">
+              {/* Animated Shared Poster */}
+              <motion.div 
+                layoutId="hero-poster"
+                transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+                className="w-48 sm:w-56 md:w-64 flex-shrink-0 z-30 relative group"
+              >
+                <img 
+                  src={movie.poster} 
+                  alt={`${movie.title} poster`} 
+                  className="w-full rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 hover:scale-[1.02] transition-transform duration-300" 
+                  style={{ aspectRatio: '2/3', objectFit: 'cover' }} 
+                />
+                <div className="absolute inset-0 border border-white/10 pointer-events-none rounded-2xl" />
+              </motion.div>
 
-          {/* Stepper Steps */}
-          <AnimatePresence mode="wait">
-            {bookingStep === 1 && (
-              <ShowtimeStep
-                DAYS={DAYS}
-                selectedDate={selectedDate}
-                setSelectedDate={setSelectedDate}
-                selectedTime={selectedTime}
-                setSelectedTime={setSelectedTime}
-                schedules={getMovieSchedules()}
-                setBookingStep={setBookingStep}
-                movie={movie}
-                movieId={movieId}
-                onShowtimeSelect={handleShowtimeSelect}
+              {/* Movie info metadata */}
+              <motion.div 
+                className="flex flex-col gap-4 text-left flex-grow max-w-2xl"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <h1 
+                  className="text-white text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-wider leading-none text-glow-red"
+                  style={{ fontFamily: 'Montserrat, sans-serif' }}
+                >
+                  {movie.title}
+                </h1>
+                
+                <div className="flex flex-wrap items-center gap-3 text-xs text-white/60 font-medium">
+                  {getRatingBadge(movie.rating)}
+                  <span>•</span>
+                  <span>{movie.duration} phút</span>
+                  <span>•</span>
+                  <span>{movie.genre}</span>
+                  <span>•</span>
+                  <span className="border border-white/15 px-2 py-0.5 rounded text-[10px] text-white bg-white/5">{movie.format}</span>
+                </div>
+
+
+                <div className="flex gap-4 mt-4 flex-wrap">
+                  <motion.button 
+                    onClick={() => setIsBookingMode(true)}
+                    className="flex items-center gap-2.5 py-3.5 px-10 rounded-full font-bold uppercase tracking-widest text-xs text-white cursor-pointer border-none" 
+                    style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 6px 20px rgba(229,9,20,0.4)', border: '1px solid rgba(255,255,255,0.08)' }} 
+                    whileHover={{ scale: 1.05, boxShadow: '0 8px 28px rgba(229,9,20,0.55)' }} 
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Ticket size={18} />
+                    Đặt Vé Ngay
+                  </motion.button>
+
+                  {movie.trailerUrl && (
+                    <motion.button 
+                      onClick={() => setIsTrailerOpen(true)}
+                      className="flex items-center gap-2 py-3 px-8 rounded-full text-xs font-bold uppercase tracking-wider transition-all hover:bg-white/5 active:scale-95 cursor-pointer border border-white/20 text-white bg-black/40 backdrop-blur-md"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Play size={16} className="text-red-500 fill-red-500" />
+                      Xem Trailer
+                    </motion.button>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          </section>
+
+          {/* Bottom details block: MovieInfo */}
+          <section className="max-w-6xl w-full mx-auto px-6 md:px-12 py-12 border-t border-white/5 flex flex-col gap-10 relative z-20">
+            <div className="text-left flex flex-col gap-4">
+              <h2 className="text-lg font-black uppercase text-red-500 tracking-wider m-0" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                Tóm Tắt Nội Dung
+              </h2>
+              <p className="text-sm text-gray-300 leading-relaxed font-medium m-0">
+                {movie.description || 'Không có mô tả chi tiết.'}
+              </p>
+            </div>
+            
+            {/* Display static MovieInfo card spanning full width */}
+            <div className="w-full">
+              <MovieInfo 
+                movie={movie} 
+                movieId={movieId} 
+                onShowtimeSelect={handleShowtimeSelect} 
                 onDateChange={handleDateChange}
+                onTrailerClick={() => setIsTrailerOpen(true)}
               />
-            )}
-            {bookingStep === 2 && (
-              <SeatStep
-                movie={movie}
-                selectedTime={selectedTime}
-                selectedDate={selectedDate}
-                totalPrice={totalPrice}
-                selectedSeats={selectedSeats}
-                violations={violations}
-                toggleSeat={toggleSeat}
-                setBookingStep={setBookingStep}
-                selectedShowtime={selectedShowtime}
-                SEAT_ROWS={SEAT_ROWS}
-                user={user}
-                navigate={navigate}
-                movieId={movieId}
-                location={location}
-              />
-            )}
-            {bookingStep === 3 && (
-              <PaymentStep
-                movie={movie}
-                bookingId={bookingId}
-                selectedDate={selectedDate}
-                selectedTime={selectedTime}
-                selectedSeats={selectedSeats}
-                totalPrice={totalPrice}
-                paymentMethod={paymentMethod}
-                setPaymentMethod={setPaymentMethod}
-                cardNumber={cardNumber}
-                handleCardNumberChange={handleCardNumberChange}
-                cardHolder={cardHolder}
-                handleCardHolderChange={handleCardHolderChange}
-                expiryDate={expiryDate}
-                handleExpiryChange={handleExpiryChange}
-                cvv={cvv}
-                handleCvvChange={handleCvvChange}
-                valErrors={valErrors}
-                submitting={submitting}
-                processingStep={processingStep}
-                submitError={submitError}
-                setSubmitError={setSubmitError}
-                simulatedOutcome={simulatedOutcome}
-                setSimulatedOutcome={setSimulatedOutcome}
-                handleSubmitPayment={handleSubmitPayment}
-              />
-            )}
-          </AnimatePresence>
-        </div>
+            </div>
+          </section>
+        </motion.div>
+      )}
 
-        {/* Right Column: Movie Details Stack */}
-        <MovieInfo movie={movie} movieId={movieId} onShowtimeSelect={handleShowtimeSelect} onDateChange={handleDateChange} />
-      </section>
+      {isBookingMode && (
+        <motion.div
+          key="booking-view"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative z-10 max-w-7xl mx-auto px-6 py-24 min-h-screen grid grid-cols-1 lg:grid-cols-4 gap-8"
+        >
+          {/* Column 1: Poster & Summary info */}
+          <div className="lg:col-span-1 flex flex-col gap-5 text-left">
+            <button 
+              onClick={() => {
+                setIsBookingMode(false)
+                setBookingStep(1)
+              }}
+              className="flex items-center gap-2 text-xs font-bold text-gray-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none py-2"
+            >
+              <ArrowLeft size={16} /> Quay lại chi tiết
+            </button>
+
+            {/* Poster shared element */}
+            <motion.div 
+              layoutId="hero-poster"
+              transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+              className="w-full rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10"
+            >
+              <img src={movie.poster} alt={movie.title} className="w-full h-auto object-cover" />
+            </motion.div>
+          </div>
+
+          {/* Column 2 & 3: Stepper & Step Panels */}
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            {/* Stepper Progress */}
+            <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-2xl p-4 select-none">
+              {[
+                { step: 1, label: 'Lịch chiếu', icon: <CalendarDays size={16} /> },
+                { step: 2, label: 'Chọn ghế', icon: <Armchair size={16} /> },
+                { step: 3, label: 'Bắp nước', icon: <Ticket size={16} /> },
+                { step: 4, label: 'Thanh toán', icon: <CreditCard size={16} /> },
+              ].map(({ step, label, icon }, idx) => (
+                <div key={step} className="flex items-center flex-1 last:flex-initial">
+                  <button 
+                    onClick={() => {
+                      if (bookingStep > step) setBookingStep(step)
+                    }}
+                    className={`flex flex-col items-center gap-1.5 flex-1 ${bookingStep > step ? 'cursor-pointer' : 'cursor-default'} bg-transparent border-none`}
+                  >
+                    <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${bookingStep > step ? 'text-green-500 border-green-500 bg-green-500/5' : bookingStep === step ? 'text-red-500 border-red-500 bg-red-500/5 shadow-[0_0_8px_rgba(229,9,20,0.4)]' : 'text-gray-600 border-gray-800'}`}>
+                      {bookingStep > step ? <Check size={14} className="font-black" /> : icon}
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-wider hidden sm:block ${bookingStep > step ? 'text-green-500' : bookingStep === step ? 'text-red-500' : 'text-gray-600'}`}>{label}</span>
+                  </button>
+                  {idx < 3 && <div className="h-[2px] flex-grow mx-2" style={{ background: bookingStep > idx + 1 ? '#10b981' : '#1f2937', transition: 'background 0.4s' }} />}
+                </div>
+              ))}
+            </div>
+
+            {/* Step Panels Container with AnimatePresence */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 min-h-[460px] relative overflow-hidden flex flex-col justify-between">
+              <AnimatePresence mode="wait">
+                {bookingStep === 1 && (
+                  <ShowtimeStep
+                    key="step-1"
+                    DAYS={DAYS}
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                    selectedTime={selectedTime}
+                    setSelectedTime={setSelectedTime}
+                    schedules={getMovieSchedules()}
+                    setBookingStep={setBookingStep}
+                    movie={movie}
+                    movieId={movieId}
+                    onShowtimeSelect={handleShowtimeSelect}
+                    onDateChange={handleDateChange}
+                  />
+                )}
+                {bookingStep === 2 && (
+                  <SeatStep
+                    key="step-2"
+                    movie={movie}
+                    selectedTime={selectedTime}
+                    selectedDate={selectedDate}
+                    totalPrice={ticketPrice}
+                    selectedSeats={selectedSeats}
+                    violations={violations}
+                    toggleSeat={toggleSeat}
+                    setBookingStep={setBookingStep}
+                    selectedShowtime={selectedShowtime}
+                    SEAT_ROWS={SEAT_ROWS}
+                    user={user}
+                    navigate={navigate}
+                    movieId={movieId}
+                    location={location}
+                  />
+                )}
+                {bookingStep === 3 && (
+                  <ComboStep
+                    key="step-3"
+                    selectedCombos={selectedCombos}
+                    onChangeCombo={onChangeCombo}
+                    promoCode={promoCode}
+                    setPromoCode={setPromoCode}
+                    discount={discount}
+                    onApplyPromo={onApplyPromo}
+                    setBookingStep={setBookingStep}
+                  />
+                )}
+                {bookingStep === 4 && (
+                  <PaymentStep
+                    key="step-4"
+                    movie={movie}
+                    bookingId={bookingId}
+                    selectedDate={selectedDate}
+                    selectedTime={selectedTime}
+                    selectedSeats={selectedSeats}
+                    totalPrice={finalPrice}
+                    paymentMethod={paymentMethod}
+                    setPaymentMethod={setPaymentMethod}
+                    cardNumber={cardNumber}
+                    handleCardNumberChange={handleCardNumberChange}
+                    cardHolder={cardHolder}
+                    handleCardHolderChange={handleCardHolderChange}
+                    expiryDate={expiryDate}
+                    handleExpiryChange={handleExpiryChange}
+                    cvv={cvv}
+                    handleCvvChange={handleCvvChange}
+                    valErrors={valErrors}
+                    submitting={submitting}
+                    processingStep={processingStep}
+                    submitError={submitError}
+                    setSubmitError={setSubmitError}
+                    simulatedOutcome={simulatedOutcome}
+                    setSimulatedOutcome={setSimulatedOutcome}
+                    handleSubmitPayment={handleSubmitPayment}
+                  />
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Column 4: Sticky real-time invoice panel */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 bg-white/5 border border-white/10 rounded-2xl p-6 text-left flex flex-col gap-5 backdrop-blur-md">
+              <h3 className="text-xs font-black uppercase text-red-500 tracking-widest border-b border-white/5 pb-3 m-0">Vé Của Bạn</h3>
+              
+              {/* Showtime info */}
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Suất Chiếu</span>
+                <span className="text-sm font-bold text-white uppercase">{selectedDate ? new Date(selectedDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Chưa chọn'}</span>
+                <span className="text-xs text-gray-400 font-semibold">{selectedTime ? `Giờ chiếu: ${selectedTime} tại Phòng IMAX` : 'Chưa chọn giờ chiếu'}</span>
+              </div>
+
+              {/* Seats info */}
+              <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Ghế Ngồi</span>
+                {selectedSeats.length > 0 ? (
+                  <>
+                    <span className="text-sm font-bold text-white">{selectedSeats.join(', ')}</span>
+                    <span className="text-xs text-gray-400 font-semibold">Tạm tính: {ticketPrice.toLocaleString('vi-VN')} đ</span>
+                  </>
+                ) : (
+                  <span className="text-xs text-gray-400 font-medium italic">Chưa chọn ghế</span>
+                )}
+              </div>
+
+              {/* Combos info */}
+              <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
+                <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Bắp Nước (Combo)</span>
+                {Object.values(selectedCombos).some(qty => qty > 0) ? (
+                  <div className="flex flex-col gap-1">
+                    {COMBOS.map(c => {
+                      const qty = selectedCombos[c.id] || 0
+                      if (qty === 0) return null
+                      return (
+                        <div key={c.id} className="flex justify-between items-center text-xs text-white">
+                          <span>{c.name} x {qty}</span>
+                          <span className="text-gray-400">{(c.price * qty).toLocaleString('vi-VN')} đ</span>
+                        </div>
+                      )
+                    })}
+                    <span className="text-xs text-gray-400 font-semibold mt-1">Tạm tính: {comboPrice.toLocaleString('vi-VN')} đ</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-400 font-medium italic">Chưa chọn bắp nước</span>
+                )}
+              </div>
+
+              {/* Promo code & Discount info */}
+              {discount > 0 && (
+                <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Mã Giảm Giá</span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-green-500 font-bold">{promoCode}</span>
+                    <span className="text-green-500 font-bold">-{discountAmount.toLocaleString('vi-VN')} đ</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Grand Total */}
+              <div className="border-t border-white/5 pt-4 flex justify-between items-end">
+                <span className="text-xs font-black uppercase text-white tracking-wider">Tổng cộng</span>
+                <span className="text-2xl font-black text-red-500 leading-none">{finalPrice.toLocaleString('vi-VN')} đ</span>
+              </div>
+
+              {/* Action buttons based on active step */}
+              <div className="mt-2">
+                {bookingStep === 1 && (
+                  <button
+                    onClick={() => setBookingStep(2)}
+                    disabled={!selectedTime}
+                    className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
+                  >
+                    Tiếp tục chọn ghế
+                  </button>
+                )}
+                {bookingStep === 2 && (
+                  <button
+                    onClick={() => setBookingStep(3)}
+                    disabled={selectedSeats.length === 0 || violations.length > 0}
+                    className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
+                  >
+                    Tiếp tục chọn combo
+                  </button>
+                )}
+                {bookingStep === 3 && (
+                  <button
+                    onClick={() => setBookingStep(4)}
+                    className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
+                  >
+                    Tiếp tục thanh toán
+                  </button>
+                )}
+                {bookingStep === 4 && (
+                  <button
+                    onClick={handleSubmitPayment}
+                    disabled={submitting}
+                    className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
+                  >
+                    {submitting ? 'Đang xử lý...' : 'Xác nhận thanh toán'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* ── Booking Success Modal ── */}
       <AnimatePresence>
@@ -613,7 +975,7 @@ export default function MovieDetailPage() {
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             selectedSeats={selectedSeats}
-            totalPrice={totalPrice}
+            totalPrice={finalPrice}
             bookingId={bookingId}
             onClose={handleCloseSuccessModal}
             onBookAnother={handleBookAnother}
@@ -633,7 +995,7 @@ export default function MovieDetailPage() {
         )}
       </AnimatePresence>
 
-      <style>{`
+  <style>{`
         .seat-btn {
           transition: all 0.2s ease;
           cursor: pointer;
@@ -907,6 +1269,6 @@ export default function MovieDetailPage() {
           font-weight: 500;
         }
       `}</style>
-    </>
+    </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
+import { ArrowLeft, CalendarDays, Clock, DoorOpen, Armchair, Check, Ticket, Users, Crown, Loader2, ChevronDown, CheckCircle2 } from 'lucide-react'
 import { movieService } from '../../services/movieService'
 import { showtimeService } from '../../services/showtimeService'
 import { cinemaRoomService } from '../../services/cinemaRoomService'
@@ -48,16 +49,16 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
   return (
     <div className="flex flex-col gap-2 relative w-full text-left z-50" ref={containerRef}>
       {label && <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">{label}</span>}
-      <button type="button" disabled={disabled} onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[46px]" style={{ borderColor: error ? 'var(--color-error)' : isOpen ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.1)', boxShadow: isOpen ? '0 0 10px rgba(229, 9, 20, 0.2)' : 'none' }}>
+      <motion.button type="button" disabled={disabled} onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed select-none text-left h-[46px]" style={{ borderColor: error ? 'var(--color-error)' : isOpen ? 'var(--color-primary)' : 'rgba(255, 255, 255, 0.1)', boxShadow: isOpen ? '0 0 10px rgba(229, 9, 20, 0.2)' : 'none' }} whileTap={{ scale: 0.97 }}>
         <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-        <span className="material-symbols-outlined transition-transform duration-200 text-gray-400 text-sm select-none" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }}>keyboard_arrow_down</span>
-      </button>
+        <ChevronDown size={14} className="text-gray-400 select-none transition-transform duration-200" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
+      </motion.button>
       {error && <span className="text-[10px] text-red-500 font-semibold absolute top-[calc(100%+4px)] left-0 z-10">{error}</span>}
       {isOpen && !disabled && (
         <div className="absolute left-0 top-[calc(100%+4px)] w-full rounded-xl border z-[60] max-h-60 overflow-y-auto" style={{ backgroundColor: 'var(--color-surface-container)', borderColor: 'rgba(255, 255, 255, 0.1)', backdropFilter: 'blur(20px)', boxShadow: '0 10px 30px rgba(0,0,0,0.6)', padding: '6px 0' }}>
           {options.length === 0 ? <div className="px-4 py-2.5 text-xs text-gray-500 italic select-none">Không có lựa chọn nào</div> : options.map(opt => {
             const isSelected = opt.value === value
-            return <div key={opt.value} onClick={() => { onChange(opt.value); setIsOpen(false) }} className="px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium" style={{ backgroundColor: isSelected ? 'rgba(229, 9, 20, 0.15)' : 'transparent', color: isSelected ? 'var(--color-primary)' : 'inherit' }}><span className="truncate">{opt.label}</span>{isSelected && <span className="material-symbols-outlined text-sm font-bold" style={{ color: 'var(--color-primary)' }}>check</span>}</div>
+            return <div key={opt.value} onClick={() => { onChange(opt.value); setIsOpen(false) }} className="px-4 py-2.5 text-sm text-white hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-between font-medium" style={{ backgroundColor: isSelected ? 'rgba(229, 9, 20, 0.15)' : 'transparent', color: isSelected ? 'var(--color-primary)' : 'inherit' }}><span className="truncate">{opt.label}</span>{isSelected && <CheckCircle2 size={14} className="font-bold" style={{ color: 'var(--color-primary)' }} />}</div>
           })}
         </div>
       )}
@@ -322,7 +323,7 @@ export default function SeatSelectionPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#06080F]">
-        <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
+        <Loader2 size={28} className="animate-spin text-red-500" />
       </div>
     )
   }
@@ -342,10 +343,10 @@ export default function SeatSelectionPage() {
 
       {/* Transactional Top Navigation */}
       <header className="bg-[#121414]/90 backdrop-blur-xl border-b border-white/10 shadow-2xl flex justify-between items-center w-full px-6 md:px-12 h-20 fixed top-0 left-0 right-0 z-40">
-        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 group text-sm font-semibold uppercase tracking-wider">
-          <span className="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+        <motion.button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors flex items-center gap-2 group text-sm font-semibold uppercase tracking-wider" whileHover={{ x: -4 }} whileTap={{ scale: 0.95 }}>
+          <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
           <span>Quay lại</span>
-        </button>
+        </motion.button>
         <div className="text-center">
           <h1 className="custom-font-title text-2xl md:text-3xl tracking-widest uppercase" style={{ fontWeight: 900 }}><span className="text-white">Cine</span><span className="text-red-500">mate</span></h1>
         </div>
@@ -356,15 +357,15 @@ export default function SeatSelectionPage() {
       <main className="flex-grow pt-28 px-4 md:px-8 max-w-5xl mx-auto w-full flex flex-col items-center">
         {/* Booking Details Summary Header */}
         <div className="w-full text-center mb-10">
-          <h2 className="custom-font-title text-3xl md:text-5xl text-red-500 mb-2 tracking-wide uppercase">
+          <motion.h2 className="custom-font-title text-3xl md:text-5xl text-red-500 mb-2 tracking-wide uppercase" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ type: 'spring', stiffness: 200, damping: 22, delay: 0.1 }}>
             {movie ? (movie.title || movie.titleVn || movie.movieNameVn || 'Đang Tải Phim...') : 'Đang Tải Phim...'}
-          </h2>
+          </motion.h2>
           <p className="text-sm text-gray-400 flex items-center justify-center flex-wrap gap-4 font-medium">
-            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-base">calendar_today</span>{formatDate(dateStr)}</span>
+            <span className="flex items-center gap-1"><CalendarDays size={14} />{formatDate(dateStr)}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
-            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-base">schedule</span>{time}</span>
+            <span className="flex items-center gap-1"><Clock size={14} />{time}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
-            <span className="flex items-center gap-1"><span className="material-symbols-outlined text-base">meeting_room</span>{seatLayout?.roomName || 'Phòng Chiếu 03 (IMAX)'}</span>
+            <span className="flex items-center gap-1"><DoorOpen size={14} />{seatLayout?.roomName || 'Phòng Chiếu 03 (IMAX)'}</span>
           </p>
           {seatError && <p className="text-xs text-yellow-500 mt-2">{seatError} — Đang dùng sơ đồ mặc định</p>}
         </div>
@@ -408,10 +409,10 @@ export default function SeatSelectionPage() {
               {/* Entrance / Exit Indicators */}
               <div className="w-full max-w-[620px] flex justify-between items-center mt-6 px-2">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-[0_2px_10px_rgba(16,185,129,0.05)]">
-                  <span className="material-symbols-outlined text-sm font-bold">login</span><span>Lối vào / Entrance</span>
+                  <DoorOpen size={14} className="font-bold" /><span>Lối vào / Entrance</span>
                 </div>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/25 text-red-500 rounded-xl text-[10px] font-extrabold uppercase tracking-widest shadow-[0_2px_10px_rgba(239,68,68,0.05)]">
-                  <span className="material-symbols-outlined text-sm font-bold">logout</span><span>Lối ra / Exit</span>
+                  <DoorOpen size={14} className="font-bold" /><span>Lối ra / Exit</span>
                 </div>
               </div>
             </div>
@@ -423,13 +424,13 @@ export default function SeatSelectionPage() {
       <div className="fixed bottom-0 left-0 w-full z-30 p-4 md:p-6 pointer-events-none flex justify-center">
         <div className="pointer-events-auto w-full max-w-4xl bg-[#1a1c1c]/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_-10px_45px_rgba(229,9,20,0.25)] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3 flex-grow text-left">
-            <span className="material-symbols-outlined text-red-500 text-2xl select-none animate-pulse">confirmation_number</span>
+            <Ticket size={22} className="text-red-500 select-none animate-pulse" />
             <p className="text-base md:text-lg font-bold text-white tracking-wide m-0">Bạn muốn xem phim? Đặt vé tại đây</p>
           </div>
           <div className="flex items-center gap-6 shrink-0">
-            <button onClick={() => { navigate(`/movies/${movieId}?date=${dateStr}&time=${time}`) }} className="bg-[var(--color-primary)] text-white font-bold text-base px-10 py-4 rounded-xl shadow-[0_0_24px_rgba(229,9,20,0.35)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none">
-              <span>Đặt vé ngay</span><span className="material-symbols-outlined text-lg font-black group-hover:translate-x-1 transition-transform">confirmation_number</span>
-            </button>
+            <motion.button onClick={() => { navigate(`/movies/${movieId}?date=${dateStr}&time=${time}`) }} className="bg-[var(--color-primary)] text-white font-bold text-base px-10 py-4 rounded-xl shadow-[0_0_24px_rgba(229,9,20,0.35)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <span>Đặt vé ngay</span><Ticket size={18} className="font-black group-hover:translate-x-1 transition-transform" />
+            </motion.button>
           </div>
         </div>
       </div>
