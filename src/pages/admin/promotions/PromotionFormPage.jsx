@@ -227,12 +227,12 @@ export default function PromotionFormPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin/promotions')}
-            className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-white hover:border-white/20 transition-all active:scale-95 cursor-pointer"
+            className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-on-surface)] hover:border-white/20 transition-all active:scale-95 cursor-pointer"
           >
             <ArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-2xl text-white font-extrabold tracking-wider uppercase flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <h1 className="text-2xl text-[var(--color-on-surface)] font-extrabold tracking-wider uppercase flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
               <Tag className="text-red-500" size={24} />
               {isEdit ? 'Cập nhật khuyến mãi' : 'Thêm khuyến mãi mới'}
             </h1>
@@ -255,8 +255,8 @@ export default function PromotionFormPage() {
               onClick={() => setActiveTab(t.id)}
               className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold uppercase tracking-wide border-b-2 transition-colors cursor-pointer
                 ${isActive
-                  ? 'border-red-500 text-white'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:text-white'}`}
+                  ? 'border-red-500 text-[var(--color-on-surface)]'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-on-surface)]'}`}
             >
               <Icon size={14} className={isActive ? 'text-red-500' : ''} />
               {t.label}
@@ -577,7 +577,7 @@ export default function PromotionFormPage() {
         {/* Right column */}
         <div className="space-y-6">
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+            <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
               <Sparkles className="text-red-500" size={18} />
               Thông tin bổ sung
             </h3>

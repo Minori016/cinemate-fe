@@ -114,7 +114,7 @@ export default function PromotionListPage() {
       key: 'title',
       label: 'Tiêu đề',
       render: r => (
-        <div className="font-bold text-white max-w-[240px]">
+        <div className="font-bold text-[var(--color-on-surface)] max-w-[240px]">
           <div className="truncate" title={r.title}>{r.title}</div>
           {r.code && (
             <div className="flex items-center gap-1 mt-1">
@@ -166,12 +166,12 @@ export default function PromotionListPage() {
     {
       key: 'startTime',
       label: 'Bắt đầu',
-      render: r => <span className="whitespace-nowrap text-gray-300 font-mono text-xs">{formatDate(r.startTime)}</span>
+      render: r => <span className="whitespace-nowrap text-[var(--color-on-surface-variant)] font-mono text-xs">{formatDate(r.startTime)}</span>
     },
     {
       key: 'endTime',
       label: 'Kết thúc',
-      render: r => <span className="whitespace-nowrap text-gray-300 font-mono text-xs">{formatDate(r.endTime)}</span>
+      render: r => <span className="whitespace-nowrap text-[var(--color-on-surface-variant)] font-mono text-xs">{formatDate(r.endTime)}</span>
     },
   ]
 
@@ -190,7 +190,7 @@ export default function PromotionListPage() {
         transition={{ duration: 0.5, delay: 0.1 }}
       >
         <div>
-          <h1 className="text-4xl text-white font-bold tracking-wider uppercase flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}>
+          <h1 className="text-4xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}>
             <Tag className="text-red-500" size={32} />
             Quản lý khuyến mãi
           </h1>
@@ -211,10 +211,10 @@ export default function PromotionListPage() {
         transition={{ duration: 0.4, delay: 0.12 }}
       >
         {[
-          { label: 'Tổng KM', value: stats.total, color: 'text-white' },
-          { label: 'Đang chạy', value: stats.active, color: 'text-green-400' },
-          { label: 'Bản nháp / sắp', value: stats.draft, color: 'text-yellow-400' },
-          { label: 'Đã hết hạn', value: stats.expired, color: 'text-red-400' },
+          { label: 'Tổng KM', value: stats.total, color: 'text-[var(--color-on-surface)]' },
+          { label: 'Đang chạy', value: stats.active, color: 'text-green-500' },
+          { label: 'Bản nháp / sắp', value: stats.draft, color: 'text-yellow-500' },
+          { label: 'Đã hết hạn', value: stats.expired, color: 'text-red-500' },
         ].map(s => (
           <div key={s.label} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3.5">
             <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">{s.label}</p>
@@ -239,7 +239,7 @@ export default function PromotionListPage() {
           />
           <Search size={16} className="absolute left-3 text-gray-500" />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 text-gray-400 hover:text-white text-xs cursor-pointer">
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 text-gray-400 hover:text-[var(--color-on-surface)] text-xs cursor-pointer">
               Xóa
             </button>
           )}
@@ -250,7 +250,7 @@ export default function PromotionListPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
+            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] focus:outline-none focus:border-red-500 cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
             {Object.entries(PROMOTION_STATUS_LABELS).map(([k, v]) => (
@@ -261,7 +261,7 @@ export default function PromotionListPage() {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 cursor-pointer"
+            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] focus:outline-none focus:border-red-500 cursor-pointer"
           >
             <option value="ALL">Tất cả loại</option>
             {Object.entries(PROMOTION_TYPE_LABELS).map(([k, v]) => (
@@ -323,7 +323,7 @@ export default function PromotionListPage() {
         <div className="space-y-4">
           <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
             Bạn có chắc chắn muốn xóa chiến dịch khuyến mãi: <br />
-            <span className="text-white font-bold text-base block mt-2 p-3 bg-red-600/10 border border-red-500/20 rounded-xl">
+            <span className="text-[var(--color-on-surface)] font-bold text-base block mt-2 p-3 bg-red-600/10 border border-red-500/20 rounded-xl">
               "{deleteTarget?.title}"
             </span>
           </p>

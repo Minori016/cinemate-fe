@@ -295,6 +295,12 @@ body {
   color: #0f172a;
 }
 
+.theme-light input,
+.theme-light textarea,
+.theme-light select {
+  color: var(--color-on-surface) !important;
+}
+
 .theme-light .text-white-force {
   color: #ffffff !important;
 }
