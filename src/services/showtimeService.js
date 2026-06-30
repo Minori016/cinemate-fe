@@ -98,9 +98,15 @@ export const showtimeService = {
     }
   },
 
-  // POST /api/v1/admin/showtimes/auto-generate
+  // POST /api/v1/admin/showtimes/auto/generate
   autoGenerate: async (requestData) => {
-    const res = await api.post('/api/v1/admin/showtimes/auto-generate', requestData)
+    const res = await api.post('/api/v1/admin/showtimes/auto/generate', requestData)
+    return res.data?.result || res.data
+  },
+
+  // POST /api/v1/admin/showtimes/auto/confirm
+  autoConfirm: async (confirmData) => {
+    const res = await api.post('/api/v1/admin/showtimes/auto/confirm', confirmData)
     return res.data
   },
 

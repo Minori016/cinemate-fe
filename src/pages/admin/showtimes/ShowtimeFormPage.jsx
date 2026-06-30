@@ -5,7 +5,7 @@ import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, Plus, Calendar, Clock, Ticket, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar, CheckCircle, AlertCircle, X } from 'lucide-react'
 
 export default function ShowtimeFormPage() {
   const navigate = useNavigate()
@@ -67,6 +67,37 @@ export default function ShowtimeFormPage() {
     }
   }, [id, isEditMode])
 
+  // Calculations based on business logic
+  const selectedMovie = movies.find(m => m.id === movieId)
+  const duration = selectedMovie?.durationMinutes || 120
+
+  const calculatedTimes = (() => {
+    if (!date || !time) return null
+    try {
+      const startT = new Date(`${date}T${time}:00`)
+      if (!isNaN(startT.getTime())) {
+        const adMins = 10
+        const cleanMins = 15
+        const endT = new Date(startT.getTime() + (duration + adMins) * 60 * 1000)
+        
+        const bufferStart = new Date(startT.getTime() - cleanMins * 60 * 1000)
+        const bufferEnd = new Date(endT.getTime() + cleanMins * 60 * 1000)
+
+        const formatTime = (d) => d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+        
+        return {
+          start: formatTime(startT),
+          end: formatTime(endT),
+          bufferStart: formatTime(bufferStart),
+          bufferEnd: formatTime(bufferEnd)
+        }
+      }
+    } catch {
+      // Ignore parsing errors for partial date/time input
+    }
+    return null
+  })();
+
   const validateForm = () => {
     const tempErrors = {}
     if (!movieId) tempErrors.movieId = 'Vui lòng chọn phim'
@@ -74,6 +105,15 @@ export default function ShowtimeFormPage() {
     if (!date) tempErrors.date = 'Vui lòng chọn ngày chiếu'
     if (!time) tempErrors.time = 'Vui lòng chọn giờ chiếu'
     if (!price || price <= 0) tempErrors.price = 'Giá vé phải lớn hơn 0'
+
+    if (date && time) {
+      const selectedTime = new Date(`${date}T${time}:00`)
+      if (selectedTime <= new Date()) {
+        tempErrors.time = 'Thời gian chiếu phải ở tương lai'
+        tempErrors.date = 'Thời gian chiếu phải ở tương lai'
+      }
+    }
+
     setErrors(tempErrors)
     return Object.keys(tempErrors).length === 0
   }
@@ -251,6 +291,27 @@ export default function ShowtimeFormPage() {
                 {errors.price && <span className="text-xs text-red-400 mt-1">{errors.price}</span>}
               </div>
             </div>
+
+            {calculatedTimes && (
+              <div className="bg-red-500/5 p-4 rounded-xl border border-red-500/20 flex flex-col gap-2 text-sm text-[var(--color-text-muted)] mt-2">
+                <div className="flex justify-between items-center pb-2 border-b border-red-500/10">
+                  <span>Thời lượng phim:</span>
+                  <span className="font-bold text-white">{duration} phút + 10 phút quảng cáo</span>
+                </div>
+                <div className="flex justify-between items-center text-xs pt-1">
+                  <span className="text-gray-400">Giờ chiếu thực tế:</span>
+                  <span className="text-gray-300 font-mono font-bold">
+                    {calculatedTimes.start} - {calculatedTimes.end}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>Khoảng thời gian chiếm dụng phòng (kèm 15p dọn dẹp):</span>
+                  <span className="font-mono text-red-400 font-bold">
+                    {calculatedTimes.bufferStart} - {calculatedTimes.bufferEnd}
+                  </span>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               <div className="flex flex-col gap-1 w-full text-left">
