@@ -214,7 +214,7 @@ export default function TicketManagementPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
         <div>
           <h1 
-            className="text-4xl text-white font-bold tracking-wider uppercase" 
+            className="text-4xl text-gray-900 font-bold tracking-wider uppercase" 
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Quản lý đặt vé

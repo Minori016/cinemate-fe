@@ -75,7 +75,7 @@ export default function MovieListPage() {
       >
         <Table columns={columns} data={movies} actions={row => (
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="secondary" onClick={() => navigate(`/admin/movies/edit/${row.id}`)}><Pencil size={12}/></Button>
+            <Button size="sm" variant="info" onClick={() => navigate(`/admin/movies/edit/${row.id}`)}><Pencil size={12}/></Button>
             <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
           </div>
         )} />

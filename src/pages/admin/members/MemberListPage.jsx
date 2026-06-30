@@ -188,10 +188,10 @@ export default function MemberListPage() {
         marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem'
       }}>
         <div>
-          <h1 style={{
-            fontSize: '1.75rem', fontWeight: 700, color: '#1e293b',
-            letterSpacing: '-0.02em', margin: 0, lineHeight: 1.2
-          }}>
+          <h1
+            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+          >
             Quản lý thành viên
           </h1>
           <p style={{

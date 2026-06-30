@@ -571,8 +571,8 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
 
   const handleSave = () => {
     const totalSeatsCount = stats.totalPhysical
-    if (totalSeatsCount < 80 || totalSeatsCount > 250) {
-      setLocalError(`Tổng số ghế phải từ 80 đến 250 ghế (hiện tại: ${totalSeatsCount} ghế).`)
+    if (totalSeatsCount < 30 || totalSeatsCount > 250) {
+      setLocalError(`Tổng số ghế phải từ 30 đến 250 ghế (hiện tại: ${totalSeatsCount} ghế).`)
       return
     }
 

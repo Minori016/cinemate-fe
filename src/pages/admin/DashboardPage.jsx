@@ -220,7 +220,7 @@ export default function DashboardPage() {
       >
         <div>
           <h1
-            className="text-4xl text-white font-bold tracking-wider uppercase"
+            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Tổng Quan Hệ Thống
@@ -230,11 +230,11 @@ export default function DashboardPage() {
           </p>
         </div>
         <div
-          className="flex items-center gap-2.5 px-4 py-2 rounded-lg border border-white/5 backdrop-blur-md"
-          style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-container) 80%, transparent)' }}
+          className="flex items-center gap-2.5 px-4 py-2 rounded-lg border border-gray-200 backdrop-blur-md"
+          style={{ backgroundColor: '#f1f5f9' }}
         >
           <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
-          <span className="text-xs font-semibold text-white tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <span className="text-xs font-semibold tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#1f2937' }}>
             Hệ thống trực tuyến
           </span>
         </div>
@@ -248,13 +248,6 @@ export default function DashboardPage() {
         className="rounded-xl border border-[var(--color-border)] p-5 space-y-4"
         style={{ backgroundColor: 'var(--color-surface)' }}
       >
-        <div className="flex items-center gap-2">
-          <Search className="w-4 h-4 text-red-500" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            Tìm kiếm phim nhanh
-          </h2>
-        </div>
-
         <div className="relative" ref={dropdownRef}>
           <form onSubmit={handleSubmit} className="relative">
             <div className="relative flex items-center">
@@ -344,7 +337,7 @@ export default function DashboardPage() {
                             <div className="w-10 h-14 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[8px] font-bold text-gray-500 uppercase shrink-0">N/A</div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-semibold text-white truncate" title={m.titleVn}>{highlight(m.titleVn)}</h4>
+                            <h4 className="text-sm font-semibold text-gray-900 truncate" title={m.titleVn}>{highlight(m.titleVn)}</h4>
                             {m.titleEn && (
                               <p className="text-[11px] text-[var(--color-text-muted)] truncate" title={m.titleEn}>{highlight(m.titleEn)}</p>
                             )}
@@ -397,7 +390,7 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {s.label}
                 </p>
-                <p className="text-3xl font-extrabold text-white tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                <p className="text-3xl font-extrabold text-gray-900 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                   {statsLoading ? '...' : value}
                 </p>
               </div>
@@ -480,7 +473,7 @@ export default function DashboardPage() {
                     {b.user.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-white truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif' }} title={b.user}>
+                    <h4 className="text-sm font-semibold text-gray-900 truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif' }} title={b.user}>
                       {b.user}
                     </h4>
                     <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[120px]">
