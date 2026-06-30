@@ -338,7 +338,7 @@ export default function HomePage() {
           {/* ===== CINEMATIC MOVIE BANNER ===== */}
           <div
             className="relative w-full overflow-hidden"
-            style={{ height: 'clamp(580px, 80vh, 820px)' }}
+            style={{ height: 'clamp(600px, 80vh, 840px)' }}
             onMouseEnter={() => setIsHoveringBanner(true)}
             onMouseLeave={() => setIsHoveringBanner(false)}
           >
