@@ -13,6 +13,8 @@ import MovieCard from '../../components/common/MovieCard'
 import Badge from '../../components/common/Badge'
 import TrailerModal from './components/moviedetail/TrailerModal'
 import MovieArcCarousel3D from '../../components/common/MovieArcCarousel3D'
+import LiteYouTubeEmbed from 'react-lite-youtube-embed'
+import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 
 // ── Constants ──────────────────────────────────────────────────
 const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
@@ -76,6 +78,56 @@ const handleImageError = (e, fallback = DEFAULT_POSTER_SMALL) => {
   if (!e.target.src.includes('No Image') && !e.target.src.includes('w=400') && !e.target.src.includes('w=120')) {
     e.target.src = fallback
   }
+}
+
+const BannerMedia = ({ movie, shouldPlayVideo }) => {
+  const videoId = getYoutubeVideoId(movie.trailerUrl)
+  const defaultPoster = movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
+  
+  const [thumbUrl, setThumbUrl] = useState(() => {
+    if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+    return defaultPoster
+  })
+
+  const handleThumbError = () => {
+    if (videoId && thumbUrl.includes('maxresdefault')) {
+      setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)
+    } else {
+      setThumbUrl(defaultPoster)
+    }
+  }
+
+  return (
+    <motion.div
+      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none bg-gradient-to-br from-red-950/60 to-gray-900"
+      initial={{ scale: 1.08 }}
+      animate={{ scale: 1 }}
+      transition={{ duration: 10, ease: 'linear' }}
+      style={{ pointerEvents: 'none' }}
+    >
+      {shouldPlayVideo && videoId ? (
+        <LiteYouTubeEmbed
+          id={videoId}
+          title={movie.titleVn || movie.titleEn || ''}
+          autoplay={true}
+          params={`autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&rel=0&playsinline=1`}
+          wrapperClass="homepage-banner-video-wrapper"
+          iframeClass="homepage-banner-video-iframe"
+          poster="maxresdefault"
+        />
+      ) : (
+        <img
+          src={thumbUrl}
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] will-change-transform transform-gpu"
+          style={{ pointerEvents: 'none' }}
+          onError={handleThumbError}
+        />
+      )}
+    </motion.div>
+  )
 }
 
 // ── Quick Booking: 7 ngày tới ──────────────────────────────────
@@ -171,6 +223,16 @@ export default function HomePage() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
+  const [shouldPlayVideo, setShouldPlayVideo] = useState(false)
+
+  useEffect(() => {
+    setShouldPlayVideo(false)
+    const timer = setTimeout(() => {
+      setShouldPlayVideo(true)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [currentBannerIndex])
+
   const [isHoveringBanner, setIsHoveringBanner] = useState(false)
   const [isTrailerOpen, setIsTrailerOpen] = useState(false)
   const [selectedTrailerMovie, setSelectedTrailerMovie] = useState(null)
@@ -362,24 +424,8 @@ export default function HomePage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.8, ease: 'easeInOut' }}
                   >
-                    {/* Backdrop with cinematic zoom - Replaced YouTube iframe with HD image to fix lag and remove ugly YouTube playlist UI */}
-                    <motion.div
-                      className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none select-none bg-gradient-to-br from-red-950/60 to-gray-900"
-                      initial={{ scale: 1.08 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 10, ease: 'linear' }}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      <img
-                        src={posterUrl}
-                        alt=""
-                        fetchPriority="high"
-                        decoding="async"
-                        className="w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] will-change-transform transform-gpu"
-                        style={{ pointerEvents: 'none' }}
-                        onError={handleImageError}
-                      />
-                    </motion.div>
+                    {/* Backdrop with cinematic zoom - Dynamic thumbnail/YouTube trailer player */}
+                    <BannerMedia movie={movie} shouldPlayVideo={shouldPlayVideo} />
 
                     {/* Dark Vignette / Recessed Gradients */}
                     <div
