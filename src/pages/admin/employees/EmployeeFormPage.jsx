@@ -44,7 +44,7 @@ export default function EmployeeFormPage() {
 
   const [form, setForm] = useState({
     username: '', email: '', fullName: '', dateOfBirth: '', gender: 'MALE',
-    phoneNumber: '', address: '', identityCard: '', salary: '8000000',
+    phoneNumber: '', address: '', identityCard: '',
     cinemaId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', role: 'STAFF',
     password: '', confirmPassword: '', status: 'ACTIVE',
   })
@@ -69,7 +69,6 @@ export default function EmployeeFormPage() {
               gender: e.gender ? e.gender.toUpperCase() : 'MALE',
               phoneNumber: e.phoneNumber || '', address: e.address || '',
               identityCard: e.identityCard || '',
-              salary: e.salary ? String(e.salary) : '',
               cinemaId: e.cinemaId || '',
               role: e.roles?.includes('MANAGER') ? 'MANAGER' : 'STAFF',
               status: e.status || 'ACTIVE',
@@ -108,7 +107,6 @@ export default function EmployeeFormPage() {
     if (!form.phoneNumber.trim()) errs.phoneNumber = 'SĐT không được để trống'
     if (!form.address.trim()) errs.address = 'Địa chỉ không được để trống'
     if (!form.identityCard.trim()) errs.identityCard = 'CMND/CCCD không được để trống'
-    if (!form.salary || Number(form.salary) <= 0) errs.salary = 'Lương phải lớn hơn 0'
     if (!isEditMode) {
       if (!form.password) errs.password = 'Mật khẩu không được để trống'
       else if (form.password.length < 8) errs.password = 'Mật khẩu tối thiểu 8 ký tự'
@@ -139,7 +137,7 @@ export default function EmployeeFormPage() {
       fullName: form.fullName.trim(), dayOfBirth: form.dateOfBirth,
       gender: form.gender, phoneNumber: form.phoneNumber.trim(),
       address: form.address.trim(), identityCard: form.identityCard.trim(),
-      salary: Number(form.salary), cinemaId: form.cinemaId, role: form.role,
+      cinemaId: form.cinemaId, role: form.role,
       ...(form.password ? { password: form.password, confirmPassword: form.confirmPassword } : {}),
       ...(isEditMode ? { status: form.status } : {}),
     }
@@ -428,38 +426,21 @@ export default function EmployeeFormPage() {
                 />
                 {errors.address && <span style={ERROR_TEXT}>{errors.address}</span>}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                    Số CMND / CCCD <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    name="identityCard" type="text" placeholder="123456789012" value={form.identityCard}
-                    onChange={e => update('identityCard', e.target.value)}
-                    onFocus={() => setFocused(f => ({ ...f, identityCard: true }))}
-                    onBlur={() => setFocused(f => ({ ...f, identityCard: false }))}
-                    style={getInputStyle('identityCard')}
-                    onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
-                    onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
-                    maxLength={28}
-                  />
-                  {errors.identityCard && <span style={ERROR_TEXT}>{errors.identityCard}</span>}
-                </div>
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
-                    Mức lương (VNĐ) <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <input
-                    name="salary" type="number" placeholder="8000000" value={form.salary}
-                    onChange={e => update('salary', e.target.value)}
-                    onFocus={() => setFocused(f => ({ ...f, salary: true }))}
-                    onBlur={() => setFocused(f => ({ ...f, salary: false }))}
-                    style={getInputStyle('salary')}
-                    onMouseEnter={e => { if (!focused.salary && !errors.salary) e.target.style.borderColor = '#a78bfa' }}
-                    onMouseLeave={e => { if (!focused.salary && !errors.salary) e.target.style.borderColor = errors.salary ? '#ef4444' : '#e5e7eb' }}
-                  />
-                  {errors.salary && <span style={ERROR_TEXT}>{errors.salary}</span>}
-                </div>
+              <div style={{ marginTop: '16px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569', display: 'block', marginBottom: '6px' }}>
+                  Số CMND / CCCD <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  name="identityCard" type="text" placeholder="123456789012" value={form.identityCard}
+                  onChange={e => update('identityCard', e.target.value)}
+                  onFocus={() => setFocused(f => ({ ...f, identityCard: true }))}
+                  onBlur={() => setFocused(f => ({ ...f, identityCard: false }))}
+                  style={getInputStyle('identityCard')}
+                  onMouseEnter={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = '#a78bfa' }}
+                  onMouseLeave={e => { if (!focused.identityCard && !errors.identityCard) e.target.style.borderColor = errors.identityCard ? '#ef4444' : '#e5e7eb' }}
+                  maxLength={28}
+                />
+                {errors.identityCard && <span style={ERROR_TEXT}>{errors.identityCard}</span>}
               </div>
             </div>
           </div>
@@ -477,12 +458,11 @@ export default function EmployeeFormPage() {
                 <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <User size={18} color="#d97706" />
                 </div>
-                <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Phân quyền & Phân công</h2>
+                <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Phân công</h2>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {[
                   { value: 'STAFF', label: 'Nhân viên', desc: 'Quyền hạn thông thường', color: '#059669' },
-                  { value: 'MANAGER', label: 'Quản lý', desc: 'Toàn quyền quản lý', color: '#d97706' },
                 ].map(opt => (
                   <div
                     key={opt.value}
@@ -530,7 +510,11 @@ export default function EmployeeFormPage() {
                   <select name="status" value={form.status} onChange={e => update('status', e.target.value)} style={INPUT_STYLE}>
                     <option value="ACTIVE">Hoạt động (ACTIVE)</option>
                     <option value="LOCKED">Bị khóa (LOCKED)</option>
+                    <option value="INACTIVE">Vô hiệu (INACTIVE)</option>
                   </select>
+                  <span style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginTop: '4px' }}>
+                    Bỏ "Vô hiệu" nếu muốn xóa mềm — khi đó nhân viên không thể đăng nhập.
+                  </span>
                 </div>
               )}
             </div>
