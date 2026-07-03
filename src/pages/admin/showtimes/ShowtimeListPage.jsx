@@ -6,7 +6,6 @@ import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
-import AutoGenerateModal from './AutoGenerateModal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { toast } from 'sonner'
 
@@ -76,9 +75,6 @@ export default function ShowtimeListPage() {
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
-
-  // Modal and Form state
-  const [autoGenModalOpen, setAutoGenModalOpen] = useState(false)
 
   const triggerToast = (msg, type = 'success') => {
     if (type === 'success') {
@@ -163,14 +159,14 @@ export default function ShowtimeListPage() {
     return new Date(st.date) > new Date(latest) ? st.date : latest;
   }, filterDate);
 
-  // Calculate the max allowed days count (10 days after the latest showtime)
+  // Calculate the max allowed days count (2 days after the latest showtime)
   const filterDateObj = new Date(filterDate);
   const latestDateObj = new Date(latestShowtimeDateStr);
   const diffTimeMs = latestDateObj.getTime() - filterDateObj.getTime();
   const diffDaysToLatest = Math.max(0, Math.ceil(diffTimeMs / (1000 * 60 * 60 * 24)));
   
-  // At least 7 days, max is diff + 10
-  const MAX_DAYS_COUNT = Math.max(7, diffDaysToLatest + 10);
+  // At least 7 days, max is diff + 2 to avoid huge empty horizontal scrolling
+  const MAX_DAYS_COUNT = Math.max(7, diffDaysToLatest + 2);
 
   useEffect(() => {
     setTimelineDaysCount(7)
@@ -277,7 +273,7 @@ export default function ShowtimeListPage() {
         <h2 className="text-[32px] leading-tight font-semibold text-[#191c1e]">Quản lý lịch chiếu phim</h2>
         <div className="flex gap-4">
           <button
-            onClick={() => setAutoGenModalOpen(true)}
+            onClick={() => navigate('/admin/showtimes/auto-generate')}
             className="flex items-center gap-2 px-4 py-2 border border-[#e5bdbe] text-[#565e74] text-sm font-semibold rounded hover:bg-[#eceef0] transition-colors"
           >
             <span className="material-symbols-outlined text-sm">settings_suggest</span>
@@ -395,8 +391,8 @@ export default function ShowtimeListPage() {
                     {datesToRender.map(date => {
                       const formattedDate = new Date(date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' })
                       return (
-                        <div key={date} className="w-[1440px] shrink-0 font-bold text-xs text-[#5c3f40] flex items-center border-r border-[#e0e3e5] uppercase relative">
-                          <span className="sticky left-48 px-4">{formattedDate}</span>
+                        <div key={date} className="w-[1440px] shrink-0 font-bold text-sm text-[#191c1e] flex items-center border-r border-[#e0e3e5] uppercase relative">
+                          <span className="sticky left-48 px-4 tracking-wide">{formattedDate}</span>
                         </div>
                       )
                     })}
@@ -406,7 +402,7 @@ export default function ShowtimeListPage() {
                     {datesToRender.map(date => (
                       <div key={`hours-${date}`} className="flex w-[1440px] shrink-0 border-r border-[#e0e3e5] border-dashed">
                         {Array.from({ length: 12 }).map((_, i) => (
-                          <div key={i} className="w-[120px] shrink-0 flex items-center justify-center border-r border-[#e0e3e5] border-dashed text-[11px] font-mono text-[#5c3f40]">
+                          <div key={i} className="w-[120px] shrink-0 flex items-center justify-center border-r border-[#e0e3e5] border-dashed text-[13px] font-bold font-mono text-[#191c1e]">
                             {String(i * 2).padStart(2, '0')}:00
                           </div>
                         ))}
@@ -457,24 +453,11 @@ export default function ShowtimeListPage() {
                             >
                               <div className={`absolute left-0 top-0 bottom-0 w-1 ${formatInfo.bar}`} />
                               
-                              {posterUrl ? (
-                                <div className="w-10 h-12 bg-gray-200 rounded-sm overflow-hidden mr-3 shrink-0 ml-1">
-                                  <img src={posterUrl} alt="Poster" className="w-full h-full object-cover" />
-                                </div>
-                              ) : (
-                                <div 
-                                  className="w-10 h-12 rounded-sm text-[10px] text-white font-bold flex items-center justify-center mr-3 shrink-0 ml-1"
-                                  style={{ background: stringToGradient(st.movie) }}
-                                >
-                                  {st.movie ? st.movie.charAt(0).toUpperCase() : 'M'}
-                                </div>
-                              )}
-
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-[12px] text-[#191c1e] truncate" title={st.movie}>
+                              <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center">
+                                <h4 className="font-semibold text-[12px] text-[#191c1e] line-clamp-2 leading-tight" title={st.movie}>
                                   {st.movie}
                                 </h4>
-                                <p className="text-[11px] text-[#5c3f40] font-mono mt-1">
+                                <p className="text-[11px] text-[#5c3f40] font-mono mt-0.5">
                                   {st.time} - {getEndTimeForShowtime(st)}
                                 </p>
                               </div>
@@ -536,7 +519,7 @@ export default function ShowtimeListPage() {
                 <tbody className="divide-y divide-[#e0e3e5] text-xs">
                   {filteredShowtimes.map((st) => (
                     <tr key={st.id} className="hover:bg-[#f7f9fb] transition-colors">
-                      <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs truncate">{st.movie}</td>
+                      <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
                       <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
                       <td className="px-6 py-4 font-medium text-[#5c3f40]">{st.date}</td>
                       <td className="px-6 py-4 font-bold text-[#b80035]">
@@ -585,18 +568,6 @@ export default function ShowtimeListPage() {
           </div>
         </div>
       </Modal>
-
-      {/* Auto Generate Modal */}
-      <AutoGenerateModal 
-        open={autoGenModalOpen} 
-        onClose={() => setAutoGenModalOpen(false)} 
-        movies={movies} 
-        rooms={rooms}
-        onSuccess={(msg) => {
-          triggerToast(msg, 'success')
-          loadData()
-        }}
-      />
 
     </div>
   )
