@@ -32,6 +32,7 @@ const mapMovieFromBackend = (data) => {
     showtimes: data.showtimes || [],
     countries: data.countries || [],
     media: data.media || [],
+    status: data.status || null,
   }
 }
 
