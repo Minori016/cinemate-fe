@@ -140,16 +140,21 @@ export default function CinemaRoomListPage() {
     }
   }
 
-  const updateRoomStatus = (roomId, status) => {
-    const updated = rooms.map(r => {
-      if (r.id === roomId) {
-        return { ...r, status }
-      }
-      return r
-    })
-    setRooms(updated)
-    localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(updated))
-    triggerToast(`Đã chuyển trạng thái phòng sang ${status}!`, 'success')
+  const updateRoomStatus = async (roomId, status) => {
+    try {
+      await cinemaRoomService.updateStatus(roomId, status)
+      const updated = rooms.map(r => {
+        if (r.id === roomId) {
+          return { ...r, status }
+        }
+        return r
+      })
+      setRooms(updated)
+      triggerToast(`Đã chuyển trạng thái phòng sang ${status}!`, 'success')
+    } catch (err) {
+      console.error('Failed to update room status:', err)
+      triggerToast(err.response?.data?.message || 'Không thể cập nhật trạng thái phòng.', 'error')
+    }
   }
 
   const handleAddRoom = async (e) => {

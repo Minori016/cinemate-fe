@@ -11,6 +11,7 @@ export const cinemaRoomService = {
   create: (payload) => api.post('/api/v1/admin/cinema-rooms', payload),
   updateInfo: (roomId, payload) => api.put(`/api/v1/admin/cinema-rooms/${roomId}`, payload),
   updateLayout: (roomId, payload) => api.put(`/api/v1/admin/cinema-rooms/${roomId}/layout`, payload),
+  updateStatus: (roomId, status) => api.patch(`/api/v1/admin/cinema-rooms/${roomId}/status`, { status }),
   delete: (roomId) => api.delete(`/api/v1/admin/cinema-rooms/${roomId}`),
 }
 

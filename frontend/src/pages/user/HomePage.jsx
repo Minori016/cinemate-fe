@@ -393,7 +393,7 @@ export default function HomePage() {
 
   useEffect(() => {
     console.log('🔍 Fetching movies...')
-    movieService.getAll()
+    movieService.getAll({ page: 0, size: 50, status: 'now-showing' })
       .then(r => {
         console.log('✅ API Response:', r.data)
         const moviesData = r.data || []
