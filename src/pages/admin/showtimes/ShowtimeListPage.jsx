@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Clock } from 'lucide-react'
+import { Trash2, Clock, Plus } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
@@ -269,23 +269,29 @@ export default function ShowtimeListPage() {
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 h-[calc(100vh-80px)] overflow-hidden">
       
       {/* Header Actions */}
-      <div className="flex justify-between items-center mb-8 shrink-0">
-        <h2 className="text-[32px] leading-tight font-semibold text-[#191c1e]">Quản lý lịch chiếu phim</h2>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-6 shrink-0">
+        <div>
+          <h1
+            className="text-4xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+          >
+            Quản lý lịch chiếu phim
+          </h1>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Xem danh sách lịch chiếu, tùy chỉnh thời gian và tự động tạo lịch chiếu cho toàn hệ thống.
+          </p>
+        </div>
         <div className="flex gap-4">
-          <button
+          <Button
+            variant="outline"
             onClick={() => navigate('/admin/showtimes/auto-generate')}
-            className="flex items-center gap-2 px-4 py-2 border border-[#e5bdbe] text-[#565e74] text-sm font-semibold rounded hover:bg-[#eceef0] transition-colors"
           >
-            <span className="material-symbols-outlined text-sm">settings_suggest</span>
+            <span className="material-symbols-outlined text-sm mr-1">settings_suggest</span>
             Tự động tạo lịch
-          </button>
-          <button
-            onClick={() => navigate('/admin/showtimes/add')}
-            className="flex items-center gap-2 px-4 py-2 bg-[#b80035] text-white text-sm font-semibold rounded hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <span className="material-symbols-outlined text-sm">add</span>
-            Thêm suất chiếu
-          </button>
+          </Button>
+          <Button onClick={() => navigate('/admin/showtimes/add')}>
+            <Plus size={16} className="mr-1" /> Thêm suất chiếu
+          </Button>
         </div>
       </div>
 
