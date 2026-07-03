@@ -62,6 +62,13 @@ export const movieService = {
     return res.data
   },
 
+  // DELETE /api/v1/admin/movies/{id}
+  deleteAdmin: async (id) => {
+    const res = await api.delete(`/api/v1/admin/movies/${id}`)
+    return res.data
+  },
+
+
   // GET /api/v1/movies?page=0&size=10&search=&genreId=&status=
   getAll: async (params = {}) => {
     const res = await api.get('/api/v1/movies', { params })

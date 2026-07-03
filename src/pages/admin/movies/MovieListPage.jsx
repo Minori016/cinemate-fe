@@ -22,7 +22,7 @@ export default function MovieListPage() {
     if (!deleteTarget) return
     try {
       await movieService.deleteAdmin(deleteTarget.id)
-      setMovies(prev => prev.filter(m => m.id !== deleteTarget.id))
+      setMovies(prev => prev.map(m => m.id === deleteTarget.id ? { ...m, status: 'ENDED' } : m))
     } catch (err) {
       console.error('Lỗi khi xóa phim:', err)
       alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa phim.')
@@ -35,6 +35,11 @@ export default function MovieListPage() {
     { key: 'poster', label: 'Poster', render: r => r.posterUrl ? <img src={r.posterUrl} alt="poster" className="w-12 h-16 object-cover rounded shadow border border-white/10" /> : <div className="w-12 h-16 bg-white/5 border border-white/10 rounded flex items-center justify-center text-[10px] font-bold text-gray-500 uppercase">N/A</div> },
     { key: 'titleEn', label: 'Tên (ENG)' },
     { key: 'titleVn', label: 'Tên (VN)' },
+    { key: 'status', label: 'Trạng thái', render: r => {
+      const colors = { COMING_SOON: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', NOW_SHOWING: 'bg-green-500/10 text-green-500 border-green-500/20', ENDED: 'bg-red-500/10 text-red-500 border-red-500/20' }
+      const labels = { COMING_SOON: 'Sắp chiếu', NOW_SHOWING: 'Đang chiếu', ENDED: 'Ngừng chiếu' }
+      return <span className={`px-2 py-1 rounded text-xs border ${colors[r.status] || 'bg-gray-500/10 text-gray-400'}`}>{labels[r.status] || r.status || 'N/A'}</span>
+    }},
     { key: 'fromDate', label: 'Từ ngày' },
     { key: 'durationMinutes', label: 'Thời lượng', render: r => `${r.durationMinutes || 120} phút` },
     { key: 'version', label: 'Phiên bản' },
