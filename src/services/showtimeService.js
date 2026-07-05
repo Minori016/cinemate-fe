@@ -6,8 +6,14 @@ const mapShowtimeFromBackend = (backendData, requestData = {}) => {
     let date = ''
     let time = ''
     if (startTimeStr) {
-      date = startTimeStr.split('T')[0]
-      time = startTimeStr.split('T')[1]?.substring(0, 5) || ''
+      const d = new Date(startTimeStr)
+      if (!isNaN(d.getTime())) {
+        date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+        time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+      } else {
+        date = startTimeStr.split('T')[0]
+        time = startTimeStr.split('T')[1]?.substring(0, 5) || ''
+      }
     } else if (requestData.date && requestData.time) {
       date = requestData.date
       time = requestData.time
@@ -26,6 +32,8 @@ const mapShowtimeFromBackend = (backendData, requestData = {}) => {
       time: time,
       startTime: backendData.startTime || '',
       price: backendData.basePrice || requestData.basePrice || requestData.price || 90000,
+      vipPrice: backendData.vipPrice || requestData.vipPrice || 90000,
+      couplePrice: backendData.couplePrice || requestData.couplePrice || 90000,
       format: backendData.format || requestData.format || '2D',
       language: backendData.language || requestData.language || 'Phu de',
       status: backendData.status || 'SCHEDULED',
@@ -134,16 +142,19 @@ export const showtimeService = {
   },
 
   // GET /api/v1/admin/showtimes/export
-  exportExcel: async () => {
-    const res = await api.get('/api/v1/admin/showtimes/export', { responseType: 'blob' })
+  exportExcel: async (startDate, endDate) => {
+    const params = {}
+    if (startDate) params.startDate = startDate
+    if (endDate) params.endDate = endDate
+    const res = await api.get('/api/v1/admin/showtimes/export', { params, responseType: 'blob' })
     return res.data
   },
 
-  // POST /api/v1/admin/showtimes/import
+  // POST /api/v1/admin/showtimes/import/preview
   importExcel: async (file) => {
     const formData = new FormData()
     formData.append('file', file)
-    const res = await api.post('/api/v1/admin/showtimes/import', formData, {
+    const res = await api.post('/api/v1/admin/showtimes/import/preview', formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
