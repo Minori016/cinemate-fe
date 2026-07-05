@@ -218,6 +218,22 @@ export default function CinemaRoomListPage() {
   const columns = [
     { key: 'name', label: 'Cinema Room Name' },
     { key: 'capacity', label: 'Seat Quantity', render: (row) => row.capacity || row.seatsCount },
+    {
+      key: 'supportedFormats',
+      label: 'Định dạng hỗ trợ',
+      render: (row) => {
+        if (!row.supportedFormats || row.supportedFormats.length === 0) return <span className="text-gray-500 italic text-xs">Chưa cấu hình</span>
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {row.supportedFormats.map(fmt => (
+              <span key={fmt} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-md text-[10px] font-bold tracking-wider">
+                {fmt.replace('_', '')}
+              </span>
+            ))}
+          </div>
+        )
+      }
+    },
     { 
       key: 'status', 
       label: 'Trạng thái',
