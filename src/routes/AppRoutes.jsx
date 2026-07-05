@@ -120,7 +120,9 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="analytics" replace />} />
           <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
           <Route path="analytics" element={<ManagerAnalyticsPage />} />
-          <Route path="showtimes" element={<ManagerShowtimesPage />} />
+          <Route path="showtimes" element={<ShowtimeListPage />} />
+          <Route path="showtimes/add" element={<ShowtimeFormPage />} />
+          <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
           <Route path="shifts" element={<ManagerShiftsPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
         </Route>
