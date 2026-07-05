@@ -6,11 +6,16 @@ import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
 import { ArrowLeft, Plus, Calendar, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { useAuth } from '../../../contexts/AuthContext'
 
 export default function ShowtimeFormPage() {
+  const { user } = useAuth()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditMode = !!id
+  
+  const isAdmin = user && user.roles?.includes('ADMIN')
+  const basePath = isAdmin ? '/admin' : '/manager'
 
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
@@ -167,7 +172,7 @@ export default function ShowtimeFormPage() {
         setToast({ message: 'Thêm lịch chiếu mới thành công!', type: 'success' })
       }
       setTimeout(() => {
-        navigate('/admin/showtimes')
+        navigate(`${basePath}/showtimes`)
       }, 1500)
     } catch (err) {
       console.error('Failed to save showtime', err)
@@ -179,7 +184,7 @@ export default function ShowtimeFormPage() {
   }
 
   const handleCancel = () => {
-    navigate('/admin/showtimes')
+    navigate(`${basePath}/showtimes`)
   }
 
   return (
