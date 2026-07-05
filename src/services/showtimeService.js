@@ -132,4 +132,22 @@ export const showtimeService = {
     await api.delete(`/api/v1/admin/showtimes/${id}`)
     return true
   },
+
+  // GET /api/v1/admin/showtimes/export
+  exportExcel: async () => {
+    const res = await api.get('/api/v1/admin/showtimes/export', { responseType: 'blob' })
+    return res.data
+  },
+
+  // POST /api/v1/admin/showtimes/import
+  importExcel: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await api.post('/api/v1/admin/showtimes/import', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return res.data
+  }
 }

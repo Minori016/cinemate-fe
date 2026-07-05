@@ -26,9 +26,14 @@ const getRoomDetails = (room) => {
 
 const diagonalHatch = "data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-2,10 L10,-2 M-2,2 L2,-2 M6,10 L10,6' stroke='%23e0e3e5' stroke-width='1' fill='none' opacity='0.5'/%3E%3C/svg%3E"
 
+import { useAuth } from '../../../contexts/AuthContext'
+
 export default function AutoGeneratePage() {
+  const { user } = useAuth()
   const timelineContainerRef = useRef(null)
   const navigate = useNavigate()
+  const isAdmin = user && user.roles?.includes('ADMIN')
+  const basePath = isAdmin ? '/admin' : '/manager'
   
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
@@ -220,7 +225,7 @@ export default function AutoGeneratePage() {
 
       const res = await showtimeService.autoConfirm(confirmPayload)
       toast.success(`Đã tạo thành công ${res?.length || previewList.length} suất chiếu!`)
-      navigate('/admin/showtimes')
+      navigate(`${basePath}/showtimes`)
     } catch (err) {
       setError('Lỗi khi lưu hàng loạt: ' + (err.response?.data?.message || err.message))
     } finally {
@@ -272,7 +277,7 @@ export default function AutoGeneratePage() {
           <button
             onClick={() => {
               if (step === 2) setStep(1)
-              else navigate('/admin/showtimes')
+              else navigate(`${basePath}/showtimes`)
             }}
             className="flex items-center gap-1.5 text-xs text-[#5c647a] hover:text-[#b80035] uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
           >

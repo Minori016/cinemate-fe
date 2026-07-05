@@ -46,6 +46,9 @@ export default function ShowtimeListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const isAdmin = user && user.roles?.includes('ADMIN')
+  const isManager = user && user.roles?.includes('MANAGER')
+  const isAuthorized = isAdmin || isManager
+  const basePath = isAdmin ? '/admin' : '/manager'
 
   // States
   const [showtimes, setShowtimes] = useState([])
@@ -84,6 +87,50 @@ export default function ShowtimeListPage() {
     }
   }
 
+  const fileInputRef = useRef(null)
+
+  const handleExportExcel = async () => {
+    const toastId = toast.loading('Đang chuẩn bị file Excel...')
+    try {
+      const data = await showtimeService.exportExcel()
+      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `showtimes_${new Date().toISOString().split('T')[0]}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      toast.success('Xuất file Excel thành công!', { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error('Không thể xuất file Excel!', { id: toastId })
+    }
+  }
+
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    e.target.value = ''
+    
+    const toastId = toast.loading('Đang xử lý file Excel, vui lòng chờ...')
+    try {
+      const res = await showtimeService.importExcel(file)
+      toast.success(res?.message || 'Nhập lịch chiếu từ Excel thành công!', { id: toastId })
+      loadData()
+    } catch (err) {
+      console.error(err)
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi không xác định khi nhập file Excel!'
+      toast.error(
+        <div className="whitespace-pre-line text-xs font-semibold leading-relaxed">
+          {errMsg}
+        </div>,
+        { id: toastId, duration: 8000 }
+      )
+    }
+  }
+
   // Load Data
   const loadData = async () => {
     setLoading(true)
@@ -109,8 +156,8 @@ export default function ShowtimeListPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-    if (isAdmin) loadData()
-  }, [isAdmin])
+    if (isAuthorized) loadData()
+  }, [isAuthorized])
 
   // Get selected movie info for end time calculation
   const getEndTimeForShowtime = (st) => {
@@ -188,7 +235,7 @@ export default function ShowtimeListPage() {
   })
 
   // Access Denied Screen
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-[#06080F]">
         <span className="material-symbols-outlined text-red-500 text-6xl font-bold mb-4 animate-bounce">
@@ -198,7 +245,7 @@ export default function ShowtimeListPage() {
           Quyền truy cập bị từ chối
         </h2>
         <p className="text-gray-400 text-sm max-w-sm mb-6">
-          Chỉ có tài khoản Quản trị viên (Admin) mới có quyền truy cập và lập lịch chiếu phim.
+          Chỉ có tài khoản Quản trị viên (Admin) hoặc Quản lý (Manager) mới có quyền truy cập và lập lịch chiếu phim.
         </p>
         <button
           onClick={() => navigate('/')}
@@ -281,15 +328,36 @@ export default function ShowtimeListPage() {
             Xem danh sách lịch chiếu, tùy chỉnh thời gian và tự động tạo lịch chiếu cho toàn hệ thống.
           </p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+            accept=".xlsx,.xls"
+            className="hidden"
+          />
           <Button
             variant="outline"
-            onClick={() => navigate('/admin/showtimes/auto-generate')}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">upload</span>
+            Nhập Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">download</span>
+            Xuất Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`${basePath}/showtimes/auto-generate`)}
           >
             <span className="material-symbols-outlined text-sm mr-1">settings_suggest</span>
             Tự động tạo lịch
           </Button>
-          <Button onClick={() => navigate('/admin/showtimes/add')}>
+          <Button onClick={() => navigate(`${basePath}/showtimes/add`)}>
             <Plus size={16} className="mr-1" /> Thêm suất chiếu
           </Button>
         </div>
