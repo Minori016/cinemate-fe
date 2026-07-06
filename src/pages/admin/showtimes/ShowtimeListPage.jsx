@@ -610,35 +610,47 @@ export default function ShowtimeListPage() {
                           const { left, width } = calculatePosition(st.time, st.movieId, st.date)
                           const movieObj = movies.find(m => m.id === st.movieId || m.titleVn === st.movie)
                           const posterUrl = movieObj?.posterUrl
-                          const formatInfo = getFormatColor(st.format)
                           const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
                           const isDubbed = isAnimation && st.language === 'Lồng tiếng'
+                          const isGoldenHour = st.goldenHour || st.isGoldenHour
                           
+                          const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
+                          const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]')
+                          const borderColor = isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]'
+                          const textColor = isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]'
                           return (
                             <div
                               key={st.id}
                               onClick={() => setSelectedShowtime(st)}
-                              className={`absolute top-4 h-[64px] border ${formatInfo.border} rounded shadow-sm flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden ${isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (st.goldenHour || st.isGoldenHour ? 'bg-[#fff8e1]' : 'bg-white')}`}
+                              className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm`}
                               style={{ left, width }}
                             >
-                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${formatInfo.bar}`} />
-                              
-                              <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center relative z-10">
-                                <h4 className="font-semibold text-[12px] text-[#191c1e] line-clamp-2 leading-tight" title={st.movie}>
+                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
+
+                              <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center relative z-10 pointer-events-none">
+                                <h4 className={`font-semibold text-[12px] text-[#191c1e] line-clamp-1 leading-tight mb-1`} title={st.movie}>
                                   {st.movie}
                                 </h4>
-                                <p className="text-[11px] text-[#5c3f40] font-mono mt-0.5 font-bold">
-                                  {st.time} - {getEndTimeForShowtime(st)}
+                                <div className="flex gap-1.5 items-center mb-0.5">
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
+                                    {st.format || '2D'}
+                                  </span>
+                                </div>
+                                <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
+                                  <span>{st.time}</span>
+                                  <span>-</span>
+                                  <span>{getEndTimeForShowtime(st)}</span>
                                 </p>
                               </div>
 
                               {/* Hover Actions */}
-                              <div className="absolute right-0 top-0 bottom-0 bg-white/90 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
+                              <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(st); }}
-                                  className="p-1 text-[#ba1a1a] hover:bg-[#ffdad6] rounded transition-colors"
+                                  title="Xóa suất chiếu"
+                                  className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors bg-white shadow-sm"
                                 >
-                                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>

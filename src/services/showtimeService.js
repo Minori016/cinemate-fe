@@ -5,18 +5,29 @@ const mapShowtimeFromBackend = (backendData, requestData = {}) => {
     const startTimeStr = backendData.startTime || ''
     let date = ''
     let time = ''
+    let isFrontendGoldenHour = false
     if (startTimeStr) {
       const d = new Date(startTimeStr)
       if (!isNaN(d.getTime())) {
         date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
         time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+        
+        const hours = d.getHours()
+        isFrontendGoldenHour = hours >= 18 && hours < 21
       } else {
         date = startTimeStr.split('T')[0]
         time = startTimeStr.split('T')[1]?.substring(0, 5) || ''
+        
+        if (time) {
+          const hours = parseInt(time.substring(0, 2), 10)
+          isFrontendGoldenHour = hours >= 18 && hours < 21
+        }
       }
     } else if (requestData.date && requestData.time) {
       date = requestData.date
       time = requestData.time
+      const hours = parseInt(time.substring(0, 2), 10)
+      isFrontendGoldenHour = hours >= 18 && hours < 21
     }
 
     return {
@@ -31,12 +42,14 @@ const mapShowtimeFromBackend = (backendData, requestData = {}) => {
       date: date,
       time: time,
       startTime: backendData.startTime || '',
+      endTime: backendData.endTime || '',
       price: backendData.basePrice || requestData.basePrice || requestData.price || 90000,
       vipPrice: backendData.vipPrice || requestData.vipPrice || 90000,
       couplePrice: backendData.couplePrice || requestData.couplePrice || 90000,
       format: backendData.format || requestData.format || '2D',
       language: backendData.language || requestData.language || 'Phu de',
       status: backendData.status || 'SCHEDULED',
+      goldenHour: backendData.goldenHour || backendData.isGoldenHour || isFrontendGoldenHour,
     }
   } catch (err) {
     return backendData

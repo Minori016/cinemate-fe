@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
@@ -89,6 +89,65 @@ export default function ShowtimeFormPage() {
   // Calculations based on business logic
   const selectedMovie = movies.find(m => m.id === movieId)
   const duration = selectedMovie?.durationMinutes || 120
+
+  const availableFormats = useMemo(() => {
+    if (!selectedMovie?.version) return ['2D'];
+    const v = selectedMovie.version.toUpperCase();
+    const formats = [];
+    const systemFormats = Object.keys(formatPrices);
+    
+    // We try to match with system formats
+    systemFormats.forEach(fmt => {
+      if (v.includes(fmt)) formats.push(fmt);
+    });
+    
+    return formats.length > 0 ? formats : ['2D'];
+  }, [selectedMovie, formatPrices]);
+  
+  const availableLanguages = useMemo(() => {
+    if (!selectedMovie?.language) return ['Phụ đề'];
+    const l = selectedMovie.language.toLowerCase();
+    const langs = [];
+    if (l.includes('phụ đề') || l.includes('sub')) langs.push('Phụ đề');
+    if (l.includes('lồng tiếng') || l.includes('dub')) langs.push('Lồng tiếng');
+    
+    return langs.length > 0 ? langs : ['Phụ đề'];
+  }, [selectedMovie]);
+
+  // Auto-select valid format and language when movie changes
+  useEffect(() => {
+    if (selectedMovie) {
+      if (!availableFormats.includes(format) && availableFormats.length > 0) {
+        const newFmt = availableFormats[0];
+        setFormat(newFmt);
+        if (!isEditMode && formatPrices[newFmt]) {
+          setPrice(formatPrices[newFmt]);
+        }
+      }
+      if (!availableLanguages.includes(language) && availableLanguages.length > 0) {
+        setLanguage(availableLanguages[0]);
+      }
+    }
+  }, [selectedMovie, availableFormats, availableLanguages]); // excluded format/language to prevent loops, wait, if we exclude them, it won't loop if they change manually.
+
+  // Filter rooms based on the currently selected format
+  const filteredRooms = useMemo(() => {
+    if (!format) return rooms;
+    return rooms.filter(r => {
+      if (!r.supportedFormats || !Array.isArray(r.supportedFormats)) return false;
+      return r.supportedFormats.some(f => f.replace('_', '') === format);
+    });
+  }, [rooms, format]);
+  
+  // Reset selected room if it's no longer supported by the new format
+  useEffect(() => {
+    if (roomId && format) {
+      const isRoomValid = filteredRooms.some(r => r.id === roomId);
+      if (!isRoomValid) {
+        setRoomId('');
+      }
+    }
+  }, [format, filteredRooms, roomId]);
 
   const calculatedTimes = (() => {
     if (!date || !time) return null
@@ -296,11 +355,15 @@ export default function ShowtimeFormPage() {
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
                   className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
+                  disabled={!format}
                 >
                   <option value="">Chọn phòng...</option>
-                  {rooms.map(r => (
+                  {filteredRooms.map(r => (
                     <option key={r.id} value={r.id}>{r.name} ({(r.capacity || r.seatsCount)} ghế)</option>
                   ))}
+                  {filteredRooms.length === 0 && format && (
+                    <option value="" disabled>Không có phòng hỗ trợ định dạng {format}</option>
+                  )}
                 </select>
                 {errors.roomId && <span className="text-xs text-red-400 mt-1">{errors.roomId}</span>}
               </div>
@@ -317,14 +380,23 @@ export default function ShowtimeFormPage() {
                   error={errors.date}
                 />
               </div>
-              <div className="md:col-span-1">
-                <Input
-                  label="Giờ chiếu *"
-                  type="time"
+              <div className="flex flex-col gap-1 w-full text-left md:col-span-1">
+                <label className="text-sm font-bold text-[#5c647a] mb-1">Giờ chiếu *</label>
+                <select
                   value={time}
                   onChange={(e) => setTime(e.target.value)}
-                  error={errors.time}
-                />
+                  className={`bg-[#f7f9fb] border ${errors.time ? 'border-red-400' : 'border-[#e0e3e5]'} rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer`}
+                >
+                  <option value="">Chọn giờ...</option>
+                  {Array.from({ length: 64 }, (_, i) => {
+                    const hour = Math.floor(i / 4) + 8;
+                    if (hour > 23) return null;
+                    const min = (i % 4) * 15;
+                    const timeString = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                    return <option key={timeString} value={timeString}>{timeString}</option>
+                  })}
+                </select>
+                {errors.time && <span className="text-xs text-red-400 mt-1">{errors.time}</span>}
               </div>
               <div className="flex flex-col gap-1 w-full text-left md:col-span-2">
                 <label className="text-sm font-bold text-[#5c647a] mb-1">Giá vé cơ bản (Base Price) *</label>
@@ -368,9 +440,9 @@ export default function ShowtimeFormPage() {
                   onChange={handleFormatChange}
                   className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
                 >
-                  <option value="2D">2D</option>
-                  <option value="3D">3D</option>
-                  <option value="IMAX">IMAX</option>
+                  {availableFormats.map(fmt => (
+                    <option key={fmt} value={fmt}>{fmt}</option>
+                  ))}
                 </select>
               </div>
 
@@ -381,8 +453,9 @@ export default function ShowtimeFormPage() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
                 >
-                  <option value="Phụ đề">Phụ đề</option>
-                  <option value="Lồng tiếng">Lồng tiếng</option>
+                  {availableLanguages.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
                 </select>
               </div>
             </div>

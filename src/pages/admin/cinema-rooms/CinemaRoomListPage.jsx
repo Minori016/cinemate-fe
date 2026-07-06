@@ -184,12 +184,7 @@ export default function CinemaRoomListPage() {
       const createdRoom = res?.data?.result || res?.data || { ...payload, id: newId }
       const updatedRooms = [...rooms, createdRoom]
       setRooms(updatedRooms)
-      localStorage.setItem('admin_cinema_rooms_db', JSON.stringify(updatedRooms))
       
-      // Write default seat structures for this room (AC-02 editing)
-      const defaultSeats = generateDefaultSeats(Number(newRoomSeats))
-      localStorage.setItem(`admin_room_seats_db_${createdRoom.id}`, JSON.stringify(defaultSeats))
-
       // Clean form states
       setNewRoomName('')
       setNewRoomSeats(80)

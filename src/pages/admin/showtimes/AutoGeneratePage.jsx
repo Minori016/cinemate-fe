@@ -30,17 +30,33 @@ const getRoomDetails = (room) => {
 
 const diagonalHatch = "data:image/svg+xml,%3Csvg width='8' height='8' viewBox='0 0 8 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M-2,10 L10,-2 M-2,2 L2,-2 M6,10 L10,6' stroke='%23e0e3e5' stroke-width='1' fill='none' opacity='0.5'/%3E%3C/svg%3E"
 
-const getMovieSupportedFormats = (movieVersion) => {
+const getMovieSupportedFormats = (movieVersion, formatPrices = {}) => {
   if (!movieVersion) return ['2D'];
   const v = movieVersion.toUpperCase();
   const formats = [];
-  if (v.includes('2D')) formats.push('2D');
-  if (v.includes('3D')) formats.push('3D');
-  if (v.includes('4DX')) formats.push('4DX');
-  if (v.includes('IMAX')) formats.push('IMAX');
+  const systemFormats = Object.keys(formatPrices);
+  if (systemFormats.length === 0) {
+    if (v.includes('2D')) formats.push('2D');
+    if (v.includes('3D')) formats.push('3D');
+    if (v.includes('4DX')) formats.push('4DX');
+    if (v.includes('IMAX')) formats.push('IMAX');
+  } else {
+    systemFormats.forEach(fmt => {
+      if (v.includes(fmt)) formats.push(fmt);
+    });
+  }
   
-  if (formats.length === 0) formats.push('2D'); // Fallback if no matching standard format is found
+  if (formats.length === 0) formats.push('2D');
   return formats;
+}
+
+const getMovieSupportedLanguages = (movieLanguage) => {
+  if (!movieLanguage) return ['Phụ đề'];
+  const l = movieLanguage.toLowerCase();
+  const langs = [];
+  if (l.includes('phụ đề') || l.includes('sub')) langs.push('Phụ đề');
+  if (l.includes('lồng tiếng') || l.includes('dub')) langs.push('Lồng tiếng');
+  return langs.length > 0 ? langs : ['Phụ đề'];
 }
 
 import { useAuth } from '../../../contexts/AuthContext'
@@ -59,6 +75,7 @@ export default function AutoGeneratePage() {
   const [step, setStep] = useState(1) // 1: Setup, 2: Preview
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [existingShowtimes, setExistingShowtimes] = useState([])
   const [previewList, setPreviewList] = useState([])
   const [templateResponse, setTemplateResponse] = useState(null)
   const [draggedIdx, setDraggedIdx] = useState(null)
@@ -202,14 +219,15 @@ export default function AutoGeneratePage() {
       }
       
       const movie = movies.find(m => m.id === id);
-      const defaultFormat = getMovieSupportedFormats(movie?.version)[0]; // Use the first available format as default
+      const defaultFormat = getMovieSupportedFormats(movie?.version, formatPrices)[0]; // Use the first available format as default
+      const defaultLanguage = getMovieSupportedLanguages(movie?.language)[0];
       const isAnimation = movie?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'));
 
       return {
         ...prev,
         movies: isSelected 
           ? prev.movies.filter(m => m.movieId !== id) 
-          : [...prev.movies, { movieId: id, formats: [defaultFormat], languages: isAnimation ? ['Phụ đề', 'Lồng tiếng'] : [] }]
+          : [...prev.movies, { movieId: id, formats: [defaultFormat], languages: [defaultLanguage] }]
       };
     });
   }
@@ -337,6 +355,26 @@ export default function AutoGeneratePage() {
       
       const listWithIds = (res || []).map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
       setPreviewList(listWithIds);
+      
+      try {
+        const existingData = await showtimeService.getAll();
+        const filteredExisting = existingData.filter(st => {
+            if (!st.startTime) return false;
+            const stDate = st.startTime.split('T')[0];
+            return stDate >= form.startDate && stDate <= form.endDate;
+        });
+        setExistingShowtimes(filteredExisting.map(st => ({
+            ...st,
+            isManual: true,
+            tempId: 'manual-' + st.id,
+            room_id: st.roomId,
+            movieTitle: st.movie,
+            durationMinutes: st.endTime ? (new Date(st.endTime) - new Date(st.startTime)) / 60000 : 120
+        })));
+      } catch (e) {
+          console.error("Failed to fetch existing showtimes for preview", e);
+      }
+      
       setStep(2)
     } catch (err) {
       setError('Lỗi khi chạy thuật toán: ' + (err.response?.data?.message || err.message))
@@ -627,7 +665,7 @@ export default function AutoGeneratePage() {
                           </label>
                           {isSelected && (
                             <div className="pl-7 flex flex-wrap gap-4 mt-1">
-                              {getMovieSupportedFormats(m.version).map(fmt => {
+                              {getMovieSupportedFormats(m.version, formatPrices).map(fmt => {
                                 const selectedMovie = form.movies.find(mv => mv.movieId === m.id);
                                 const isFmtSelected = selectedMovie?.formats?.includes(fmt);
                                 return (
@@ -644,10 +682,10 @@ export default function AutoGeneratePage() {
                               })}
                             </div>
                           )}
-                          {isSelected && m.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình')) && (
+                          {isSelected && getMovieSupportedLanguages(m.language).length > 0 && (
                             <div className="pl-7 flex flex-wrap gap-4 mt-1 border-t border-[#e0e3e5] pt-2">
-                              <span className="text-xs text-[#b80035] font-bold w-full">Ngôn ngữ (ưu tiên Lồng tiếng 70%):</span>
-                              {['Phụ đề', 'Lồng tiếng'].map(lang => {
+                              <span className="text-xs text-[#b80035] font-bold w-full">Ngôn ngữ:</span>
+                              {getMovieSupportedLanguages(m.language).map(lang => {
                                 const selectedMovie = form.movies.find(mv => mv.movieId === m.id);
                                 const isLangSelected = selectedMovie?.languages?.includes(lang);
                                 return (
@@ -788,8 +826,50 @@ export default function AutoGeneratePage() {
                         return assignedIds.includes(r.id);
                       }).map(room => {
                       const roomShowtimes = previewList.filter(st => st.room_id === room.id)
+                      const manualShowtimes = existingShowtimes.filter(st => st.room_id === room.id)
                       return (
                         <div key={room.id} className="h-24 border-b border-[#e0e3e5] border-dashed relative">
+                          {manualShowtimes.map((st) => {
+                            const pos = calculatePosition(st.startTime, st.durationMinutes)
+                            const stHour = new Date(st.startTime).getHours()
+                            const isGolden = stHour >= 18 && stHour < 22
+                            
+                            const barColor = isGolden ? 'bg-[#ffb300]' : 'bg-[#5c647a]'
+                            const textColor = isGolden ? 'text-[#ff6f00]' : 'text-[#5c647a]'
+                            const gradient = isGolden 
+                              ? 'repeating-linear-gradient(45deg, #fff8e1, #fff8e1 10px, #ffecb3 10px, #ffecb3 20px)'
+                              : 'repeating-linear-gradient(45deg, #f1f3f5, #f1f3f5 10px, #e9ecef 10px, #e9ecef 20px)'
+                            const borderColor = isGolden ? 'border-[#ffe082]' : 'border-[#5c647a]/20'
+
+                            return (
+                              <div
+                                key={st.tempId}
+                                className={`absolute top-4 h-[64px] rounded border ${borderColor} flex items-center p-2 shadow-sm overflow-hidden cursor-not-allowed z-0 pointer-events-none`}
+                                style={{ 
+                                  ...pos, 
+                                  minWidth: '40px',
+                                  backgroundImage: gradient
+                                }}
+                              >
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
+                                <div className="absolute top-1 right-1">
+                                  <span className="material-symbols-outlined text-red-500 text-[16px] opacity-80">
+                                    lock
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center">
+                                  <h4 className={`font-semibold text-[12px] ${textColor} line-clamp-1 leading-tight mb-1 pr-4`}>
+                                    {st.movieTitle}
+                                  </h4>
+                                  <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
+                                    <span>{new Date(st.startTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })}</span>
+                                    <span>-</span>
+                                    <span>{st.endTime ? new Date(st.endTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''}</span>
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          })}
                           {roomShowtimes.map((st) => {
                             const movieObj = movies.find(m => m.id === st.movie_id || m.titleVn === st.movieTitle)
                             
