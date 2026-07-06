@@ -104,18 +104,16 @@ export default function CinemaRoomDetailPage() {
         // cinemaRoomService.getById() calls /api/v1/cinema-rooms và filter client-side
         const roomRes = await cinemaRoomService.getById(roomId)
         if (roomRes && roomRes.data && active) {
-          fetchedRoom = roomRes.data
-          setRoom(roomRes.data)
+          const roomData = roomRes.data.result || roomRes.data
+          fetchedRoom = roomData
+          setRoom(roomData)
         }
       } catch (err) {
-        console.warn('Backend API offline. Fetching room from local storage fallback.', err)
-        const localRooms = localStorage.getItem('admin_cinema_rooms_db')
-        if (localRooms && active) {
-          const roomsList = JSON.parse(localRooms)
-          fetchedRoom = roomsList.find(r => r.id === roomId || String(r.id) === String(roomId))
-          if (fetchedRoom) {
-            setRoom(fetchedRoom)
-          }
+        console.error('Lỗi khi lấy thông tin phòng chiếu từ Backend API:', err)
+        if (active) {
+          setError('Lỗi kết nối máy chủ khi lấy thông tin phòng.')
+          setLoading(false)
+          return
         }
       }
 
@@ -130,21 +128,24 @@ export default function CinemaRoomDetailPage() {
       try {
         // 2. Fetch Seats Info
         const seatsRes = await cinemaRoomService.getSeats(roomId)
-        if (seatsRes && seatsRes.data && seatsRes.data.length > 0 && active) {
-          setSeats(seatsRes.data)
+        if (seatsRes && seatsRes.data && active) {
+          const seatsData = seatsRes.data.result || seatsRes.data
+          if (seatsData && seatsData.length > 0) {
+            setSeats(seatsData)
+          } else {
+            // Backend trả về mảng rỗng -> Tạo sơ đồ ghế mặc định
+            if (active && fetchedRoom) {
+              const defaultSeats = generateDefaultSeats(fetchedRoom.capacity || fetchedRoom.seatsCount || 100)
+              setSeats(defaultSeats)
+            }
+          }
         } else {
-          throw new Error('Empty seats data')
+          throw new Error('Không có phản hồi dữ liệu ghế hợp lệ từ máy chủ.')
         }
       } catch (err) {
-        console.warn('Backend API offline. Fetching seats from local storage fallback.', err)
-        const localSeats = localStorage.getItem(`admin_room_seats_db_${roomId}`)
-        if (localSeats && active) {
-          setSeats(JSON.parse(localSeats))
-        } else if (active) {
-          // Fallback to generate default seating template
-          const defaultSeats = generateDefaultSeats(fetchedRoom.seatsCount)
-          setSeats(defaultSeats)
-          localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(defaultSeats))
+        console.error('Lỗi khi lấy sơ đồ ghế từ Backend API:', err)
+        if (active) {
+          setError('Lỗi kết nối máy chủ khi lấy sơ đồ ghế.')
         }
       } finally {
         if (active) {
@@ -176,18 +177,12 @@ export default function CinemaRoomDetailPage() {
         await cinemaRoomService.updateLayout(roomId, payload)
       } catch (err) {
         if (err.response) {
-          // Server returned an error code
           throw new Error(err.response.data?.message || 'Lưu thất bại: Máy chủ phản hồi lỗi.', { cause: err })
-        } else if (err.request) {
-          // Connection refused / Network error (fallback to local storage)
-          console.warn('Backend server offline. Performing offline save fallback.', err)
         } else {
-          throw err
+          throw new Error('Lưu thất bại: Không thể kết nối tới máy chủ.', { cause: err })
         }
       }
 
-      // Update database / local storage (AC-04)
-      localStorage.setItem(`admin_room_seats_db_${roomId}`, JSON.stringify(payload.seats))
       setSeats(payload.seats)
       
       // Return to listing and show confirmation (AC-04)

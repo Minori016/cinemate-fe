@@ -122,20 +122,29 @@ export default function SystemConfigPage() {
         </div>
       </div>
 
-      {/* System Configs (Operating Hours) */}
-      <h3 className="text-xl font-bold text-[#191c1e] mb-4">Giờ Hoạt Động Rạp</h3>
+      {/* System Configs (Operating Hours & Buffers) */}
+      <h3 className="text-xl font-bold text-[#191c1e] mb-4">Cấu hình Thời gian & Hoạt động</h3>
       <div className="bg-white border border-[#e0e3e5] rounded-2xl p-6 shadow-sm mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {sysConfigs.map((config) => {
             const hasChanged = editSysConfigs[config.configKey] !== config.configValue;
-            const label = config.configKey === 'OPENING_TIME' ? 'Giờ Mở Cửa' : config.configKey === 'CLOSING_TIME' ? 'Giờ Đóng Cửa' : config.configKey;
+            
+            let label = config.configKey;
+            let inputType = 'text';
+            
+            if (config.configKey === 'OPENING_TIME') { label = 'Giờ Mở Cửa'; inputType = 'time'; }
+            else if (config.configKey === 'CLOSING_TIME') { label = 'Giờ Đóng Cửa'; inputType = 'time'; }
+            else if (config.configKey === 'CLEANING_BUFFER_DEFAULT') { label = 'Dọn dẹp Mặc định'; inputType = 'number'; }
+            else if (config.configKey === 'CLEANING_BUFFER_SMALL') { label = 'Dọn dẹp (Phòng Nhỏ)'; inputType = 'number'; }
+            else if (config.configKey === 'CLEANING_BUFFER_4DX') { label = 'Dọn dẹp (Phòng 4DX)'; inputType = 'number'; }
+            else if (config.configKey === 'CLEANING_BUFFER_IMAX') { label = 'Dọn dẹp (Phòng IMAX)'; inputType = 'number'; }
             
             return (
               <div key={config.configKey} className="flex flex-col gap-4 p-5 bg-[#f7f9fb] rounded-xl border border-[#e0e3e5] relative overflow-hidden group hover:border-[#b80035] transition-colors">
                 <div className="flex flex-col gap-2 relative z-10">
                   <label className="text-xs text-[#5c647a] font-bold uppercase tracking-wide">{label}</label>
                   <input 
-                    type="time" 
+                    type={inputType} 
                     value={editSysConfigs[config.configKey] || ''} 
                     onChange={(e) => handleSysConfigChange(config.configKey, e.target.value)}
                     className="bg-white border border-[#e0e3e5] rounded-xl py-3 px-4 text-base font-bold text-[#191c1e] focus:border-[#b80035] outline-none w-full shadow-sm"
