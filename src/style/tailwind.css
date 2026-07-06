@@ -1,0 +1,195 @@
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
+
+@import 'tw-animate-css';
+
+/* ============================================================
+   CINEMATE — Cinematic Theme Tokens (Tailwind v4)
+   ============================================================ */
+
+@theme inline {
+  /* ── Core palette ── */
+  --color-primary: #e50914;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #8b0000;
+  --color-secondary-foreground: #ffffff;
+  --color-background: #070707;
+  --color-foreground: #f1faee;
+  --color-surface: #111111;
+  --color-surface-2: #161616;
+  --color-surface-container: #1a1a1a;
+  --color-surface-container-highest: #252525;
+  --color-card: #171717;
+  --color-card-foreground: #f1faee;
+  --color-popover: #111111;
+  --color-popover-foreground: #f1faee;
+
+  /* ── Text ── */
+  --color-text: #ffffff;
+  --color-text-muted: #b5b5b5;
+  --color-text-dim: rgba(255, 255, 255, 0.5);
+
+  /* ── Borders ── */
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.14);
+
+  /* ── Accent ── */
+  --color-accent: rgba(229, 9, 20, 0.25);
+  --color-accent-strong: rgba(229, 9, 20, 0.5);
+
+  /* ── Semantic ── */
+  --color-destructive: #e50914;
+  --color-destructive-foreground: #ffffff;
+  --color-muted: #1c1c1e;
+  --color-muted-foreground: #8d99ae;
+  --color-ring: rgba(229, 9, 20, 0.5);
+
+  /* ── Rating colors ── */
+  --color-rating-t18: #dc2626;
+  --color-rating-t16: #ef4444;
+  --color-rating-t13: #f97316;
+  --color-rating-k: #16a34a;
+
+  /* ── Gold accent ── */
+  --color-gold: #d4a853;
+  --color-gold-foreground: #1a1a1a;
+
+  /* ── Radius ── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 24px rgba(229, 9, 20, 0.3);
+  --shadow-glow-lg: 0 0 48px rgba(229, 9, 20, 0.2);
+
+  /* ── Sidebar tokens (dark default) ── */
+  --color-sidebar: #111111;
+  --color-sidebar-foreground: #f1faee;
+  --color-sidebar-primary: #e50914;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #1a1a1a;
+  --color-sidebar-accent-foreground: #f1faee;
+  --color-sidebar-border: rgba(255, 255, 255, 0.06);
+  --color-sidebar-ring: rgba(229, 9, 20, 0.5);
+}
+
+/* ── Base layer ── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+    outline-color: var(--color-ring);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    color: var(--color-foreground);
+  }
+
+  h1 { font-size: clamp(2rem, 4vw, 3.5rem); }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.5rem); }
+  h3 { font-size: clamp(1.25rem, 2vw, 1.75rem); }
+  h4 { font-size: clamp(1rem, 1.5vw, 1.25rem); }
+
+  p {
+    color: var(--color-text-muted);
+    line-height: 1.7;
+  }
+
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  a:hover {
+    color: #ff1a1a;
+  }
+
+  ::selection {
+    background: rgba(229, 9, 20, 0.35);
+    color: #ffffff;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgba(229, 9, 20, 0.5);
+    outline-offset: 2px;
+  }
+}
+
+/* ── Light mode overrides (admin/manager/staff dashboards) ── */
+.theme-light {
+  --color-background: #f8f9fa;
+  --color-foreground: #0f172a;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f4f6;
+  --color-surface-container: #f3f4f6;
+  --color-surface-container-highest: #e5e7eb;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0f172a;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-dim: #94a3b8;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-ring: rgba(229, 9, 20, 0.4);
+  --color-sidebar: #ffffff;
+  --color-sidebar-foreground: #0f172a;
+  --color-sidebar-accent: #f1f5f9;
+  --color-sidebar-accent-foreground: #0f172a;
+  --color-sidebar-border: #e2e8f0;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.12);
+}
+
+.theme-light body {
+  background-color: #f8f9fa;
+  color: #0f172a;
+}
+
+.theme-light .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light .glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.theme-light ::selection {
+  background: rgba(229, 9, 20, 0.2);
+}
