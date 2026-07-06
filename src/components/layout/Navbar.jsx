@@ -36,108 +36,13 @@ const NAV_ITEMS = [
   { route: '/about', label: 'Giới Thiệu' },
 ]
 
-const ThreeGlassShimmer = () => {
-  const containerRef = useRef(null)
-
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    const container = containerRef.current
-    const width = container.clientWidth
-    const height = container.clientHeight
-
-    const scene = new THREE.Scene()
-    const camera = new THREE.OrthographicCamera(-width / 2, width / 2, height / 2, -height / 2, 0.1, 10)
-    camera.position.z = 1
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(width, height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-    container.appendChild(renderer.domElement)
-
-    const geometry = new THREE.PlaneGeometry(80, 80)
-
-    const createLightTexture = () => {
-      const canvas = document.createElement('canvas')
-      canvas.width = 64
-      canvas.height = 64
-      const ctx = canvas.getContext('2d')
-      const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 32)
-      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.18)')
-      gradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.06)')
-      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)')
-      ctx.fillStyle = gradient
-      ctx.fillRect(0, 0, 64, 64)
-      return new THREE.CanvasTexture(canvas)
-    }
-
-    const texture = createLightTexture()
-    const material = new THREE.MeshBasicMaterial({
-      map: texture,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-
-    const mesh1 = new THREE.Mesh(geometry, material)
-    const mesh2 = new THREE.Mesh(geometry, material)
-
-    scene.add(mesh1)
-    scene.add(mesh2)
-
-    mesh1.position.set(-width / 4, 0, 0)
-    mesh2.position.set(width / 4, 0, 0)
-
-    let animId
-    let time = 0
-
-    const tick = () => {
-      time += 0.015
-      mesh1.position.x = Math.sin(time) * (width / 2.5)
-      mesh1.position.y = Math.cos(time * 0.5) * (height / 3)
-      mesh2.position.x = Math.cos(time * 0.8) * (width / 2.5)
-      mesh2.position.y = Math.sin(time * 0.6) * (height / 3)
-
-      renderer.render(scene, camera)
-      animId = requestAnimationFrame(tick)
-    }
-
-    tick()
-
-    const handleResize = () => {
-      if (!container) return
-      const w = container.clientWidth
-      const h = container.clientHeight
-      renderer.setSize(w, h)
-      camera.left = -w / 2
-      camera.right = w / 2
-      camera.top = h / 2
-      camera.bottom = -h / 2
-      camera.updateProjectionMatrix()
-    }
-
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', handleResize)
-      renderer.dispose()
-      if (container.contains(renderer.domElement)) {
-        container.removeChild(renderer.domElement)
-      }
-    }
-  }, [])
-
-  return <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-none rounded-full overflow-hidden" />
-}
-
 function NavItem({ route, label, index }) {
   const linkRef = useRef(null)
 
   const handleMouseEnter = () => {
     gsap.to(linkRef.current, {
       scale: 1.05,
-      textShadow: '0 0 8px rgba(255,255,255,0.6)',
+      textShadow: '0 0 8px rgba(229,9,20,0.6)',
       duration: 0.3,
       ease: 'power2.out',
     })
@@ -146,7 +51,7 @@ function NavItem({ route, label, index }) {
   const handleMouseLeave = () => {
     gsap.to(linkRef.current, {
       scale: 1.0,
-      textShadow: '0 0 0px rgba(255,255,255,0)',
+      textShadow: '0 0 0px rgba(229,9,20,0)',
       duration: 0.3,
       ease: 'power2.out',
     })
@@ -165,7 +70,7 @@ function NavItem({ route, label, index }) {
         onMouseLeave={handleMouseLeave}
         className={({ isActive }) =>
           `relative inline-block px-4 py-2 text-[11px] font-bold uppercase tracking-[0.15em] transition-colors duration-200 ${
-            isActive ? 'text-white' : 'text-white/50 hover:text-white'
+            isActive ? 'text-white hover:text-[#e50914]' : 'text-white/50 hover:text-[#e50914]'
           }`
         }
         style={{ fontFamily: 'Inter, sans-serif' }}
@@ -352,8 +257,7 @@ export default function Navbar() {
               boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 8px 32px rgba(0, 0, 0, 0.3)',
             }}
           >
-            {/* Three.js Canvas background inside the pill */}
-            <ThreeGlassShimmer />
+
 
             <div className="relative z-10 flex items-center gap-0.5">
               {NAV_ITEMS.map((item, i) => (
