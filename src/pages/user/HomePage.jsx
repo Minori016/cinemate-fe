@@ -13,8 +13,8 @@ import MovieCard from '../../components/common/MovieCard'
 import Badge from '../../components/common/Badge'
 import TrailerModal from './components/moviedetail/TrailerModal'
 import MovieArcCarousel3D from '../../components/common/MovieArcCarousel3D'
-import YouTube from 'react-youtube'
-
+import LiteYouTubeEmbed from 'react-lite-youtube-embed'
+import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 
 // ── Constants ──────────────────────────────────────────────────
 const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
@@ -89,64 +89,36 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
     return defaultPoster
   })
 
-  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
-  const playerRef = useRef(null)
+  const [isVideoReady, setIsVideoReady] = useState(false)
 
   // Reset states when movie changes
   useEffect(() => {
-    setIsVideoPlaying(false)
+    setIsVideoReady(false)
     if (videoId) {
       setThumbUrl(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`)
     } else {
       setThumbUrl(defaultPoster)
     }
-  }, [movie.id, videoId, defaultPoster])
+  }, [movie.id, videoId])
 
-  // Explicit cleanup: destroy player when component is no longer active or unmounted
+  // Delay crossfade of static overlay by 2 seconds after video mounts to avoid flash of loading screens
   useEffect(() => {
-    return () => {
-      if (playerRef.current) {
-        try {
-          if (typeof playerRef.current.destroy === 'function') {
-            playerRef.current.destroy()
-          }
-        } catch (err) {
-          console.warn('Error destroying YouTube player:', err)
-        }
-        playerRef.current = null
-      }
+    if (shouldPlayVideo && videoId) {
+      setIsVideoReady(false)
+      const timer = setTimeout(() => {
+        setIsVideoReady(true)
+      }, 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setIsVideoReady(false)
     }
-  }, [shouldPlayVideo])
+  }, [shouldPlayVideo, videoId])
 
   const handleThumbError = () => {
     if (videoId && thumbUrl.includes('maxresdefault')) {
       setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)
     } else {
       setThumbUrl(defaultPoster)
-    }
-  }
-
-  const onReady = (event) => {
-    playerRef.current = event.target
-    try {
-      const levels = event.target.getAvailableQualityLevels()
-      if (levels.includes('hd1080')) {
-        event.target.setPlaybackQuality('hd1080')
-      } else if (levels.includes('hd720')) {
-        event.target.setPlaybackQuality('hd720')
-      } else {
-        event.target.setPlaybackQuality('default')
-      }
-    } catch (err) {
-      console.warn('Error setting YouTube playback quality:', err)
-    }
-    event.target.playVideo()
-  }
-
-  const onStateChange = (event) => {
-    const PLAYING_STATE = window.YT?.PlayerState?.PLAYING ?? 1
-    if (event.data === PLAYING_STATE) {
-      setIsVideoPlaying(true)
     }
   }
 
@@ -159,45 +131,28 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
       style={{ pointerEvents: 'none' }}
     >
       {shouldPlayVideo && videoId && (
-        <motion.div
-          className="absolute inset-0 w-full h-full pointer-events-none z-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: isVideoPlaying ? 1 : 0 }}
-          transition={{ duration: 0.5, ease: 'easeInOut' }}
-        >
-          <YouTube
-            videoId={videoId}
-            className="homepage-banner-video-wrapper w-full h-full"
-            iframeClassName="homepage-banner-video-iframe"
-            opts={{
-              playerVars: {
-                autoplay: 1,
-                mute: 1,
-                controls: 0,
-                modestbranding: 1,
-                rel: 0,
-                loop: 1,
-                playlist: videoId,
-                disablekb: 1,
-                playsinline: 1,
-              }
-            }}
-            onReady={onReady}
-            onStateChange={onStateChange}
-          />
-        </motion.div>
+        <LiteYouTubeEmbed
+          id={videoId}
+          title={movie.titleVn || movie.titleEn || ''}
+          autoplay={true}
+          noCookie={true}
+          params={`autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${videoId}&playsinline=1`}
+          wrapperClass="homepage-banner-video-wrapper"
+          iframeClass="homepage-banner-video-iframe"
+          poster="maxresdefault"
+        />
       )}
 
-      <motion.img
+      <img
         src={thumbUrl}
         alt=""
         fetchPriority="high"
         decoding="async"
-        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] z-10"
-        initial={{ opacity: 1 }}
-        animate={{ opacity: isVideoPlaying ? 0 : 1 }}
-        transition={{ duration: 0.5, ease: 'easeInOut' }}
-        style={{ pointerEvents: 'none' }}
+        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] transition-opacity duration-1000 ease-out"
+        style={{
+          opacity: isVideoReady ? 0 : 1,
+          pointerEvents: 'none',
+        }}
         onError={handleThumbError}
       />
     </motion.div>

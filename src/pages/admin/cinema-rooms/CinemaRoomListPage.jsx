@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Table from '../../../components/common/Table'
+import Button from '../../../components/common/Button'
 import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw } from 'lucide-react'
 
 
@@ -222,6 +223,22 @@ export default function CinemaRoomListPage() {
   const columns = [
     { key: 'name', label: 'Cinema Room Name' },
     { key: 'capacity', label: 'Seat Quantity', render: (row) => row.capacity || row.seatsCount },
+    {
+      key: 'supportedFormats',
+      label: 'Định dạng hỗ trợ',
+      render: (row) => {
+        if (!row.supportedFormats || row.supportedFormats.length === 0) return <span className="text-gray-500 italic text-xs">Chưa cấu hình</span>
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {row.supportedFormats.map(fmt => (
+              <span key={fmt} className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-md text-[10px] font-bold tracking-wider">
+                {fmt.replace('_', '')}
+              </span>
+            ))}
+          </div>
+        )
+      }
+    },
     { 
       key: 'status', 
       label: 'Trạng thái',
@@ -294,25 +311,21 @@ export default function CinemaRoomListPage() {
       {/* Header (AC-05) */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
         <div>
-          <h1 
-            className="text-4xl text-gray-900 font-black tracking-wider uppercase" 
-            style={{ fontFamily: 'Montserrat, sans-serif' }}
+          <h1
+            className="text-4xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Quản lý phòng chiếu
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
             Xem danh sách, thêm mới phòng chiếu và tùy chọn cấu hình chi tiết loại ghế ngồi.
           </p>
         </div>
 
         {/* Add Room trigger button (AC-03) */}
-        <button
-          onClick={() => navigate('/admin/cinema-rooms/add')}
-          className="px-5 py-3.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all flex items-center gap-2 uppercase tracking-wider shrink-0 border-none cursor-pointer"
-        >
-          <Plus size={16} />
-          <span>Thêm phòng chiếu</span>
-        </button>
+        <Button onClick={() => navigate('/admin/cinema-rooms/add')}>
+          <Plus size={16} className="mr-1" /> Thêm phòng chiếu
+        </Button>
       </div>
 
       {/* Maintenance Warning Alerts */}

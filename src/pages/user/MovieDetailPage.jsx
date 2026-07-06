@@ -300,8 +300,7 @@ export default function MovieDetailPage() {
   const queryTime = searchParams.get('time')
 
   // Booking states
-  const queryBooking = searchParams.get('booking')
-  const [isBookingMode, setIsBookingMode] = useState((queryDate && queryTime) || queryBooking === 'true')
+  const [isBookingMode, setIsBookingMode] = useState((queryDate && queryTime) ? true : false)
   const [bookingStep, setBookingStep] = useState((queryDate && queryTime) ? 2 : 1)
   const [selectedDate, setSelectedDate] = useState(queryDate || DAYS[0].date)
   const [selectedTime, setSelectedTime] = useState(queryTime || '')
@@ -315,15 +314,11 @@ export default function MovieDetailPage() {
   useEffect(() => {
     const qDate = searchParams.get('date')
     const qTime = searchParams.get('time')
-    const qBooking = searchParams.get('booking')
     if (qDate && qTime) {
       setSelectedDate(qDate)
       setSelectedTime(qTime)
       setBookingStep(2)
       setIsBookingMode(true)
-    } else if (qBooking === 'true') {
-      setIsBookingMode(true)
-      setBookingStep(1)
     }
   }, [searchParams])
 

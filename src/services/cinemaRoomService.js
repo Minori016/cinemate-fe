@@ -14,4 +14,3 @@ export const cinemaRoomService = {
   updateStatus: (roomId, status) => api.patch(`/api/v1/admin/cinema-rooms/${roomId}/status`, { status }),
   delete: (roomId) => api.delete(`/api/v1/admin/cinema-rooms/${roomId}`),
 }
-

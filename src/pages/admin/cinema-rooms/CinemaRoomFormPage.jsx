@@ -5,14 +5,17 @@ import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
 import { ArrowLeft, Plus, Upload, MapPin, Users, CheckCircle, AlertCircle, X } from 'lucide-react'
 
+const AVAILABLE_FORMATS = ['2D', '3D', '4DX', 'IMAX'];
+
 export default function CinemaRoomFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditMode = !!id
 
   const [name, setName] = useState('')
-  const [capacity, setCapacity] = useState(80)
   const [cinemaId, setCinemaId] = useState('')
+  const [supportedFormats, setSupportedFormats] = useState(['2D'])
+  const [layoutTemplate, setLayoutTemplate] = useState('NONE')
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
@@ -22,9 +25,55 @@ export default function CinemaRoomFormPage() {
   const validateForm = () => {
     const tempErrors = {}
     if (!name.trim()) tempErrors.name = 'Tên phòng chiếu không được để trống'
-    if (!capacity || capacity <= 0) tempErrors.capacity = 'Sức chứa phải lớn hơn 0'
+    if (supportedFormats.length === 0) tempErrors.formats = 'Phải chọn ít nhất 1 định dạng'
     setErrors(tempErrors)
     return Object.keys(tempErrors).length === 0
+  }
+
+  const handleFormatToggle = (fmt) => {
+    setSupportedFormats(prev => 
+      prev.includes(fmt) 
+        ? prev.filter(f => f !== fmt)
+        : [...prev, fmt]
+    )
+  }
+
+  const generateLayoutPayload = (template) => {
+    let rows, cols;
+    if (template === 'SMALL') { rows = 8; cols = 10; } // 80 seats equivalent
+    else if (template === 'IMAX') { rows = 10; cols = 14; } // 140 seats equivalent
+    else if (template === '4DX') { rows = 6; cols = 8; } // 48 seats equivalent
+    else return null;
+    
+    const seats = [];
+    for (let i = 0; i < rows; i++) {
+      const rowLabel = String.fromCharCode(65 + i); // A, B, C...
+      const isLastRow = i === rows - 1;
+      
+      let j = 1;
+      while (j <= cols) {
+        if (isLastRow) {
+          // Add COUPLE seats to the last row
+          // A couple seat takes 2 columns visually, so we add it and skip the next column
+          seats.push({ row: rowLabel, number: j, type: 'COUPLE', status: 'ACTIVE' });
+          j += 2; // Skip the next column as it's occupied by the couple seat
+        } else {
+          let type = 'STANDARD';
+          if (template === '4DX') {
+              type = 'VIP';
+          } else if (template === 'IMAX') {
+              if (i >= 3 && i <= 7 && j >= 3 && j <= cols - 2) type = 'VIP'; // Center VIP
+              else if (i === 8) type = 'VIP'; // Almost last row is full VIP
+          } else {
+              // small 2D/3D: row 6-7 VIP
+              if (i >= rows - 3) type = 'VIP';
+          }
+          seats.push({ row: rowLabel, number: j, type, status: 'ACTIVE' });
+          j++;
+        }
+      }
+    }
+    return { rows, cols, seats };
   }
 
   const handleSubmit = async (e) => {
@@ -37,7 +86,7 @@ export default function CinemaRoomFormPage() {
     setIsSubmitting(true)
     const payload = {
       name: name.trim(),
-      capacity: Number(capacity),
+      supportedFormats,
       ...(cinemaId && { cinemaId })
     }
 
@@ -46,7 +95,16 @@ export default function CinemaRoomFormPage() {
         await cinemaRoomService.updateInfo(id, payload)
         setToast({ message: 'Cập nhật phòng chiếu thành công!', type: 'success' })
       } else {
-        await cinemaRoomService.create(payload)
+        const res = await cinemaRoomService.create(payload)
+        const newRoomId = res.data?.result?.id || res.data?.id
+        
+        if (newRoomId && layoutTemplate !== 'NONE') {
+           const layoutPayload = generateLayoutPayload(layoutTemplate)
+           if (layoutPayload) {
+             await cinemaRoomService.updateLayout(newRoomId, layoutPayload)
+           }
+        }
+        
         setToast({ message: 'Thêm phòng chiếu mới thành công!', type: 'success' })
       }
       setTimeout(() => {
@@ -68,8 +126,8 @@ export default function CinemaRoomFormPage() {
           const room = res.data?.result || res.data
           if (room) {
             setName(room.name || '')
-            setCapacity(room.capacity || room.seatsCount || 80)
             setCinemaId(room.cinemaId || '')
+            setSupportedFormats(room.supportedFormats && room.supportedFormats.length > 0 ? room.supportedFormats : ['2D'])
           }
         })
         .catch(err => {
@@ -107,16 +165,16 @@ export default function CinemaRoomFormPage() {
         <div>
           <button
             onClick={handleCancel}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-900 uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
           >
             <ArrowLeft size={14} />
             <span>Quay lại Quản lý Phòng chiếu</span>
           </button>
-          <h1 className="text-4xl text-white font-black tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h1 className="text-4xl text-gray-900 font-black tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             {isEditMode ? 'Cập nhật phòng chiếu' : 'Thêm phòng chiếu mới'}
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            {isEditMode ? 'Chỉnh sửa thông tin phòng chiếu.' : 'Tạo phòng chiếu mới với tên và sức chứa.'}
+          <p className="text-sm text-gray-600 mt-1">
+            {isEditMode ? 'Chỉnh sửa thông tin phòng chiếu.' : 'Tạo phòng chiếu mới và thiết lập định dạng.'}
           </p>
         </div>
       </div>
@@ -124,7 +182,7 @@ export default function CinemaRoomFormPage() {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
+            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4 border-b border-[var(--color-border)] pb-3" style={{ fontFamily: 'Montserrat' }}>
               <MapPin className="text-red-500" size={18} />
               Thông tin phòng chiếu
             </h3>
@@ -137,19 +195,39 @@ export default function CinemaRoomFormPage() {
                 onChange={(e) => setName(e.target.value)}
                 error={errors.name}
               />
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Sức chứa *</label>
-                <select
-                  value={capacity}
-                  onChange={(e) => setCapacity(Number(e.target.value))}
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
-                >
-                  <option value={48}>48 Ghế (6×8)</option>
-                  <option value={60}>60 Ghế (6×10)</option>
-                  <option value={80}>80 Ghế (8×10)</option>
-                </select>
-                {errors.capacity && <span className="text-xs text-red-400 mt-1">{errors.capacity}</span>}
+              {!isEditMode && (
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-gray-600 mb-1">Mẫu sơ đồ ghế (Tùy chọn)</label>
+                  <select
+                    value={layoutTemplate}
+                    onChange={(e) => setLayoutTemplate(e.target.value)}
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-[var(--color-text-main)] focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                  >
+                    <option value="NONE">Không khởi tạo (Vẽ tay sau)</option>
+                    <option value="SMALL">Mẫu Tiêu chuẩn (80 Ghế - 8x10)</option>
+                    <option value="IMAX">Mẫu IMAX (140 Ghế - 10x14)</option>
+                    <option value="4DX">Mẫu 4DX (48 Ghế VIP - 6x8)</option>
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1 w-full text-left">
+              <label className="text-sm font-medium text-gray-600 mb-2">Định dạng hỗ trợ *</label>
+              <div className="flex flex-wrap gap-4">
+                {AVAILABLE_FORMATS.map(fmt => (
+                  <label key={fmt} className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-gray-900">
+                    <input 
+                      type="checkbox" 
+                      checked={supportedFormats.includes(fmt)} 
+                      onChange={() => handleFormatToggle(fmt)}
+                      className="w-4 h-4 rounded accent-red-500" 
+                    />
+                    {fmt}
+                  </label>
+                ))}
               </div>
+              {errors.formats && <span className="text-xs text-red-400 mt-1">{errors.formats}</span>}
             </div>
           </div>
         </div>
@@ -174,11 +252,11 @@ export default function CinemaRoomFormPage() {
           </div>
 
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-3 shadow-xl">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2 mb-3" style={{ fontFamily: 'Montserrat' }}>
+            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2 mb-3" style={{ fontFamily: 'Montserrat' }}>
               <CheckCircle className="text-green-500" size={16} />
               Lưu ý
             </h4>
-            <ul className="text-xs text-gray-400 space-y-2">
+            <ul className="text-xs text-gray-600 space-y-2">
               <li>• Tên phòng chiếu phải là duy nhất</li>
               <li>• Hệ thống sẽ tự tạo sơ đồ ghế mặc định</li>
               <li>• Có thể tùy chỉnh layout sau khi tạo</li>

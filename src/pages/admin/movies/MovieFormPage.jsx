@@ -434,7 +434,7 @@ export default function MovieFormPage() {
                     Phiên bản chiếu *
                   </label>
                   <div className="flex flex-wrap gap-1.5">
-                    {['2D', '3D', 'IMAX', 'ScreenX', '4DX', 'Starium', 'ULTRA 4DX'].map(v => {
+                    {['2D', '3D', '4DX', 'IMAX'].map(v => {
                       const isChecked = selectedVersions.includes(v)
                       return (
                         <button

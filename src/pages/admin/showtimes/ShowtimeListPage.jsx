@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Trash2, Clock } from 'lucide-react'
+import { Trash2, Clock, Plus } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
-import AutoGenerateModal from './AutoGenerateModal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { toast } from 'sonner'
 
@@ -47,6 +46,9 @@ export default function ShowtimeListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const isAdmin = user && user.roles?.includes('ADMIN')
+  const isManager = user && user.roles?.includes('MANAGER')
+  const isAuthorized = isAdmin || isManager
+  const basePath = isAdmin ? '/admin' : '/manager'
 
   // States
   const [showtimes, setShowtimes] = useState([])
@@ -60,6 +62,7 @@ export default function ShowtimeListPage() {
   // Filters state
   const [filterMovie, setFilterMovie] = useState('all')
   const [filterRoom, setFilterRoom] = useState('all')
+  const isFirstLoad = useRef(true)
   
   // Default date to today for grid view to make sense
   const [filterDate, setFilterDate] = useState(() => {
@@ -76,9 +79,8 @@ export default function ShowtimeListPage() {
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
-
-  // Modal and Form state
-  const [autoGenModalOpen, setAutoGenModalOpen] = useState(false)
+  const [selectedShowtime, setSelectedShowtime] = useState(null)
+  const [showExportModal, setShowExportModal] = useState(false)
 
   const triggerToast = (msg, type = 'success') => {
     if (type === 'success') {
@@ -88,12 +90,86 @@ export default function ShowtimeListPage() {
     }
   }
 
+  const fileInputRef = useRef(null)
+
+  const handleExportClick = () => {
+    setShowExportModal(true)
+  }
+
+  const executeExport = async (type) => {
+    setShowExportModal(false)
+    const toastId = toast.loading('Đang chuẩn bị file Excel...')
+    try {
+      let startDate = null;
+      let endDate = null;
+      const baseDate = new Date(filterDate);
+
+      if (type === 'month') {
+        const y = baseDate.getFullYear();
+        const m = baseDate.getMonth();
+        startDate = new Date(y, m, 1).toISOString().split('T')[0];
+        endDate = new Date(y, m + 1, 0).toISOString().split('T')[0];
+      } else if (type === 'week') {
+        // Find Monday of the week
+        const d = new Date(baseDate);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
+        const monday = new Date(d.setDate(diff));
+        startDate = monday.toISOString().split('T')[0];
+        // Sunday
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        endDate = sunday.toISOString().split('T')[0];
+      }
+
+      let filename = `showtimes_${type === 'all' ? 'all' : startDate + '_to_' + endDate}.xlsx`;
+      const data = await showtimeService.exportExcel(startDate, endDate)
+      const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      toast.success('Xuất file Excel thành công!', { id: toastId })
+    } catch (err) {
+      console.error(err)
+      toast.error('Không thể xuất file Excel!', { id: toastId })
+    }
+  }
+
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    e.target.value = ''
+    
+    const toastId = toast.loading('Đang xử lý file Excel, vui lòng chờ...')
+    try {
+      const res = await showtimeService.importExcel(file)
+      toast.success(res?.message || 'Phân tích file Excel thành công!', { id: toastId })
+      // Navigate to AutoGeneratePage step 2
+      navigate(`${basePath}/showtimes/auto-generate`, { state: { importedPreviewList: res.result || res.data } })
+    } catch (err) {
+      console.error(err)
+      const errMsg = err.response?.data?.message || err.message || 'Lỗi không xác định khi nhập file Excel!'
+      toast.error(
+        <div className="whitespace-pre-line text-xs font-semibold leading-relaxed">
+          {errMsg}
+        </div>,
+        { id: toastId, duration: 8000 }
+      )
+    }
+  }
+
   // Load Data
   const loadData = async () => {
     setLoading(true)
     try {
       const stList = await showtimeService.getAll()
       setShowtimes(stList)
+
       try {
         const mRes = await movieService.getAll()
         setMovies(mRes.data || [])
@@ -113,8 +189,8 @@ export default function ShowtimeListPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-    if (isAdmin) loadData()
-  }, [isAdmin])
+    if (isAuthorized) loadData()
+  }, [isAuthorized])
 
   // Get selected movie info for end time calculation
   const getEndTimeForShowtime = (st) => {
@@ -163,14 +239,14 @@ export default function ShowtimeListPage() {
     return new Date(st.date) > new Date(latest) ? st.date : latest;
   }, filterDate);
 
-  // Calculate the max allowed days count (10 days after the latest showtime)
+  // Calculate the max allowed days count (2 days after the latest showtime)
   const filterDateObj = new Date(filterDate);
   const latestDateObj = new Date(latestShowtimeDateStr);
   const diffTimeMs = latestDateObj.getTime() - filterDateObj.getTime();
   const diffDaysToLatest = Math.max(0, Math.ceil(diffTimeMs / (1000 * 60 * 60 * 24)));
   
-  // At least 7 days, max is diff + 10
-  const MAX_DAYS_COUNT = Math.max(7, diffDaysToLatest + 10);
+  // At least 7 days, max is diff + 2 to avoid huge empty horizontal scrolling
+  const MAX_DAYS_COUNT = Math.max(7, diffDaysToLatest + 2);
 
   useEffect(() => {
     setTimelineDaysCount(7)
@@ -192,7 +268,7 @@ export default function ShowtimeListPage() {
   })
 
   // Access Denied Screen
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-[#06080F]">
         <span className="material-symbols-outlined text-red-500 text-6xl font-bold mb-4 animate-bounce">
@@ -202,7 +278,7 @@ export default function ShowtimeListPage() {
           Quyền truy cập bị từ chối
         </h2>
         <p className="text-gray-400 text-sm max-w-sm mb-6">
-          Chỉ có tài khoản Quản trị viên (Admin) mới có quyền truy cập và lập lịch chiếu phim.
+          Chỉ có tài khoản Quản trị viên (Admin) hoặc Quản lý (Manager) mới có quyền truy cập và lập lịch chiếu phim.
         </p>
         <button
           onClick={() => navigate('/')}
@@ -215,26 +291,40 @@ export default function ShowtimeListPage() {
   }
 
   // Grid Logic Constants
-  const START_HOUR = 0; // Nửa đêm
-  const GRID_WIDTH = 1440; // 1 day = 1440px
+  const getBusinessHours = () => {
+    const startHour = 8;
+    const endHour = 26; // Buffer cho suất chiếu muộn đến 2h sáng
+    return { 
+      startHour, 
+      endHour, 
+      businessHours: endHour - startHour, 
+      businessMinutes: (endHour - startHour) * 60 
+    };
+  };
   
   const calculatePosition = (timeStr, movieId, stDate) => {
     if (!timeStr || !stDate) return { left: '0px', width: '0px' }
     const mObj = movies.find(m => m.id === movieId || m.titleVn === movieId)
     const durationMins = mObj ? (mObj.durationMinutes || 120) : 120
+    const { startHour, businessMinutes } = getBusinessHours();
     
     // Parse dates to local timezone at midnight to calculate exact days diff
     const [by, bm, bd] = filterDate.split('-');
     const baseDateObj = new Date(by, bm - 1, bd);
+    baseDateObj.setHours(startHour, 0, 0, 0);
+
     const [sy, sm, sd] = stDate.split('-');
     const stDateObj = new Date(sy, sm - 1, sd);
+    let [h, m] = timeStr.split(':').map(Number);
+    stDateObj.setHours(h, m, 0, 0);
     
     const diffTimeMs = stDateObj.getTime() - baseDateObj.getTime();
-    const diffDays = Math.round(diffTimeMs / (1000 * 60 * 60 * 24));
     
-    let [h, m] = timeStr.split(':').map(Number)
+    const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000));
+    const remainderMs = diffTimeMs % (24 * 3600 * 1000);
+    const minutesIntoDay = Math.floor(remainderMs / 60000);
     
-    const totalMinutes = (diffDays * 1440) + (h * 60) + m
+    const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay;
     
     return {
       left: `${totalMinutes}px`,
@@ -243,11 +333,21 @@ export default function ShowtimeListPage() {
   }
 
   const getTodayLinePosition = () => {
+    const { startHour, businessMinutes } = getBusinessHours();
     const [y, m, d] = filterDate.split('-');
     const baseDateObj = new Date(y, m - 1, d);
+    baseDateObj.setHours(startHour, 0, 0, 0);
+
     const diffTimeMs = now.getTime() - baseDateObj.getTime();
-    const diffMinutes = Math.floor(diffTimeMs / (1000 * 60));
-    return diffMinutes > 0 ? `${diffMinutes}px` : '-10px';
+    const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000));
+    const remainderMs = diffTimeMs % (24 * 3600 * 1000);
+    
+    // If we are before startHour, remainderMs could be negative if we didn't floor properly? 
+    // Math.floor works fine, it just wraps to previous day.
+    const minutesIntoDay = Math.floor(remainderMs / (1000 * 60));
+    const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay;
+
+    return totalMinutes > 0 ? `${totalMinutes}px` : '-10px';
   }
 
   // Hatch Pattern SVG cho giờ đóng cửa
@@ -260,95 +360,140 @@ export default function ShowtimeListPage() {
     }
   }
 
-  // Auto scroll to 08:00 AM on initial render or date change
+  // Auto scroll to nearest showtime
   const timelineContainerRef = useRef(null)
   useEffect(() => {
     if (timelineContainerRef.current) {
-      // 08:00 is 8 * 60 = 480px from left
-      timelineContainerRef.current.scrollTo({ left: 450, behavior: 'smooth' })
+      if (filteredShowtimes.length > 0) {
+        const nowMs = now.getTime();
+        let closest = filteredShowtimes[0];
+        let minDiff = Infinity;
+        filteredShowtimes.forEach(st => {
+          const stTime = new Date(`${st.date}T${st.time}:00`).getTime();
+          const diff = Math.abs(stTime - nowMs);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = st;
+          }
+        });
+        const { left } = calculatePosition(closest.time, closest.movieId, closest.date);
+        let px = parseInt(left.replace('px', '')) - 300; // offset so it's centered
+        if (px < 0) px = 0;
+        timelineContainerRef.current.scrollTo({ left: px, behavior: 'smooth' });
+      } else {
+        const px = parseInt(getTodayLinePosition().replace('px', '')) - 400;
+        timelineContainerRef.current.scrollTo({ left: Math.max(0, px), behavior: 'smooth' });
+      }
     }
-  }, [filterDate, viewMode])
+  }, [filterDate, viewMode, filteredShowtimes.length]) // trigger when length changes
 
   return (
-    <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 h-[calc(100vh-80px)] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans h-full min-h-[calc(100vh-80px)] overflow-hidden">
       
       {/* Header Actions */}
-      <div className="flex justify-between items-center mb-8 shrink-0">
-        <h2 className="text-[32px] leading-tight font-semibold text-[#191c1e]">Quản lý lịch chiếu phim</h2>
-        <div className="flex gap-4">
-          <button
-            onClick={() => setAutoGenModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 border border-[#e5bdbe] text-[#565e74] text-sm font-semibold rounded hover:bg-[#eceef0] transition-colors"
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4 shrink-0">
+        <div>
+          <h1
+            className="text-3xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
-            <span className="material-symbols-outlined text-sm">settings_suggest</span>
+            Quản lý lịch chiếu phim
+          </h1>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Xem danh sách lịch chiếu, tùy chỉnh thời gian và tự động tạo lịch chiếu cho toàn hệ thống.
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+            accept=".xlsx,.xls"
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">upload</span>
+            Nhập Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleExportClick}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">download</span>
+            Xuất Excel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`${basePath}/showtimes/auto-generate`)}
+          >
+            <span className="material-symbols-outlined text-sm mr-1">settings_suggest</span>
             Tự động tạo lịch
-          </button>
-          <button
-            onClick={() => navigate('/admin/showtimes/add')}
-            className="flex items-center gap-2 px-4 py-2 bg-[#b80035] text-white text-sm font-semibold rounded hover:opacity-90 transition-opacity shadow-sm"
-          >
-            <span className="material-symbols-outlined text-sm">add</span>
-            Thêm suất chiếu
-          </button>
+          </Button>
+          <Button onClick={() => navigate(`${basePath}/showtimes/add`)}>
+            <Plus size={16} className="mr-1" /> Thêm suất chiếu
+          </Button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="flex justify-between items-center bg-white border border-[#e5bdbe] rounded p-2 mb-4 shrink-0">
+      <div className="flex justify-between items-center bg-white border border-[#e5bdbe] rounded-xl p-3 mb-4 shrink-0 shadow-sm">
         <div className="flex gap-4">
           <div className="relative">
             <select
               value={filterMovie}
               onChange={(e) => setFilterMovie(e.target.value)}
-              className="appearance-none bg-transparent border border-[#e0e3e5] rounded px-4 py-2 pr-10 text-sm text-[#191c1e] focus:outline-none focus:border-[#565e74] transition-colors cursor-pointer w-48"
+              className="appearance-none bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg px-4 py-2 pr-10 text-sm font-semibold text-[#191c1e] focus:outline-none focus:border-[#b80035] transition-colors cursor-pointer w-56"
             >
-              <option value="all">Chọn phim</option>
+              <option value="all">Tất cả phim</option>
               {movies.map(m => (
                 <option key={m.id} value={m.titleVn}>{m.titleVn}</option>
               ))}
             </select>
-            <span className="material-symbols-outlined absolute right-3 top-2.5 text-[#5c3f40] pointer-events-none">expand_more</span>
+            <span className="material-symbols-outlined absolute right-3 top-2 text-[#5c3f40] pointer-events-none">expand_more</span>
           </div>
 
           <div className="relative">
             <select
               value={filterRoom}
               onChange={(e) => setFilterRoom(e.target.value)}
-              className="appearance-none bg-transparent border border-[#e0e3e5] rounded px-4 py-2 pr-10 text-sm text-[#191c1e] focus:outline-none focus:border-[#565e74] transition-colors cursor-pointer w-40"
+              className="appearance-none bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg px-4 py-2 pr-10 text-sm font-semibold text-[#191c1e] focus:outline-none focus:border-[#b80035] transition-colors cursor-pointer w-48"
             >
-              <option value="all">Chọn phòng</option>
+              <option value="all">Tất cả phòng chiếu</option>
               {rooms.map(r => (
                 <option key={r.id} value={r.name}>{r.name}</option>
               ))}
             </select>
-            <span className="material-symbols-outlined absolute right-3 top-2.5 text-[#5c3f40] pointer-events-none">expand_more</span>
+            <span className="material-symbols-outlined absolute right-3 top-2 text-[#5c3f40] pointer-events-none">expand_more</span>
           </div>
 
-          <div className="relative flex items-center border border-[#e0e3e5] rounded px-4 py-2 cursor-pointer hover:border-[#565e74] transition-colors bg-white">
-            <span className="material-symbols-outlined text-[#5c3f40] mr-2 text-sm">calendar_month</span>
+          <div className="relative flex items-center bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg px-4 py-2 cursor-pointer hover:border-[#b80035] transition-colors focus-within:border-[#b80035]">
+            <span className="material-symbols-outlined text-[#b80035] mr-2 text-[18px]">calendar_month</span>
             <input
               type="date"
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm text-[#191c1e] p-0 cursor-pointer focus:ring-0"
+              className="bg-transparent border-none outline-none text-sm font-bold text-[#191c1e] p-0 cursor-pointer focus:ring-0"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-[#5c647a]">View Toggle</span>
-          <div className="flex bg-[#eceef0] border border-[#e5bdbe] rounded p-1">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold tracking-wide text-[#5c647a] uppercase">Chế độ xem</span>
+          <div className="flex bg-[#eceef0] rounded-lg p-1 shadow-inner">
             <button
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1 flex items-center gap-1 text-sm rounded ${viewMode === 'grid' ? 'bg-white text-[#191c1e] shadow-sm' : 'text-[#5c647a] hover:text-[#191c1e]'}`}
+              className={`px-4 py-1.5 flex items-center gap-2 text-sm font-semibold rounded-md transition-all ${viewMode === 'grid' ? 'bg-white text-[#b80035] shadow-sm' : 'text-[#5c647a] hover:text-[#191c1e]'}`}
             >
-              <span className="material-symbols-outlined text-sm">grid_view</span> Lưới
+              <span className="material-symbols-outlined text-[18px]">grid_view</span> Dòng thời gian
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1 flex items-center gap-1 text-sm rounded ${viewMode === 'list' ? 'bg-white text-[#191c1e] shadow-sm' : 'text-[#5c647a] hover:text-[#191c1e]'}`}
+              className={`px-4 py-1.5 flex items-center gap-2 text-sm font-semibold rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-[#b80035] shadow-sm' : 'text-[#5c647a] hover:text-[#191c1e]'}`}
             >
-              <span className="material-symbols-outlined text-sm">view_list</span> Danh sách
+              <span className="material-symbols-outlined text-[18px]">view_list</span> Dạng bảng
             </button>
           </div>
         </div>
@@ -356,22 +501,24 @@ export default function ShowtimeListPage() {
 
       {/* Main Content Area */}
       {loading ? (
-        <div className="py-24 flex justify-center items-center flex-1">
-          <span className="material-symbols-outlined animate-spin text-4xl text-[#b80035]">progress_activity</span>
+        <div className="py-24 flex justify-center items-center flex-1 bg-white rounded-2xl shadow-sm border border-[#e5bdbe]">
+          <span className="material-symbols-outlined animate-spin text-5xl text-[#b80035]">progress_activity</span>
         </div>
       ) : viewMode === 'grid' ? (
         <>
           {/* Timeline Board - Seamless Horizontal View */}
           <div 
             ref={timelineContainerRef}
-            className="flex-1 overflow-auto custom-scrollbar flex bg-[#f7f9fb] border border-[#e5bdbe] rounded min-h-0 relative"
+            className="flex-1 overflow-auto custom-scrollbar flex bg-white border border-[#e5bdbe] rounded-2xl shadow-sm min-h-0 relative"
             onScroll={handleTimelineScroll}
           >
-            <div className="flex" style={{ width: `calc(192px + ${datesToRender.length * 1440}px)` }}>
+            <div className="flex h-full min-h-full" style={{ width: `calc(192px + ${datesToRender.length * getBusinessHours().businessMinutes}px)` }}>
               
               {/* Sidebar (Rooms) */}
-              <div className="w-48 shrink-0 sticky left-0 z-40 bg-[#f7f9fb] border-r border-[#e0e3e5] flex flex-col shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-fit min-h-full">
-                <div className="h-16 border-b border-[#e0e3e5] bg-white sticky top-0 z-50 shrink-0"></div>
+              <div className="w-48 shrink-0 sticky left-0 z-40 bg-white border-r border-[#e5bdbe] flex flex-col shadow-[2px_0_10px_rgba(0,0,0,0.05)] h-full min-h-full">
+                <div className="h-[60px] border-b border-[#e5bdbe] bg-[#f7f9fb] sticky top-0 z-50 shrink-0 flex items-center justify-center">
+                   <span className="text-xs font-black tracking-widest text-[#5c647a] uppercase">PHÒNG CHIẾU</span>
+                </div>
                 {rooms.filter(r => filterRoom === 'all' || r.name === filterRoom || r.id === filterRoom).map(room => {
                   const roomInfo = getRoomDetails(room)
                   return (
@@ -387,46 +534,62 @@ export default function ShowtimeListPage() {
               </div>
 
               {/* Timeline Area */}
-              <div className="relative bg-[#f7f9fb]" style={{ width: `${datesToRender.length * 1440}px` }}>
+              <div className="relative bg-[#f7f9fb]" style={{ width: `${datesToRender.length * getBusinessHours().businessMinutes}px` }}>
                 {/* Time Header */}
                 <div className="h-16 flex flex-col sticky top-0 z-30 bg-white border-b border-[#e0e3e5] shadow-sm">
                   {/* Date Row */}
                   <div className="h-8 flex bg-[#eceef0] border-b border-[#e0e3e5]">
-                    {datesToRender.map(date => {
+                    {datesToRender.map((date, index) => {
                       const formattedDate = new Date(date).toLocaleDateString('vi-VN', { weekday: 'short', day: '2-digit', month: '2-digit' })
                       return (
-                        <div key={date} className="w-[1440px] shrink-0 font-bold text-xs text-[#5c3f40] flex items-center border-r border-[#e0e3e5] uppercase relative">
-                          <span className="sticky left-48 px-4">{formattedDate}</span>
+                        <div key={date} 
+                          className={`shrink-0 font-extrabold text-sm flex items-center border-r border-[#e0e3e5] uppercase relative ${index % 2 === 0 ? 'bg-white text-[#b80035]' : 'bg-[#f1f8f5] text-[#191c1e]'}`}
+                          style={{ width: `${getBusinessHours().businessMinutes}px` }}
+                        >
+                          <span className="sticky left-48 px-4 tracking-wide">{formattedDate}</span>
                         </div>
                       )
                     })}
                   </div>
                   {/* Hour Row */}
                   <div className="h-8 flex">
-                    {datesToRender.map(date => (
-                      <div key={`hours-${date}`} className="flex w-[1440px] shrink-0 border-r border-[#e0e3e5] border-dashed">
-                        {Array.from({ length: 12 }).map((_, i) => (
-                          <div key={i} className="w-[120px] shrink-0 flex items-center justify-center border-r border-[#e0e3e5] border-dashed text-[11px] font-mono text-[#5c3f40]">
-                            {String(i * 2).padStart(2, '0')}:00
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                    {datesToRender.map((date, index) => {
+                      const { startHour, businessHours, businessMinutes } = getBusinessHours();
+                      const numBlocks = Math.ceil(businessHours / 2);
+                      return (
+                        <div key={`hours-${date}`} 
+                          className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed ${index % 2 === 0 ? 'bg-white' : 'bg-[#f1f8f5]'}`}
+                          style={{ width: `${businessMinutes}px` }}
+                        >
+                          {Array.from({ length: numBlocks }).map((_, i) => (
+                            <div key={i} className="w-[120px] shrink-0 flex items-center justify-center border-r border-[#e0e3e5] border-dashed text-[13px] font-bold font-mono text-[#5c647a]">
+                              {String((startHour + i * 2) % 24).padStart(2, '0')}:00
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 
                 {/* Vertical Grid Lines Background */}
                 <div className="absolute inset-0 top-16 flex pointer-events-none z-0">
-                  {datesToRender.map(date => (
-                    <div key={`bg-${date}`} className="flex w-[1440px] shrink-0 border-r border-[#e0e3e5] border-dashed">
-                      {Array.from({ length: 12 }).map((_, i) => (
-                        <div key={i} 
-                          className={`w-[120px] shrink-0 border-r border-[#e0e3e5] border-dashed opacity-50 h-full ${i >= 1 && i < 4 ? 'opacity-30' : ''}`}
-                          style={i >= 1 && i < 4 ? { backgroundImage: `url("${diagonalHatch}")` } : {}}
-                        />
-                      ))}
-                    </div>
-                  ))}
+                  {datesToRender.map((date, index) => {
+                    const { businessHours, businessMinutes } = getBusinessHours();
+                    const numBlocks = Math.ceil(businessHours / 2);
+                    return (
+                      <div key={`bg-${date}`} 
+                        className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed ${index % 2 === 0 ? 'bg-white' : 'bg-[#f1f8f5]'}`}
+                        style={{ width: `${businessMinutes}px` }}
+                      >
+                        {Array.from({ length: numBlocks }).map((_, i) => (
+                          <div key={i} 
+                            className={`w-[120px] shrink-0 border-r border-[#e0e3e5] border-dashed opacity-50 h-full`}
+                          />
+                        ))}
+                      </div>
+                    )
+                  })}
                 </div>
 
                 {/* Current Time Line Indicator */}
@@ -448,33 +611,23 @@ export default function ShowtimeListPage() {
                           const movieObj = movies.find(m => m.id === st.movieId || m.titleVn === st.movie)
                           const posterUrl = movieObj?.posterUrl
                           const formatInfo = getFormatColor(st.format)
+                          const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
+                          const isDubbed = isAnimation && st.language === 'Lồng tiếng'
                           
                           return (
                             <div
                               key={st.id}
-                              className={`absolute top-4 h-[64px] bg-white border ${formatInfo.border} rounded shadow-sm flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden`}
+                              onClick={() => setSelectedShowtime(st)}
+                              className={`absolute top-4 h-[64px] border ${formatInfo.border} rounded shadow-sm flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden ${isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : 'bg-white'}`}
                               style={{ left, width }}
                             >
                               <div className={`absolute left-0 top-0 bottom-0 w-1 ${formatInfo.bar}`} />
                               
-                              {posterUrl ? (
-                                <div className="w-10 h-12 bg-gray-200 rounded-sm overflow-hidden mr-3 shrink-0 ml-1">
-                                  <img src={posterUrl} alt="Poster" className="w-full h-full object-cover" />
-                                </div>
-                              ) : (
-                                <div 
-                                  className="w-10 h-12 rounded-sm text-[10px] text-white font-bold flex items-center justify-center mr-3 shrink-0 ml-1"
-                                  style={{ background: stringToGradient(st.movie) }}
-                                >
-                                  {st.movie ? st.movie.charAt(0).toUpperCase() : 'M'}
-                                </div>
-                              )}
-
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-semibold text-[12px] text-[#191c1e] truncate" title={st.movie}>
+                              <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center relative z-10">
+                                <h4 className="font-semibold text-[12px] text-[#191c1e] line-clamp-2 leading-tight" title={st.movie}>
                                   {st.movie}
                                 </h4>
-                                <p className="text-[11px] text-[#5c3f40] font-mono mt-1">
+                                <p className="text-[11px] text-[#5c3f40] font-mono mt-0.5 font-bold">
                                   {st.time} - {getEndTimeForShowtime(st)}
                                 </p>
                               </div>
@@ -497,13 +650,6 @@ export default function ShowtimeListPage() {
                 </div>
               </div>
             </div>
-            
-            {filteredShowtimes.length === 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-50 pointer-events-none">
-                 <span className="material-symbols-outlined text-5xl text-[#565e74] mb-2">event_busy</span>
-                 <p className="text-[#565e74] font-semibold text-sm">Không có lịch chiếu nào trong thời gian này</p>
-              </div>
-            )}
           </div>
           
           {/* Footer Status */}
@@ -512,6 +658,10 @@ export default function ShowtimeListPage() {
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ba1a1a]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">IMAX</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#565e74]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">Standard</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#00836c]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">3D</span></div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 rounded bg-[repeating-linear-gradient(-45deg,#fff,#fff_3px,#fff0f2_3px,#fff0f2_6px)] border border-[#e5bdbe]"></div>
+                <span className="text-[12px] font-semibold text-[#5c3f40]">Lồng tiếng (Phim Hoạt Hình)</span>
+              </div>
             </div>
             <span className="text-sm text-[#5c3f40]">Hệ thống quản lý rạp chiếu phim - v2.1.0</span>
           </div>
@@ -527,8 +677,8 @@ export default function ShowtimeListPage() {
                     <th className="px-6 py-4 text-left">Phim / Movie</th>
                     <th className="px-6 py-4 text-left">Phòng chiếu</th>
                     <th className="px-6 py-4 text-left">Ngày chiếu</th>
-                    <th className="px-6 py-4 text-left">Giờ bắt đầu</th>
-                    <th className="px-6 py-4 text-left">Giờ kết thúc</th>
+                    <th className="px-6 py-4 text-left">Giờ chiếu</th>
+                    <th className="px-6 py-4 text-left">Ngôn ngữ</th>
                     <th className="px-6 py-4 text-left">Giá vé</th>
                     <th className="px-6 py-4 text-right">Hành động</th>
                   </tr>
@@ -536,23 +686,37 @@ export default function ShowtimeListPage() {
                 <tbody className="divide-y divide-[#e0e3e5] text-xs">
                   {filteredShowtimes.map((st) => (
                     <tr key={st.id} className="hover:bg-[#f7f9fb] transition-colors">
-                      <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs truncate">{st.movie}</td>
+                      <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
                       <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
                       <td className="px-6 py-4 font-medium text-[#5c3f40]">{st.date}</td>
                       <td className="px-6 py-4 font-bold text-[#b80035]">
                         <div className="flex items-center gap-1">
-                          <Clock size={12} /> {st.time}
+                          <Clock size={12} /> {st.time} - {getEndTimeForShowtime(st)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-[#5c647a]">{getEndTimeForShowtime(st)}</td>
+                      <td className="px-6 py-4 font-bold">
+                        <span className={`px-2 py-0.5 border rounded text-[10px] uppercase ${st.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#f7f9fb] text-[#5c647a] border-[#e0e3e5]'}`}>
+                          {st.language || 'Phụ đề'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 font-extrabold font-mono text-[#00836c]">{formatVND(st.price)}</td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => setDeleteTarget(st)}
-                          className="p-2 hover:bg-[#ffdad6] text-[#ba1a1a] rounded transition-all cursor-pointer"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => setSelectedShowtime(st)}
+                            className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer"
+                            title="Xem chi tiết"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">visibility</span>
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(st)}
+                            className="p-2 hover:bg-[#ffdad6] text-[#ba1a1a] rounded transition-all cursor-pointer"
+                            title="Xóa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -568,10 +732,10 @@ export default function ShowtimeListPage() {
 
 
       {/* Delete Confirmation Modal */}
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa suất chiếu">
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa suất chiếu" theme="light">
         <div className="space-y-4">
-          <p className="text-[var(--color-text-muted)] text-sm">
-            Bạn có chắc muốn xóa suất chiếu phim <span className="text-white font-semibold">"{deleteTarget?.movie}"</span> lúc <span className="text-red-400 font-bold">{deleteTarget?.time}</span> ngày <span className="text-white font-semibold">{deleteTarget?.date}</span> tại <span className="text-white font-semibold">{deleteTarget?.room}</span>?
+          <p className="text-[#5c647a] text-sm">
+            Bạn có chắc muốn xóa suất chiếu phim <span className="text-[#191c1e] font-semibold">"{deleteTarget?.movie}"</span> lúc <span className="text-[#b80035] font-bold">{deleteTarget?.time}</span> ngày <span className="text-[#191c1e] font-semibold">{deleteTarget?.date}</span> tại <span className="text-[#191c1e] font-semibold">{deleteTarget?.room}</span>?
           </p>
           <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
             <p className="text-yellow-400 text-xs font-semibold flex items-start gap-2">
@@ -586,17 +750,105 @@ export default function ShowtimeListPage() {
         </div>
       </Modal>
 
-      {/* Auto Generate Modal */}
-      <AutoGenerateModal 
-        open={autoGenModalOpen} 
-        onClose={() => setAutoGenModalOpen(false)} 
-        movies={movies} 
-        rooms={rooms}
-        onSuccess={(msg) => {
-          triggerToast(msg, 'success')
-          loadData()
-        }}
-      />
+      {/* Showtime Detail Modal */}
+      <Modal open={!!selectedShowtime} onClose={() => setSelectedShowtime(null)} title="Chi tiết Suất chiếu" theme="light">
+        {selectedShowtime && (
+          <div className="space-y-4 text-sm">
+            <div className="bg-[#f7f9fb] border border-[#e0e3e5] p-4 rounded-xl flex gap-4">
+              <div className="w-16 h-20 bg-gray-200 rounded-lg overflow-hidden shrink-0 border border-gray-300">
+                {movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.posterUrl ? (
+                  <img src={movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.posterUrl} alt="Poster" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <span className="material-symbols-outlined">movie</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-bold text-[#191c1e] text-lg leading-tight mb-1 truncate" title={selectedShowtime.movie}>{selectedShowtime.movie}</h3>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="px-2 py-0.5 bg-[#e8f5e9] text-[#2e7d32] border border-[#a5d6a7] rounded text-xs font-bold uppercase">{selectedShowtime.format || '2D'}</span>
+                  {movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình')) && (
+                    <span className={`px-2 py-0.5 border rounded text-xs font-bold uppercase ${selectedShowtime.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#e3f2fd] text-[#1565c0] border-[#90caf9]'}`}>{selectedShowtime.language || 'Phụ đề'}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
+                <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Thời gian chiếu</span>
+                <p className="text-[#b80035] font-bold font-mono text-base">{selectedShowtime.time} - {getEndTimeForShowtime(selectedShowtime)}</p>
+                <p className="text-xs font-medium text-[#191c1e] mt-1">{selectedShowtime.date}</p>
+              </div>
+              <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
+                <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Địa điểm</span>
+                <p className="text-[#191c1e] font-bold text-base uppercase">{selectedShowtime.room}</p>
+                <p className="text-xs font-medium text-[#5c647a] mt-1">Cinemate</p>
+              </div>
+            </div>
+
+            <div className="bg-white border border-[#e0e3e5] rounded-xl shadow-sm overflow-hidden">
+              <div className="bg-[#f7f9fb] px-4 py-2 border-b border-[#e0e3e5]">
+                <span className="text-[10px] text-[#5c647a] font-bold uppercase">Bảng giá vé</span>
+              </div>
+              <div className="p-4 grid grid-cols-3 gap-4">
+                <div>
+                  <span className="text-xs text-[#5c647a] block mb-1">Thường</span>
+                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.price)}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-[#5c647a] block mb-1">VIP</span>
+                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.vipPrice || selectedShowtime.price)}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-[#5c647a] block mb-1">Couple</span>
+                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.couplePrice || selectedShowtime.price)}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="secondary" onClick={() => setSelectedShowtime(null)}>Đóng</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Export Confirmation Modal */}
+      <Modal open={showExportModal} onClose={() => setShowExportModal(false)} title="Tùy chọn Xuất Excel" theme="light">
+        <div className="space-y-4">
+          <p className="text-[var(--color-text-muted)] text-sm">
+            Vui lòng chọn phạm vi thời gian bạn muốn xuất lịch chiếu ra file Excel. Phạm vi được tính dựa trên ngày đang chọn trên lịch ({filterDate}).
+          </p>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button variant="outline" onClick={() => executeExport('week')} className="justify-start border-[#e5bdbe] hover:bg-[#ffdad6]/20">
+              <span className="material-symbols-outlined mr-3 text-[#b80035]">date_range</span>
+              <div className="text-left">
+                <div className="font-bold text-[#191c1e]">Tuần này</div>
+                <div className="text-xs text-[#5c647a] font-normal">Chỉ xuất các suất chiếu trong tuần của ngày {filterDate}</div>
+              </div>
+            </Button>
+            <Button variant="outline" onClick={() => executeExport('month')} className="justify-start border-[#e5bdbe] hover:bg-[#ffdad6]/20">
+              <span className="material-symbols-outlined mr-3 text-[#b80035]">calendar_month</span>
+              <div className="text-left">
+                <div className="font-bold text-[#191c1e]">Tháng này</div>
+                <div className="text-xs text-[#5c647a] font-normal">Chỉ xuất các suất chiếu trong tháng của ngày {filterDate}</div>
+              </div>
+            </Button>
+            <Button variant="outline" onClick={() => executeExport('all')} className="justify-start border-[#e5bdbe] hover:bg-[#ffdad6]/20">
+              <span className="material-symbols-outlined mr-3 text-[#b80035]">database</span>
+              <div className="text-left">
+                <div className="font-bold text-[#191c1e]">Toàn bộ dữ liệu</div>
+                <div className="text-xs text-[#5c647a] font-normal">Xuất tất cả suất chiếu hiện có trong hệ thống</div>
+              </div>
+            </Button>
+          </div>
+          <div className="flex justify-end pt-4 border-t border-[#e0e3e5] mt-2">
+            <Button variant="secondary" onClick={() => setShowExportModal(false)}>Hủy</Button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   )

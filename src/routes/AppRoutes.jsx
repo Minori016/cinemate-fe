@@ -41,6 +41,8 @@ import CinemaRoomDetailPage from '../pages/admin/cinema-rooms/CinemaRoomDetailPa
 import CinemaRoomFormPage from '../pages/admin/cinema-rooms/CinemaRoomFormPage'
 import ShowtimeListPage from '../pages/admin/showtimes/ShowtimeListPage'
 import ShowtimeFormPage from '../pages/admin/showtimes/ShowtimeFormPage'
+import AutoGeneratePage from '../pages/admin/showtimes/AutoGeneratePage'
+import SystemConfigPage from '../pages/admin/price-config/SystemConfigPage'
 import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
 import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
 import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
@@ -119,7 +121,9 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="analytics" replace />} />
           <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
           <Route path="analytics" element={<ManagerAnalyticsPage />} />
-          <Route path="showtimes" element={<ManagerShowtimesPage />} />
+          <Route path="showtimes" element={<ShowtimeListPage />} />
+          <Route path="showtimes/add" element={<ShowtimeFormPage />} />
+          <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
           <Route path="shifts" element={<ManagerShiftsPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
         </Route>
@@ -143,6 +147,8 @@ export default function AppRoutes() {
           <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
+          <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
+          <Route path="system-configs" element={<SystemConfigPage />} />
           <Route path="promotions" element={<PromotionListPage />} />
           <Route path="promotions/add" element={<PromotionFormPage />} />
           <Route path="promotions/edit/:id" element={<PromotionFormPage />} />

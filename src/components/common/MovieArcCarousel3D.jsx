@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'motion/react'
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react'
 import gsap from 'gsap'
 import * as THREE from 'three'
 import { ChevronLeft, ChevronRight, Play, Ticket } from 'lucide-react'
@@ -173,20 +173,8 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
   const [activeIndex, setActiveIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [isCenterHovered, setIsCenterHovered] = useState(false)
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024)
-
+  
   const cardRefs = useRef([])
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth)
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    setIsCenterHovered(false)
-  }, [activeIndex])
 
   // Load from API if no propMovies passed
   useEffect(() => {
@@ -210,28 +198,17 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
     }
   }, [activeIndex, movies, onMovieChange])
 
+  // Framer Motion gesture parameters
+  const dragX = useMotionValue(0)
+  const dragRotateY = useTransform(dragX, [-180, 180], [-25, 25])
+  const dragScale = useTransform(dragX, [-180, 0, 180], [0.94, 1.0, 0.94])
+
   const nextMovie = () => {
     setActiveIndex(prev => (prev + 1) % movies.length)
   }
 
   const prevMovie = () => {
     setActiveIndex(prev => (prev - 1 + movies.length) % movies.length)
-  }
-
-  const handleDrag = (event, info) => {
-    const cardEl = cardRefs.current[activeIndex]
-    if (cardEl) {
-      const offsetX = info.offset.x
-      const rotation = offsetX * 0.15
-      const clampedOffset = Math.min(Math.max(offsetX, -180), 180)
-      const scale = 1.0 - (Math.abs(clampedOffset) / 180) * 0.06
-      
-      gsap.set(cardEl, {
-        x: offsetX,
-        rotationY: rotation,
-        scale: scale
-      })
-    }
   }
 
   const handleDragEnd = (event, info) => {
@@ -241,20 +218,8 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
       nextMovie()
     } else if (info.offset.x > threshold) {
       prevMovie()
-    } else {
-      // Reset card if threshold not met
-      const cardEl = cardRefs.current[activeIndex]
-      if (cardEl) {
-        gsap.to(cardEl, {
-          x: 0,
-          rotationY: 0,
-          scale: 1.0,
-          duration: 0.4,
-          ease: 'power2.out',
-          overwrite: 'auto'
-        })
-      }
     }
+    dragX.set(0)
   }
 
   const handleDragStart = () => {
@@ -276,12 +241,6 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
   useEffect(() => {
     if (movies.length === 0) return
     const N = movies.length
-    const isDesktop = windowWidth >= 768
-    const sideX = Math.max(150, windowWidth * 0.23)
-    const outerX = Math.max(260, windowWidth * 0.40)
-    const scaleCenter = 1.0
-    const scaleSide = isDesktop ? 0.6 : 0.65
-    const scaleOuter = isDesktop ? 0.45 : 0.5
 
     movies.forEach((_, i) => {
       let diff = i - activeIndex
@@ -305,7 +264,7 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
       // Fan Arc layout positions
       if (diff === 0) {
         x = 0
-        scale = scaleCenter
+        scale = 1.0
         rotateY = 0
         opacity = 1
         zIndex = 10
@@ -313,46 +272,46 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
         blur = 0
         translateZ = 0
       } else if (diff === -1) {
-        x = -sideX
-        scale = scaleSide
-        rotateY = 30
+        x = -200
+        scale = 0.8
+        rotateY = 28
         opacity = 0.85
         zIndex = 8
         brightness = 75
         blur = 0.5
-        translateZ = isDesktop ? -150 : -100
+        translateZ = -90
       } else if (diff === 1) {
-        x = sideX
-        scale = scaleSide
-        rotateY = -30
+        x = 200
+        scale = 0.8
+        rotateY = -28
         opacity = 0.85
         zIndex = 8
         brightness = 75
         blur = 0.5
-        translateZ = isDesktop ? -150 : -100
+        translateZ = -90
       } else if (diff === -2) {
-        x = -outerX
-        scale = scaleOuter
-        rotateY = 50
+        x = -370
+        scale = 0.65
+        rotateY = 48
         opacity = 0.45
         zIndex = 6
         brightness = 40
         blur = 1.5
-        translateZ = isDesktop ? -280 : -180
+        translateZ = -180
       } else if (diff === 2) {
-        x = outerX
-        scale = scaleOuter
-        rotateY = -50
+        x = 370
+        scale = 0.65
+        rotateY = -48
         opacity = 0.45
         zIndex = 6
         brightness = 40
         blur = 1.5
-        translateZ = isDesktop ? -280 : -180
+        translateZ = -180
       } else {
         // Move other cards completely into the background
-        x = diff > 0 ? (outerX + 150) : -(outerX + 150)
-        scale = 0.3
-        rotateY = diff > 0 ? -65 : 65
+        x = diff > 0 ? 480 : -480
+        scale = 0.4
+        rotateY = diff > 0 ? -60 : 60
         opacity = 0
         zIndex = 1
         brightness = 20
@@ -373,11 +332,13 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
         overwrite: 'auto'
       })
     })
-  }, [activeIndex, movies, windowWidth])
+  }, [activeIndex, movies])
+
+  const activeMovie = movies[activeIndex] || null
 
   return (
     <div 
-      className="relative w-full min-h-[520px] md:min-h-[700px] bg-[#070707] flex flex-col items-center justify-center overflow-hidden py-12"
+      className="relative w-full min-h-[640px] bg-[#070707] flex flex-col items-center justify-center overflow-hidden py-12"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -386,7 +347,7 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
 
       {/* 3D Cards container */}
       <div 
-        className="relative flex items-center justify-center w-full h-[420px] md:h-[600px] z-10"
+        className="relative flex items-center justify-center w-full max-w-5xl h-[420px] z-10"
         style={{
           perspective: '1200px',
           transformStyle: 'preserve-3d',
@@ -394,11 +355,11 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
       >
         {movies.map((movie, i) => {
           const diff = i - activeIndex
+          const isCenter = (diff === 0 || (diff === movies.length - 1 && activeIndex === 0) || (diff === -(movies.length - 1) && activeIndex === movies.length - 1))
           
           let shortestDiff = diff
           if (shortestDiff > movies.length / 2) shortestDiff -= movies.length
           if (shortestDiff < -movies.length / 2) shortestDiff += movies.length
-          const isCenter = shortestDiff === 0
           const isVisible = Math.abs(shortestDiff) <= 2
 
           return (
@@ -409,10 +370,7 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
               dragConstraints={{ left: 0, right: 0 }}
               dragElastic={0.3}
               onDragStart={isCenter ? handleDragStart : undefined}
-              onDrag={isCenter ? handleDrag : undefined}
               onDragEnd={isCenter ? handleDragEnd : undefined}
-              onMouseEnter={isCenter ? () => setIsCenterHovered(true) : undefined}
-              onMouseLeave={isCenter ? () => setIsCenterHovered(false) : undefined}
               onClick={() => {
                 if (shortestDiff === 0) navigate(`/movies/${movie.id}`)
                 else if (shortestDiff === -1) prevMovie()
@@ -420,11 +378,12 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
                 else if (shortestDiff === -2) { prevMovie(); setTimeout(prevMovie, 100); }
                 else if (shortestDiff === 2) { nextMovie(); setTimeout(nextMovie, 100); }
               }}
-              className="absolute w-[260px] h-[390px] md:w-[380px] md:h-[570px] rounded-2xl overflow-hidden cursor-pointer select-none bg-zinc-900 border border-white/5"
+              className="absolute w-[230px] h-[330px] sm:w-[260px] sm:h-[380px] rounded-2xl overflow-hidden cursor-pointer select-none bg-zinc-900 border border-white/5"
               style={{
                 pointerEvents: isVisible ? 'auto' : 'none',
                 transformStyle: 'preserve-3d',
-                backfaceVisibility: 'hidden'
+                backfaceVisibility: 'hidden',
+                ...(isCenter ? { x: dragX, rotateY: dragRotateY, scale: dragScale } : {})
               }}
             >
               <img 
@@ -435,80 +394,6 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
               />
               {/* Highlight overlay border to simulate real plastic reflect */}
               <div className="absolute inset-0 border border-white/10 pointer-events-none rounded-2xl z-20" />
-
-              {/* Hover overlay with details and buttons for active center poster */}
-              <AnimatePresence>
-                {isCenter && isCenterHovered && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute inset-0 bg-black/80 z-30 flex flex-col items-center justify-center gap-4 px-6 pointer-events-auto text-center"
-                    style={{ backfaceVisibility: 'hidden' }}
-                  >
-                    {/* Rating badge & duration */}
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="px-2 py-0.5 rounded text-[9px] font-black border border-red-500 bg-red-500/10 text-red-500">
-                        {movie.rating || 'T16'}
-                      </span>
-                      <span className="text-[10px] text-white/40">•</span>
-                      <span className="text-[10px] font-medium text-white/50 uppercase tracking-widest">
-                        {movie.duration || '120'} phút
-                      </span>
-                      <span className="text-[10px] text-white/40">•</span>
-                      <span className="text-[10px] font-medium text-white/50 uppercase tracking-widest">
-                        {movie.format || 'Digital 2D'}
-                      </span>
-                    </div>
-
-                    {/* Title */}
-                    <h2 
-                      className="text-white text-base sm:text-lg font-black uppercase tracking-wider line-clamp-2 px-2"
-                      style={{ fontFamily: 'Montserrat, sans-serif' }}
-                    >
-                      {movie.title}
-                    </h2>
-
-                    {/* Genre */}
-                    <p className="text-[10px] sm:text-[11px] text-white/40 max-w-[220px] font-medium tracking-wide mb-2 line-clamp-2">
-                      {movie.genre}
-                    </p>
-
-                    <div className="w-full flex flex-col items-center gap-2.5 mt-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/movies/${movie.id}?booking=true`)
-                        }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        className="w-full max-w-[170px] flex items-center justify-center gap-2 py-2.5 px-5 rounded-full text-[10px] font-black uppercase tracking-widest text-white bg-red-600 hover:bg-red-500 hover:scale-105 active:scale-95 transition-all shadow-[0_4px_14px_rgba(229,9,20,0.4)] border-none cursor-pointer"
-                        style={{ pointerEvents: 'auto' }}
-                      >
-                        <Ticket size={14} />
-                        Đặt Vé Ngay
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/movies/${movie.id}`)
-                        }}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        className="w-full max-w-[170px] flex items-center justify-center gap-2 py-2.5 px-5 rounded-full text-[10px] font-black uppercase tracking-widest text-white border border-white/40 bg-white/5 hover:bg-white/15 hover:border-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                        style={{ pointerEvents: 'auto' }}
-                      >
-                        <Play size={12} className="fill-white" />
-                        Chi Tiết
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </motion.div>
           )
         })}
@@ -526,6 +411,61 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
         >
           <ChevronRight size={20} />
         </button>
+      </div>
+
+      {/* Info Panel under Central Poster */}
+      <div className="relative w-full max-w-lg min-h-[140px] flex flex-col items-center justify-start text-center px-6 mt-8 z-20 pointer-events-none">
+        <AnimatePresence mode="wait">
+          {activeMovie && (
+            <motion.div
+              key={activeMovie.id}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="flex flex-col items-center"
+            >
+              {/* Rating badge & duration */}
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black border border-red-500 bg-red-500/10 text-red-500">
+                  {activeMovie.rating || 'T16'}
+                </span>
+                <span className="text-[11px] text-white/40">•</span>
+                <span className="text-[11px] font-medium text-white/50 uppercase tracking-widest">
+                  {activeMovie.duration || '120'} phút
+                </span>
+                <span className="text-[11px] text-white/40">•</span>
+                <span className="text-[11px] font-medium text-white/50 uppercase tracking-widest">
+                  {activeMovie.format || 'Digital 2D'}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h2 
+                className="text-white text-xl sm:text-2xl font-black uppercase tracking-wider mb-2"
+                style={{ fontFamily: 'Montserrat, sans-serif' }}
+              >
+                {activeMovie.title}
+              </h2>
+
+              {/* Genre */}
+              <p className="text-[11px] sm:text-xs text-white/40 max-w-sm font-medium tracking-wide">
+                {activeMovie.genre}
+              </p>
+
+              {/* Interactive buttons */}
+              <div className="flex gap-4 mt-5 pointer-events-auto">
+                <button
+                  onClick={() => navigate(`/movies/${activeMovie.id}`)}
+                  className="flex items-center gap-2 py-2.5 px-6 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-white cursor-pointer bg-red-600 hover:bg-red-500 hover:scale-105 active:scale-95 border-none transition-all shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
+                >
+                  <Ticket size={14} />
+                  Đặt Vé Ngay
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

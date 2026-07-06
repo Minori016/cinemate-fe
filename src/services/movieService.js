@@ -20,6 +20,7 @@ const mapMovieFromBackend = (data) => {
     duration: data.durationMinutes || 120,
     rating: data.rating || 'T13',
     format: data.version || '2D',
+    version: data.version || '',
     language: data.language || 'Phụ đề tiếng Việt',
     poster,
     posterUrl: poster,
@@ -32,6 +33,7 @@ const mapMovieFromBackend = (data) => {
     showtimes: data.showtimes || [],
     countries: data.countries || [],
     media: data.media || [],
+    status: data.status || null,
   }
 }
 
@@ -61,6 +63,13 @@ export const movieService = {
     })
     return res.data
   },
+
+  // DELETE /api/v1/admin/movies/{id}
+  deleteAdmin: async (id) => {
+    const res = await api.delete(`/api/v1/admin/movies/${id}`)
+    return res.data
+  },
+
 
   // GET /api/v1/movies?page=0&size=10&search=&genreId=&status=
   getAll: async (params = {}) => {
