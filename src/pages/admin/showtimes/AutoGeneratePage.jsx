@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Settings, Play, CheckCircle, Calendar as CalendarIcon, X, Trash2 } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
+import Button from '../../../components/common/Button'
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import DraggableShowtime from './components/DraggableShowtime';
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { priceConfigService } from '../../../services/priceConfigService'
@@ -51,6 +54,7 @@ export default function AutoGeneratePage() {
   
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
+  const [formatPrices, setFormatPrices] = useState({})
   
   const [step, setStep] = useState(1) // 1: Setup, 2: Preview
   const [loading, setLoading] = useState(false)
@@ -58,7 +62,9 @@ export default function AutoGeneratePage() {
   const [previewList, setPreviewList] = useState([])
   const [templateResponse, setTemplateResponse] = useState(null)
   const [draggedIdx, setDraggedIdx] = useState(null)
-  const [formatPrices, setFormatPrices] = useState({})
+  const [activeId, setActiveId] = useState(null)
+
+  const isAuthorized = user && (user.roles?.includes('ADMIN') || user.roles?.includes('MANAGER'))
 
   const [form, setForm] = useState({
     startDate: '',
@@ -73,7 +79,7 @@ export default function AutoGeneratePage() {
 
   useEffect(() => {
     if (location.state?.importedPreviewList) {
-      const list = location.state.importedPreviewList;
+      const list = location.state.importedPreviewList.map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
       setPreviewList(list);
       setIsImportMode(true);
       setStep(2);
@@ -123,7 +129,7 @@ export default function AutoGeneratePage() {
     fetchData()
   }, [])
 
-  const getDatesToRender = () => {
+  const getDatesToRender = useCallback(() => {
     if (!form.startDate || !form.endDate) return [];
     const start = new Date(form.startDate);
     const end = new Date(form.endDate);
@@ -134,11 +140,11 @@ export default function AutoGeneratePage() {
       d.setDate(d.getDate() + i);
       return d.toISOString().split('T')[0];
     });
-  }
+  }, [form.startDate, form.endDate]);
 
-  const getBusinessHours = () => {
+  const getBusinessHours = useCallback(() => {
     let startHour = 8;
-    let endHour = 26;
+    let endHour = 24;
     if (form.openTime && form.closeTime) {
       startHour = parseInt(form.openTime.split(':')[0], 10);
       let closeH = parseInt(form.closeTime.split(':')[0], 10);
@@ -151,11 +157,11 @@ export default function AutoGeneratePage() {
       businessHours: endHour - startHour, 
       businessMinutes: (endHour - startHour) * 60 
     };
-  };
+  }, [form.openTime, form.closeTime]);
 
-  const datesToRender = step === 2 ? getDatesToRender() : [];
+  const datesToRender = useMemo(() => step === 2 ? getDatesToRender() : [], [step, getDatesToRender]);
 
-  const calculatePosition = (startTimeStr, durationMins) => {
+  const calculatePosition = useCallback((startTimeStr, durationMins) => {
     if (!startTimeStr) return { left: '0px', width: '0px' }
     const stDateObj = new Date(startTimeStr);
     const { startHour, businessMinutes } = getBusinessHours();
@@ -179,7 +185,7 @@ export default function AutoGeneratePage() {
       left: `${totalMinutes}px`,
       width: `${durationMins || 120}px`,
     }
-  }
+  }, [form.startDate, getBusinessHours]);
 
   useEffect(() => {
     if (step === 2 && timelineContainerRef.current) {
@@ -329,7 +335,8 @@ export default function AutoGeneratePage() {
 
       const res = await showtimeService.autoGenerate(requestPayload)
       
-      setPreviewList(res || [])
+      const listWithIds = (res || []).map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
+      setPreviewList(listWithIds);
       setStep(2)
     } catch (err) {
       setError('Lỗi khi chạy thuật toán: ' + (err.response?.data?.message || err.message))
@@ -379,42 +386,44 @@ export default function AutoGeneratePage() {
     }
   }
 
-  const handleDeleteShowtime = (indexToDelete) => {
-    const deletedSt = previewList[indexToDelete];
-    
-    const sameRoomDayList = previewList.filter(st => 
-      st.room_id === deletedSt.room_id && 
-      new Date(st.startTime).toDateString() === new Date(deletedSt.startTime).toDateString()
-    ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-    
-    const deletedSortedIndex = sameRoomDayList.findIndex(st => st === deletedSt);
-    
-    let shiftMs = 0;
-    if (deletedSortedIndex !== -1 && deletedSortedIndex < sameRoomDayList.length - 1) {
-       shiftMs = new Date(sameRoomDayList[deletedSortedIndex + 1].startTime).getTime() - new Date(deletedSt.startTime).getTime();
-    }
-    
-    const newList = previewList.filter((_, i) => i !== indexToDelete).map(st => {
-      if (st.room_id === deletedSt.room_id && 
-          new Date(st.startTime).toDateString() === new Date(deletedSt.startTime).toDateString() &&
-          new Date(st.startTime).getTime() > new Date(deletedSt.startTime).getTime()) {
-          
-          const newStart = new Date(new Date(st.startTime).getTime() - shiftMs);
-          const newEnd = new Date(new Date(st.endTime).getTime() - shiftMs);
-          
-          return {
-            ...st,
-            startTime: newStart.toISOString(),
-            endTime: newEnd.toISOString()
-          };
+  const handleDeleteShowtime = useCallback((idToDelete) => {
+    setPreviewList(prev => {
+      const indexToDelete = prev.findIndex(st => st.tempId === idToDelete);
+      if (indexToDelete === -1) return prev;
+      const deletedSt = prev[indexToDelete];
+      
+      const sameRoomDayList = prev.filter(st => 
+        st.room_id === deletedSt.room_id && 
+        new Date(st.startTime).toDateString() === new Date(deletedSt.startTime).toDateString()
+      ).sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+      
+      const deletedSortedIndex = sameRoomDayList.findIndex(st => st === deletedSt);
+      
+      let shiftMs = 0;
+      if (deletedSortedIndex !== -1 && deletedSortedIndex < sameRoomDayList.length - 1) {
+         shiftMs = new Date(sameRoomDayList[deletedSortedIndex + 1].startTime).getTime() - new Date(deletedSt.startTime).getTime();
       }
-      return st;
+      
+      return prev.filter((_, i) => i !== indexToDelete).map(st => {
+        if (st.room_id === deletedSt.room_id && 
+            new Date(st.startTime).toDateString() === new Date(deletedSt.startTime).toDateString() &&
+            new Date(st.startTime).getTime() > new Date(deletedSt.startTime).getTime()) {
+            
+            const newStart = new Date(new Date(st.startTime).getTime() - shiftMs);
+            const newEnd = new Date(new Date(st.endTime).getTime() - shiftMs);
+            
+            return {
+              ...st,
+              startTime: newStart.toISOString(),
+              endTime: newEnd.toISOString()
+            };
+        }
+        return st;
+      });
     });
-    
-    setPreviewList(newList);
-  }
+  }, []);
 
-  const handleSwapShowtimes = (idx1, idx2) => {
+  const handleSwapShowtimes = useCallback((idx1, idx2) => {
     setPreviewList(prev => {
       const newList = [...prev];
       const st1 = { ...newList[idx1] };
@@ -431,55 +440,60 @@ export default function AutoGeneratePage() {
       newList[idx2] = st2;
 
       const recalculateRoomTimeline = (roomId) => {
-        const roomSts = [];
+        const roomIndices = [];
         newList.forEach((st, i) => {
           if (st.room_id === roomId) {
-            roomSts.push({ ...st, originalIndex: i });
+            roomIndices.push(i);
           }
         });
         
-        roomSts.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+        roomIndices.sort((a, b) => new Date(newList[a].startTime) - new Date(newList[b].startTime));
         
         let pushedPastMidnight = false;
 
-        for (let i = 0; i < roomSts.length; i++) {
-          const curr = roomSts[i];
+        for (let i = 0; i < roomIndices.length; i++) {
+          const idx = roomIndices[i];
+          const curr = newList[idx];
           const currStart = new Date(curr.startTime);
           
+          let newStartTime = curr.startTime;
+          let newEndTime = curr.endTime;
+
           if (i === 0) {
             const currEnd = new Date(currStart.getTime() + (curr.durationMinutes + 10) * 60000);
-            curr.endTime = currEnd.toISOString();
+            newEndTime = currEnd.toISOString();
           } else {
-            const prev = roomSts[i - 1];
+            const prev = newList[roomIndices[i - 1]];
             const prevEnd = new Date(prev.endTime);
             const prevEndWithCleaning = new Date(prevEnd.getTime() + 15 * 60000);
             
             if (prevEndWithCleaning > currStart) {
-              let newStart = new Date(prevEndWithCleaning);
-              const remainder = newStart.getMinutes() % 15;
+              let newStartObj = new Date(prevEndWithCleaning);
+              const remainder = newStartObj.getMinutes() % 15;
               if (remainder !== 0) {
-                newStart = new Date(newStart.getTime() + (15 - remainder) * 60000);
+                newStartObj = new Date(newStartObj.getTime() + (15 - remainder) * 60000);
               }
               
-              curr.startTime = newStart.toISOString();
-              const currEnd = new Date(newStart.getTime() + (curr.durationMinutes + 10) * 60000);
-              curr.endTime = currEnd.toISOString();
+              newStartTime = newStartObj.toISOString();
+              const currEndObj = new Date(newStartObj.getTime() + (curr.durationMinutes + 10) * 60000);
+              newEndTime = currEndObj.toISOString();
               
-              // Cảnh báo nếu đẩy qua ngày mới so với ngày bắt đầu gốc (trừ trường hợp vốn dĩ đã là ngày mới)
-              if (newStart.getDate() !== currStart.getDate()) {
+              if (newStartObj.getDate() !== currStart.getDate()) {
                  pushedPastMidnight = true;
               }
             } else {
-               const currEnd = new Date(currStart.getTime() + (curr.durationMinutes + 10) * 60000);
-               curr.endTime = currEnd.toISOString();
+               const currEndObj = new Date(currStart.getTime() + (curr.durationMinutes + 10) * 60000);
+               newEndTime = currEndObj.toISOString();
             }
           }
           
-          newList[curr.originalIndex] = curr;
+          if (curr.startTime !== newStartTime || curr.endTime !== newEndTime) {
+            newList[idx] = { ...curr, startTime: newStartTime, endTime: newEndTime };
+          }
         }
         
         if (pushedPastMidnight) {
-           toast.warning(`Có suất chiếu ở phòng ${roomSts[0].roomName} bị đẩy sang sáng ngày hôm sau do lệch giờ!`, { duration: 5000 });
+           toast.warning(`Có suất chiếu ở phòng ${newList[roomIndices[0]].roomName} bị đẩy sang sáng ngày hôm sau do lệch giờ!`, { duration: 5000 });
         }
       };
 
@@ -492,7 +506,7 @@ export default function AutoGeneratePage() {
     });
     
     toast.success('Đã hoán đổi suất chiếu thành công!');
-  }
+  }, []);
 
   return (
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 min-h-[calc(100vh-80px)] overflow-y-auto">
@@ -670,7 +684,7 @@ export default function AutoGeneratePage() {
               ref={timelineContainerRef}
               className="flex-1 overflow-auto custom-scrollbar flex bg-[#f7f9fb] border border-[#e5bdbe] rounded-xl relative"
             >
-              <div className="flex" style={{ width: `calc(192px + ${datesToRender.length * 1440}px)` }}>
+              <div className="flex h-full min-h-full" style={{ width: `calc(192px + ${datesToRender.length * getBusinessHours().businessMinutes}px)` }}>
                 
                 {/* Sidebar (Rooms) */}
                 <div className="w-48 shrink-0 sticky left-0 z-40 bg-[#f7f9fb] border-r border-[#e0e3e5] flex flex-col shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-fit min-h-full">
@@ -752,87 +766,51 @@ export default function AutoGeneratePage() {
                   </div>
 
                   {/* Grid Content (Room Rows & Showtimes) */}
-                  <div className="relative z-10">
-                    {rooms.filter(r => {
-                      const assignedIds = [...new Set(previewList.map(st => st.room_id))];
-                      return assignedIds.includes(r.id);
-                    }).map(room => {
+                  <DndContext 
+                    collisionDetection={closestCenter} 
+                    onDragStart={(e) => setActiveId(e.active.id)} 
+                    onDragEnd={(e) => {
+                      const { active, over } = e;
+                      if (over && active.id !== over.id) {
+                        const idx1 = previewList.findIndex(st => st.tempId === active.id);
+                        const idx2 = previewList.findIndex(st => st.tempId === over.id);
+                        if (idx1 !== -1 && idx2 !== -1) {
+                          handleSwapShowtimes(idx1, idx2);
+                        }
+                      }
+                      setActiveId(null);
+                    }}
+                    onDragCancel={() => setActiveId(null)}
+                  >
+                    <div className="relative z-10">
+                      {rooms.filter(r => {
+                        const assignedIds = [...new Set(previewList.map(st => st.room_id))];
+                        return assignedIds.includes(r.id);
+                      }).map(room => {
                       const roomShowtimes = previewList.filter(st => st.room_id === room.id)
                       return (
                         <div key={room.id} className="h-24 border-b border-[#e0e3e5] border-dashed relative">
                           {roomShowtimes.map((st) => {
-                            // Find index in original previewList for deletion
-                            const originalIdx = previewList.indexOf(st)
-                            const { left, width } = calculatePosition(st.startTime, st.durationMinutes)
-                            const isGoldenHour = st.goldenHour || st.isGoldenHour
-                            const isAnimation = form.movies.find(m => m.movieId === st.movie_id)?.languages?.length > 0 || false
-                            const isDubbed = isAnimation && st.language === 'Lồng tiếng'
-                            
-                            // Distinct Preview Colors
-                            const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
-                            const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]')
-                            const borderColor = isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]'
-                            const textColor = isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]'
+                            const movieObj = movies.find(m => m.id === st.movie_id || m.titleVn === st.movieTitle)
                             
                             return (
-                              <div
-                                draggable={true}
-                                onDragStart={(e) => {
-                                  setDraggedIdx(originalIdx)
-                                  e.dataTransfer.effectAllowed = 'move'
-                                }}
-                                onDragOver={(e) => {
-                                  e.preventDefault()
-                                  e.dataTransfer.dropEffect = 'move'
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault()
-                                  if (draggedIdx !== null && draggedIdx !== originalIdx) {
-                                    handleSwapShowtimes(draggedIdx, originalIdx)
-                                  }
-                                  setDraggedIdx(null)
-                                }}
-                                onDragEnd={() => setDraggedIdx(null)}
-                                key={st.tempId || originalIdx}
-                                className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded shadow-sm flex items-center p-2 cursor-pointer transition-all group overflow-hidden ${draggedIdx === originalIdx ? 'opacity-50 border-dashed scale-95' : 'hover:shadow-md'}`}
-                                style={{ left, width }}
-                              >
-                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
-                                
-                                <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center">
-                                  <h4 className={`font-semibold text-[12px] text-[#191c1e] line-clamp-1 leading-tight mb-1`} title={st.movieTitle}>
-                                    {st.movieTitle}
-                                  </h4>
-                                  <div className="flex gap-1.5 items-center mb-0.5">
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
-                                      {st.format}
-                                    </span>
-                                  </div>
-                                  <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
-                                    <span>{format(parseISO(st.startTime), 'HH:mm')}</span>
-                                    <span>-</span>
-                                    <span>{format(parseISO(st.endTime), 'HH:mm')}</span>
-                                  </p>
-                                </div>
-
-                                {/* Delete & Shift Up Button */}
-                                <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteShowtime(originalIdx); }}
-                                    title="Xóa & Lùi giờ"
-                                    className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors bg-white shadow-sm"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
+                              <DraggableShowtime
+                                key={st.tempId}
+                                st={st}
+                                id={st.tempId}
+                                calculatePosition={calculatePosition}
+                                movieObj={movieObj}
+                                isDragged={activeId === st.tempId}
+                                handleDeleteShowtime={handleDeleteShowtime}
+                              />
                             )
                           })}
                         </div>
                       )
                     })}
                   </div>
-                </div>
+                </DndContext>
+              </div>
               </div>
               
               {previewList.length === 0 && (

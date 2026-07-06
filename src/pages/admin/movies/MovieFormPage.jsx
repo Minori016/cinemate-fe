@@ -39,7 +39,6 @@ export default function MovieFormPage() {
   
   // Dynamic lists states
   const [actors, setActors] = useState([{ fullName: '', characterName: '' }])
-  const [showtimes, setShowtimes] = useState([])
 
   // File states
   const [posterFile, setPosterFile] = useState(null)
@@ -72,7 +71,7 @@ export default function MovieFormPage() {
   }, [
     titleVn, titleEn, description, director, durationMinutes, rating,
     selectedVersions, fromDate, toDate, language, trailerUrl, selectedGenres,
-    selectedCountries, actors, showtimes, posterFile
+    selectedCountries, actors, posterFile
   ])
 
   const handleCancel = () => {
@@ -122,9 +121,6 @@ export default function MovieFormPage() {
             if (movie.genres) setSelectedGenres(movie.genres.map(g => g.id))
             if (movie.countries) setSelectedCountries(movie.countries.map(c => c.id))
             if (movie.actors) setActors(movie.actors.map(a => ({ fullName: a.fullName, characterName: a.characterName || '' })))
-            
-            // For showtimes, you would also map them if the BE returned them, e.g.:
-            // if (movie.showtimes) setShowtimes(movie.showtimes.map(...))
           }
         }
       } catch (err) {
@@ -188,25 +184,6 @@ export default function MovieFormPage() {
     setActors(newActors)
   }
 
-  // Showtimes list helpers
-  const handleAddShowtime = () => {
-    if (cinemaRooms.length === 0) {
-      showToast('Không có phòng chiếu nào khả dụng.', 'danger')
-      return
-    }
-    setShowtimes([...showtimes, { roomId: cinemaRooms[0].id, startTime: '' }])
-  }
-
-  const handleRemoveShowtime = (index) => {
-    setShowtimes(showtimes.filter((_, i) => i !== index))
-  }
-
-  const handleShowtimeChange = (index, field, value) => {
-    const newShowtimes = [...showtimes]
-    newShowtimes[index][field] = value
-    setShowtimes(newShowtimes)
-  }
-
   // Validation
   const validateForm = () => {
     const tempErrors = {}
@@ -232,12 +209,6 @@ export default function MovieFormPage() {
     const invalidActors = actors.some(act => !act.fullName.trim())
     if (invalidActors) {
       tempErrors.actors = 'Vui lòng điền tên đầy đủ cho tất cả diễn viên đã thêm'
-    }
-
-    // Validate showtimes
-    const invalidShowtimes = showtimes.some(st => !st.startTime)
-    if (invalidShowtimes) {
-      tempErrors.showtimes = 'Vui lòng điền thời gian cho tất cả suất chiếu đã thêm'
     }
 
     setErrors(tempErrors)
@@ -269,12 +240,7 @@ export default function MovieFormPage() {
       trailerUrl: trailerUrl.trim() || null,
       genreIds: selectedGenres,
       countryIds: selectedCountries.length > 0 ? selectedCountries : null,
-      actors: actors.filter(a => a.fullName.trim() !== ''),
-      showtimes: showtimes.map(st => ({
-        roomId: st.roomId,
-        // Convert datetime-local to valid OffsetDateTime ISO string
-        startTime: new Date(st.startTime).toISOString()
-      }))
+      actors: actors.filter(a => a.fullName.trim() !== '')
     }
 
     try {
@@ -552,79 +518,6 @@ export default function MovieFormPage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Showtimes Section */}
-            <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
-              <div className="flex justify-between items-center border-b border-[var(--color-border)] pb-3">
-                <h3 className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
-                  <Calendar className="text-red-500" size={18} />
-                  Lịch chiếu phim (Showtimes)
-                </h3>
-                <button
-                  type="button"
-                  onClick={handleAddShowtime}
-                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 font-bold uppercase tracking-wider bg-transparent border-none cursor-pointer"
-                >
-                  <PlusCircle size={14} /> Add Showtime
-                </button>
-              </div>
-
-              {errors.showtimes && (
-                <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-400 font-bold rounded-lg text-xs leading-normal">
-                  ⚠️ {errors.showtimes}
-                </div>
-              )}
-
-              {showtimes.length === 0 ? (
-                <div className="text-center py-6 text-gray-500 border border-dashed border-[var(--color-border)] rounded-xl flex flex-col items-center justify-center gap-1">
-                  <span className="material-symbols-outlined text-3xl text-gray-600">calendar_today</span>
-                  <span className="text-xs">Chưa tạo lịch chiếu nào cho phim này. Nhấn nút để thêm.</span>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {showtimes.map((st, index) => (
-                    <div key={index} className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                      <span className="text-xs text-gray-500 font-bold w-6 text-center">{index + 1}</span>
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                        
-                        <div className="flex flex-col gap-1 text-left">
-                          <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Phòng chiếu</label>
-                          <select
-                            value={st.roomId}
-                            onChange={(e) => handleShowtimeChange(index, 'roomId', e.target.value)}
-                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer font-medium"
-                          >
-                            {cinemaRooms.map(room => (
-                              <option key={room.id} value={room.id}>
-                                {room.name} ({room.cinemaName || 'Hệ thống'})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="flex flex-col gap-1 text-left">
-                          <label className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Giờ chiếu</label>
-                          <input
-                            type="datetime-local"
-                            value={st.startTime}
-                            onChange={(e) => handleShowtimeChange(index, 'startTime', e.target.value)}
-                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
-                          />
-                        </div>
-
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveShowtime(index)}
-                        className="text-gray-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors bg-transparent border-none cursor-pointer mt-4"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
           </div>
