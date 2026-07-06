@@ -618,7 +618,7 @@ export default function ShowtimeListPage() {
                             <div
                               key={st.id}
                               onClick={() => setSelectedShowtime(st)}
-                              className={`absolute top-4 h-[64px] border ${formatInfo.border} rounded shadow-sm flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden ${isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : 'bg-white'}`}
+                              className={`absolute top-4 h-[64px] border ${formatInfo.border} rounded shadow-sm flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden ${isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (st.goldenHour || st.isGoldenHour ? 'bg-[#fff8e1]' : 'bg-white')}`}
                               style={{ left, width }}
                             >
                               <div className={`absolute left-0 top-0 bottom-0 w-1 ${formatInfo.bar}`} />
@@ -661,6 +661,10 @@ export default function ShowtimeListPage() {
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 rounded bg-[repeating-linear-gradient(-45deg,#fff,#fff_3px,#fff0f2_3px,#fff0f2_6px)] border border-[#e5bdbe]"></div>
                 <span className="text-[12px] font-semibold text-[#5c3f40]">Lồng tiếng (Phim Hoạt Hình)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 rounded bg-[#fff8e1] border border-[#ffe082]"></div>
+                <span className="text-[12px] font-semibold text-[#5c3f40]">Giờ vàng</span>
               </div>
             </div>
             <span className="text-sm text-[#5c3f40]">Hệ thống quản lý rạp chiếu phim - v2.1.0</span>
