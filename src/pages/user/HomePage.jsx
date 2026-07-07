@@ -83,7 +83,7 @@ const handleImageError = (e, fallback = DEFAULT_POSTER_SMALL) => {
 const BannerMedia = ({ movie, shouldPlayVideo }) => {
   const videoId = getYoutubeVideoId(movie.trailerUrl)
   const defaultPoster = movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
-  
+
   const [thumbUrl, setThumbUrl] = useState(() => {
     if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
     return defaultPoster
@@ -429,7 +429,7 @@ export default function HomePage() {
           {/* ===== CINEMATIC MOVIE BANNER ===== */}
           <div
             className="relative w-full overflow-hidden"
-            style={{ height: 'clamp(600px, 80vh, 840px)' }}
+            style={{ height: 'clamp(660px, 80vh, 840px)' }}
             onMouseEnter={() => setIsHoveringBanner(true)}
             onMouseLeave={() => setIsHoveringBanner(false)}
           >
@@ -895,7 +895,7 @@ export default function HomePage() {
               }}
             >
               <MovieArcCarousel3D movies={movies} />
-              
+
               <Link
                 to="/movies"
                 className="flex items-center gap-2 py-3 px-8 rounded-full text-xs font-black uppercase tracking-widest text-white/70 hover:text-white border border-white/20 bg-white/5 hover:bg-white/15 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer mt-4"

@@ -78,17 +78,6 @@ function NavItem({ route, label, index }) {
         {({ isActive }) => (
           <>
             {label}
-            {isActive && (
-              <motion.div
-                layoutId="nav-indicator"
-                className="absolute bottom-0 left-4 right-4 h-[2px] rounded-full"
-                style={{
-                  background: 'linear-gradient(90deg, #e50914, #ff4444)',
-                  boxShadow: '0 0 10px rgba(229,9,20,0.5)',
-                }}
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              />
-            )}
           </>
         )}
       </NavLink>

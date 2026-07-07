@@ -16,7 +16,7 @@ const FAQS = [
   {
     id: 3,
     q: 'Tôi đã thanh toán thành công nhưng không nhận được email mã vé QR?',
-    a: 'Trước hết, bạn hãy kiểm tra mục Thư rác (Spam) trong hộp thư email của bạn. Hoặc bạn có thể truy cập vào trang Cá nhân trên website, vào phần "Lịch sử đặt vé" để xem và chụp lại mã QR vé. Nếu vẫn không thấy, bạn hãy gọi hotline 1900 6868 hoặc mang biên nhận thanh toán đến quầy vé để được nhân viên hỗ trợ.'
+    a: 'Trước hết, bạn hãy kiểm tra mục Thư rác (Spam) trong hộp thư email của bạn. Hoặc bạn có thể truy cập vào trang Cá nhân trên website, vào phần "Lịch sử đặt vé" để xem và chụp lại mã QR vé. Nếu vẫn không thấy, bạn hãy gọi hotline 1900 6600 hoặc mang biên nhận thanh toán đến quầy vé để được nhân viên hỗ trợ.'
   },
   {
     id: 4,
@@ -128,7 +128,7 @@ export default function FaqPage() {
         viewport={{ once: true }}
       >
         <p className="text-xs text-gray-500">
-          Chưa tìm thấy câu trả lời? Vui lòng <a href="/contact" className="text-red-500 hover:underline">gửi tin nhắn trực tiếp</a> hoặc liên hệ Hotline <strong>1900 6868</strong> để được giải đáp.
+          Chưa tìm thấy câu trả lời? Vui lòng <a href="/contact" className="text-red-500 hover:underline">gửi tin nhắn trực tiếp</a> hoặc liên hệ Hotline <strong>1900 6600</strong> để được giải đáp.
         </p>
       </motion.div>
     </motion.div>

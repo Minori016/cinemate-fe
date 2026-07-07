@@ -88,7 +88,7 @@ export default function ContactPage() {
               <div>
                 <h3 className="text-white text-sm font-bold" style={{ fontFamily: 'Montserrat, sans-serif' }}>Hotline CSKH</h3>
                 <p className="text-xs text-[var(--color-on-surface-variant)] mt-1 leading-relaxed">
-                  1900 6868 (9:00 - 22:00 hàng ngày)
+                  1900 6600 (9:00 - 22:00 hàng ngày)
                 </p>
               </div>
             </div>

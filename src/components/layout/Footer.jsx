@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Clapperboard, Mail, Phone, MapPin } from 'lucide-react'
 import logoImg from '../../assets/Cinematelogo.png'
@@ -55,11 +56,17 @@ export default function Footer() {
             Hỗ Trợ & Chính Sách
           </h3>
           <div className="flex flex-col gap-2.5">
-            {['Giới thiệu', 'Liên hệ', 'Điều khoản sử dụng', 'Chính sách bảo mật', 'Câu hỏi thường gặp', 'Góp ý', 'Tuyển dụng'].map(
-              (label) => (
-                <FooterLink key={label} label={label} />
-              )
-            )}
+            {[
+              { label: 'Giới thiệu', to: '/about' },
+              { label: 'Liên hệ', to: '/contact' },
+              { label: 'Điều khoản sử dụng', to: '/terms' },
+              { label: 'Chính sách bảo mật', to: '/privacy' },
+              { label: 'Câu hỏi thường gặp', to: '/faqs' },
+              { label: 'Góp ý', to: '/feedback' },
+              { label: 'Tuyển dụng', to: '/careers' },
+            ].map((link) => (
+              <FooterLink key={link.label} label={link.label} to={link.to} />
+            ))}
           </div>
         </div>
 
@@ -72,11 +79,14 @@ export default function Footer() {
             Hệ Thống Rạp
           </h3>
           <div className="flex flex-col gap-2.5">
-            {['CineMate Quận 1', 'CineMate Bình Thạnh', 'CineMate Gò Vấp', 'CineMate Thủ Đức'].map(
-              (name) => (
-                <FooterLink key={name} label={name} />
-              )
-            )}
+            {[
+              { label: 'CineMate Quận 1', to: '/cinemas' },
+              { label: 'CineMate Bình Thạnh', to: '/cinemas' },
+              { label: 'CineMate Gò Vấp', to: '/cinemas' },
+              { label: 'CineMate Thủ Đức', to: '/cinemas' },
+            ].map((link) => (
+              <FooterLink key={link.label} label={link.label} to={link.to} />
+            ))}
           </div>
         </div>
 
@@ -89,7 +99,7 @@ export default function Footer() {
             Liên Hệ
           </h3>
           <div className="flex flex-col gap-3">
-            <ContactItem icon={<Phone size={14} />} text="1900 6868" />
+            <ContactItem icon={<Phone size={14} />} text="1900 6600" />
             <ContactItem icon={<Mail size={14} />} text="contact@cinemate.vn" />
             <ContactItem
               icon={<MapPin size={14} />}
@@ -122,21 +132,22 @@ export default function Footer() {
   )
 }
 
-function FooterLink({ label }) {
+function FooterLink({ label, to = '/' }) {
+  const [isHovered, setIsHovered] = useState(false)
   return (
     <Link
-      to="/"
-      className="text-sm font-medium transition-all duration-200 w-fit relative group"
-      style={{ color: 'var(--color-text-muted)', fontFamily: 'Inter, sans-serif' }}
+      to={to}
+      className="text-sm font-medium transition-all duration-200 w-fit inline-block origin-left"
+      style={{
+        color: isHovered ? '#e50914' : 'var(--color-text-muted)',
+        fontFamily: 'Inter, sans-serif',
+        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+        textShadow: isHovered ? '0 0 8px rgba(229,9,20,0.6)' : 'none',
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {label}
-      <span
-        className="absolute -bottom-0.5 left-0 w-0 h-px group-hover:w-full transition-all duration-300"
-        style={{
-          background: '#e50914',
-          boxShadow: '0 0 6px rgba(229,9,20,0.4)',
-        }}
-      />
     </Link>
   )
 }
