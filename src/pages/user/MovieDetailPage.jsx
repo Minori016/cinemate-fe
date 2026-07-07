@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'reac
 import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
 import { showtimeService } from '../../services/showtimeService'
+import { concessionService } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
 import { Ticket, CalendarDays, Armchair, CreditCard, Check, CloudOff, ArrowLeft, Play } from 'lucide-react'
@@ -307,6 +308,7 @@ export default function MovieDetailPage() {
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+  const [dbCombos, setDbCombos] = useState([])   // combos từ DB, fallback về COMBOS nếu rỗng
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
 
@@ -426,6 +428,31 @@ export default function MovieDetailPage() {
     return () => { cancelled = true }
   }, [movieId])
 
+  // Tải danh sách bắp nước từ server
+  useEffect(() => {
+    concessionService.getActive()
+      .then(res => {
+        const data = res.data?.result || res.data || []
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map(item => ({
+            id: item.id,           // UUID string từ DB
+            name: item.name,
+            desc: item.description,
+            price: Number(item.price),
+            img: item.imageUrl || '🍿',
+            category: item.itemType
+          }))
+          setDbCombos(mapped)
+          // Khởi tạo selectedCombos với key UUID
+          const initQty = {}
+          mapped.forEach(c => { initQty[c.id] = 0 })
+          setSelectedCombos(initQty)
+        }
+        // Nếu rỗng → giữ nguyên COMBOS cứng mặc định
+      })
+      .catch(err => console.error('Lỗi tải bắp nước:', err))
+  }, [])
+
   const getMovieSchedules = () => {
     const idx = Number(movieId) || 0
     return SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
@@ -446,8 +473,9 @@ export default function MovieDetailPage() {
   const violations = selectedSeats.length > 0 ? checkSingleEmptySeats(selectedSeats, OCCUPIED_SEATS) : []
 
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
+  const activeCombos = dbCombos.length > 0 ? dbCombos : COMBOS
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-    const combo = COMBOS.find(c => c.id === parseInt(id, 10))
+    const combo = activeCombos.find(c => String(c.id) === String(id))
     return sum + (combo ? combo.price * qty : 0)
   }, 0)
   const totalPrice = ticketPrice + comboPrice
@@ -557,7 +585,9 @@ export default function MovieDetailPage() {
     setBookingStep(1)
     setBookingId('')
     setSelectedSeats([])
-    setSelectedCombos({ 1: 0, 2: 0, 3: 0 })
+    const initQty = {}
+    activeCombos.forEach(c => { initQty[c.id] = 0 })
+    setSelectedCombos(initQty)
     navigate('/')
   }
 
@@ -575,7 +605,9 @@ export default function MovieDetailPage() {
     setBookingStep(1)
     setSelectedTime('')
     setSelectedSeats([])
-    setSelectedCombos({ 1: 0, 2: 0, 3: 0 })
+    const initQty = {}
+    activeCombos.forEach(c => { initQty[c.id] = 0 })
+    setSelectedCombos(initQty)
     setSelectedShowtime(null)
     setBookingId('')
     setCardNumber('')
@@ -817,6 +849,7 @@ export default function MovieDetailPage() {
                 {bookingStep === 3 && (
                   <ComboStep
                     key="step-3"
+                    combos={activeCombos}
                     selectedCombos={selectedCombos}
                     onChangeCombo={onChangeCombo}
                     promoCode={promoCode}
