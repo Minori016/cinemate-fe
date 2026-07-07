@@ -497,8 +497,14 @@ export default function AutoGeneratePage() {
           let newStartTime = curr.startTime;
           let newEndTime = curr.endTime;
 
+          let totalMins = curr.durationMinutes + 10;
+          let remainder = totalMins % 5;
+          if (remainder !== 0) {
+             totalMins += (5 - remainder);
+          }
+
           if (i === 0) {
-            const currEnd = new Date(currStart.getTime() + (curr.durationMinutes + 10) * 60000);
+            const currEnd = new Date(currStart.getTime() + totalMins * 60000);
             newEndTime = currEnd.toISOString();
           } else {
             const prev = newList[roomIndices[i - 1]];
@@ -513,14 +519,14 @@ export default function AutoGeneratePage() {
               }
               
               newStartTime = newStartObj.toISOString();
-              const currEndObj = new Date(newStartObj.getTime() + (curr.durationMinutes + 10) * 60000);
+              const currEndObj = new Date(newStartObj.getTime() + totalMins * 60000);
               newEndTime = currEndObj.toISOString();
               
               if (newStartObj.getDate() !== currStart.getDate()) {
                  pushedPastMidnight = true;
               }
             } else {
-               const currEndObj = new Date(currStart.getTime() + (curr.durationMinutes + 10) * 60000);
+               const currEndObj = new Date(currStart.getTime() + totalMins * 60000);
                newEndTime = currEndObj.toISOString();
             }
           }
