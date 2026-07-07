@@ -10,6 +10,7 @@ import {
   CreditCard,
   ChefHat
 } from 'lucide-react'
+import { concessionService } from '../../../services/concessionService'
 
 // Mock concession items
 const CONCESSION_ITEMS = [
@@ -25,10 +26,31 @@ const CONCESSION_ITEMS = [
 export default function StaffConcessionsPage() {
   const [revenue, setRevenue] = useState(0)
   const [cart, setCart] = useState([])
+  const [concessionItems, setConcessionItems] = useState(CONCESSION_ITEMS)
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [activeReceipt, setActiveReceipt] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [toast, setToast] = useState(null)
+
+  // Tải danh sách từ API, fallback về mock nếu lỗi
+  useEffect(() => {
+    concessionService.getActive()
+      .then(res => {
+        const data = res.data?.result || res.data || []
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            desc: item.description,
+            price: Number(item.price),
+            category: item.itemType,
+            image: item.imageUrl || '🍿'
+          }))
+          setConcessionItems(mapped)
+        }
+      })
+      .catch(err => console.error('Lỗi tải bắp nước:', err))
+  }, [])
 
   // Load revenue from localStorage on mount
   useEffect(() => {
@@ -47,8 +69,8 @@ export default function StaffConcessionsPage() {
   }
 
   const filteredItems = selectedFilter === 'all'
-    ? CONCESSION_ITEMS
-    : CONCESSION_ITEMS.filter(item => item.category === selectedFilter)
+    ? concessionItems
+    : concessionItems.filter(item => item.category === selectedFilter)
 
   // Add to Cart Logic
   const addToCart = (product) => {
