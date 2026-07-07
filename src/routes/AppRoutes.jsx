@@ -45,6 +45,8 @@ import AutoGeneratePage from '../pages/admin/showtimes/AutoGeneratePage'
 import SystemConfigPage from '../pages/admin/price-config/SystemConfigPage'
 import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
 import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
+import ConcessionListPage from '../pages/admin/concessions/ConcessionListPage'
+import ConcessionFormPage from '../pages/admin/concessions/ConcessionFormPage'
 import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
 import StaffTicketVerifierPage from '../pages/staff/checkin/StaffTicketVerifierPage'
 import StaffConcessionsPage from '../pages/staff/concessions/StaffConcessionsPage'
@@ -152,6 +154,9 @@ export default function AppRoutes() {
           <Route path="promotions" element={<PromotionListPage />} />
           <Route path="promotions/add" element={<PromotionFormPage />} />
           <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
+          <Route path="concessions" element={<ConcessionListPage />} />
+          <Route path="concessions/add" element={<ConcessionFormPage />} />
+          <Route path="concessions/edit/:id" element={<ConcessionFormPage />} />
         </Route>
 
         {/* Wildcard */}
