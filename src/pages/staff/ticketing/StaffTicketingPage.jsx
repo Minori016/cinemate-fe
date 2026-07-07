@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { movieService } from '../../../services/movieService'
 import { showtimeService } from '../../../services/showtimeService'
+import { concessionService } from '../../../services/concessionService'
 
 // Mock Members Database for checking (consistent with CounterCheckoutPage.jsx)
 const MOCK_MEMBERS = [
@@ -26,6 +27,7 @@ export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [movies, setMovies] = useState([])
   const [showtimes, setShowtimes] = useState([])
+  const [combos, setCombos] = useState(COMBOS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -90,6 +92,27 @@ export default function StaffTicketingPage() {
       }
     }
     fetchData()
+  }, [])
+
+  // Tải combo từ backend, fallback về COMBOS cứng nếu API lỗi/rỗng
+  useEffect(() => {
+    concessionService.getActive()
+      .then(res => {
+        const data = res.data?.result || res.data || []
+        if (Array.isArray(data) && data.length > 0) {
+          const mapped = data.map(item => ({
+            id: item.id,
+            name: item.name,
+            desc: item.description,
+            price: Number(item.price),
+          }))
+          setCombos(mapped)
+          const initQty = {}
+          mapped.forEach(c => { initQty[c.id] = 0 })
+          setSelectedCombos(initQty)
+        }
+      })
+      .catch(() => { /* giữ nguyên COMBOS mock */ })
   }, [])
 
   // Filter showtimes for selected movie
@@ -215,10 +238,10 @@ export default function StaffTicketingPage() {
 
   const comboPriceTotal = useMemo(() => {
     return Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-      const combo = COMBOS.find(c => c.id === parseInt(id, 10))
+      const combo = combos.find(c => String(c.id) === String(id))
       return sum + (combo ? combo.price * qty : 0)
     }, 0)
-  }, [selectedCombos])
+  }, [selectedCombos, combos])
 
   const singleTicketPrice = selectedSeats.length > 0 ? (ticketPriceTotal / selectedSeats.length) : 0
   const discountTotal = convertCount * singleTicketPrice
@@ -266,8 +289,8 @@ export default function StaffTicketingPage() {
       combosSummary: Object.entries(selectedCombos)
         .filter(([_, qty]) => qty > 0)
         .map(([id, qty]) => {
-          const c = COMBOS.find(combo => combo.id === parseInt(id, 10))
-          return `${c.name} (x${qty})`
+          const c = combos.find(combo => String(combo.id) === String(id))
+          return c ? `${c.name} (x${qty})` : `(x${qty})`
         }).join(', ')
     }
 
@@ -294,7 +317,9 @@ export default function StaffTicketingPage() {
     setSelectedMovie(null)
     setSelectedShowtime(null)
     setSelectedSeats([])
-    setSelectedCombos({ 1: 0, 2: 0, 3: 0 })
+    const initQty = {}
+    combos.forEach(c => { initQty[c.id] = 0 })
+    setSelectedCombos(initQty)
     setMemberQuery('')
     setCheckedMember(false)
     setFoundMember(null)
@@ -620,12 +645,12 @@ export default function StaffTicketingPage() {
                   </h3>
 
                   <div className="space-y-4">
-                    {COMBOS.map(combo => (
+                    {combos.map(combo => (
                       <div key={combo.id} className="flex justify-between items-center bg-black/20 border border-white/5 p-4 rounded-xl">
                         <div className="space-y-0.5 text-left pr-2">
                           <span className="text-xs font-bold text-white block">{combo.name}</span>
                           <span className="text-[10px] text-gray-500 block leading-normal">{combo.desc}</span>
-                          <span className="text-xs font-semibold text-slate-400 block mt-1">{formatVND(combo.price)}</span>
+                          <span className="text-xs font-semibold text-slate-400 block mt-1">{formatVND(Number(combo.price))}</span>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -636,7 +661,7 @@ export default function StaffTicketingPage() {
                             -
                           </button>
                           <span className="text-sm font-black w-6 text-center font-mono text-white">
-                            {selectedCombos[combo.id]}
+                            {selectedCombos[combo.id] || 0}
                           </span>
                           <button
                             onClick={() => handleComboQty(combo.id, 1)}
@@ -990,11 +1015,12 @@ export default function StaffTicketingPage() {
               <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
                 {Object.entries(selectedCombos).map(([id, qty]) => {
                   if (qty === 0) return null
-                  const c = COMBOS.find(combo => combo.id === parseInt(id, 10))
+                  const c = combos.find(combo => String(combo.id) === String(id))
+                  if (!c) return null
                   return (
                     <div key={id} className="flex justify-between items-center text-xs font-semibold text-gray-300">
                       <span>{c.name} (x{qty})</span>
-                      <span className="font-mono">{formatVND(c.price * qty)}</span>
+                      <span className="font-mono">{formatVND(Number(c.price) * qty)}</span>
                     </div>
                   )
                 })}
