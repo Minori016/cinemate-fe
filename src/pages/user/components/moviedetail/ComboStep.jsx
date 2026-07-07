@@ -9,6 +9,7 @@ const COMBOS = [
 ]
 
 export default function ComboStep({
+  combos = COMBOS,
   selectedCombos,
   onChangeCombo,
   promoCode,
@@ -66,23 +67,30 @@ export default function ComboStep({
           Chọn Bắp & Nước
         </h3>
         <div className="flex flex-col gap-4">
-          {COMBOS.map(combo => {
+          {combos.map(combo => {
             const qty = selectedCombos[combo.id] || 0
+            const hasImg = combo.img && (combo.img.startsWith('http') || combo.img.startsWith('/') || combo.img.startsWith('data:'))
             return (
               <div 
                 key={combo.id}
                 className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 transition-all duration-300 hover:border-white/20"
               >
-                <img 
-                  src={combo.img} 
-                  alt={combo.name} 
-                  className="w-20 h-20 rounded-xl object-cover border border-white/5 flex-shrink-0"
-                />
+                {hasImg ? (
+                  <img 
+                    src={combo.img} 
+                    alt={combo.name} 
+                    className="w-20 h-20 rounded-xl object-cover border border-white/5 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-4xl flex-shrink-0 select-none">
+                    {combo.img || '🍿'}
+                  </div>
+                )}
                 <div className="flex-grow">
                   <h4 className="text-white font-bold text-base mb-1">{combo.name}</h4>
                   <p className="text-xs text-gray-400 mb-2 leading-relaxed">{combo.desc}</p>
                   <span className="text-red-500 font-extrabold text-sm">
-                    {combo.price.toLocaleString('vi-VN')} đ
+                    {Number(combo.price).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
                 
