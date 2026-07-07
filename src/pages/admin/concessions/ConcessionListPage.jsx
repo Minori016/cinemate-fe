@@ -300,7 +300,7 @@ export default function ConcessionListPage() {
       {/* Delete confirmation modal */}
       {deleteTarget && (
         <Modal
-          isOpen={!!deleteTarget}
+          open={!!deleteTarget}
           onClose={() => setDeleteTarget(null)}
           title="Xác nhận xóa món"
           size="sm"
