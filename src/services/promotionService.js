@@ -78,7 +78,10 @@ export function computePromotionStatus(promo) {
   const end = promo?.endTime ? new Date(promo.endTime) : null
   if (end && end < now) return PROMOTION_STATUS.EXPIRED
   if (start && start > now) return PROMOTION_STATUS.DRAFT
-  if (promo?.usageLimit != null && (promo?.usedCount ?? 0) >= promo.usageLimit) {
+  // Backend v2: maxTotalUsage + currentTotalUsage
+  const max = promo?.maxTotalUsage
+  const used = promo?.currentTotalUsage ?? promo?.usedCount ?? 0
+  if (max != null && used >= max) {
     return PROMOTION_STATUS.EXPIRED
   }
   return PROMOTION_STATUS.ACTIVE
@@ -88,20 +91,33 @@ export function computePromotionStatus(promo) {
  * Helper: Format hiển thị giá trị giảm giá
  */
 export function formatDiscountValue(promo) {
-  if (promo?.discountValue == null) return ''
+  if (promo?.discountPercent != null && promo.discountPercent !== '') {
+    return `${promo.discountPercent}%`
+  }
+  if (promo?.discountValue != null && promo.discountValue !== '') {
+    return new Intl.NumberFormat('vi-VN').format(promo.discountValue) + 'đ'
+  }
+  // fallback cho schema cũ (discountType + discountValue)
   if (promo?.discountType === DISCOUNT_TYPES.PERCENT) {
     return `${promo.discountValue}%`
   }
   if (promo?.discountType === DISCOUNT_TYPES.FIXED_AMOUNT) {
     return new Intl.NumberFormat('vi-VN').format(promo.discountValue) + 'đ'
   }
-  return String(promo.discountValue)
+  return ''
 }
 
 /**
  * Helper: Tính % giảm cho hiển thị nhanh
  */
 export function getQuickDiscountText(promo) {
+  if (promo?.discountPercent) {
+    return `Giảm ${promo.discountPercent}%`
+  }
+  if (promo?.discountValue) {
+    return `Giảm ${new Intl.NumberFormat('vi-VN').format(promo.discountValue)}đ`
+  }
+  // fallback schema cũ
   if (promo?.discountType === DISCOUNT_TYPES.PERCENT && promo?.discountValue) {
     return `Giảm ${promo.discountValue}%`
   }
