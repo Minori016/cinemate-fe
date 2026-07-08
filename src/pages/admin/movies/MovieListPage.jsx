@@ -4,19 +4,22 @@ import { movieService } from '../../../services/movieService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { motion } from 'motion/react'
 
 export default function MovieListPage() {
   const [movies, setMovies] = useState([])
+  const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const navigate = useNavigate()
 
-  const load = () => movieService.getAll().then(r => {
-    const list = r.data || []
-    setMovies(list)
+  const load = (pageNum = 0) => movieService.getAll({ page: pageNum, size: 10 }).then(r => {
+    setMovies(r.data || [])
+    setPage(r.currentPage ?? pageNum)
+    setTotalPages(r.totalPages ?? 1)
   }).catch(() => {})
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(0) }, [])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -77,6 +80,7 @@ export default function MovieListPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
+        className="space-y-4"
       >
         <Table columns={columns} data={movies} actions={row => (
           <div className="flex gap-2 justify-end">
@@ -84,6 +88,43 @@ export default function MovieListPage() {
             <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
           </div>
         )} />
+        
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 pt-4">
+            <button
+              onClick={() => load(page - 1)}
+              disabled={page <= 0}
+              className="w-9 h-9 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-on-surface)] hover:bg-[var(--color-surface-2)] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, idx) => {
+              const isCurrent = page === idx
+              return (
+                <button
+                  key={idx}
+                  onClick={() => load(idx)}
+                  className={`w-9 h-9 flex items-center justify-center font-bold text-xs rounded-xl transition-all cursor-pointer ${
+                    isCurrent
+                      ? 'bg-gradient-to-r from-[#e50914] to-[#b3070f] text-white shadow-md shadow-[rgba(229,9,20,0.2)]'
+                      : 'border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-on-surface)] hover:bg-[var(--color-surface-2)]'
+                  }`}
+                >
+                  {idx + 1}
+                </button>
+              )
+            })}
+
+            <button
+              onClick={() => load(page + 1)}
+              disabled={page >= totalPages - 1}
+              className="w-9 h-9 border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-on-surface)] hover:bg-[var(--color-surface-2)] disabled:opacity-40 disabled:cursor-not-allowed rounded-xl flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        )}
       </motion.div>
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa">
         <p className="text-[var(--color-text-muted)] text-sm mb-4">Bạn có chắc muốn xóa phim <span className="text-[var(--color-on-surface)] font-semibold">"{deleteTarget?.titleVn}"</span>?</p>
