@@ -27,7 +27,7 @@ const DraggableShowtime = memo(function DraggableShowtime({
     setDroppableRef(node);
   };
 
-  const { left, width } = calculatePosition(st.startTime, st.durationMinutes)
+  const { left, width } = calculatePosition(st.startTime, st.endTime)
   const isGoldenHour = st.goldenHour || st.isGoldenHour
   const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
   const isDubbed = isAnimation && st.language === 'Lồng tiếng'

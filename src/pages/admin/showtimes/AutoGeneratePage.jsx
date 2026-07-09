@@ -10,6 +10,7 @@ import DraggableShowtime from './components/DraggableShowtime';
 import { Calendar } from '../../../components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '../../../components/ui/popover'
 import { priceConfigService } from '../../../services/priceConfigService'
+import { systemConfigService } from '../../../services/systemConfigService'
 import { format, parseISO } from 'date-fns'
 import { vi } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -59,7 +60,28 @@ const getMovieSupportedLanguages = (movieLanguage) => {
   return langs.length > 0 ? langs : ['Phụ đề'];
 }
 
+const snapToGridModifier = ({ transform }) => {
+  if (!transform) return transform;
+  return {
+    ...transform,
+    x: Math.round(transform.x / 5) * 5,
+  };
+};
+
 import { useAuth } from '../../../contexts/AuthContext'
+import { useDroppable } from '@dnd-kit/core';
+
+function DroppableRoomRow({ room, children }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `room-${room.id}`,
+    data: { isRoom: true, roomId: room.id }
+  });
+  return (
+    <div ref={setNodeRef} className={`h-24 border-b border-dashed relative transition-colors ${isOver ? 'bg-[#b80035]/5 border-[#b80035]' : 'border-[#e0e3e5]'}`}>
+      {children}
+    </div>
+  );
+}
 
 export default function AutoGeneratePage() {
   const { user } = useAuth()
@@ -71,6 +93,7 @@ export default function AutoGeneratePage() {
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
   const [formatPrices, setFormatPrices] = useState({})
+  const [systemConfigs, setSystemConfigs] = useState([])
   
   const [step, setStep] = useState(1) // 1: Setup, 2: Preview
   const [loading, setLoading] = useState(false)
@@ -124,13 +147,15 @@ export default function AutoGeneratePage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [mRes, rRes, pRes] = await Promise.all([
+        const [mRes, rRes, pRes, sRes] = await Promise.all([
           movieService.getAll(),
           cinemaRoomService.getAll(),
-          priceConfigService.getAll()
+          priceConfigService.getAll(),
+          systemConfigService.getAll()
         ])
         setMovies(mRes.data || [])
         setRooms(rRes.data?.result || rRes.data || [])
+        setSystemConfigs(sRes.data || sRes || [])
         
         const pList = pRes || []
         const pMap = {}
@@ -145,6 +170,15 @@ export default function AutoGeneratePage() {
     }
     fetchData()
   }, [])
+
+  const getConfigValue = useCallback((key, defaultVal) => {
+    const conf = systemConfigs.find(c => c.configKey === key);
+    if (conf && conf.configValue) {
+      const parsed = parseInt(conf.configValue, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return defaultVal;
+  }, [systemConfigs]);
 
   const getDatesToRender = useCallback(() => {
     if (!form.startDate || !form.endDate) return [];
@@ -178,9 +212,12 @@ export default function AutoGeneratePage() {
 
   const datesToRender = useMemo(() => step === 2 ? getDatesToRender() : [], [step, getDatesToRender]);
 
-  const calculatePosition = useCallback((startTimeStr, durationMins) => {
-    if (!startTimeStr) return { left: '0px', width: '0px' }
+  const calculatePosition = useCallback((startTimeStr, endTimeStr) => {
+    if (!startTimeStr || !endTimeStr) return { left: '0px', width: '0px' }
     const stDateObj = new Date(startTimeStr);
+    const enDateObj = new Date(endTimeStr);
+    const durationMins = (enDateObj.getTime() - stDateObj.getTime()) / 60000;
+    
     const { startHour, businessMinutes } = getBusinessHours();
     
     // Parse form.startDate locally
@@ -200,7 +237,7 @@ export default function AutoGeneratePage() {
     
     return {
       left: `${totalMinutes}px`,
-      width: `${durationMins || 120}px`,
+      width: `${durationMins}px`,
     }
   }, [form.startDate, getBusinessHours]);
 
@@ -227,10 +264,18 @@ export default function AutoGeneratePage() {
         ...prev,
         movies: isSelected 
           ? prev.movies.filter(m => m.movieId !== id) 
-          : [...prev.movies, { movieId: id, formats: [defaultFormat], languages: [defaultLanguage] }]
+          : [...prev.movies, { movieId: id, formats: [defaultFormat], languages: [defaultLanguage], maxShowtimes: '', isPriority: false }]
       };
     });
   }
+
+  const handleUpdateMovieOption = (id, field, value) => {
+    setForm(prev => ({
+      ...prev,
+      movies: prev.movies.map(m => m.movieId === id ? { ...m, [field]: value } : m)
+    }));
+  }
+
 
   const handleFormatToggle = (id, format) => {
     setForm(prev => {
@@ -303,6 +348,13 @@ export default function AutoGeneratePage() {
       setError('Ngày bắt đầu không được sau ngày kết thúc!')
       return
     }
+
+    const diffTime = end - start;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays > 2) {
+      setError('Chỉ cho phép tạo tự động tối đa 3 ngày cùng lúc để tránh quá tải hệ thống!')
+      return
+    }
     
     if (form.openTime >= form.closeTime) {
       setError('Giờ mở cửa phải trước giờ đóng cửa!')
@@ -337,10 +389,21 @@ export default function AutoGeneratePage() {
           for (const fmt of formats) {
             if (m.languages && m.languages.length > 0) {
               for (const lang of m.languages) {
-                res.push({ movieId: m.movieId, format: mapFormatToEnum(fmt), language: lang });
+                res.push({ 
+                  movieId: m.movieId, 
+                  format: mapFormatToEnum(fmt), 
+                  language: lang,
+                  maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
+                  isPriority: m.isPriority || false
+                });
               }
             } else {
-              res.push({ movieId: m.movieId, format: mapFormatToEnum(fmt) });
+              res.push({ 
+                movieId: m.movieId, 
+                format: mapFormatToEnum(fmt),
+                maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
+                isPriority: m.isPriority || false
+              });
             }
           }
           return res;
@@ -461,13 +524,180 @@ export default function AutoGeneratePage() {
     });
   }, []);
 
-  const handleSwapShowtimes = useCallback((idx1, idx2) => {
+  const handleNudgeShowtime = useCallback((idx, shiftMinutes) => {
     setPreviewList(prev => {
       const newList = [...prev];
+      const target = { ...newList[idx] };
+      
+      const newStart = new Date(new Date(target.startTime).getTime() + shiftMinutes * 60000);
+      const newEnd = new Date(new Date(target.endTime).getTime() + shiftMinutes * 60000);
+      
+      const openDate = new Date(newStart);
+      const [oH, oM] = form.openTime.split(':');
+      const openHour = parseInt(oH, 10);
+      openDate.setHours(openHour, parseInt(oM, 10), 0, 0);
+      
+      if (newStart < openDate) {
+         toast.error('Không thể nhích! Lịch chiếu vượt quá giờ mở cửa!');
+         return prev;
+      }
+
+      const originalStart = new Date(target.startTime);
+      const baseDate = new Date(originalStart);
+      if (baseDate.getHours() < openHour) {
+          baseDate.setDate(baseDate.getDate() - 1);
+      }
+      
+      const [cH, cM] = form.closeTime.split(':');
+      const closeHour = parseInt(cH, 10);
+      
+      const allowedMaxEnd = new Date(baseDate);
+      if (closeHour <= openHour) {
+          allowedMaxEnd.setDate(allowedMaxEnd.getDate() + 1);
+      }
+      allowedMaxEnd.setHours(closeHour + 1, parseInt(cM, 10), 0, 0); // closeTime + 1 hour
+      
+      if (newEnd > allowedMaxEnd) {
+         toast.error('Không thể nhích! Suất chiếu kết thúc muộn quá quy định (Đóng rạp + 1 tiếng)!');
+         return prev;
+      }
+      
+      const sameRoomList = newList.filter((st, i) => i !== idx && st.room_id === target.room_id && new Date(st.startTime).toDateString() === newStart.toDateString());
+      
+      let hasConflict = false;
+      const room = rooms.find(r => r.id === target.room_id);
+      let cleaningBufferMins = getConfigValue('CLEANING_BUFFER_DEFAULT', 15);
+      if (room) {
+          if (room.capacity && room.capacity < 120) {
+              cleaningBufferMins = getConfigValue('CLEANING_BUFFER_SMALL', 10);
+          }
+          const formats = room.supportedFormats || [];
+          const name = (room.name || '').toUpperCase();
+          if (formats.includes('IMAX') || formats.includes('_IMAX') || name.includes('IMAX')) {
+              cleaningBufferMins = getConfigValue('CLEANING_BUFFER_IMAX', 30);
+          } else if (formats.includes('4DX') || formats.includes('_4DX') || name.includes('4DX')) {
+              cleaningBufferMins = getConfigValue('CLEANING_BUFFER_4DX', 20);
+          }
+      }
+      const cleaningBufferMs = cleaningBufferMins * 60000;
+      
+      for (const st of sameRoomList) {
+         const stStart = new Date(st.startTime).getTime() - cleaningBufferMs;
+         const stEnd = new Date(st.endTime).getTime() + cleaningBufferMs;
+         
+         const targetStartMs = newStart.getTime();
+         const targetEndMs = newEnd.getTime();
+         
+         // Overlap check (target overlaps with st + buffer)
+         if (targetStartMs < stEnd && targetEndMs > stStart) {
+             hasConflict = true;
+             break;
+         }
+      }
+      
+      if (hasConflict) {
+         toast.error('Nhích giờ thất bại! Bị trùng lịch hoặc vi phạm 15p dọn dẹp với suất chiếu khác.');
+         return prev;
+      }
+      
+      target.startTime = newStart.toISOString();
+      target.endTime = newEnd.toISOString();
+      newList[idx] = target;
+      
+      toast.success(`Đã nhích suất chiếu ${shiftMinutes > 0 ? 'tiến' : 'lùi'} ${Math.abs(shiftMinutes)} phút!`);
+      return newList;
+    });
+  }, [form.openTime, form.closeTime]);
+
+  const handleMoveToRoom = useCallback((activeId, targetRoomId, shiftMinutes) => {
+    setPreviewList(prev => {
+      const newList = [...prev];
+      const idx = newList.findIndex(st => st.tempId === activeId);
+      if (idx === -1) return prev;
+      
+      const target = { ...newList[idx] };
+      const room = rooms.find(r => r.id === targetRoomId);
+      if (!room) return prev;
+      
+      const formatCheck = `_${target.format}`.replace('__', '_');
+      const roomFormats = room?.supportedFormats?.map(f => f.startsWith('_') ? f : `_${f}`) || [];
+      if (!roomFormats.includes(formatCheck)) {
+        toast.error(`Phòng ${room.name} không hỗ trợ định dạng ${target.format}!`);
+        return prev;
+      }
+      
+      target.room_id = targetRoomId;
+      target.roomName = room.name;
+
+      if (shiftMinutes && shiftMinutes !== 0) {
+          const newStart = new Date(new Date(target.startTime).getTime() + shiftMinutes * 60000);
+          const newEnd = new Date(new Date(target.endTime).getTime() + shiftMinutes * 60000);
+          target.startTime = newStart.toISOString();
+          target.endTime = newEnd.toISOString();
+      }
+
+      const sameRoomList = newList.filter((st, i) => i !== idx && st.room_id === targetRoomId && new Date(st.startTime).toDateString() === new Date(target.startTime).toDateString());
+      
+      let hasConflict = false;
+      let cleaningBufferMins = getConfigValue('CLEANING_BUFFER_DEFAULT', 15);
+      if (room.capacity && room.capacity < 120) {
+          cleaningBufferMins = getConfigValue('CLEANING_BUFFER_SMALL', 10);
+      }
+      const name = (room.name || '').toUpperCase();
+      if (roomFormats.includes('IMAX') || roomFormats.includes('_IMAX') || name.includes('IMAX')) {
+          cleaningBufferMins = getConfigValue('CLEANING_BUFFER_IMAX', 30);
+      } else if (roomFormats.includes('4DX') || roomFormats.includes('_4DX') || name.includes('4DX')) {
+          cleaningBufferMins = getConfigValue('CLEANING_BUFFER_4DX', 20);
+      }
+      
+      const cleaningBufferMs = cleaningBufferMins * 60000;
+      const targetStartMs = new Date(target.startTime).getTime();
+      const targetEndMs = new Date(target.endTime).getTime();
+      
+      for (const st of sameRoomList) {
+         const stStart = new Date(st.startTime).getTime() - cleaningBufferMs;
+         const stEnd = new Date(st.endTime).getTime() + cleaningBufferMs;
+         
+         if (targetStartMs < stEnd && targetEndMs > stStart) {
+             hasConflict = true;
+             break;
+         }
+      }
+      
+      if (hasConflict) {
+         toast.error('Chuyển phòng thất bại! Bị trùng lịch hoặc vi phạm thời gian dọn dẹp.');
+         return prev;
+      }
+      
+      newList[idx] = target;
+      toast.success(`Đã chuyển suất chiếu sang ${room.name}!`);
+      return newList;
+    });
+  }, [rooms, getConfigValue]);
+
+  const handleSwapShowtimes = useCallback((idx1, idx2) => {
+      const newList = [...previewList];
       const st1 = { ...newList[idx1] };
       const st2 = { ...newList[idx2] };
       
-      const movieKeys = ['movie_id', 'movieTitle', 'durationMinutes', 'basePrice', 'vipPrice', 'couplePrice', 'format', 'language'];
+      const movie1 = movies.find(m => m.id === st1.movie_id || m.titleVn === st1.movieTitle);
+      const movie2 = movies.find(m => m.id === st2.movie_id || m.titleVn === st2.movieTitle);
+      
+      if (movie1 && movie2) {
+          const m1Formats = getMovieSupportedFormats(movie1.version, formatPrices);
+          const m2Formats = getMovieSupportedFormats(movie2.version, formatPrices);
+          
+          if (!m1Formats.includes(st2.format)) {
+             toast.error(`❌ Phim "${st1.movieTitle}" không có bản chiếu ${st2.format} (định dạng của suất đích)!`);
+             return;
+          }
+          if (!m2Formats.includes(st1.format)) {
+             toast.error(`❌ Phim "${st2.movieTitle}" không có bản chiếu ${st1.format} (định dạng của suất gốc)!`);
+             return;
+          }
+      }
+      
+      const movieKeys = ['movie_id', 'movieTitle', 'durationMinutes', 'language'];
       movieKeys.forEach(key => {
         const temp = st1[key];
         st1[key] = st2[key];
@@ -513,9 +743,9 @@ export default function AutoGeneratePage() {
             
             if (prevEndWithCleaning > currStart) {
               let newStartObj = new Date(prevEndWithCleaning);
-              const remainder = newStartObj.getMinutes() % 15;
+              const remainder = newStartObj.getMinutes() % 5;
               if (remainder !== 0) {
-                newStartObj = new Date(newStartObj.getTime() + (15 - remainder) * 60000);
+                newStartObj = new Date(newStartObj.getTime() + (5 - remainder) * 60000);
               }
               
               newStartTime = newStartObj.toISOString();
@@ -537,20 +767,19 @@ export default function AutoGeneratePage() {
         }
         
         if (pushedPastMidnight) {
-           toast.warning(`Có suất chiếu ở phòng ${newList[roomIndices[0]].roomName} bị đẩy sang sáng ngày hôm sau do lệch giờ!`, { duration: 5000 });
+           toast.warning(`Có suất chiếu ở phòng bị đẩy sang sáng ngày hôm sau do lệch giờ!`, { duration: 5000 });
         }
       };
 
       recalculateRoomTimeline(st1.room_id);
       if (st1.room_id !== st2.room_id) {
-        recalculateRoomTimeline(st2.room_id);
+          recalculateRoomTimeline(st2.room_id);
       }
-
-      return newList;
-    });
-    
-    toast.success('Đã hoán đổi suất chiếu thành công!');
-  }, []);
+      
+      setPreviewList(newList);
+      
+      toast.success('✅ Đã hoán đổi suất chiếu thành công!');
+  }, [previewList, movies, formatPrices]);
 
   return (
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 min-h-[calc(100vh-80px)] overflow-y-auto">
@@ -708,6 +937,31 @@ export default function AutoGeneratePage() {
                               })}
                             </div>
                           )}
+                          {isSelected && (
+                            <div className="pl-7 flex flex-wrap gap-4 mt-1 border-t border-[#e0e3e5] pt-3 pb-1 items-center">
+                              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-amber-500 hover:text-amber-600 transition-colors" title="Ưu tiên xếp Giờ Vàng (18:00 - 21:00)">
+                                <input 
+                                  type="checkbox" 
+                                  checked={form.movies.find(mv => mv.movieId === m.id)?.isPriority || false} 
+                                  onChange={(e) => handleUpdateMovieOption(m.id, 'isPriority', e.target.checked)}
+                                  className="w-3.5 h-3.5 rounded accent-amber-500" 
+                                />
+                                ⭐ Phim Hot (Giờ vàng)
+                              </label>
+
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-[#5c647a] font-semibold">Max suất/ngày:</span>
+                                <input 
+                                  type="number"
+                                  min="1"
+                                  placeholder="Không giới hạn"
+                                  value={form.movies.find(mv => mv.movieId === m.id)?.maxShowtimes || ''}
+                                  onChange={(e) => handleUpdateMovieOption(m.id, 'maxShowtimes', e.target.value)}
+                                  className="w-24 bg-white border border-[#e0e3e5] rounded py-1 px-2 text-xs text-[#191c1e] outline-none focus:border-[#b80035]"
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -734,8 +988,13 @@ export default function AutoGeneratePage() {
                 <div className="w-48 shrink-0 sticky left-0 z-40 bg-[#f7f9fb] border-r border-[#e0e3e5] flex flex-col shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-fit min-h-full">
                   <div className="h-16 border-b border-[#e0e3e5] bg-white sticky top-0 z-50 shrink-0"></div>
                   {rooms.filter(r => {
-                    const assignedIds = [...new Set(previewList.map(st => st.room_id))];
-                    return assignedIds.includes(r.id);
+                    if (previewList.length === 0) return false;
+                    const firstStRoom = rooms.find(room => room.id === previewList[0].room_id);
+                    const targetCinemaId = firstStRoom?.cinemaId || firstStRoom?.cinema?.id;
+                    if (targetCinemaId) {
+                       return (r.cinemaId || r.cinema?.id) === targetCinemaId;
+                    }
+                    return true;
                   }).map(room => {
                     const roomInfo = getRoomDetails(room)
                     return (
@@ -799,9 +1058,12 @@ export default function AutoGeneratePage() {
                           className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed ${index % 2 === 0 ? 'bg-white' : 'bg-[#f7f9fb]'}`}
                           style={{ width: `${businessMinutes}px` }}
                         >
-                          {Array.from({ length: numBlocks }).map((_, i) => (
+                          {Array.from({ length: numBlocks * 2 }).map((_, i) => (
                             <div key={i} 
-                              className={`w-[120px] shrink-0 border-r border-[#e0e3e5] border-dashed opacity-50 h-full`}
+                                 className="w-[60px] shrink-0 border-r border-[#cbd1d6] h-full"
+                                 style={{
+                                   backgroundImage: 'repeating-linear-gradient(to right, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 5px)'
+                                 }}
                             />
                           ))}
                         </div>
@@ -811,15 +1073,41 @@ export default function AutoGeneratePage() {
 
                   {/* Grid Content (Room Rows & Showtimes) */}
                   <DndContext 
+                    modifiers={[snapToGridModifier]}
                     collisionDetection={closestCenter} 
                     onDragStart={(e) => setActiveId(e.active.id)} 
                     onDragEnd={(e) => {
-                      const { active, over } = e;
-                      if (over && active.id !== over.id) {
-                        const idx1 = previewList.findIndex(st => st.tempId === active.id);
-                        const idx2 = previewList.findIndex(st => st.tempId === over.id);
-                        if (idx1 !== -1 && idx2 !== -1) {
-                          handleSwapShowtimes(idx1, idx2);
+                      const { active, over, delta } = e;
+                      if (over) {
+                        if (String(over.id).startsWith('room-')) {
+                          const targetRoomId = String(over.id).replace('room-', '');
+                          let shiftMinutes = 0;
+                          if (Math.abs(delta.x) >= 5) {
+                            shiftMinutes = Math.round(delta.x / 5) * 5;
+                          }
+                          handleMoveToRoom(active.id, targetRoomId, shiftMinutes);
+                        } else if (active.id !== over.id) {
+                          const idx1 = previewList.findIndex(st => st.tempId === active.id);
+                          const idx2 = previewList.findIndex(st => st.tempId === over.id);
+                          if (idx1 !== -1 && idx2 !== -1) {
+                            handleSwapShowtimes(idx1, idx2);
+                          }
+                        } else {
+                          const idx = previewList.findIndex(st => st.tempId === active.id);
+                          if (idx !== -1 && Math.abs(delta.x) >= 5) {
+                            const shiftMinutes = Math.round(delta.x / 5) * 5;
+                            if (shiftMinutes !== 0) {
+                               handleNudgeShowtime(idx, shiftMinutes);
+                            }
+                          }
+                        }
+                      } else {
+                        const idx = previewList.findIndex(st => st.tempId === active.id);
+                        if (idx !== -1 && Math.abs(delta.x) >= 5) {
+                          const shiftMinutes = Math.round(delta.x / 5) * 5;
+                          if (shiftMinutes !== 0) {
+                             handleNudgeShowtime(idx, shiftMinutes);
+                          }
                         }
                       }
                       setActiveId(null);
@@ -828,15 +1116,20 @@ export default function AutoGeneratePage() {
                   >
                     <div className="relative z-10">
                       {rooms.filter(r => {
-                        const assignedIds = [...new Set(previewList.map(st => st.room_id))];
-                        return assignedIds.includes(r.id);
+                        if (previewList.length === 0) return true;
+                        const firstStRoom = rooms.find(room => room.id === previewList[0].room_id);
+                        const targetCinemaId = firstStRoom?.cinemaId || firstStRoom?.cinema?.id;
+                        if (targetCinemaId) {
+                           return (r.cinemaId || r.cinema?.id) === targetCinemaId;
+                        }
+                        return true;
                       }).map(room => {
                       const roomShowtimes = previewList.filter(st => st.room_id === room.id)
                       const manualShowtimes = existingShowtimes.filter(st => st.room_id === room.id)
                       return (
-                        <div key={room.id} className="h-24 border-b border-[#e0e3e5] border-dashed relative">
+                        <DroppableRoomRow key={room.id} room={room}>
                           {manualShowtimes.map((st) => {
-                            const pos = calculatePosition(st.startTime, st.durationMinutes)
+                            const pos = calculatePosition(st.startTime, st.endTime)
                             const stHour = new Date(st.startTime).getHours()
                             const isGolden = stHour >= 18 && stHour < 22
                             
@@ -891,7 +1184,7 @@ export default function AutoGeneratePage() {
                               />
                             )
                           })}
-                        </div>
+                        </DroppableRoomRow>
                       )
                     })}
                   </div>

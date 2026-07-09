@@ -154,9 +154,19 @@ export default function ShowtimeListPage() {
     } catch (err) {
       console.error(err)
       const errMsg = err.response?.data?.message || err.message || 'Lỗi không xác định khi nhập file Excel!'
+      const errorLines = errMsg.split('\n').filter(line => line.trim() !== '')
+
       toast.error(
-        <div className="whitespace-pre-line text-xs font-semibold leading-relaxed">
-          {errMsg}
+        <div className="text-xs font-semibold leading-relaxed">
+          {errorLines.length > 1 ? (
+            <ul className="list-disc pl-4 space-y-1">
+              {errorLines.map((line, idx) => (
+                <li key={idx}>{line}</li>
+              ))}
+            </ul>
+          ) : (
+            <span>{errMsg}</span>
+          )}
         </div>,
         { id: toastId, duration: 8000 }
       )
@@ -192,20 +202,51 @@ export default function ShowtimeListPage() {
     if (isAuthorized) loadData()
   }, [isAuthorized])
 
-  // Get selected movie info for end time calculation
   const getEndTimeForShowtime = (st) => {
+    if (st.endTime) {
+      const d = new Date(st.endTime)
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+      }
+    }
+    // Fallback if endTime is missing
     const mObj = movies.find(m => m.titleVn === st.movie || m.id === st.movieId)
     const dMin = mObj ? (mObj.durationMinutes || 120) : 120
     try {
       const startT = new Date(`${st.date}T${st.time}:00`)
       if (!isNaN(startT.getTime())) {
-        const endT = new Date(startT.getTime() + dMin * 60 * 1000)
+        const endT = new Date(startT.getTime() + (dMin + 10) * 60 * 1000)
         return endT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
       }
     } catch (e) {
       console.error(e)
     }
     return '--:--'
+  }
+
+  const getCleaningEndTime = (st) => {
+    const endStr = getEndTimeForShowtime(st);
+    if (endStr === '--:--') return '--:--';
+    
+    let buffer = 15;
+    const roomName = st.room?.toLowerCase() || '';
+    if (roomName.includes('imax')) buffer = 30;
+    else if (roomName.includes('4dx') || roomName.includes('4d')) buffer = 20;
+    else {
+      const roomObj = rooms.find(r => r.name === st.room);
+      if (roomObj && roomObj.capacity && roomObj.capacity < 120) buffer = 10;
+    }
+
+    try {
+      const endT = new Date(`${st.date}T${endStr}:00`);
+      if (!isNaN(endT.getTime())) {
+        const cleanEndT = new Date(endT.getTime() + buffer * 60 * 1000);
+        return cleanEndT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return '--:--';
   }
 
 
@@ -328,7 +369,7 @@ export default function ShowtimeListPage() {
     
     return {
       left: `${totalMinutes}px`,
-      width: `${durationMins}px`,
+      width: `${durationMins + 10}px`,
     }
   }
 
@@ -795,7 +836,13 @@ export default function ShowtimeListPage() {
               <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
                 <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Thời gian chiếu</span>
                 <p className="text-[#b80035] font-bold font-mono text-base">{selectedShowtime.time} - {getEndTimeForShowtime(selectedShowtime)}</p>
-                <p className="text-xs font-medium text-[#191c1e] mt-1">{selectedShowtime.date}</p>
+                <div className="flex justify-between items-end mt-1">
+                  <p className="text-xs font-medium text-[#191c1e]">{selectedShowtime.date}</p>
+                  <p className="text-[11px] font-medium text-[#00836c] bg-[#e8f5e9] px-1.5 py-0.5 rounded flex items-center gap-1 border border-[#a5d6a7]">
+                    <span className="material-symbols-outlined text-[12px]">cleaning_services</span>
+                    <span>Dọn rạp đến {getCleaningEndTime(selectedShowtime)}</span>
+                  </p>
+                </div>
               </div>
               <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
                 <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Địa điểm</span>

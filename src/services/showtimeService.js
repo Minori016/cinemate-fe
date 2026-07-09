@@ -121,7 +121,9 @@ export const showtimeService = {
 
   // POST /api/v1/admin/showtimes/auto-generate/preview
   autoGenerate: async (requestData) => {
-    const res = await api.post('/api/v1/admin/showtimes/auto-generate/preview', requestData)
+    const res = await api.post('/api/v1/admin/showtimes/auto-generate/preview', requestData, {
+      timeout: 30000 // Increase timeout to 30s for heavy algorithm
+    })
     return res.data?.result || res.data
   },
 
