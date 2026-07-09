@@ -88,7 +88,7 @@ export default function ShowtimeFormPage() {
 
   // Calculations based on business logic
   const selectedMovie = movies.find(m => m.id === movieId)
-  const duration = selectedMovie?.durationMinutes || 120
+  const duration = selectedMovie?.duration || 120
 
   const availableFormats = useMemo(() => {
     if (!selectedMovie?.version) return ['2D'];
@@ -156,7 +156,12 @@ export default function ShowtimeFormPage() {
       if (!isNaN(startT.getTime())) {
         const adMins = 10
         const cleanMins = 15
-        const endT = new Date(startT.getTime() + (duration + adMins) * 60 * 1000)
+        let totalMins = duration + adMins
+        const remainder = totalMins % 5
+        if (remainder !== 0) {
+          totalMins += (5 - remainder)
+        }
+        const endT = new Date(startT.getTime() + totalMins * 60 * 1000)
         
         const bufferStart = new Date(startT.getTime() - cleanMins * 60 * 1000)
         const bufferEnd = new Date(endT.getTime() + cleanMins * 60 * 1000)
@@ -343,7 +348,7 @@ export default function ShowtimeFormPage() {
                 >
                   <option value="">Chọn phim...</option>
                   {movies.map(m => (
-                    <option key={m.id} value={m.id}>{m.titleVn} ({m.durationMinutes} phút)</option>
+                    <option key={m.id} value={m.id}>{m.titleVn} ({m.duration} phút)</option>
                   ))}
                 </select>
                 {errors.movieId && <span className="text-xs text-red-400 mt-1">{errors.movieId}</span>}
@@ -388,10 +393,10 @@ export default function ShowtimeFormPage() {
                   className={`bg-[#f7f9fb] border ${errors.time ? 'border-red-400' : 'border-[#e0e3e5]'} rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer`}
                 >
                   <option value="">Chọn giờ...</option>
-                  {Array.from({ length: 64 }, (_, i) => {
-                    const hour = Math.floor(i / 4) + 8;
+                  {Array.from({ length: 192 }, (_, i) => {
+                    const hour = Math.floor(i / 12) + 8;
                     if (hour > 23) return null;
-                    const min = (i % 4) * 15;
+                    const min = (i % 12) * 5;
                     const timeString = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
                     return <option key={timeString} value={timeString}>{timeString}</option>
                   })}

@@ -44,7 +44,7 @@ export default function MovieListPage() {
       return <span className={`px-2 py-1 rounded text-xs border whitespace-nowrap ${colors[r.status] || 'bg-gray-500/10 text-gray-400'}`}>{labels[r.status] || r.status || 'N/A'}</span>
     }},
     { key: 'fromDate', label: 'Từ ngày' },
-    { key: 'durationMinutes', label: 'Thời lượng', render: r => `${r.durationMinutes || 120} phút` },
+    { key: 'durationMinutes', label: 'Thời lượng', render: r => `${r.duration || 120} phút` },
     { key: 'version', label: 'Phiên bản' },
   ]
 
