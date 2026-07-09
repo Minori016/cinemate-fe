@@ -104,7 +104,7 @@ export default function MovieFormPage() {
             setTitleEn(movie.titleEn || '')
             setDescription(movie.description || '')
             setDirector(movie.director || '')
-            setDurationMinutes(movie.durationMinutes || '')
+            setDurationMinutes(movie.duration || '')
             setRating(movie.rating || 'P')
             if (movie.version) {
               const splitVersions = movie.version.split(',').map(v => v.trim()).filter(Boolean)
