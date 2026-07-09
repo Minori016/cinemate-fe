@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
-import { showtimeService } from '../../services/showtimeService'
+import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { cinemaService } from '../../services/cinemaService'
 import { motion, AnimatePresence } from 'motion/react'
 import { Clock, Film, MapPin, Subtitles, Tv, Calendar } from 'lucide-react'
@@ -12,9 +12,9 @@ const DAYS = Array.from({ length: 7 }, (_, i) => {
   d.setDate(d.getDate() + i)
   const isToday = i === 0
   const dayName = isToday ? 'Hôm nay' : ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'][d.getDay()]
-  return { 
-    date: d.toISOString().slice(0, 10), 
-    label: d.getDate(), 
+  return {
+    date: d.toISOString().slice(0, 10),
+    label: d.getDate(),
     day: dayName,
     month: `T${d.getMonth() + 1}`
   }
@@ -22,11 +22,11 @@ const DAYS = Array.from({ length: 7 }, (_, i) => {
 
 function ErrorState({ message, onRetry }) {
   return (
-    <div 
-      className="text-center py-16 rounded-2xl backdrop-blur-md" 
-      style={{ 
-        background: 'rgba(255, 255, 255, 0.02)', 
-        border: '1px solid rgba(255,255,255,0.05)' 
+    <div
+      className="text-center py-16 rounded-2xl backdrop-blur-md"
+      style={{
+        background: 'rgba(255, 255, 255, 0.02)',
+        border: '1px solid rgba(255,255,255,0.05)'
       }}
     >
       <span className="material-symbols-outlined text-5xl mb-3 block text-red-500">cloud_off</span>
@@ -34,8 +34,8 @@ function ErrorState({ message, onRetry }) {
         {message || 'Không thể tải dữ liệu. Vui lòng thử lại.'}
       </p>
       {onRetry && (
-        <button 
-          onClick={onRetry} 
+        <button
+          onClick={onRetry}
           className="px-6 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white transition-all cursor-pointer"
         >
           Thử lại
@@ -49,12 +49,12 @@ function LoadingSkeleton() {
   return (
     <div className="flex flex-col gap-6">
       {[1, 2, 3].map(i => (
-        <div 
-          key={i} 
-          className="flex flex-col sm:flex-row gap-6 p-5 sm:p-6 rounded-2xl border" 
-          style={{ 
-            background: 'rgba(255,255,255,0.02)', 
-            borderColor: 'rgba(255,255,255,0.05)' 
+        <div
+          key={i}
+          className="flex flex-col sm:flex-row gap-6 p-5 sm:p-6 rounded-2xl border"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            borderColor: 'rgba(255,255,255,0.05)'
           }}
         >
           <div className="w-28 sm:w-36 flex-shrink-0 aspect-[2/3] rounded-lg bg-white/5 animate-pulse" />
@@ -117,26 +117,26 @@ export default function ShowtimesPage() {
       .catch(() => setRooms([]))
   }, [])
 
-  // Tải lịch chiếu theo bộ lọc
+  // Tải lịch chiếu theo bộ lọc (public API, không dùng admin)
   useEffect(() => {
     const fetchShowtimes = async () => {
       setLoading(true)
       setError('')
       try {
-        const showtimesRes = await showtimeService.getAll({ date: selectedDay })
+        const showtimesRes = await showtimeService.getPublicShowtimes({ date: selectedDay })
         const allShowtimes = Array.isArray(showtimesRes) ? showtimesRes : []
 
         // Lọc theo tên rạp
         let filtered = allShowtimes
         if (selectedCinemaName) {
           const cinemaRoomIds = new Set(
-            filteredRooms.map(r => r.id)
+            filteredRooms.map(r => String(r.id))
           )
-          filtered = filtered.filter(st => cinemaRoomIds.has(st.roomId))
+          filtered = filtered.filter(st => cinemaRoomIds.has(String(st.roomId)))
         }
         // Lọc theo phòng chiếu
         if (selectedRoomId) {
-          filtered = filtered.filter(st => st.roomId === selectedRoomId)
+          filtered = filtered.filter(st => String(st.roomId) === String(selectedRoomId))
         }
 
         // Nhóm các lịch chiếu theo bộ phim tương ứng
@@ -145,7 +145,7 @@ export default function ShowtimesPage() {
           if (!st.startTime) return
           const stDate = st.startTime.split('T')[0]
           if (stDate !== selectedDay) return
-          if (st.status && st.status !== 'SCHEDULED') return
+          if (!isPublicShowtimeStatus(st.status)) return
 
           const mid = st.movieId
           if (!movieMap.has(mid)) {
@@ -161,8 +161,8 @@ export default function ShowtimesPage() {
           }
           const entry = movieMap.get(mid)
           const time = st.startTime.split('T')[1]?.substring(0, 5) || ''
-          if (time && !entry.schedules.some(s => s.time === time)) {
-            entry.schedules.push({ time, roomId: st.roomId || '' })
+          if (time && !entry.schedules.some(s => s.time === time && String(s.roomId) === String(st.roomId || ''))) {
+            entry.schedules.push({ time, roomId: st.roomId || '', status: st.status || '' })
           }
           entry.schedules.sort((a, b) => a.time.localeCompare(b.time))
         })
@@ -199,24 +199,24 @@ export default function ShowtimesPage() {
   }, [selectedDay, selectedCinemaName, selectedRoomId, filteredRooms])
 
   return (
-    <motion.div 
-      className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10" 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
+    <motion.div
+      className="w-full max-w-5xl mx-auto px-6 py-12 pt-24 relative z-10"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
     >
       {/* Title */}
-      <motion.div 
-        className="text-center mb-10" 
-        initial={{ opacity: 0, y: 28 }} 
-        animate={{ opacity: 1, y: 0 }} 
+      <motion.div
+        className="text-center mb-10"
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
       >
-        <h1 
-          className="text-4xl md:text-5xl uppercase tracking-tighter mb-3" 
-          style={{ 
-            fontFamily: 'Montserrat, sans-serif', 
-            fontWeight: 950, 
+        <h1
+          className="text-4xl md:text-5xl uppercase tracking-tighter mb-3"
+          style={{
+            fontFamily: 'Montserrat, sans-serif',
+            fontWeight: 950,
             color: 'white',
             letterSpacing: '0.02em'
           }}
@@ -229,19 +229,19 @@ export default function ShowtimesPage() {
       </motion.div>
 
       {/* Filters Banner: Day, Cinema, Room */}
-      <div 
-        className="flex flex-col gap-6 mb-10 p-6 rounded-2xl border" 
-        style={{ 
-          background: 'rgba(255, 255, 255, 0.02)', 
-          borderColor: 'rgba(255, 255, 255, 0.05)', 
+      <div
+        className="flex flex-col gap-6 mb-10 p-6 rounded-2xl border"
+        style={{
+          background: 'rgba(255, 255, 255, 0.02)',
+          borderColor: 'rgba(255, 255, 255, 0.05)',
           backdropFilter: 'blur(16px)',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
         }}
       >
         {/* Day selector */}
         <div className="flex flex-col gap-2">
-          <span 
-            className="text-[10px] uppercase font-bold tracking-widest text-center mb-1" 
+          <span
+            className="text-[10px] uppercase font-bold tracking-widest text-center mb-1"
             style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Montserrat, sans-serif' }}
           >
             Chọn ngày chiếu
@@ -250,19 +250,19 @@ export default function ShowtimesPage() {
             {DAYS.map(d => {
               const isActive = selectedDay === d.date
               return (
-                <button 
-                  key={d.date} 
-                  onClick={() => { setSelectedDay(d.date); setSelectedRoomId('') }} 
-                  className="flex-shrink-0 flex flex-col items-center justify-center w-[74px] h-[82px] rounded-xl transition-all duration-300 border cursor-pointer" 
-                  style={{ 
-                    fontFamily: 'Inter, sans-serif', 
-                    background: isActive ? 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)' : 'rgba(255,255,255,0.03)', 
-                    borderColor: isActive ? 'rgba(229,9,20,0.5)' : 'rgba(255,255,255,0.08)', 
-                    color: isActive ? '#white' : 'rgba(255,255,255,0.7)', 
-                    boxShadow: isActive ? '0 8px 24px rgba(229,9,20,0.3)' : 'none', 
-                    transform: isActive ? 'scale(1.03)' : 'none' 
-                  }} 
-                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' } }} 
+                <button
+                  key={d.date}
+                  onClick={() => { setSelectedDay(d.date); setSelectedRoomId('') }}
+                  className="flex-shrink-0 flex flex-col items-center justify-center w-[74px] h-[82px] rounded-xl transition-all duration-300 border cursor-pointer"
+                  style={{
+                    fontFamily: 'Inter, sans-serif',
+                    background: isActive ? 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)' : 'rgba(255,255,255,0.03)',
+                    borderColor: isActive ? 'rgba(229,9,20,0.5)' : 'rgba(255,255,255,0.08)',
+                    color: isActive ? '#white' : 'rgba(255,255,255,0.7)',
+                    boxShadow: isActive ? '0 8px 24px rgba(229,9,20,0.3)' : 'none',
+                    transform: isActive ? 'scale(1.03)' : 'none'
+                  }}
+                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)' } }}
                   onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' } }}
                 >
                   <span className="text-[10px] font-bold uppercase tracking-wider mb-1 opacity-70">{d.day}</span>
@@ -278,21 +278,21 @@ export default function ShowtimesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Cinema select */}
           <div className="flex flex-col gap-2 relative w-full text-left">
-            <span 
-              className="text-[10px] uppercase font-bold tracking-widest" 
+            <span
+              className="text-[10px] uppercase font-bold tracking-widest"
               style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Montserrat, sans-serif' }}
             >
               Chọn rạp
             </span>
             <div className="relative">
-              <select 
-                value={selectedCinemaName} 
-                onChange={e => { setSelectedCinemaName(e.target.value); setSelectedRoomId('') }} 
-                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px]" 
-                style={{ 
-                  background: 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  backdropFilter: 'blur(10px)', 
+              <select
+                value={selectedCinemaName}
+                onChange={e => { setSelectedCinemaName(e.target.value); setSelectedRoomId('') }}
+                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px]"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
                 }}
               >
                 <option value="" className="bg-neutral-900">Tất cả rạp</option>
@@ -306,22 +306,22 @@ export default function ShowtimesPage() {
 
           {/* Room select */}
           <div className="flex flex-col gap-2 relative w-full text-left">
-            <span 
-              className="text-[10px] uppercase font-bold tracking-widest" 
+            <span
+              className="text-[10px] uppercase font-bold tracking-widest"
               style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Montserrat, sans-serif' }}
             >
               Chọn phòng chiếu
             </span>
             <div className="relative">
-              <select 
-                value={selectedRoomId} 
-                onChange={e => setSelectedRoomId(e.target.value)} 
+              <select
+                value={selectedRoomId}
+                onChange={e => setSelectedRoomId(e.target.value)}
                 disabled={filteredRooms.length === 0}
-                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px] disabled:opacity-40 disabled:cursor-not-allowed" 
-                style={{ 
-                  background: 'rgba(255,255,255,0.05)', 
-                  border: '1px solid rgba(255,255,255,0.1)', 
-                  backdropFilter: 'blur(10px)', 
+                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px] disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(10px)',
                 }}
               >
                 <option value="" className="bg-neutral-900">Tất cả phòng</option>
@@ -345,10 +345,10 @@ export default function ShowtimesPage() {
 
       {/* Empty state */}
       {!loading && !error && movies.length === 0 && (
-        <div 
-          className="text-center py-20 rounded-2xl border" 
-          style={{ 
-            background: 'rgba(255,255,255,0.02)', 
+        <div
+          className="text-center py-20 rounded-2xl border"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
             borderColor: 'rgba(255,255,255,0.05)',
             backdropFilter: 'blur(8px)'
           }}
@@ -365,29 +365,29 @@ export default function ShowtimesPage() {
 
       {/* Movie list with showtimes */}
       {!loading && !error && movies.length > 0 && (
-        <motion.div 
-          className="flex flex-col gap-6" 
-          initial="hidden" 
-          animate="visible" 
-          variants={{ 
-            hidden: {}, 
-            visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } 
+        <motion.div
+          className="flex flex-col gap-6"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } }
           }}
         >
           {movies.map(movie => (
-            <motion.div 
-              key={movie.id} 
-              className="flex flex-col sm:flex-row gap-6 p-5 sm:p-6 rounded-2xl backdrop-blur-xl transition-all duration-300 border text-left" 
-              style={{ 
-                background: 'rgba(255, 255, 255, 0.03)', 
-                borderColor: 'rgba(255, 255, 255, 0.06)' 
-              }} 
-              variants={{ 
-                hidden: { opacity: 0, y: 24 }, 
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } 
-              }} 
-              whileHover={{ 
-                y: -4, 
+            <motion.div
+              key={movie.id}
+              className="flex flex-col sm:flex-row gap-6 p-5 sm:p-6 rounded-2xl backdrop-blur-xl transition-all duration-300 border text-left"
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderColor: 'rgba(255, 255, 255, 0.06)'
+              }}
+              variants={{
+                hidden: { opacity: 0, y: 24 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } }
+              }}
+              whileHover={{
+                y: -4,
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 borderColor: 'rgba(229, 9, 20, 0.25)',
                 boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5)',
@@ -395,8 +395,8 @@ export default function ShowtimesPage() {
               }}
             >
               {/* Poster */}
-              <Link 
-                to={`/movies/${movie.id}`} 
+              <Link
+                to={`/movies/${movie.id}`}
                 className="w-28 sm:w-36 flex-shrink-0 aspect-[2/3] rounded-lg overflow-hidden bg-black/20 shadow-lg block hover:scale-[1.03] transition-transform duration-300 relative group"
               >
                 {movie.smallImage ? (
@@ -417,10 +417,10 @@ export default function ShowtimesPage() {
               {/* Info & Time slots */}
               <div className="flex-1 flex flex-col justify-center">
                 <Link to={`/movies/${movie.id}`} className="hover:text-[var(--color-primary)] transition-colors w-fit block">
-                  <h3 
-                    className="text-2xl font-black mb-1.5 uppercase hover:text-red-500 transition-colors" 
-                    style={{ 
-                      fontFamily: 'Montserrat, sans-serif', 
+                  <h3
+                    className="text-2xl font-black mb-1.5 uppercase hover:text-red-500 transition-colors"
+                    style={{
+                      fontFamily: 'Montserrat, sans-serif',
                       color: 'white',
                       letterSpacing: '0.01em'
                     }}
@@ -429,22 +429,22 @@ export default function ShowtimesPage() {
                   </h3>
                 </Link>
 
-                <div 
-                  className="flex flex-wrap items-center gap-3.5 mb-5 text-xs text-white/50" 
+                <div
+                  className="flex flex-wrap items-center gap-3.5 mb-5 text-xs text-white/50"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
                   {movie.movieNameEnglish && (
                     <span className="font-semibold text-white/70">{movie.movieNameEnglish}</span>
                   )}
                   {movie.movieNameEnglish && <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>}
-                  
+
                   <span className="flex items-center gap-1.5">
                     <Clock size={13} className="text-red-500" />
                     {movie.duration} phút
                   </span>
-                  
+
                   <span className="w-1.5 h-1.5 rounded-full bg-white/20"></span>
-                  
+
                   <span className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-white/10 bg-white/5 text-white/80 font-bold uppercase tracking-wide">
                     <Tv size={12} className="text-red-500" />
                     {movie.version || '2D'}
@@ -454,14 +454,14 @@ export default function ShowtimesPage() {
                 {/* Time slots */}
                 <div className="flex flex-wrap gap-3">
                   {(movie.schedules || []).map(slot => (
-                    <button 
-                      key={slot.time} 
-                      onClick={() => navigate(`/movies/${movie.id}?date=${selectedDay}&time=${slot.time}&roomId=${slot.roomId}`)} 
-                      className="px-5 py-2.5 text-xs font-black rounded-xl border transition-all duration-200 cursor-pointer uppercase tracking-wider" 
-                      style={{ 
+                    <button
+                      key={slot.time}
+                      onClick={() => navigate(`/movies/${movie.id}?date=${selectedDay}&time=${slot.time}&roomId=${slot.roomId}`)}
+                      className="px-5 py-2.5 text-xs font-black rounded-xl border transition-all duration-200 cursor-pointer uppercase tracking-wider"
+                      style={{
                         fontFamily: 'Montserrat, sans-serif',
-                        borderColor: 'rgba(229, 9, 20, 0.4)', 
-                        color: '#e50914', 
+                        borderColor: 'rgba(229, 9, 20, 0.4)',
+                        color: '#e50914',
                         backgroundColor: 'rgba(229, 9, 20, 0.08)',
                       }}
                       onMouseEnter={e => {

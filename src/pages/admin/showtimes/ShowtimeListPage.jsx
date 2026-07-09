@@ -11,6 +11,28 @@ import { toast } from 'sonner'
 
 const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 
+const STATUS_META = {
+  DRAFT: { label: 'Nháp', className: 'bg-gray-100 text-gray-600 border-gray-300' },
+  SCHEDULED: { label: 'Đã lên lịch', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  OPEN_FOR_BOOKING: { label: 'Mở bán', className: 'bg-green-50 text-green-700 border-green-200' },
+  SOLD_OUT: { label: 'Hết vé', className: 'bg-orange-50 text-orange-700 border-orange-200' },
+  CANCELLED: { label: 'Đã hủy', className: 'bg-red-50 text-red-700 border-red-200' },
+  FINISHED: { label: 'Đã chiếu', className: 'bg-slate-100 text-slate-600 border-slate-300' },
+}
+
+const getStatusMeta = (status) => STATUS_META[status] || { label: status || '—', className: 'bg-gray-100 text-gray-600 border-gray-300' }
+
+/** Next allowed publish actions for the standard flow (hướng 1). */
+const getNextStatusActions = (status) => {
+  if (status === 'DRAFT') {
+    return [{ status: 'SCHEDULED', label: 'Publish (lên lịch)', icon: 'publish' }]
+  }
+  if (status === 'SCHEDULED') {
+    return [{ status: 'OPEN_FOR_BOOKING', label: 'Mở bán vé', icon: 'confirmation_number' }]
+  }
+  return []
+}
+
 const getFormatColor = (format) => {
   const f = (format || '2D').toUpperCase()
   if (f.includes('IMAX')) return { bar: 'bg-[#ba1a1a]', text: 'text-[#ba1a1a]', border: 'border-[#ffdad6]' }
@@ -81,6 +103,7 @@ export default function ShowtimeListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [showExportModal, setShowExportModal] = useState(false)
+  const [statusUpdatingId, setStatusUpdatingId] = useState(null)
 
   const triggerToast = (msg, type = 'success') => {
     if (type === 'success') {
@@ -227,6 +250,39 @@ export default function ShowtimeListPage() {
       triggerToast(userMessage, 'error')
     } finally {
       setDeleteTarget(null)
+    }
+  }
+
+  // Publish flow (hướng 1): DRAFT → SCHEDULED → OPEN_FOR_BOOKING
+  // Chỉ suất SCHEDULED / OPEN_FOR_BOOKING / SOLD_OUT mới hiện trên API user.
+  const handleUpdateStatus = async (st, nextStatus) => {
+    if (!st?.id || !nextStatus) return
+    setStatusUpdatingId(st.id)
+    const toastId = toast.loading(`Đang cập nhật trạng thái → ${getStatusMeta(nextStatus).label}...`)
+    try {
+      const updated = await showtimeService.updateStatus(st.id, nextStatus)
+      setShowtimes(prev => prev.map(item => (
+        item.id === st.id ? { ...item, ...updated, status: updated.status || nextStatus } : item
+      )))
+      setSelectedShowtime(prev => (
+        prev && prev.id === st.id
+          ? { ...prev, ...updated, status: updated.status || nextStatus }
+          : prev
+      ))
+      toast.success(
+        nextStatus === 'SCHEDULED'
+          ? 'Đã publish suất chiếu (SCHEDULED). User đã có thể thấy lịch.'
+          : nextStatus === 'OPEN_FOR_BOOKING'
+            ? 'Đã mở bán vé (OPEN_FOR_BOOKING).'
+            : `Đã cập nhật trạng thái: ${getStatusMeta(nextStatus).label}`,
+        { id: toastId }
+      )
+    } catch (err) {
+      console.error(err)
+      const message = err?.response?.data?.message || 'Cập nhật trạng thái thất bại. Kiểm tra transition status.'
+      toast.error(message, { id: toastId })
+    } finally {
+      setStatusUpdatingId(null)
     }
   }
 
@@ -613,16 +669,23 @@ export default function ShowtimeListPage() {
                           const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
                           const isDubbed = isAnimation && st.language === 'Lồng tiếng'
                           const isGoldenHour = st.goldenHour || st.isGoldenHour
-                          
-                          const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
-                          const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]')
-                          const borderColor = isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]'
-                          const textColor = isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]'
+                          const statusMeta = getStatusMeta(st.status)
+                          const nextActions = getNextStatusActions(st.status)
+                          const isDraft = st.status === 'DRAFT'
+
+                          const barColor = isDraft ? 'bg-gray-400' : (isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]')
+                          const bgColor = isDraft
+                            ? 'bg-[#f5f5f5]'
+                            : (isDubbed
+                              ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]'
+                              : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]'))
+                          const borderColor = isDraft ? 'border-gray-300' : (isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]')
+                          const textColor = isDraft ? 'text-gray-500' : (isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]')
                           return (
                             <div
                               key={st.id}
                               onClick={() => setSelectedShowtime(st)}
-                              className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm`}
+                              className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm ${isDraft ? 'opacity-80' : ''}`}
                               style={{ left, width }}
                             >
                               <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
@@ -635,6 +698,9 @@ export default function ShowtimeListPage() {
                                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
                                     {st.format || '2D'}
                                   </span>
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${statusMeta.className}`}>
+                                    {statusMeta.label}
+                                  </span>
                                 </div>
                                 <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
                                   <span>{st.time}</span>
@@ -645,6 +711,20 @@ export default function ShowtimeListPage() {
 
                               {/* Hover Actions */}
                               <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
+                                {nextActions.map(action => (
+                                  <button
+                                    key={action.status}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleUpdateStatus(st, action.status)
+                                    }}
+                                    disabled={statusUpdatingId === st.id}
+                                    title={action.label}
+                                    className="p-1.5 text-[#1565c0] hover:bg-[#e3f2fd] rounded-full transition-colors bg-white shadow-sm disabled:opacity-50"
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">{action.icon}</span>
+                                  </button>
+                                ))}
                                 <button
                                   onClick={(e) => { e.stopPropagation(); setDeleteTarget(st); }}
                                   title="Xóa suất chiếu"
@@ -666,7 +746,7 @@ export default function ShowtimeListPage() {
           
           {/* Footer Status */}
           <div className="mt-4 flex justify-between items-center shrink-0">
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#ba1a1a]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">IMAX</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#565e74]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">Standard</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#00836c]"></div><span className="text-[12px] font-semibold text-[#5c3f40]">3D</span></div>
@@ -677,6 +757,10 @@ export default function ShowtimeListPage() {
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 rounded bg-[#fff8e1] border border-[#ffe082]"></div>
                 <span className="text-[12px] font-semibold text-[#5c3f40]">Giờ vàng</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-3 rounded bg-[#f5f5f5] border border-gray-300"></div>
+                <span className="text-[12px] font-semibold text-[#5c3f40]">Nháp (user chưa thấy)</span>
               </div>
             </div>
             <span className="text-sm text-[#5c3f40]">Hệ thống quản lý rạp chiếu phim - v2.1.0</span>
@@ -694,13 +778,17 @@ export default function ShowtimeListPage() {
                     <th className="px-6 py-4 text-left">Phòng chiếu</th>
                     <th className="px-6 py-4 text-left">Ngày chiếu</th>
                     <th className="px-6 py-4 text-left">Giờ chiếu</th>
+                    <th className="px-6 py-4 text-left">Trạng thái</th>
                     <th className="px-6 py-4 text-left">Ngôn ngữ</th>
                     <th className="px-6 py-4 text-left">Giá vé</th>
                     <th className="px-6 py-4 text-right">Hành động</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e0e3e5] text-xs">
-                  {filteredShowtimes.map((st) => (
+                  {filteredShowtimes.map((st) => {
+                    const statusMeta = getStatusMeta(st.status)
+                    const nextActions = getNextStatusActions(st.status)
+                    return (
                     <tr key={st.id} className="hover:bg-[#f7f9fb] transition-colors">
                       <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
                       <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
@@ -710,6 +798,11 @@ export default function ShowtimeListPage() {
                           <Clock size={12} /> {st.time} - {getEndTimeForShowtime(st)}
                         </div>
                       </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-0.5 border rounded text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                          {statusMeta.label}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 font-bold">
                         <span className={`px-2 py-0.5 border rounded text-[10px] uppercase ${st.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#f7f9fb] text-[#5c647a] border-[#e0e3e5]'}`}>
                           {st.language || 'Phụ đề'}
@@ -718,6 +811,17 @@ export default function ShowtimeListPage() {
                       <td className="px-6 py-4 font-extrabold font-mono text-[#00836c]">{formatVND(st.price)}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {nextActions.map(action => (
+                            <button
+                              key={action.status}
+                              onClick={() => handleUpdateStatus(st, action.status)}
+                              disabled={statusUpdatingId === st.id}
+                              className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer disabled:opacity-50"
+                              title={action.label}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">{action.icon}</span>
+                            </button>
+                          ))}
                           <button
                             onClick={() => setSelectedShowtime(st)}
                             className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer"
@@ -735,7 +839,8 @@ export default function ShowtimeListPage() {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -804,6 +909,25 @@ export default function ShowtimeListPage() {
               </div>
             </div>
 
+            <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
+              <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-2">Trạng thái</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`px-2.5 py-1 border rounded text-xs font-bold uppercase ${getStatusMeta(selectedShowtime.status).className}`}>
+                  {getStatusMeta(selectedShowtime.status).label}
+                </span>
+                {selectedShowtime.status === 'DRAFT' && (
+                  <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                    User chưa thấy suất này. Cần Publish (lên lịch).
+                  </span>
+                )}
+                {selectedShowtime.status === 'SCHEDULED' && (
+                  <span className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                    User đã thấy lịch. Có thể Mở bán vé.
+                  </span>
+                )}
+              </div>
+            </div>
+
             <div className="bg-white border border-[#e0e3e5] rounded-xl shadow-sm overflow-hidden">
               <div className="bg-[#f7f9fb] px-4 py-2 border-b border-[#e0e3e5]">
                 <span className="text-[10px] text-[#5c647a] font-bold uppercase">Bảng giá vé</span>
@@ -824,7 +948,17 @@ export default function ShowtimeListPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-2 justify-end pt-2 flex-wrap">
+              {getNextStatusActions(selectedShowtime.status).map(action => (
+                <Button
+                  key={action.status}
+                  onClick={() => handleUpdateStatus(selectedShowtime, action.status)}
+                  disabled={statusUpdatingId === selectedShowtime.id}
+                >
+                  <span className="material-symbols-outlined text-sm mr-1">{action.icon}</span>
+                  {action.label}
+                </Button>
+              ))}
               <Button variant="secondary" onClick={() => setSelectedShowtime(null)}>Đóng</Button>
             </div>
           </div>

@@ -46,20 +46,28 @@ export default function SeatStep({
     return 90000
   }
 
-  // Fetch room layout when showtime changes
+  // Fetch room layout when showtime changes (/layout, fallback /seats → seatMatrix)
   useEffect(() => {
     if (!selectedShowtime?.roomId) { setLayout(null); return }
+    let cancelled = false
     setLoadingSeats(true)
     setSeatError('')
-    cinemaRoomService.getLayout(selectedShowtime.roomId)
-      .then(res => {
-        const data = res.data?.result || res.data
-        if (data) setLayout(data)
+    cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
+      roomName: selectedShowtime.roomName || selectedShowtime.room || '',
+    })
+      .then(data => {
+        if (cancelled) return
+        if (data?.seatMatrix?.length) setLayout(data)
         else setSeatError('Không thể tải sơ đồ ghế')
       })
-      .catch(() => setSeatError('Không thể tải sơ đồ ghế'))
-      .finally(() => setLoadingSeats(false))
-  }, [selectedShowtime?.roomId])
+      .catch(() => {
+        if (!cancelled) setSeatError('Không thể tải sơ đồ ghế')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSeats(false)
+      })
+    return () => { cancelled = true }
+  }, [selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
 
   // Build occupied seat set from layout
   const occupiedSet = useMemo(() => {

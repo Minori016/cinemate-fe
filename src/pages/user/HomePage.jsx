@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import {
+  promotionService,
+  getQuickDiscountText,
+  formatPromoDateRange,
+} from '../../services/promotionService'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   Search, LogOut, User, Settings, ChevronDown, Bell, X, Menu,
@@ -20,14 +25,16 @@ import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
 const DEFAULT_POSTER_SMALL = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'
 
-// ── Static Data ────────────────────────────────────────────────
-const PROMOTIONS = [
-  { id: 1, tag: 'HOT', tagColor: '#e50914', title: 'Happy Monday — Đồng Giá 45K', desc: 'Ưu đãi đồng giá vé 2D chỉ 45.000đ cho mọi thành viên vào mỗi ngày Thứ Hai hàng tuần.', date: 'Mỗi Thứ Hai', img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700' },
-  { id: 2, tag: 'MỚI', tagColor: '#2563eb', title: 'Khai Trương CineMate Thủ Đức', desc: 'Giảm 50% bắp nước khi mua kèm 2 vé tại chi nhánh Thủ Đức.', date: 'Đến 30/06/2026', img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700' },
-  { id: 3, tag: 'VIP', tagColor: '#d97706', title: 'Hội Viên Vàng — Tích Điểm Đôi', desc: 'Tích lũy điểm thành viên gấp đôi và nhận thêm bắp nước miễn phí vào tháng sinh nhật.', date: 'Chương trình thường niên', img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700' },
-  { id: 4, tag: 'COMBO', tagColor: '#16a34a', title: 'Combo Cuối Tuần — Tiết Kiệm 30%', desc: 'Mua combo 2 vé + 2 bắp lớn + 2 nước vào Thứ 7 & Chủ Nhật, tiết kiệm đến 30%.', date: 'Thứ 7 & Chủ Nhật', img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700' },
+const FALLBACK_PROMOTION_IMGS = [
+  'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700',
+  'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700',
+  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700',
+  'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700',
 ]
 
+const TAG_COLORS = ['#e50914', '#2563eb', '#d97706', '#16a34a', '#9333ea']
+
+// ── Static Data ────────────────────────────────────────────────
 const CINEMAS = [
   { id: 1, name: 'CineMate Quận 1', badge: 'CHI NHÁNH TỔNG', badgeColor: '#d97706', address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh', phone: '1900 1234', rooms: 10, screens: ['2D', '3D', 'IMAX', '4DX'], img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800' },
   { id: 2, name: 'CineMate Bình Thạnh', badge: null, badgeColor: null, address: '156 Xo Vìt Nghệ Tĩnh, Phường 26, Quận Bình Thạnh, TP. Hồ Chí Minh', phone: '1900 1235', rooms: 8, screens: ['2D', '3D', '4DX'], img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800' },
@@ -248,6 +255,8 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
 
 export default function HomePage() {
   const [movies, setMovies] = useState([])
+  const [promotions, setPromotions] = useState([])
+  const [promotionsLoading, setPromotionsLoading] = useState(true)
   const location = useLocation()
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -345,6 +354,33 @@ export default function HomePage() {
       return prev + 4
     })
   }
+
+  // Load active promotions for homepage cards
+  useEffect(() => {
+    let cancelled = false
+    setPromotionsLoading(true)
+    promotionService.getActiveForUi()
+      .then(list => {
+        if (cancelled) return
+        const cards = (Array.isArray(list) ? list : []).slice(0, 8).map((p, i) => {
+          const discountText = getQuickDiscountText(p)
+          return {
+            id: p.id || p.code || i,
+            tag: discountText ? discountText.replace('Giảm ', '').toUpperCase() : (p.code || 'HOT'),
+            tagColor: TAG_COLORS[i % TAG_COLORS.length],
+            title: p.title || p.code || 'Khuyến mãi',
+            desc: p.detail || p.description || p.content || discountText || 'Ưu đãi đặc biệt từ CineMate.',
+            date: formatPromoDateRange(p),
+            img: p.imageUrl || FALLBACK_PROMOTION_IMGS[i % FALLBACK_PROMOTION_IMGS.length],
+            code: p.code || '',
+          }
+        })
+        setPromotions(cards)
+      })
+      .catch(() => { if (!cancelled) setPromotions([]) })
+      .finally(() => { if (!cancelled) setPromotionsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     console.log('🔍 Fetching movies...')
@@ -937,6 +973,16 @@ export default function HomePage() {
               </motion.div>
 
               {/* Cards grid */}
+              {promotionsLoading ? (
+                <div className="flex justify-center py-16">
+                  <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
+                </div>
+              ) : promotions.length === 0 ? (
+                <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]">
+                  <p className="text-white/60 text-sm">Chưa có chương trình ưu đãi đang chạy.</p>
+                  <Link to="/promotions" className="inline-block mt-3 text-sm font-bold text-red-500 hover:text-red-400">Xem trang khuyến mãi</Link>
+                </div>
+              ) : (
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
                 initial="hidden"
@@ -944,10 +990,10 @@ export default function HomePage() {
                 viewport={{ once: true, margin: '-60px' }}
                 variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
               >
-                {PROMOTIONS.map((promo) => (
+                {promotions.map((promo) => (
+                  <Link to="/promotions" key={promo.id}>
                   <motion.div
-                    key={promo.id}
-                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card"
+                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card h-full"
                     variants={{ hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
                     whileHover={{ y: -6, transition: { duration: 0.22 } }}
                     style={{
@@ -963,6 +1009,7 @@ export default function HomePage() {
                         alt={promo.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         style={{ filter: 'brightness(0.75)' }}
+                        onError={(e) => { e.currentTarget.src = FALLBACK_PROMOTION_IMGS[0] }}
                       />
                       {/* Tag badge */}
                       <span
@@ -983,14 +1030,19 @@ export default function HomePage() {
                       <p className="text-xs leading-relaxed flex-1 mb-4" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
                         {promo.desc}
                       </p>
+                      {promo.code && (
+                        <p className="text-[11px] font-mono font-bold text-yellow-400/90 mb-2 tracking-wider">Mã: {promo.code}</p>
+                      )}
                       <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: promo.tagColor }}>
                         <Calendar size={12} />
                         <span>{promo.date}</span>
                       </div>
                     </div>
                   </motion.div>
+                  </Link>
                 ))}
               </motion.div>
+              )}
 
               <div className="flex justify-center mt-8 sm:hidden">
                 <Link to="/promotions" className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors flex items-center gap-1.5">

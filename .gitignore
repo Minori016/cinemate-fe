@@ -28,3 +28,4 @@ dist-ssr
 movie-theater-back-end/ 
 backend/
 .agents/
+.vite/

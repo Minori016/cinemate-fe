@@ -67,17 +67,21 @@ export default function PromotionFormPage() {
             setTitle(promo.title || '')
             setStartTime(toDatetimeLocal(promo.startTime))
             setEndTime(toDatetimeLocal(promo.endTime))
-            setContent(promo.content || '')
-            setDescription(promo.description || '')
+            setContent(promo.content || promo.detail || '')
+            setDescription(promo.description || promo.detail || '')
 
             setCode(promo.code || '')
             setImageUrl(promo.imageUrl || '')
             setType(promo.type || PROMOTION_TYPES.VOUCHER)
-            setDiscountType(promo.discountType || DISCOUNT_TYPES.PERCENT)
-            setDiscountValue(promo.discountValue ?? '')
+
+            // Map discount values from backend
+            const isPercent = promo.discountPercent != null && Number(promo.discountPercent) > 0
+            setDiscountType(isPercent ? DISCOUNT_TYPES.PERCENT : DISCOUNT_TYPES.FIXED_AMOUNT)
+            setDiscountValue(isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? ''))
+
             setMinOrderValue(promo.minOrderValue ?? '')
             setMaxDiscount(promo.maxDiscount ?? '')
-            setUsageLimit(promo.usageLimit ?? '')
+            setUsageLimit(promo.maxTotalUsage ?? promo.usageLimit ?? '')
             setUsagePerUser(promo.usagePerUser ?? '1')
             setPriority(promo.priority ?? '0')
             setStackable(!!promo.stackable)
@@ -152,22 +156,31 @@ export default function PromotionFormPage() {
 
     setIsSubmitting(true)
 
-    // Payload gửi tới backend — backend sẽ lấy field nào hiểu thì dùng
+    // Payload gửi tới backend — bổ sung các trường chuẩn mà backend yêu cầu
     const payload = {
       title: title.trim(),
       startTime,
       endTime,
       content: content.trim(),
       description: description.trim(),
-      // Mở rộng — tham khảo CGV. Backend cũ sẽ bỏ qua những field này.
+      detail: description.trim() || content.trim(),
+
       code: code.trim().toUpperCase() || null,
       imageUrl: imageUrl.trim() || null,
       type,
       discountType,
-      discountValue: discountValue === '' ? null : Number(discountValue),
+
+      // Phân tách % giảm và tiền mặt giảm theo loại đã chọn
+      discountPercent: discountType === DISCOUNT_TYPES.PERCENT && discountValue !== '' ? Number(discountValue) : null,
+      discountValue: discountType === DISCOUNT_TYPES.FIXED_AMOUNT && discountValue !== '' ? Number(discountValue) : null,
+
       minOrderValue: minOrderValue === '' ? null : Number(minOrderValue),
       maxDiscount: maxDiscount === '' ? null : Number(maxDiscount),
+
+      // Bổ sung maxTotalUsage tương ứng với Tổng lượt dùng
+      maxTotalUsage: usageLimit === '' ? null : Number(usageLimit),
       usageLimit: usageLimit === '' ? null : Number(usageLimit),
+
       usagePerUser: usagePerUser === '' ? 1 : Number(usagePerUser),
       priority: priority === '' ? 0 : Number(priority),
       stackable,

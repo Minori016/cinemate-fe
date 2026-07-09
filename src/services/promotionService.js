@@ -2,22 +2,121 @@ import api from './api'
 
 /**
  * Promotion Service
- *
- * Lưu ý: Backend hiện tại chỉ hỗ trợ 5 endpoint cơ bản.
- * Các endpoint mở rộng (validate/apply/active/available/stats/toggle)
- * sẽ được bổ sung ở backend sau. UI frontend được thiết kế để
- *  hoạt động được với cả 2 trường hợp — sẵn sàng mở rộng mà không phải sửa lại.
+ * Public GET: /api/v1/promotions, /active, /code/{code}, /{id}
+ * Auth POST: /api/v1/promotions/validate
  */
 export const promotionService = {
   getAll: (params) => api.get('/api/v1/promotions', { params }),
   getById: (id) => api.get(`/api/v1/promotions/${id}`),
+  getByCode: (code) => api.get(`/api/v1/promotions/code/${encodeURIComponent(code)}`),
+  getActive: () => api.get('/api/v1/promotions/active'),
+  validate: (data) => api.post('/api/v1/promotions/validate', data),
   create: (data) => api.post('/api/v1/admin/promotions', data),
   update: (id, data) => api.put(`/api/v1/admin/promotions/${id}`, data),
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
+
+  /**
+   * User pages: load active promotions, mapped for UI.
+   * Falls back to empty list (no mock fake discounts).
+   */
+  getActiveForUi: async () => {
+    try {
+      const res = await api.get('/api/v1/promotions/active')
+      const list = unwrapList(res.data)
+      return list.map(mapPromotionForUi).filter(p => p.id || p.code)
+    } catch (err) {
+      console.error('Failed to load active promotions:', err)
+      // Fallback: try paged list and filter client-side
+      try {
+        const res = await api.get('/api/v1/promotions', { params: { page: 0, size: 50 } })
+        const list = unwrapList(res.data)
+        return list
+          .map(mapPromotionForUi)
+          .filter(p => {
+            const s = computePromotionStatus(p)
+            return s === PROMOTION_STATUS.ACTIVE || s === 'ACTIVE'
+          })
+      } catch (err2) {
+        console.error('Failed to load promotions list:', err2)
+        return []
+      }
+    }
+  },
+
+  /**
+   * Validate promo code against order amount.
+   * Returns { success, message, discountAmount, discountPercent, promotionCode }
+   */
+  validateForUi: async (code, orderAmount) => {
+    const payload = {
+      code: String(code || '').trim().toUpperCase(),
+      orderAmount: Number(orderAmount) || 0,
+    }
+    if (!payload.code) {
+      return { success: false, message: 'Vui lòng nhập mã giảm giá' }
+    }
+    if (payload.orderAmount <= 0) {
+      return { success: false, message: 'Chưa có tổng tiền đơn hàng để áp dụng mã' }
+    }
+    try {
+      const res = await api.post('/api/v1/promotions/validate', payload)
+      const data = res.data?.result || res.data || {}
+      return {
+        success: data.success !== false && (data.discountAmount != null || data.discountPercent != null),
+        message: data.message || (data.success === false ? 'Mã không hợp lệ' : 'Áp dụng thành công'),
+        discountAmount: data.discountAmount != null ? Number(data.discountAmount) : 0,
+        discountPercent: data.discountPercent != null ? Number(data.discountPercent) : null,
+        promotionCode: data.promotionCode || payload.code,
+      }
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Mã giảm giá không chính xác hoặc đã hết hạn'
+      return { success: false, message, discountAmount: 0, discountPercent: null, promotionCode: payload.code }
+    }
+  },
+}
+
+const unwrapList = (payload) => {
+  const data = payload?.result ?? payload?.data ?? payload
+  if (Array.isArray(data)) return data
+  if (Array.isArray(data?.content)) return data.content
+  if (Array.isArray(data?.result)) return data.result
+  return []
+}
+
+/** Map BE PromotionResponse → UI-friendly shape used across pages */
+export const mapPromotionForUi = (p = {}) => {
+  const discountPercent = p.discountPercent != null ? Number(p.discountPercent) : null
+  const discountValue = p.discountValue != null ? Number(p.discountValue) : null
+  const discountType = discountPercent != null && discountPercent > 0
+    ? DISCOUNT_TYPES.PERCENT
+    : DISCOUNT_TYPES.FIXED_AMOUNT
+
+  return {
+    ...p,
+    id: p.id,
+    code: p.code || '',
+    title: p.title || p.code || 'Khuyến mãi',
+    // aliases used by various UIs
+    detail: p.detail || p.description || p.content || '',
+    description: p.detail || p.description || p.content || '',
+    content: p.detail || p.content || p.description || '',
+    discountPercent,
+    discountValue,
+    discountType,
+    discountTypeNormalized: discountType,
+    startTime: p.startTime,
+    endTime: p.endTime,
+    imageUrl: p.imageUrl || '',
+    status: p.status || computePromotionStatus(p),
+    isValid: p.isValid,
+    maxTotalUsage: p.maxTotalUsage,
+    currentTotalUsage: p.currentTotalUsage,
+    remainingTotalUsage: p.remainingTotalUsage,
+  }
 }
 
 /**
- * Các hằng số dùng chung cho UI — không phụ thuộc backend
+ * Các hằng số dùng chung cho UI
  */
 export const PROMOTION_TYPES = {
   VOUCHER: 'VOUCHER',
@@ -78,6 +177,9 @@ export function computePromotionStatus(promo) {
   const end = promo?.endTime ? new Date(promo.endTime) : null
   if (end && end < now) return PROMOTION_STATUS.EXPIRED
   if (start && start > now) return PROMOTION_STATUS.DRAFT
+  if (promo?.maxTotalUsage != null && (promo?.currentTotalUsage ?? 0) >= promo.maxTotalUsage) {
+    return PROMOTION_STATUS.EXPIRED
+  }
   if (promo?.usageLimit != null && (promo?.usedCount ?? 0) >= promo.usageLimit) {
     return PROMOTION_STATUS.EXPIRED
   }
@@ -88,20 +190,31 @@ export function computePromotionStatus(promo) {
  * Helper: Format hiển thị giá trị giảm giá
  */
 export function formatDiscountValue(promo) {
-  if (promo?.discountValue == null) return ''
-  if (promo?.discountType === DISCOUNT_TYPES.PERCENT) {
-    return `${promo.discountValue}%`
+  if (promo?.discountPercent != null && Number(promo.discountPercent) > 0) {
+    return `${promo.discountPercent}%`
   }
-  if (promo?.discountType === DISCOUNT_TYPES.FIXED_AMOUNT) {
+  if (promo?.discountValue != null) {
     return new Intl.NumberFormat('vi-VN').format(promo.discountValue) + 'đ'
   }
-  return String(promo.discountValue)
+  if (promo?.discountType === DISCOUNT_TYPES.PERCENT && promo?.discountValue != null) {
+    return `${promo.discountValue}%`
+  }
+  if (promo?.discountType === DISCOUNT_TYPES.FIXED_AMOUNT && promo?.discountValue != null) {
+    return new Intl.NumberFormat('vi-VN').format(promo.discountValue) + 'đ'
+  }
+  return ''
 }
 
 /**
  * Helper: Tính % giảm cho hiển thị nhanh
  */
 export function getQuickDiscountText(promo) {
+  if (promo?.discountPercent != null && Number(promo.discountPercent) > 0) {
+    return `Giảm ${promo.discountPercent}%`
+  }
+  if (promo?.discountValue != null && Number(promo.discountValue) > 0) {
+    return `Giảm ${new Intl.NumberFormat('vi-VN').format(promo.discountValue)}đ`
+  }
   if (promo?.discountType === DISCOUNT_TYPES.PERCENT && promo?.discountValue) {
     return `Giảm ${promo.discountValue}%`
   }
@@ -121,4 +234,23 @@ export function getDaysRemaining(endTime) {
   const diffMs = end - now
   if (diffMs <= 0) return 0
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
+/** Home / promo cards: short date label */
+export function formatPromoDateRange(promo) {
+  const fmt = (d) => {
+    if (!d) return ''
+    try {
+      const x = new Date(d)
+      return `${String(x.getDate()).padStart(2, '0')}/${String(x.getMonth() + 1).padStart(2, '0')}/${x.getFullYear()}`
+    } catch {
+      return ''
+    }
+  }
+  const start = fmt(promo?.startTime)
+  const end = fmt(promo?.endTime)
+  if (start && end) return `${start} - ${end}`
+  if (end) return `Đến ${end}`
+  if (start) return `Từ ${start}`
+  return 'Đang diễn ra'
 }
