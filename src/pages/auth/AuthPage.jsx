@@ -216,11 +216,7 @@ export default function AuthPage() {
           >
             <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
               <div>
-                <div className="flex items-center gap-[5px] mb-6" aria-hidden="true">
-                  {Array.from({ length: 11 }).map((_, i) => (
-                    <div key={i} style={{ width: '16px', height: '9px', borderRadius: '2px', backgroundColor: i === 5 ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)' }} />
-                  ))}
-                </div>
+
                 <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '56px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: '#fff', textShadow: '0 4px 30px rgba(229,9,20,0.4)', marginBottom: '16px' }}>CINEMATE</h2>
                 <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '18px', lineHeight: 1.6, color: 'rgba(255,255,255,0.75)', maxWidth: '420px' }}>
                   Trải nghiệm điện ảnh đỉnh cao — đặt vé, quản lý và thưởng thức phim theo cách của bạn.

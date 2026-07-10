@@ -107,20 +107,7 @@ export default function LoginPage() {
             <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
               {/* Brand block */}
               <div>
-                {/* Film-strip decoration */}
-                <div className="flex items-center gap-[5px] mb-6" aria-hidden="true">
-                  {Array.from({ length: 11 }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '16px',
-                        height: '9px',
-                        borderRadius: '2px',
-                        backgroundColor: i === 5 ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)',
-                      }}
-                    />
-                  ))}
-                </div>
+
 
                 <h2
                   style={{
