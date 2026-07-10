@@ -264,16 +264,28 @@ export default function ShowtimeFormPage() {
     const localDateTime = new Date(`${date}T${time}:00`)
     const startTimeIso = localDateTime.toISOString()
 
-    const calculateCGVPrices = (base) => {
+    const calculateCGVPrices = (base, showDate) => {
       let effectiveBase = Number(base)
+      let calcVip = effectiveBase * 1.2
+      let calcCouple = (effectiveBase * 2) * 1.1
+
+      if (showDate) {
+        const d = new Date(showDate)
+        if (d.getDay() === 3) {
+          effectiveBase = effectiveBase * 0.7
+          calcVip = calcVip * 0.7
+          calcCouple = calcCouple * 0.7
+        }
+      }
+
       return {
-        calcBase: effectiveBase,
-        calcVip: effectiveBase + 10000,
-        calcCouple: (effectiveBase * 2) + 10000
+        calcBase: Math.round(effectiveBase),
+        calcVip: Math.round(calcVip),
+        calcCouple: Math.round(calcCouple)
       }
     }
 
-    const { calcBase, calcVip, calcCouple } = calculateCGVPrices(price)
+    const { calcBase, calcVip, calcCouple } = calculateCGVPrices(price, date)
 
     const payload = {
       movieId,
