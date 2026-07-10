@@ -126,55 +126,70 @@ export default function SystemConfigPage() {
       <h3 className="text-xl font-bold text-[#191c1e] mb-4">Cấu hình Thời gian & Hoạt động</h3>
       <div className="bg-white border border-[#e0e3e5] rounded-2xl p-6 shadow-sm mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {sysConfigs.map((config) => {
-            const hasChanged = editSysConfigs[config.configKey] !== config.configValue;
-            
-            let label = config.configKey;
-            let inputType = 'text';
-            
-            if (config.configKey === 'OPENING_TIME') { label = 'Giờ Mở Cửa'; inputType = 'time'; }
-            else if (config.configKey === 'CLOSING_TIME') { label = 'Giờ Đóng Cửa'; inputType = 'time'; }
-            else if (config.configKey === 'CLEANING_BUFFER_DEFAULT') { label = 'Dọn dẹp Mặc định'; inputType = 'number'; }
-            else if (config.configKey === 'CLEANING_BUFFER_SMALL') { label = 'Dọn dẹp (Phòng Nhỏ)'; inputType = 'number'; }
-            else if (config.configKey === 'CLEANING_BUFFER_4DX') { label = 'Dọn dẹp (Phòng 4DX)'; inputType = 'number'; }
-            else if (config.configKey === 'CLEANING_BUFFER_IMAX') { label = 'Dọn dẹp (Phòng IMAX)'; inputType = 'number'; }
-            
-            return (
-              <div key={config.configKey} className="flex flex-col gap-4 p-5 bg-[#f7f9fb] rounded-xl border border-[#e0e3e5] relative overflow-hidden group hover:border-[#b80035] transition-colors">
-                <div className="flex flex-col gap-2 relative z-10">
-                  <label className="text-xs text-[#5c647a] font-bold uppercase tracking-wide">{label}</label>
-                  <input 
-                    type={inputType} 
-                    value={editSysConfigs[config.configKey] || ''} 
-                    onChange={(e) => handleSysConfigChange(config.configKey, e.target.value)}
-                    className="bg-white border border-[#e0e3e5] rounded-xl py-3 px-4 text-base font-bold text-[#191c1e] focus:border-[#b80035] outline-none w-full shadow-sm"
-                  />
-                  <span className="text-xs text-[#5c647a]">{config.description}</span>
-                </div>
+          {(() => {
+            const orderOfKeys = [
+              'OPENING_TIME',
+              'CLOSING_TIME',
+              'CLEANING_BUFFER_DEFAULT',
+              'CLEANING_BUFFER_3D',
+              'CLEANING_BUFFER_4DX',
+              'CLEANING_BUFFER_IMAX',
+              'TRAILER_BUFFER_DEFAULT'
+            ];
+            return sysConfigs
+              .filter(c => c.configKey !== 'CLEANING_BUFFER_SMALL')
+              .sort((a, b) => orderOfKeys.indexOf(a.configKey) - orderOfKeys.indexOf(b.configKey))
+              .map((config) => {
+                const hasChanged = editSysConfigs[config.configKey] !== config.configValue;
                 
-                <div className="mt-2 relative z-10">
-                  <button 
-                    onClick={() => handleSaveSysConfig(config.configKey)}
-                    disabled={saving || !hasChanged}
-                    className={`w-full py-2 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                      hasChanged 
-                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
-                        : 'bg-[#eceef0] text-[#5c647a] cursor-not-allowed border border-[#e0e3e5]'
-                    }`}
-                  >
-                    {saving && hasChanged ? (
-                      <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                    ) : hasChanged ? (
-                      <Save size={16} />
-                    ) : (
-                      <CheckCircle size={16} className="text-[#00836c]" />
-                    )}
-                    {hasChanged ? 'Lưu Cập Nhật' : 'Đã Lưu'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+                let label = config.configKey;
+                let inputType = 'text';
+                
+                if (config.configKey === 'OPENING_TIME') { label = 'Giờ Mở Cửa'; inputType = 'time'; }
+                else if (config.configKey === 'CLOSING_TIME') { label = 'Giờ Đóng Cửa'; inputType = 'time'; }
+                else if (config.configKey === 'CLEANING_BUFFER_DEFAULT') { label = 'Dọn dẹp (Phòng 2D / Thường)'; inputType = 'number'; }
+                else if (config.configKey === 'CLEANING_BUFFER_4DX') { label = 'Dọn dẹp (Phòng 4DX)'; inputType = 'number'; }
+                else if (config.configKey === 'CLEANING_BUFFER_IMAX') { label = 'Dọn dẹp (Phòng IMAX)'; inputType = 'number'; }
+                else if (config.configKey === 'CLEANING_BUFFER_3D') { label = 'Dọn dẹp (Phòng 3D)'; inputType = 'number'; }
+                else if (config.configKey === 'TRAILER_BUFFER_DEFAULT') { label = 'Trailer Mặc định'; inputType = 'number'; }
+
+                return (
+                  <div key={config.configKey} className="flex flex-col gap-4 p-5 bg-[#f7f9fb] rounded-xl border border-[#e0e3e5] relative overflow-hidden group hover:border-[#b80035] transition-colors">
+                    <div className="flex flex-col gap-2 relative z-10">
+                      <label className="text-xs text-[#5c647a] font-bold uppercase tracking-wide">{label}</label>
+                      <input 
+                        type={inputType} 
+                        value={editSysConfigs[config.configKey] || ''} 
+                        onChange={(e) => handleSysConfigChange(config.configKey, e.target.value)}
+                        className="bg-white border border-[#e0e3e5] rounded-xl py-3 px-4 text-base font-bold text-[#191c1e] focus:border-[#b80035] outline-none w-full shadow-sm"
+                      />
+                      <span className="text-xs text-[#5c647a]">{config.description}</span>
+                    </div>
+                    
+                    <div className="mt-2 relative z-10">
+                      <button 
+                        onClick={() => handleSaveSysConfig(config.configKey)}
+                        disabled={saving || !hasChanged}
+                        className={`w-full py-2 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                          hasChanged 
+                            ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
+                            : 'bg-[#eceef0] text-[#5c647a] cursor-not-allowed border border-[#e0e3e5]'
+                        }`}
+                      >
+                        {saving && hasChanged ? (
+                          <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                        ) : hasChanged ? (
+                          <Save size={16} />
+                        ) : (
+                          <CheckCircle size={16} className="text-[#00836c]" />
+                        )}
+                        {hasChanged ? 'Lưu Cập Nhật' : 'Đã Lưu'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              });
+          })()}
         </div>
       </div>
 

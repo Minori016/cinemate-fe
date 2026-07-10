@@ -4,7 +4,9 @@ import { format, parseISO } from 'date-fns';
 const DragOverlayShowtime = memo(function DragOverlayShowtime({ st, calculatePosition, movieObj }) {
   const { width } = calculatePosition(st.startTime, st.durationMinutes)
   const isGoldenHour = st.goldenHour || st.isGoldenHour
-  const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
+  const isAnimation = Array.isArray(movieObj?.genres)
+    ? movieObj.genres.some(g => (g?.name || g || '').toString().toLowerCase().includes('hoạt hình'))
+    : false;
   const isDubbed = isAnimation && st.language === 'Lồng tiếng'
   
   const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
