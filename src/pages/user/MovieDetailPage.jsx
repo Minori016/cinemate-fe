@@ -17,6 +17,7 @@ import ComboStep from './components/moviedetail/ComboStep'
 import PaymentStep from './components/moviedetail/PaymentStep'
 import SuccessModal from './components/moviedetail/SuccessModal'
 import TrailerModal from './components/moviedetail/TrailerModal'
+import RequireAuthModal from './components/common/RequireAuthModal'
 
 // ── Seat layout config ──
 const SEAT_ROWS = [
@@ -26,13 +27,6 @@ const SEAT_ROWS = [
   { row: 'D', type: 'vip', price: 110000 },
   { row: 'E', type: 'vip', price: 110000 },
   { row: 'F', type: 'vip', price: 110000 },
-]
-
-const OCCUPIED_SEATS = [
-  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
-  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
-  'E4', 'E8', 'E9', 'F6', 'F7',
-  'G1', 'H3', 'H5'
 ]
 
 const DAYS = Array.from({ length: 7 }, (_, i) => {
@@ -48,41 +42,6 @@ const SCHEDULE_TEMPLATES = [
   ['10:15', '13:00', '16:45', '19:30', '22:15'],
   ['11:00', '14:30', '18:00', '20:30', '22:30'],
 ]
-
-const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F']
-  const coupleRows = ['G', 'H']
-  const getRowSections = (rowLabel) => {
-    if (rows.includes(rowLabel)) return [['1', '2', '3'], ['4', '5', '6', '7', '8', '9'], ['10', '11', '12']]
-    if (coupleRows.includes(rowLabel)) return [['1'], ['2', '3', '4'], ['5']]
-    return []
-  }
-  const allRows = [...rows, ...coupleRows]
-  const violations = []
-  for (const row of allRows) {
-    const sections = getRowSections(row)
-    for (let s = 0; s < sections.length; s++) {
-      const section = sections[s]
-      if (section.length <= 1) continue
-      const initialStates = section.map(num => occupiedSeats.includes(`${row}${num}`) ? 1 : 0)
-      const finalStates = section.map(num => (occupiedSeats.includes(`${row}${num}`) || selectedSeats.includes(`${row}${num}`)) ? 1 : 0)
-      const countSingleEmpty = (states) => {
-        let count = 0; let i = 0
-        while (i < states.length) {
-          if (states[i] === 0) { let len = 0; while (i < states.length && states[i] === 0) { len++; i++ }; if (len === 1) count++ } else i++
-        }
-        return count
-      }
-      if (countSingleEmpty(finalStates) > countSingleEmpty(initialStates)) {
-        let i = 0
-        while (i < finalStates.length) {
-          if (finalStates[i] === 0) { let start = i; let len = 0; while (i < finalStates.length && finalStates[i] === 0) { len++; i++ } if (len === 1) { let initLen = 0; let j = start; while (j >= 0 && initialStates[j] === 0) { initLen++; j-- } j = start + 1; while (j < initialStates.length && initialStates[j] === 0) { initLen++; j++ } if (initLen !== 1) violations.push(`${row}${section[start]}`) } } else i++
-        }
-      }
-    }
-  }
-  return violations
-}
 
 const getEmbedUrl = (url) => {
   if (!url) return ''
@@ -266,7 +225,6 @@ export default function MovieDetailPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const bookingSectionRef = useRef(null)
 
   // Back button config
   const [backInfo, setBackInfo] = useState({ label: 'Quay lại trang chủ', target: '/home' })
@@ -306,6 +264,8 @@ export default function MovieDetailPage() {
   const [selectedTime, setSelectedTime] = useState(queryTime || '')
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
+  // seatMetaMap: { [seatId]: { label, type } } — dùng để hiển thị tên ghế & tính giá đúng (kể cả khi id là UUID)
+  const [seatMetaMap, setSeatMetaMap] = useState({})
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
   const [dbCombos, setDbCombos] = useState([])   // combos từ API, fallback FALLBACK_COMBOS nếu rỗng
   const [promoCode, setPromoCode] = useState('')
@@ -373,9 +333,12 @@ export default function MovieDetailPage() {
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed && String(parsed.movieId) === String(movieId) && user) {
-          setSelectedDate(parsed.selectedDate)
-          setSelectedTime(parsed.selectedTime)
-          setSelectedSeats(parsed.selectedSeats)
+          if (parsed.selectedDate) setSelectedDate(parsed.selectedDate)
+          if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
+          if (Array.isArray(parsed.selectedSeats)) setSelectedSeats(parsed.selectedSeats)
+          if (parsed.seatMetaMap && typeof parsed.seatMetaMap === 'object') setSeatMetaMap(parsed.seatMetaMap)
+          if (parsed.selectedShowtime) setSelectedShowtime(parsed.selectedShowtime)
+          setIsBookingMode(true)
           setBookingStep(parsed.bookingStep || 3)
         }
         sessionStorage.removeItem('pending_booking_state')
@@ -398,6 +361,9 @@ export default function MovieDetailPage() {
   const [simulatedOutcome, setSimulatedOutcome] = useState('success')
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [bookingId, setBookingId] = useState('')
+
+  // Auth modal state
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
     if (bookingStep === 3 && !bookingId) {
@@ -453,18 +419,87 @@ export default function MovieDetailPage() {
   }
 
   const getSeatPrice = (seatId) => {
-    const r = seatId.charAt(0)
+    const meta = seatMetaMap[seatId] || {}
+    const type = String(meta.type || '').toUpperCase()
+    const label = meta.label || seatId
+
+    // 1) Ưu tiên bảng giá theo loại ghế từ suất chiếu
+    if (selectedShowtime?.prices?.length) {
+      const matched = selectedShowtime.prices.find(p => String(p.seatType || '').toUpperCase() === type)
+      if (matched?.price != null) return Number(matched.price)
+    }
+
+    // 2) Giá phẳng trên showtime object (nếu BE trả về)
+    if (type === 'VIP' && selectedShowtime?.vipPrice != null) return Number(selectedShowtime.vipPrice)
+    if (type === 'COUPLE' && selectedShowtime?.couplePrice != null) return Number(selectedShowtime.couplePrice)
+    if ((type === 'STANDARD' || type === 'NORMAL') && selectedShowtime?.price != null) return Number(selectedShowtime.price)
+
+    // 3) Fallback theo type
+    if (type === 'VIP') return 110000
+    if (type === 'COUPLE') return 190000
+    if (type === 'STANDARD' || type === 'NORMAL') return 90000
+
+    // 4) Fallback theo chữ cái hàng (A1 / A-1 / label)
+    const rowMatch = String(label).match(/[A-Za-z]/)
+    const r = (rowMatch?.[0] || '').toUpperCase()
     if (r === 'A' || r === 'B' || r === 'C') return 90000
     if (r === 'D' || r === 'E' || r === 'F') return 110000
     if (r === 'G' || r === 'H') return 130000
-    return 0
+
+    // 5) Không để giá = 0 cho ghế đã chọn
+    return 90000
   }
 
-  const toggleSeat = (seatId) => {
-    setSelectedSeats(prev => prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId])
+  const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
+
+  /**
+   * Toggle seat AFTER gap-validation (handled in SeatStep).
+   * SeatStep only calls this when the proposed change is valid.
+   */
+  const toggleSeat = (seatId, meta = {}) => {
+    setSelectedSeats(prev => {
+      const exists = prev.includes(seatId)
+      if (exists) {
+        setSeatMetaMap(m => {
+          const next = { ...m }
+          delete next[seatId]
+          return next
+        })
+        return prev.filter(id => id !== seatId)
+      }
+      if (meta && (meta.label || meta.type)) {
+        setSeatMetaMap(m => ({
+          ...m,
+          [seatId]: {
+            label: meta.label || seatId,
+            type: meta.type || 'STANDARD',
+          },
+        }))
+      }
+      return [...prev, seatId]
+    })
   }
 
-  const violations = selectedSeats.length > 0 ? checkSingleEmptySeats(selectedSeats, OCCUPIED_SEATS) : []
+  // Lưu trạng thái đặt vé trước khi bắt đăng nhập (để restore sau login)
+  const savePendingBooking = (nextStep) => {
+    try {
+      sessionStorage.setItem('pending_booking_state', JSON.stringify({
+        movieId,
+        selectedDate,
+        selectedTime,
+        selectedSeats,
+        seatMetaMap,
+        selectedShowtime,
+        bookingStep: nextStep ?? bookingStep,
+        isBookingMode: true,
+      }))
+    } catch (e) {
+      console.error('Lỗi khi lưu trạng thái đặt vé', e)
+    }
+  }
+
+  // Gap validation runs in SeatStep (realtime reject + toast), so no residual violations.
+  const violations = []
 
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
   const activeCombos = dbCombos.length > 0 ? dbCombos : FALLBACK_COMBOS
@@ -472,7 +507,6 @@ export default function MovieDetailPage() {
     const combo = activeCombos.find(c => String(c.id) === String(id))
     return sum + (combo ? combo.price * qty : 0)
   }, 0)
-  const totalPrice = ticketPrice + comboPrice
 
   const discountAmount = useMemo(() => {
     if (discount <= 0) return 0
@@ -550,9 +584,11 @@ export default function MovieDetailPage() {
       setSubmitError('Thanh toán thất bại: ' + (msgs[simulatedOutcome] || 'Lỗi không xác định.'))
       return
     }
+    const roomDisplayName = selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'
+    const seatLabels = selectedSeats.map(getSeatLabel)
     const payload = {
       bookingId, movieId, movieName: movie.title, showTime: selectedTime, showDate: selectedDate,
-      seats: selectedSeats, totalPrice: finalPrice, room: 'Phong Chieu 03 (IMAX)',
+      seats: seatLabels, seatIds: selectedSeats, totalPrice: finalPrice, room: roomDisplayName,
       fullName: user?.fullName || 'Thanh vien CineMate', email: user?.email || '',
       identityCard: 'Chua cap nhat', phoneNumber: 'Chua cap nhat'
     }
@@ -560,9 +596,9 @@ export default function MovieDetailPage() {
     finally {
       const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
       localStorage.setItem('staff_bookings_db', JSON.stringify([{
-        id: bookingId, movie: movie.title, screen: 'Phong Chieu 03 (IMAX)',
+        id: bookingId, movie: movie.title, screen: roomDisplayName,
         date: new Date(selectedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        time: selectedTime, seats: selectedSeats.join(', '), price: getSeatPrice(selectedSeats[0] || 'A1'),
+        time: selectedTime, seats: seatLabels.join(', '), price: getSeatPrice(selectedSeats[0] || 'A1'),
         total: finalPrice, convertTickets: 0, scoreUsed: 0,
         memberId: 'MEM-' + Math.floor(100000 + Math.random() * 900000),
         customerName: user?.fullName || 'Thanh vien CineMate', phone: '0123456789',
@@ -579,6 +615,7 @@ export default function MovieDetailPage() {
     setBookingStep(1)
     setBookingId('')
     setSelectedSeats([])
+    setSeatMetaMap({})
     const initQty = {}
     activeCombos.forEach(c => { initQty[c.id] = 0 })
     setSelectedCombos(initQty)
@@ -594,11 +631,22 @@ export default function MovieDetailPage() {
     setSelectedShowtime(st)
   }
 
+  // Guard: nếu chưa đăng nhập thì lưu trạng thái + hiện modal thay vì tiến trình đặt vé
+  const requireAuth = (nextStep) => {
+    if (!user) {
+      savePendingBooking(nextStep)
+      setShowAuthModal(true)
+      return false
+    }
+    return true
+  }
+
   const handleBookAnother = () => {
     setBookingSuccess(false)
     setBookingStep(1)
     setSelectedTime('')
     setSelectedSeats([])
+    setSeatMetaMap({})
     const initQty = {}
     activeCombos.forEach(c => { initQty[c.id] = 0 })
     setSelectedCombos(initQty)
@@ -842,6 +890,7 @@ export default function MovieDetailPage() {
                     selectedDate={selectedDate}
                     totalPrice={ticketPrice}
                     selectedSeats={selectedSeats}
+                    seatMetaMap={seatMetaMap}
                     violations={violations}
                     toggleSeat={toggleSeat}
                     setBookingStep={setBookingStep}
@@ -851,6 +900,10 @@ export default function MovieDetailPage() {
                     navigate={navigate}
                     movieId={movieId}
                     location={location}
+                    onRequireAuth={() => {
+                      savePendingBooking(3)
+                      setShowAuthModal(true)
+                    }}
                   />
                 )}
                 {bookingStep === 3 && (
@@ -875,6 +928,8 @@ export default function MovieDetailPage() {
                     selectedDate={selectedDate}
                     selectedTime={selectedTime}
                     selectedSeats={selectedSeats}
+                    seatLabels={selectedSeats.map(getSeatLabel)}
+                    roomName={selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'}
                     totalPrice={finalPrice}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
@@ -909,7 +964,7 @@ export default function MovieDetailPage() {
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Suất Chiếu</span>
                 <span className="text-sm font-bold text-white uppercase">{selectedDate ? new Date(selectedDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Chưa chọn'}</span>
-                <span className="text-xs text-gray-400 font-semibold">{selectedTime ? `Giờ chiếu: ${selectedTime} tại Phòng IMAX` : 'Chưa chọn giờ chiếu'}</span>
+                <span className="text-xs text-gray-400 font-semibold">{selectedTime ? `Giờ chiếu: ${selectedTime} tại ${selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'}` : 'Chưa chọn giờ chiếu'}</span>
               </div>
 
               {/* Seats info */}
@@ -917,7 +972,7 @@ export default function MovieDetailPage() {
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Ghế Ngồi</span>
                 {selectedSeats.length > 0 ? (
                   <>
-                    <span className="text-sm font-bold text-white">{selectedSeats.join(', ')}</span>
+                    <span className="text-sm font-bold text-white">{selectedSeats.map(getSeatLabel).join(', ')}</span>
                     <span className="text-xs text-gray-400 font-semibold">Tạm tính: {ticketPrice.toLocaleString('vi-VN')} đ</span>
                   </>
                 ) : (
@@ -968,7 +1023,7 @@ export default function MovieDetailPage() {
               <div className="mt-2">
                 {bookingStep === 1 && (
                   <button
-                    onClick={() => setBookingStep(2)}
+                    onClick={() => { if (!requireAuth(2)) return; setBookingStep(2) }}
                     disabled={!selectedTime}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
@@ -977,7 +1032,7 @@ export default function MovieDetailPage() {
                 )}
                 {bookingStep === 2 && (
                   <button
-                    onClick={() => setBookingStep(3)}
+                    onClick={() => { if (!requireAuth(3)) return; setBookingStep(3) }}
                     disabled={selectedSeats.length === 0 || violations.length > 0}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
@@ -986,7 +1041,7 @@ export default function MovieDetailPage() {
                 )}
                 {bookingStep === 3 && (
                   <button
-                    onClick={() => setBookingStep(4)}
+                    onClick={() => { if (!requireAuth(4)) return; setBookingStep(4) }}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
                     Tiếp tục thanh toán
@@ -1015,12 +1070,17 @@ export default function MovieDetailPage() {
             movie={movie}
             selectedDate={selectedDate}
             selectedTime={selectedTime}
-            selectedSeats={selectedSeats}
+            selectedSeats={selectedSeats.map(getSeatLabel)}
             totalPrice={finalPrice}
             bookingId={bookingId}
             onClose={handleCloseSuccessModal}
             onBookAnother={handleBookAnother}
             navigate={navigate}
+            selectedCombos={selectedCombos}
+            combos={activeCombos}
+            promoCode={promoCode}
+            discountAmount={discountAmount}
+            movieDuration={movie?.duration}
           />
         )}
       </AnimatePresence>
@@ -1035,6 +1095,16 @@ export default function MovieDetailPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* ── Require Auth Modal ── */}
+      <RequireAuthModal
+        open={showAuthModal}
+        onLogin={() => {
+          setShowAuthModal(false)
+          navigate('/login', { state: { from: location } })
+        }}
+        onCancel={() => setShowAuthModal(false)}
+      />
 
       <style>{`
         .seat-btn {

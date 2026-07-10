@@ -1,6 +1,22 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'motion/react'
+import { toast } from 'sonner'
 import { cinemaRoomService } from '../../../../services/cinemaRoomService'
+import {
+  validateSeatSelection,
+  getRowsFromLayout,
+  buildFallbackRows,
+  applyOccupiedToRows,
+  SEAT_GAP_ERROR_MESSAGE,
+} from '../../../../utils/seatValidation'
+
+// Fallback occupied labels used when API layout is unavailable
+const FALLBACK_OCCUPIED = [
+  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
+  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
+  'E4', 'E8', 'E9', 'F6', 'F7',
+  'G1', 'H3', 'H5',
+]
 
 function GlassCard({ children, className = '' }) {
   return (
@@ -11,8 +27,8 @@ function GlassCard({ children, className = '' }) {
 }
 
 export default function SeatStep({
-  movie, selectedTime, selectedDate, totalPrice, selectedSeats, violations, toggleSeat,
-  setBookingStep, user, navigate, movieId, location, selectedShowtime, SEAT_ROWS
+  movie, selectedTime, selectedDate, totalPrice, selectedSeats, seatMetaMap, violations, toggleSeat,
+  setBookingStep, selectedShowtime, SEAT_ROWS
 }) {
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
@@ -69,18 +85,33 @@ export default function SeatStep({
     return () => { cancelled = true }
   }, [selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
 
-  // Build occupied seat set from layout
+  // Build occupied seat set from layout (or fallback labels)
   const occupiedSet = useMemo(() => {
     const set = new Set()
-    if (!layout?.seatMatrix) return set
+    if (!layout?.seatMatrix) {
+      FALLBACK_OCCUPIED.forEach(id => set.add(id))
+      return set
+    }
     layout.seatMatrix.forEach(row => {
       row.seats.forEach(seat => {
-        if (seat.status === 'MAINTENANCE' || seat.type === 'AISLE' || seat.type === 'COUPLE_EXTENSION') {
+        const status = String(seat.status || '').toUpperCase()
+        const type = String(seat.type || '').toUpperCase()
+        if (
+          status === 'MAINTENANCE' || status === 'SOLD' || status === 'RESERVED' ||
+          status === 'DISABLED' || status === 'BROKEN' ||
+          type === 'AISLE' || type === 'COUPLE_EXTENSION'
+        ) {
           set.add(seat.id)
         }
       })
     })
     return set
+  }, [layout])
+
+  // Rows used by gap validator (API layout preferred, fallback otherwise)
+  const validationRows = useMemo(() => {
+    if (layout?.seatMatrix?.length) return getRowsFromLayout(layout)
+    return applyOccupiedToRows(buildFallbackRows(), FALLBACK_OCCUPIED)
   }, [layout])
 
   // Build dynamic SEAT_ROWS from layout
@@ -95,16 +126,55 @@ export default function SeatStep({
 
   const roomName = selectedShowtime?.roomName || 'Phòng Chiếu'
 
+  const resolveSeatLabel = (seat) => {
+    if (seat?.row != null && seat?.number != null) return `${seat.row}${seat.number}`
+    if (seat?.rowLabel != null && seat?.number != null) return `${seat.rowLabel}${seat.number}`
+    if (seatMetaMap?.[seat?.id]?.label) return seatMetaMap[seat.id].label
+    return seat?.id
+  }
+
+  /**
+   * Validate gap rule BEFORE updating selection state.
+   * Reject + toast if the action would create an orphan seat.
+   */
+  const handleToggleSeat = useCallback((seatId, meta = {}) => {
+    if (occupiedSet.has(seatId)) return
+
+    const result = validateSeatSelection({
+      rows: validationRows,
+      currentSelected: selectedSeats,
+      toggledSeatId: seatId,
+    })
+
+    if (!result.valid) {
+      toast.error(result.reason || SEAT_GAP_ERROR_MESSAGE, {
+        description: result.affectedRow
+          ? `Hàng ${result.affectedRow} — không để lại 1 ghế trống đơn lẻ.`
+          : undefined,
+        duration: 2800,
+      })
+      return
+    }
+
+    toggleSeat(seatId, meta)
+  }, [occupiedSet, validationRows, selectedSeats, toggleSeat])
+
   // Seat button sub-components
   function SeatButton({ seat, type }) {
     const isOccupied = occupiedSet.has(seat.id)
     const isSelected = selectedSeats.includes(seat.id)
-    const seatType = seat.type || type
-    const isVip = seatType === 'VIP'
-    const displayLabel = seat.row ? `${seat.row}${seat.number}` : seat.id
+    const seatType = seat.type || type || 'STANDARD'
+    const isVip = String(seatType).toUpperCase() === 'VIP'
+    const displayLabel = resolveSeatLabel(seat)
     return (
-      <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
-        <input type="checkbox" checked={isSelected} disabled={isOccupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
+      <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          disabled={isOccupied}
+          onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: String(seatType).toUpperCase() })}
+          className="sr-only"
+        />
         {displayLabel}
       </label>
     )
@@ -113,10 +183,16 @@ export default function SeatStep({
   function CoupleButton({ seat }) {
     const isOccupied = occupiedSet.has(seat.id)
     const isSelected = selectedSeats.includes(seat.id)
-    const displayLabel = seat.number != null ? `${seat.row}${seat.number}` : seat.id
+    const displayLabel = resolveSeatLabel(seat)
     return (
-      <label key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
-        <input type="checkbox" checked={isSelected} disabled={isOccupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
+      <label key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          disabled={isOccupied}
+          onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: 'COUPLE' })}
+          className="sr-only"
+        />
         {displayLabel}
       </label>
     )
@@ -278,33 +354,21 @@ export default function SeatStep({
           </div>
         </div>
 
-        {/* Seat summary & Continue button */}
+        {/* Seat summary only — navigation via sidebar */}
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-1.5">Ghế đã chọn</p>
             {selectedSeats.length === 0 ? <span className="text-gray-500 text-sm italic">Chưa chọn ghế...</span> : (
               <div className="flex gap-2 flex-wrap">
                 {selectedSeats.map(s => (
-                  <span key={s} className="px-3 py-1 rounded-lg text-sm font-bold text-white" style={{ background: 'rgba(229,9,20,0.15)', border: '1px solid rgba(229,9,20,0.3)' }}>{s}</span>
+                  <span key={s} className="px-3 py-1 rounded-lg text-sm font-bold text-white" style={{ background: 'rgba(229,9,20,0.15)', border: '1px solid rgba(229,9,20,0.3)' }}>{seatMetaMap?.[s]?.label || s}</span>
                 ))}
               </div>
             )}
           </div>
-          <div className="flex items-center gap-5 shrink-0">
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Tổng tiền</p>
-              <p className="text-xl font-black text-[var(--color-primary)] font-mono">{formatCurrency(totalPrice)}</p>
-            </div>
-            <button onClick={() => {
-              if (!user) {
-                try { sessionStorage.setItem('pending_booking_state', JSON.stringify({ movieId, selectedDate, selectedTime, selectedSeats, bookingStep: 3 })) } catch (e) { console.error('Lỗi khi lưu trạng thái đặt vé', e) }
-                navigate('/login', { state: { from: location } })
-                return
-              }
-              setBookingStep(3)
-            }} disabled={selectedSeats.length === 0 || violations.length > 0} className="flex items-center gap-2 py-3 px-7 rounded-xl font-bold uppercase tracking-widest text-sm text-white transition-all hover:scale-105 active:scale-95 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed cursor-pointer border-none" style={{ background: 'var(--color-primary)', boxShadow: '0 4px 20px rgba(229,9,20,0.3)' }}>
-              Tiếp tục <span className="material-symbols-outlined text-lg">arrow_forward</span>
-            </button>
+          <div className="text-right shrink-0">
+            <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mb-0.5">Tổng tiền</p>
+            <p className="text-xl font-black text-[var(--color-primary)] font-mono">{formatCurrency(totalPrice)}</p>
           </div>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
@@ -15,7 +15,7 @@ export default function ShowtimeFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
   const isEditMode = !!id
-  
+
   const isAdmin = user && user.roles?.includes('ADMIN')
   const basePath = isAdmin ? '/admin' : '/manager'
 
@@ -36,6 +36,19 @@ export default function ShowtimeFormPage() {
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
 
+  const [isTimeDropdownOpen, setIsTimeDropdownOpen] = useState(false)
+  const timeDropdownRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (timeDropdownRef.current && !timeDropdownRef.current.contains(e.target)) {
+        setIsTimeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -46,7 +59,7 @@ export default function ShowtimeFormPage() {
         // Fetch rooms
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []
-        const sortedList = (Array.isArray(rList) ? rList : []).sort((a, b) => 
+        const sortedList = (Array.isArray(rList) ? rList : []).sort((a, b) =>
           String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
         );
         setRooms(sortedList)
@@ -107,22 +120,22 @@ export default function ShowtimeFormPage() {
     const v = selectedMovie.version.toUpperCase();
     const formats = [];
     const systemFormats = Object.keys(formatPrices);
-    
+
     // We try to match with system formats
     systemFormats.forEach(fmt => {
       if (v.includes(fmt)) formats.push(fmt);
     });
-    
+
     return formats.length > 0 ? formats : ['2D'];
   }, [selectedMovie, formatPrices]);
-  
+
   const availableLanguages = useMemo(() => {
     if (!selectedMovie?.language) return ['Phụ đề'];
     const l = selectedMovie.language.toLowerCase();
     const langs = [];
     if (l.includes('phụ đề') || l.includes('sub')) langs.push('Phụ đề');
     if (l.includes('lồng tiếng') || l.includes('dub')) langs.push('Lồng tiếng');
-    
+
     return langs.length > 0 ? langs : ['Phụ đề'];
   }, [selectedMovie]);
 
@@ -150,7 +163,7 @@ export default function ShowtimeFormPage() {
       return r.supportedFormats.some(f => f.replace('_', '') === format);
     });
   }, [rooms, format]);
-  
+
   // Reset selected room if it's no longer supported by the new format
   useEffect(() => {
     if (roomId && format) {
@@ -164,7 +177,7 @@ export default function ShowtimeFormPage() {
   const getConfigValue = (key, defaultValue) => {
     const conf = systemConfigs.find(c => c.configKey === key);
     if (conf && conf.configValue != null) {
-       return parseInt(conf.configValue, 10);
+      return parseInt(conf.configValue, 10);
     }
     return defaultValue;
   };
@@ -188,19 +201,19 @@ export default function ShowtimeFormPage() {
             cleanMins = getConfigValue('CLEANING_BUFFER_3D', 20)
           }
         }
-        
+
         let totalMins = duration + adMins
         const remainder = totalMins % 5
         if (remainder !== 0) {
           totalMins += (5 - remainder)
         }
         const endT = new Date(startT.getTime() + totalMins * 60 * 1000)
-        
+
         const bufferStart = new Date(startT.getTime() - cleanMins * 60 * 1000)
         const bufferEnd = new Date(endT.getTime() + cleanMins * 60 * 1000)
 
         const formatTime = (d) => d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-        
+
         return {
           start: formatTime(startT),
           end: formatTime(endT),
@@ -260,7 +273,7 @@ export default function ShowtimeFormPage() {
     }
 
     setIsSubmitting(true)
-    
+
     const localDateTime = new Date(`${date}T${time}:00`)
     const startTimeIso = localDateTime.toISOString()
 
@@ -341,7 +354,7 @@ export default function ShowtimeFormPage() {
   }
 
   return (
-    <div className="space-y-6 text-[#191c1e] text-left relative pb-12 bg-[#f7f9fb] min-h-[calc(100vh-80px)] p-6 rounded-2xl">
+    <div className="space-y-6 text-[#191c1e] text-left relative pb-36 bg-[#f7f9fb] min-h-[calc(100vh-80px)] p-6 rounded-2xl">
       {toast && (
         <div
           className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border text-sm max-w-md transition-all duration-300 animate-slide-in-up bg-white"
@@ -378,7 +391,7 @@ export default function ShowtimeFormPage() {
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border border-[#e0e3e5] rounded-2xl p-6 space-y-4 shadow-sm">
+          <div className="bg-white border border-[#e0e3e5] rounded-2xl p-6 pb-48 space-y-4 shadow-sm">
             <h3 className="text-lg font-bold text-[#191c1e] flex items-center gap-2 mb-4 border-b border-[#e0e3e5] pb-3" style={{ fontFamily: 'Montserrat' }}>
               <Calendar className="text-red-500" size={18} />
               Thông tin lịch chiếu
@@ -459,22 +472,43 @@ export default function ShowtimeFormPage() {
                   error={errors.date}
                 />
               </div>
-              <div className="flex flex-col gap-1 w-full text-left md:col-span-1">
+              <div className="flex flex-col gap-1 w-full text-left md:col-span-1" ref={timeDropdownRef}>
                 <label className="text-sm font-bold text-[#5c647a] mb-1">Giờ chiếu *</label>
-                <select
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className={`bg-[#f7f9fb] border ${errors.time ? 'border-red-400' : 'border-[#e0e3e5]'} rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer`}
-                >
-                  <option value="">Chọn giờ...</option>
-                  {Array.from({ length: 192 }, (_, i) => {
-                    const hour = Math.floor(i / 12) + 8;
-                    if (hour > 23) return null;
-                    const min = (i % 12) * 5;
-                    const timeString = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
-                    return <option key={timeString} value={timeString}>{timeString}</option>
-                  })}
-                </select>
+                <div className="relative w-full">
+                  <button
+                    type="button"
+                    onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
+                    className={`bg-[#f7f9fb] border ${errors.time ? 'border-red-400' : 'border-[#e0e3e5]'} rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full flex justify-between items-center cursor-pointer`}
+                  >
+                    <span>{time || 'Chọn giờ...'}</span>
+                    <span className="material-symbols-outlined text-[16px] text-gray-400">
+                      {isTimeDropdownOpen ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                  {isTimeDropdownOpen && (
+                    <div className="absolute left-0 top-full mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                      {Array.from({ length: 192 }, (_, i) => {
+                        const hour = Math.floor(i / 12) + 8;
+                        if (hour > 23) return null;
+                        const min = (i % 12) * 5;
+                        const timeString = `${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+                        return (
+                          <div
+                            key={timeString}
+                            onClick={() => {
+                              setTime(timeString)
+                              setIsTimeDropdownOpen(false)
+                            }}
+                            className={`px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-[#ffdad6]/20 hover:text-[#b80035] transition-colors ${time === timeString ? 'bg-[#ffdad6]/40 text-[#b80035] font-bold' : 'text-[#191c1e]'
+                              }`}
+                          >
+                            {timeString}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
                 {errors.time && <span className="text-xs text-red-400 mt-1">{errors.time}</span>}
               </div>
               <div className="flex flex-col gap-1 w-full text-left md:col-span-2">

@@ -146,25 +146,23 @@ export const DISCOUNT_TYPE_LABELS = {
   FIXED_AMOUNT: 'Giảm tiền mặt (VNĐ)',
 }
 
+/** Backend PromotionStatus enum: ACTIVE / EXPIRED / DISABLED */
 export const PROMOTION_STATUS = {
-  DRAFT: 'DRAFT',
   ACTIVE: 'ACTIVE',
-  PAUSED: 'PAUSED',
   EXPIRED: 'EXPIRED',
+  DISABLED: 'DISABLED',
 }
 
 export const PROMOTION_STATUS_LABELS = {
-  DRAFT: 'Bản nháp',
-  ACTIVE: 'Đang chạy',
-  PAUSED: 'Tạm dừng',
-  EXPIRED: 'Hết hạn',
+  ACTIVE: 'Đang hoạt động',
+  EXPIRED: 'Đã hết hạn',
+  DISABLED: 'Đã bị vô hiệu hóa',
 }
 
 export const PROMOTION_STATUS_COLORS = {
-  DRAFT: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
   ACTIVE: 'bg-green-500/20 text-green-300 border-green-500/30',
-  PAUSED: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
   EXPIRED: 'bg-red-500/20 text-red-300 border-red-500/30',
+  DISABLED: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
 }
 
 /**
@@ -173,10 +171,8 @@ export const PROMOTION_STATUS_COLORS = {
 export function computePromotionStatus(promo) {
   if (promo?.status) return promo.status
   const now = new Date()
-  const start = promo?.startTime ? new Date(promo.startTime) : null
   const end = promo?.endTime ? new Date(promo.endTime) : null
   if (end && end < now) return PROMOTION_STATUS.EXPIRED
-  if (start && start > now) return PROMOTION_STATUS.DRAFT
   // Backend v2: maxTotalUsage + currentTotalUsage
   const max = promo?.maxTotalUsage
   const used = promo?.currentTotalUsage ?? promo?.usedCount ?? 0

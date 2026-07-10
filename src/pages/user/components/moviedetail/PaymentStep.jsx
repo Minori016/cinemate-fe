@@ -22,6 +22,8 @@ export default function PaymentStep({
   selectedDate,
   selectedTime,
   selectedSeats,
+  seatLabels,
+  roomName,
   totalPrice,
   paymentMethod,
   setPaymentMethod,
@@ -42,6 +44,9 @@ export default function PaymentStep({
   setSimulatedOutcome,
   handleSubmitPayment
 }) {
+  const displaySeats = (Array.isArray(seatLabels) && seatLabels.length > 0)
+    ? seatLabels
+    : (selectedSeats || [])
   const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
   const formatDate = (dateString) => {
     if (!dateString || dateString === 'Hôm nay') return 'Hôm nay'
@@ -321,7 +326,7 @@ export default function PaymentStep({
                 </div>
                 <div>
                   <p className="text-[9px] uppercase text-gray-500 tracking-wider font-bold">Phòng chiếu</p>
-                  <p className="text-white font-semibold mt-0.5 text-[10px]">Phòng 03 (IMAX)</p>
+                  <p className="text-white font-semibold mt-0.5 text-[10px]">{roomName || 'Phòng chiếu'}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
@@ -336,7 +341,7 @@ export default function PaymentStep({
               </div>
               <div className="border-t border-white/5 pt-3">
                 <p className="text-[9px] uppercase text-gray-500 tracking-wider font-bold mb-1">Ghế ngồi</p>
-                <p className="text-[var(--color-primary)] font-black text-xs font-mono tracking-wider">{selectedSeats.join(', ') || 'Chưa chọn'}</p>
+                <p className="text-[var(--color-primary)] font-black text-xs font-mono tracking-wider">{displaySeats.join(', ') || 'Chưa chọn'}</p>
               </div>
 
               <div className="border-t border-white/5 pt-3 flex justify-between items-end">

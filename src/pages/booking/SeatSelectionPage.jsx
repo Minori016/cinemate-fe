@@ -2,11 +2,19 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { ArrowLeft, CalendarDays, Clock, DoorOpen, Armchair, Check, Ticket, Users, Crown, Loader2, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { movieService } from '../../services/movieService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { cinemaRoomService } from '../../services/cinemaRoomService'
 import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
+import {
+  validateSeatSelection,
+  getRowsFromLayout,
+  buildFallbackRows,
+  applyOccupiedToRows,
+  SEAT_GAP_ERROR_MESSAGE,
+} from '../../utils/seatValidation'
 
 // Default seat layout (fallback when API unavailable)
 const SEAT_ROWS = [
@@ -61,42 +69,6 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
   )
 }
 
-/* ── Seat Single Empty Validator ── */
-const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F']
-  const coupleRows = ['G', 'H']
-  const getRowSections = (rowLabel) => {
-    if (rows.includes(rowLabel)) return [['1', '2', '3'], ['4', '5', '6', '7', '8', '9'], ['10', '11', '12']]
-    if (coupleRows.includes(rowLabel)) return [['1'], ['2', '3', '4'], ['5']]
-    return []
-  }
-  const allRows = [...rows, ...coupleRows]
-  const violations = []
-  for (const row of allRows) {
-    const sections = getRowSections(row)
-    for (let s = 0; s < sections.length; s++) {
-      const section = sections[s]
-      if (section.length <= 1) continue
-      const initialStates = section.map(num => occupiedSeats.includes(`${row}${num}`) ? 1 : 0)
-      const finalStates = section.map(num => (occupiedSeats.includes(`${row}${num}`) || selectedSeats.includes(`${row}${num}`)) ? 1 : 0)
-      const countSingleEmpty = (states) => {
-        let count = 0; let i = 0
-        while (i < states.length) {
-          if (states[i] === 0) { let len = 0; while (i < states.length && states[i] === 0) { len++; i++ }; if (len === 1) count++ } else i++
-        }
-        return count
-      }
-      if (countSingleEmpty(finalStates) > countSingleEmpty(initialStates)) {
-        let i = 0
-        while (i < finalStates.length) {
-          if (finalStates[i] === 0) { let start = i; let len = 0; while (i < finalStates.length && finalStates[i] === 0) { len++; i++ } if (len === 1) { let initLen = 0; let j = start; while (j >= 0 && initialStates[j] === 0) { initLen++; j-- } j = start + 1; while (j < initialStates.length && initialStates[j] === 0) { initLen++; j++ } if (initLen !== 1) violations.push(`${row}${section[start]}`) } } else i++
-        }
-      }
-    }
-  }
-  return violations
-}
-
 export default function SeatSelectionPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -115,13 +87,22 @@ export default function SeatSelectionPage() {
   const [seatError, setSeatError] = useState('')
   const [matchedShowtime, setMatchedShowtime] = useState(null)
 
-  // Build occupied set from real API seat data
+  // Build occupied set from real API seat data (or fallback labels)
   const occupiedSet = useMemo(() => {
     const set = new Set()
-    if (!seatLayout?.seatMatrix) return set
+    if (!seatLayout?.seatMatrix) {
+      FALLBACK_OCCUPIED.forEach(id => set.add(id))
+      return set
+    }
     seatLayout.seatMatrix.forEach(row => {
       row.seats.forEach(seat => {
-        if (seat.status === 'MAINTENANCE' || seat.type === 'AISLE' || seat.type === 'COUPLE_EXTENSION') {
+        const status = String(seat.status || '').toUpperCase()
+        const type = String(seat.type || '').toUpperCase()
+        if (
+          status === 'MAINTENANCE' || status === 'SOLD' || status === 'RESERVED' ||
+          status === 'DISABLED' || status === 'BROKEN' ||
+          type === 'AISLE' || type === 'COUPLE_EXTENSION'
+        ) {
           set.add(seat.id)
         }
       })
@@ -142,10 +123,14 @@ export default function SeatSelectionPage() {
   // Use API occupied set if available, otherwise fallback
   const currentOccupied = dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
 
-  // Calculate single empty seat violations
-  const violations = selected.length > 0
-    ? checkSingleEmptySeats(selected, currentOccupied)
-    : []
+  // Rows used by gap validator
+  const validationRows = useMemo(() => {
+    if (seatLayout?.seatMatrix?.length) return getRowsFromLayout(seatLayout)
+    return applyOccupiedToRows(buildFallbackRows(), FALLBACK_OCCUPIED)
+  }, [seatLayout])
+
+  // Gap validation rejects invalid selections immediately, so no residual violations.
+  const violations = []
 
   // Combo selection states (from API)
   const [combos, setCombos] = useState(FALLBACK_COMBOS)
@@ -235,10 +220,28 @@ export default function SeatSelectionPage() {
     return () => { cancelled = true }
   }, [movieId, dateStr, time, roomIdParam])
 
-  // Chọn/bỏ chọn ghế
+  // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
   const toggleSeat = useCallback((seatId) => {
+    if (currentOccupied.has(seatId)) return
+
+    const result = validateSeatSelection({
+      rows: validationRows,
+      currentSelected: selected,
+      toggledSeatId: seatId,
+    })
+
+    if (!result.valid) {
+      toast.error(result.reason || SEAT_GAP_ERROR_MESSAGE, {
+        description: result.affectedRow
+          ? `Hàng ${result.affectedRow} — không để lại 1 ghế trống đơn lẻ.`
+          : undefined,
+        duration: 2800,
+      })
+      return
+    }
+
     setSelected(prev => prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId])
-  }, [])
+  }, [currentOccupied, validationRows, selected])
 
   // Giá của từng loại ghế (ưu tiên giá từ showtime nếu có)
   const getSeatPrice = useCallback((seatId) => {

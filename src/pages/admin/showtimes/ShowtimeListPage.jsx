@@ -773,6 +773,7 @@ export default function ShowtimeListPage() {
                               key={st.id}
                               className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm ${isDraft ? 'opacity-80' : ''}`}
                               style={{ left, width }}
+                              onClick={() => navigate(`${basePath}/showtimes/${st.id}`)}
                             >
                               <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
 
@@ -784,9 +785,11 @@ export default function ShowtimeListPage() {
                                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
                                     {st.format || '2D'}
                                   </span>
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${statusMeta.className}`}>
-                                    {statusMeta.label}
-                                  </span>
+                                  {st.status !== 'SCHEDULED' && (
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${statusMeta.className}`}>
+                                      {statusMeta.label}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
                                   <span>{st.time}</span>
@@ -797,7 +800,7 @@ export default function ShowtimeListPage() {
 
                               {/* Hover Actions */}
                               <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
-                                {nextActions.map(action => (
+                                {nextActions.filter(action => action.status !== 'SOLD_OUT').map(action => (
                                   <button
                                     key={action.status}
                                     onClick={(e) => {
@@ -811,13 +814,6 @@ export default function ShowtimeListPage() {
                                     <span className="material-symbols-outlined text-[14px]">{action.icon}</span>
                                   </button>
                                 ))}
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); setDeleteTarget(st); }}
-                                  title="Xóa suất chiếu"
-                                  className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors bg-white shadow-sm"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
                               </div>
                             </div>
                           )
@@ -843,10 +839,6 @@ export default function ShowtimeListPage() {
               <div className="flex items-center gap-2">
                 <div className="w-4 h-3 rounded bg-[#fff8e1] border border-[#ffe082]"></div>
                 <span className="text-[12px] font-semibold text-[#5c3f40]">Giờ vàng</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-3 rounded bg-[#f5f5f5] border border-gray-300"></div>
-                <span className="text-[12px] font-semibold text-[#5c3f40]">Nháp (user chưa thấy)</span>
               </div>
             </div>
             <span className="text-sm text-[#5c3f40]">Hệ thống quản lý rạp chiếu phim - v2.1.0</span>
@@ -875,7 +867,11 @@ export default function ShowtimeListPage() {
                     const statusMeta = getStatusMeta(st.status)
                     const nextActions = getNextStatusActions(st.status)
                     return (
-                    <tr key={st.id} className="hover:bg-[#f7f9fb] transition-colors">
+                    <tr 
+                      key={st.id} 
+                      className="hover:bg-[#f7f9fb] transition-colors cursor-pointer"
+                      onClick={() => navigate(`${basePath}/showtimes/${st.id}`)}
+                    >
                       <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
                       <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
                       <td className="px-6 py-4 font-medium text-[#5c3f40]">{st.date}</td>
@@ -885,9 +881,13 @@ export default function ShowtimeListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 border rounded text-[10px] font-bold uppercase ${statusMeta.className}`}>
-                          {statusMeta.label}
-                        </span>
+                        {st.status !== 'SCHEDULED' ? (
+                          <span className={`px-2 py-0.5 border rounded text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                            {statusMeta.label}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 font-bold">
                         <span className={`px-2 py-0.5 border rounded text-[10px] uppercase ${st.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#f7f9fb] text-[#5c647a] border-[#e0e3e5]'}`}>
@@ -897,10 +897,13 @@ export default function ShowtimeListPage() {
                       <td className="px-6 py-4 font-extrabold font-mono text-[#00836c]">{formatVND(st.price)}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {nextActions.map(action => (
+                          {nextActions.filter(action => action.status !== 'SOLD_OUT').map(action => (
                             <button
                               key={action.status}
-                              onClick={() => handleUpdateStatus(st, action.status)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleUpdateStatus(st, action.status);
+                              }}
                               disabled={statusUpdatingId === st.id}
                               className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer disabled:opacity-50"
                               title={action.label}
@@ -908,13 +911,6 @@ export default function ShowtimeListPage() {
                               <span className="material-symbols-outlined text-[16px]">{action.icon}</span>
                             </button>
                           ))}
-                                                    <button
-                            onClick={() => setDeleteTarget(st)}
-                            className="p-2 hover:bg-[#ffdad6] text-[#ba1a1a] rounded transition-all cursor-pointer"
-                            title="Xóa"
-                          >
-                            <Trash2 size={16} />
-                          </button>
                         </div>
                       </td>
                     </tr>

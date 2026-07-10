@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import {
   promotionService,
   getQuickDiscountText,
@@ -283,37 +284,77 @@ export default function HomePage() {
   // Debug: Log component mount and location
   console.log('🏠 HomePage rendering. Path:', location.pathname, 'Movies count:', movies.length)
 
-  // ── Quick Booking state ────────────────────────────────────────
+  // ── Quick Booking state (API-backed showtimes) ──────────────────
   const [bookingMovieId, setBookingMovieId] = useState('')
   const [bookingDate, setBookingDate] = useState('')
   const [bookingTime, setBookingTime] = useState('')
+  const [bookingRoomId, setBookingRoomId] = useState('')
+  // Full select value "time|roomId" so CustomSelect can match the option
+  const [bookingTimeValue, setBookingTimeValue] = useState('')
   const [bookingErrors, setBookingErrors] = useState({ movie: '', date: '', time: '' })
+  // Map date → showtimes[] from API for selected movie
+  const [showtimesByDate, setShowtimesByDate] = useState({})
+  const [showtimesLoading, setShowtimesLoading] = useState(false)
 
-  const getAvailableDates = () => {
-    if (!bookingMovieId) return []
-    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
-    if (!movie) return []
-    const charCodeSum = movie.id.toString().split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-    const numDays = (charCodeSum % 5) + 3
-    return DAYS.slice(0, numDays).map(d => d.date)
-  }
+  // Fetch real showtimes for next 7 days when movie changes
+  useEffect(() => {
+    if (!bookingMovieId) {
+      setShowtimesByDate({})
+      return
+    }
+    let cancelled = false
+    setShowtimesLoading(true)
+    setShowtimesByDate({})
 
-  const getAvailableTimes = () => {
-    if (!bookingMovieId || !bookingDate) return []
-    if (!getAvailableDates().includes(bookingDate)) return []
-    const SCHEDULE_TEMPLATES = [
-      ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15'],
-      ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30'],
-      ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30'],
-      ['10:15', '13:00', '16:45', '19:30', '22:15'],
-      ['11:00', '14:30', '18:00', '20:30', '22:30'],
-    ]
-    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
-    if (!movie) return []
-    const idx = movies.indexOf(movie)
-    return movie.showtimes?.map(st => new Date(st.startTime).toTimeString().slice(0, 5)) ||
-      SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
-  }
+    Promise.all(
+      DAYS.map(async (d) => {
+        try {
+          const list = await showtimeService.getByMovie(bookingMovieId, d.date)
+          const publicList = (list || []).filter(s => s && isPublicShowtimeStatus(s.status))
+          return [d.date, publicList]
+        } catch {
+          return [d.date, []]
+        }
+      })
+    )
+      .then((entries) => {
+        if (cancelled) return
+        const map = {}
+        entries.forEach(([date, list]) => { map[date] = list })
+        setShowtimesByDate(map)
+      })
+      .finally(() => {
+        if (!cancelled) setShowtimesLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [bookingMovieId])
+
+  // Dates that actually have at least one public showtime
+  const availableDates = useMemo(() => {
+    return DAYS
+      .map(d => d.date)
+      .filter(date => (showtimesByDate[date] || []).length > 0)
+  }, [showtimesByDate])
+
+  // Time options for selected date (include roomName + roomId for navigation)
+  const availableTimeOptions = useMemo(() => {
+    if (!bookingDate) return []
+    const list = showtimesByDate[bookingDate] || []
+    return list.map(st => {
+      const time = st.time
+        || (st.startTime ? st.startTime.split('T')[1]?.substring(0, 5) : '')
+        || ''
+      const room = st.roomName || st.room || ''
+      return {
+        value: `${time}|${st.roomId || ''}`,
+        label: room ? `${time} · ${room}` : time,
+        time,
+        roomId: st.roomId || '',
+        showtime: st,
+      }
+    }).filter(opt => opt.time)
+  }, [bookingDate, showtimesByDate])
 
   const handleQuickBook = (e) => {
     e.preventDefault()
@@ -323,7 +364,11 @@ export default function HomePage() {
     if (!bookingDate) { newErrors.date = 'Vui lòng chọn ngày'; valid = false }
     if (!bookingTime) { newErrors.time = 'Vui lòng chọn giờ'; valid = false }
     setBookingErrors(newErrors)
-    if (valid) navigate(`/movies/${bookingMovieId}?date=${bookingDate}&time=${bookingTime}`)
+    if (!valid) return
+
+    const params = new URLSearchParams({ date: bookingDate, time: bookingTime })
+    if (bookingRoomId) params.set('roomId', bookingRoomId)
+    navigate(`/movies/${bookingMovieId}?${params.toString()}`)
   }
   // ─────────────────────────────────────────────────────────────
 
@@ -435,6 +480,8 @@ export default function HomePage() {
       setBookingMovieId(movieId?.toString() || '')
       setBookingDate('')
       setBookingTime('')
+      setBookingRoomId('')
+      setBookingTimeValue('')
       setBookingErrors({ movie: '', date: '', time: '' })
     }
 
@@ -846,29 +893,35 @@ export default function HomePage() {
                   value={bookingMovieId}
                   options={movies.map(m => ({ value: m.id?.toString(), label: m.titleVn || m.titleEn || 'Phim' }))}
                   error={bookingErrors.movie}
-                  onChange={val => { setBookingMovieId(val); setBookingDate(''); setBookingTime(''); setBookingErrors({ movie: '', date: '', time: '' }) }}
+                  onChange={val => { setBookingMovieId(val); setBookingDate(''); setBookingTime(''); setBookingRoomId(''); setBookingTimeValue(''); setBookingErrors({ movie: '', date: '', time: '' }) }}
                 />
                 <CustomSelect
                   label="Chọn ngày chiếu"
-                  placeholder="-- Chọn ngày --"
+                  placeholder={showtimesLoading ? 'Đang tải...' : (availableDates.length === 0 && bookingMovieId && !showtimesLoading ? 'Không có lịch' : '-- Chọn ngày --')}
                   value={bookingDate}
-                  disabled={!bookingMovieId}
-                  options={getAvailableDates().map(d => {
-                    const dateObj = new Date(d)
+                  disabled={!bookingMovieId || showtimesLoading}
+                  options={availableDates.map(d => {
+                    const dateObj = new Date(d + 'T12:00:00')
                     const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
                     return { value: d, label }
                   })}
                   error={bookingErrors.date}
-                  onChange={val => { setBookingDate(val); setBookingTime(''); setBookingErrors(p => ({ ...p, date: '', time: '' })) }}
+                  onChange={val => { setBookingDate(val); setBookingTime(''); setBookingRoomId(''); setBookingTimeValue(''); setBookingErrors(p => ({ ...p, date: '', time: '' })) }}
                 />
                 <CustomSelect
                   label="Chọn suất chiếu"
-                  placeholder="-- Chọn giờ --"
-                  value={bookingTime}
-                  disabled={!bookingDate}
-                  options={getAvailableTimes().map(t => ({ value: t, label: t }))}
+                  placeholder={availableTimeOptions.length === 0 && bookingDate ? 'Không có suất' : '-- Chọn giờ --'}
+                  value={bookingTimeValue}
+                  disabled={!bookingDate || availableTimeOptions.length === 0}
+                  options={availableTimeOptions.map(t => ({ value: t.value, label: t.label }))}
                   error={bookingErrors.time}
-                  onChange={val => { setBookingTime(val); setBookingErrors(p => ({ ...p, time: '' })) }}
+                  onChange={val => {
+                    const [time, roomId = ''] = String(val).split('|')
+                    setBookingTimeValue(val)
+                    setBookingTime(time)
+                    setBookingRoomId(roomId)
+                    setBookingErrors(p => ({ ...p, time: '' }))
+                  }}
                 />
                 <div className="flex flex-col gap-2 w-full">
                   <span className="hidden md:block text-[10px] uppercase font-bold tracking-wider" style={{ color: 'transparent' }}>Đặt vé</span>

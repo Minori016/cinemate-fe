@@ -12,7 +12,6 @@ export default function ComboStep({
   setPromoCode,
   discount,
   onApplyPromo,
-  setBookingStep,
   loading = false,
   orderAmount = 0,
 }) {
@@ -215,21 +214,6 @@ export default function ComboStep({
         </div>
       </div>
 
-      {/* Back & Proceed navigation buttons */}
-      <div className="flex gap-4 border-t border-white/5 pt-6">
-        <button
-          onClick={() => setBookingStep(2)}
-          className="flex-1 py-3.5 rounded-xl border border-white/10 bg-transparent text-white font-bold text-sm uppercase tracking-wider cursor-pointer transition-all hover:bg-white/5 active:scale-95"
-        >
-          Quay lại chọn ghế
-        </button>
-        <button
-          onClick={() => setBookingStep(4)}
-          className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm uppercase tracking-wider cursor-pointer border-none transition-all hover:scale-102 active:scale-95 shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
-        >
-          Tiếp tục thanh toán
-        </button>
-      </div>
     </motion.div>
   )
 }

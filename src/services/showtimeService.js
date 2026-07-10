@@ -100,8 +100,16 @@ export const showtimeService = {
 
   // GET /api/v1/admin/showtimes/{id}
   getById: async (id) => {
-    const res = await api.get(`/api/v1/admin/showtimes/${id}`)
-    return mapShowtimeFromBackend(res.data?.result || res.data)
+    try {
+      const res = await api.get(`/api/v1/admin/showtimes/${id}`)
+      return mapShowtimeFromBackend(res.data?.result || res.data)
+    } catch (err) {
+      console.warn('GET showtime by ID failed, falling back to client-side filter:', err)
+      const all = await showtimeService.getAll()
+      const found = all.find(st => String(st.id) === String(id))
+      if (found) return found
+      throw err
+    }
   },
 
   // POST /api/v1/admin/showtimes

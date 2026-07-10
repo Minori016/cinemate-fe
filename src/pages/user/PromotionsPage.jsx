@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Tag, Sparkles, Copy, Check, Clock, Zap, Cake } from 'lucide-react'
+import { Calendar, Tag, Sparkles, Copy, Check, Clock } from 'lucide-react'
 import { motion } from 'motion/react'
 import {
   promotionService,
@@ -7,7 +7,7 @@ import {
   getQuickDiscountText,
   computePromotionStatus,
   mapPromotionForUi,
-  PROMOTION_TYPES,
+  PROMOTION_STATUS,
 } from '../../services/promotionService'
 import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 
@@ -17,23 +17,6 @@ const DEFAULT_IMAGES = [
   'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=600',
   'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600',
 ]
-
-// Icon theo loại KM
-const TYPE_ICONS = {
-  [PROMOTION_TYPES.FLASH_SALE]: Zap,
-  [PROMOTION_TYPES.BIRTHDAY]: Cake,
-  [PROMOTION_TYPES.COMBO]: Sparkles,
-  [PROMOTION_TYPES.MEMBER_ONLY]: Sparkles,
-  [PROMOTION_TYPES.MOVIE_SPECIFIC]: Tag,
-}
-
-const TYPE_BADGES = {
-  [PROMOTION_TYPES.FLASH_SALE]: { text: 'FLASH', color: 'bg-yellow-500 text-black' },
-  [PROMOTION_TYPES.BIRTHDAY]: { text: 'BIRTHDAY', color: 'bg-pink-500 text-white' },
-  [PROMOTION_TYPES.COMBO]: { text: 'COMBO', color: 'bg-orange-500 text-white' },
-  [PROMOTION_TYPES.MEMBER_ONLY]: { text: 'MEMBER', color: 'bg-blue-500 text-white' },
-  [PROMOTION_TYPES.MOVIE_SPECIFIC]: { text: 'PHIM', color: 'bg-purple-500 text-white' },
-}
 
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState([])
@@ -118,7 +101,7 @@ export default function PromotionsPage() {
   // Lọc ra KM còn hạn để hiển thị
   const visiblePromotions = promotions.filter(p => {
     const s = computePromotionStatus(p)
-    return s !== 'EXPIRED'
+    return s !== PROMOTION_STATUS.EXPIRED
   })
 
   return (
@@ -166,8 +149,6 @@ export default function PromotionsPage() {
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
         >
           {visiblePromotions.map((promo, i) => {
-            const TypeIcon = TYPE_ICONS[promo.type] || Tag
-            const typeBadge = TYPE_BADGES[promo.type]
             const discountText = getQuickDiscountText(promo)
             const daysLeft = getDaysRemaining(promo.endTime)
             const isCopied = copiedId === promo.id
@@ -194,15 +175,10 @@ export default function PromotionsPage() {
 
                   {/* Top-left badges */}
                   <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
-                    {typeBadge ? (
-                      <div className={`${typeBadge.color} text-[10px] font-extrabold uppercase px-2.5 py-1 rounded flex items-center gap-1 shadow-md`}>
-                        <TypeIcon size={10} />
-                        <span>{typeBadge.text}</span>
-                      </div>
-                    ) : (
+                    {promo.code && (
                       <div className="bg-red-600 text-white text-[10px] font-extrabold uppercase px-2.5 py-1 rounded flex items-center gap-1 shadow-md">
                         <Tag size={10} />
-                        <span>HOT</span>
+                        <span>Voucher</span>
                       </div>
                     )}
 

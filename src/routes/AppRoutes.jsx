@@ -41,6 +41,7 @@ import CinemaRoomDetailPage from '../pages/admin/cinema-rooms/CinemaRoomDetailPa
 import CinemaRoomFormPage from '../pages/admin/cinema-rooms/CinemaRoomFormPage'
 import ShowtimeListPage from '../pages/admin/showtimes/ShowtimeListPage'
 import ShowtimeFormPage from '../pages/admin/showtimes/ShowtimeFormPage'
+import ShowtimeDetailPage from '../pages/admin/showtimes/ShowtimeDetailPage'
 import AutoGeneratePage from '../pages/admin/showtimes/AutoGeneratePage'
 import SystemConfigPage from '../pages/admin/price-config/SystemConfigPage'
 import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
@@ -125,6 +126,7 @@ export default function AppRoutes() {
           <Route path="analytics" element={<ManagerAnalyticsPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
+          <Route path="showtimes/:id" element={<ShowtimeDetailPage />} />
           <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
           <Route path="shifts" element={<ManagerShiftsPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
@@ -149,6 +151,7 @@ export default function AppRoutes() {
           <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
+          <Route path="showtimes/:id" element={<ShowtimeDetailPage />} />
           <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
           <Route path="system-configs" element={<SystemConfigPage />} />
           <Route path="promotions" element={<PromotionListPage />} />
