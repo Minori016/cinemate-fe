@@ -121,7 +121,7 @@ export default function LoginPage() {
                     marginBottom: '16px',
                   }}
                 >
-                  CINEMATE
+                  CINE<span style={{ color: 'var(--color-primary)' }}>MATE</span>
                 </h2>
                 <p
                   style={{
@@ -200,7 +200,7 @@ export default function LoginPage() {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  CINEMATE
+                  CINE<span style={{ color: 'var(--color-primary)' }}>MATE</span>
                 </p>
               </div>
 
