@@ -4,12 +4,16 @@ import { Trash2, Clock, Plus } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
+import { systemConfigService } from '../../../services/systemConfigService'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { toast } from 'sonner'
 
-const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
+const formatVND = (num) => {
+  const validNum = Number(num);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(isNaN(validNum) ? 0 : validNum);
+}
 
 const getFormatColor = (format) => {
   const f = (format || '2D').toUpperCase()
@@ -20,15 +24,22 @@ const getFormatColor = (format) => {
 }
 
 const getRoomDetails = (room) => {
-  const nameLower = room.name?.toLowerCase() || ''
-  if (nameLower.includes('imax')) {
+  const nameLower = room.name?.toLowerCase() || '';
+  const rawFormats = room.supportedFormats;
+  const formats = Array.isArray(rawFormats) ? rawFormats : (typeof rawFormats === 'string' ? rawFormats.split(',') : []);
+  const cleanFormats = formats.map(f => String(f).toUpperCase().replace('_', ''));
+
+  if (cleanFormats.includes('IMAX') || nameLower.includes('imax')) {
     return { icon: 'videocam', iconColor: 'text-[#ba1a1a]', sub: 'IMAX' }
   }
   if (nameLower.includes('vip') || nameLower.includes('gold')) {
     return { icon: 'star', iconColor: 'text-[#e11d48]', sub: 'VIP' }
   }
-  if (nameLower.includes('3d') || nameLower.includes('4d')) {
-    return { icon: 'tv', iconColor: 'text-[#00836c]', sub: '3D/4D' }
+  if (cleanFormats.includes('4DX') || nameLower.includes('4dx') || nameLower.includes('4d')) {
+    return { icon: 'tv', iconColor: 'text-[#00836c]', sub: '4DX' }
+  }
+  if (cleanFormats.includes('3D') || nameLower.includes('3d')) {
+    return { icon: 'tv', iconColor: 'text-[#00836c]', sub: '3D' }
   }
   return { icon: 'speaker', iconColor: 'text-[#565e74]', sub: 'Standard' }
 }
@@ -54,6 +65,7 @@ export default function ShowtimeListPage() {
   const [showtimes, setShowtimes] = useState([])
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
+  const [systemConfigs, setSystemConfigs] = useState([])
   const [loading, setLoading] = useState(true)
 
   // View Mode
@@ -187,8 +199,17 @@ export default function ShowtimeListPage() {
       try {
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []
-        setRooms(rList.length > 0 ? rList : [])
+        const sortedList = (rList.length > 0 ? rList : []).sort((a, b) => 
+          String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
+        );
+        setRooms(sortedList)
       } catch { setRooms([]) }
+      try {
+        const sRes = await systemConfigService.getAll()
+        // Bọc thép: Xuyên qua các lớp object (data, result) để tìm đúng Array
+        const sData = sRes?.data?.result || sRes?.data || sRes || [];
+        setSystemConfigs(Array.isArray(sData) ? sData : []);
+      } catch { setSystemConfigs([]) }
     } catch (err) {
       console.error('Error loading showtimes data:', err)
       triggerToast('Không thể tải danh sách dữ liệu!', 'error')
@@ -224,17 +245,46 @@ export default function ShowtimeListPage() {
     return '--:--'
   }
 
+  const getConfigValue = (key, defaultValue) => {
+    // Bọc thép: Nếu API trả về Object thay vì Array, chặn ngay để không bị sập hàm .find()
+    if (!Array.isArray(systemConfigs)) return defaultValue;
+    
+    const conf = systemConfigs.find(c => c.configKey === key);
+    if (conf && conf.configValue != null) {
+       const parsed = parseInt(conf.configValue, 10);
+       return isNaN(parsed) ? defaultValue : parsed;
+    }
+    return defaultValue;
+  };
+
   const getCleaningEndTime = (st) => {
     const endStr = getEndTimeForShowtime(st);
     if (endStr === '--:--') return '--:--';
     
-    let buffer = 15;
-    const roomName = st.room?.toLowerCase() || '';
-    if (roomName.includes('imax')) buffer = 30;
-    else if (roomName.includes('4dx') || roomName.includes('4d')) buffer = 20;
-    else {
-      const roomObj = rooms.find(r => r.name === st.room);
-      if (roomObj && roomObj.capacity && roomObj.capacity < 120) buffer = 10;
+    const roomObj = rooms.find(r => r.name === st.room || String(r.id) === String(st.roomId));
+    let buffer = getConfigValue('CLEANING_BUFFER_DEFAULT', 15);
+    
+    if (roomObj) {
+      // 1. FIXED: Đảm bảo formats luôn là array
+      const rawFormats = roomObj.supportedFormats;
+      const formats = Array.isArray(rawFormats) ? rawFormats : (typeof rawFormats === 'string' ? rawFormats.split(',') : []);
+      
+      // 2. FIXED: Ép kiểu String trước khi toUpperCase()
+      const name = String(roomObj.name || '').toUpperCase();
+      
+      if (formats.includes('IMAX') || formats.includes('_IMAX') || name.includes('IMAX')) {
+        buffer = getConfigValue('CLEANING_BUFFER_IMAX', 30);
+      } else if (formats.includes('4DX') || formats.includes('_4DX') || name.includes('4DX')) {
+        buffer = getConfigValue('CLEANING_BUFFER_4DX', 20);
+      } else if (formats.includes('3D') || formats.includes('_3D') || name.includes('3D')) {
+        buffer = getConfigValue('CLEANING_BUFFER_3D', 20);
+      }
+    } else {
+      // 3. FIXED: Ép kiểu String trước khi toLowerCase()
+      const roomName = String(st.room || '').toLowerCase();
+      if (roomName.includes('imax')) buffer = getConfigValue('CLEANING_BUFFER_IMAX', 30);
+      else if (roomName.includes('4dx') || roomName.includes('4d')) buffer = getConfigValue('CLEANING_BUFFER_4DX', 20);
+      else if (roomName.includes('3d')) buffer = getConfigValue('CLEANING_BUFFER_3D', 20);
     }
 
     try {
@@ -651,7 +701,9 @@ export default function ShowtimeListPage() {
                           const { left, width } = calculatePosition(st.time, st.movieId, st.date)
                           const movieObj = movies.find(m => m.id === st.movieId || m.titleVn === st.movie)
                           const posterUrl = movieObj?.posterUrl
-                          const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
+                          const isAnimation = Array.isArray(movieObj?.genres)
+                            ? movieObj.genres.some(g => (g?.name || g || '').toString().toLowerCase().includes('hoạt hình'))
+                            : false;
                           const isDubbed = isAnimation && st.language === 'Lồng tiếng'
                           const isGoldenHour = st.goldenHour || st.isGoldenHour
                           
@@ -825,7 +877,10 @@ export default function ShowtimeListPage() {
                 <h3 className="font-bold text-[#191c1e] text-lg leading-tight mb-1 truncate" title={selectedShowtime.movie}>{selectedShowtime.movie}</h3>
                 <div className="flex flex-wrap gap-2 mt-2">
                   <span className="px-2 py-0.5 bg-[#e8f5e9] text-[#2e7d32] border border-[#a5d6a7] rounded text-xs font-bold uppercase">{selectedShowtime.format || '2D'}</span>
-                  {movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình')) && (
+                  {(() => {
+                    const mObj = movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie);
+                    return Array.isArray(mObj?.genres) && mObj.genres.some(g => (g?.name || g || '').toString().toLowerCase().includes('hoạt hình'));
+                  })() && (
                     <span className={`px-2 py-0.5 border rounded text-xs font-bold uppercase ${selectedShowtime.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#e3f2fd] text-[#1565c0] border-[#90caf9]'}`}>{selectedShowtime.language || 'Phụ đề'}</span>
                   )}
                 </div>

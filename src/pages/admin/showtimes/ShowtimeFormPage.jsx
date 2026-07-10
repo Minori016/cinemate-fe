@@ -4,6 +4,7 @@ import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import { priceConfigService } from '../../../services/priceConfigService'
+import { systemConfigService } from '../../../services/systemConfigService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
 import { ArrowLeft, Plus, Calendar, CheckCircle, AlertCircle, X } from 'lucide-react'
@@ -29,6 +30,7 @@ export default function ShowtimeFormPage() {
   const [language, setLanguage] = useState('Phụ đề')
   const [price, setPrice] = useState(70000)
   const [formatPrices, setFormatPrices] = useState({})
+  const [systemConfigs, setSystemConfigs] = useState([])
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
@@ -44,7 +46,10 @@ export default function ShowtimeFormPage() {
         // Fetch rooms
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []
-        setRooms(Array.isArray(rList) ? rList : [])
+        const sortedList = (Array.isArray(rList) ? rList : []).sort((a, b) => 
+          String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
+        );
+        setRooms(sortedList)
         // Fetch prices
         const pRes = await priceConfigService.getAll()
         const pList = pRes || []
@@ -56,6 +61,13 @@ export default function ShowtimeFormPage() {
         setFormatPrices(pMap)
         if (!isEditMode && pMap['2D']) {
           setPrice(pMap['2D'])
+        }
+        // Fetch system configs
+        try {
+          const sRes = await systemConfigService.getAll()
+          setSystemConfigs(sRes.data || sRes || [])
+        } catch (sErr) {
+          console.error('Failed to load system configs', sErr)
         }
       } catch (err) {
         console.error('Failed to load reference data', err)
@@ -149,13 +161,34 @@ export default function ShowtimeFormPage() {
     }
   }, [format, filteredRooms, roomId]);
 
+  const getConfigValue = (key, defaultValue) => {
+    const conf = systemConfigs.find(c => c.configKey === key);
+    if (conf && conf.configValue != null) {
+       return parseInt(conf.configValue, 10);
+    }
+    return defaultValue;
+  };
+
   const calculatedTimes = (() => {
     if (!date || !time) return null
     try {
       const startT = new Date(`${date}T${time}:00`)
       if (!isNaN(startT.getTime())) {
         const adMins = 10
-        const cleanMins = 15
+        const selectedRoomObj = rooms.find(r => String(r.id) === String(roomId))
+        let cleanMins = getConfigValue('CLEANING_BUFFER_DEFAULT', 15)
+        if (selectedRoomObj) {
+          const formats = selectedRoomObj.supportedFormats || []
+          const name = (selectedRoomObj.name || '').toUpperCase()
+          if (formats.includes('IMAX') || formats.includes('_IMAX') || name.includes('IMAX')) {
+            cleanMins = getConfigValue('CLEANING_BUFFER_IMAX', 30)
+          } else if (formats.includes('4DX') || formats.includes('_4DX') || name.includes('4DX')) {
+            cleanMins = getConfigValue('CLEANING_BUFFER_4DX', 20)
+          } else if (formats.includes('3D') || formats.includes('_3D') || name.includes('3D')) {
+            cleanMins = getConfigValue('CLEANING_BUFFER_3D', 20)
+          }
+        }
+        
         let totalMins = duration + adMins
         const remainder = totalMins % 5
         if (remainder !== 0) {
@@ -172,7 +205,8 @@ export default function ShowtimeFormPage() {
           start: formatTime(startT),
           end: formatTime(endT),
           bufferStart: formatTime(bufferStart),
-          bufferEnd: formatTime(bufferEnd)
+          bufferEnd: formatTime(bufferEnd),
+          cleanMins
         }
       }
     } catch {
@@ -355,6 +389,21 @@ export default function ShowtimeFormPage() {
               </div>
 
               <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-bold text-[#5c647a] mb-1">Định dạng *</label>
+                <select
+                  value={format}
+                  onChange={handleFormatChange}
+                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
+                >
+                  {availableFormats.map(fmt => (
+                    <option key={fmt} value={fmt}>{fmt}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1 w-full text-left">
                 <label className="text-sm font-bold text-[#5c647a] mb-1">Phòng chiếu *</label>
                 <select
                   value={roomId}
@@ -371,6 +420,19 @@ export default function ShowtimeFormPage() {
                   )}
                 </select>
                 {errors.roomId && <span className="text-xs text-red-400 mt-1">{errors.roomId}</span>}
+              </div>
+
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-bold text-[#5c647a] mb-1">Ngôn ngữ *</label>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
+                >
+                  {availableLanguages.map(lang => (
+                    <option key={lang} value={lang}>{lang}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -429,41 +491,13 @@ export default function ShowtimeFormPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span>Khoảng thời gian chiếm dụng phòng (kèm 15p dọn dẹp):</span>
+                  <span>Khoảng thời gian chiếm dụng phòng (kèm {calculatedTimes.cleanMins}p dọn dẹp):</span>
                   <span className="font-mono text-[#b80035] font-bold">
                     {calculatedTimes.bufferStart} - {calculatedTimes.bufferEnd}
                   </span>
                 </div>
               </div>
             )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Định dạng *</label>
-                <select
-                  value={format}
-                  onChange={handleFormatChange}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                >
-                  {availableFormats.map(fmt => (
-                    <option key={fmt} value={fmt}>{fmt}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Ngôn ngữ *</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                >
-                  {availableLanguages.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
           </div>
         </div>
 

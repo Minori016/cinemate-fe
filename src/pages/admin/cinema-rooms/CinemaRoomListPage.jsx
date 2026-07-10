@@ -3,6 +3,7 @@ import { motion } from 'motion/react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
+import { showtimeService } from '../../../services/showtimeService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw } from 'lucide-react'
@@ -38,7 +39,6 @@ export default function CinemaRoomListPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeSearch, setActiveSearch] = useState('')
-  const [maintenanceConfirm, setMaintenanceConfirm] = useState(null)
 
   // Add Room Dialog Modal
   const [showAddModal, setShowAddModal] = useState(false)
@@ -118,26 +118,34 @@ export default function CinemaRoomListPage() {
     return seats
   }
 
-  const countAffectedShowtimes = (roomName) => {
-    const local = localStorage.getItem('manager_showtimes_db')
-    const list = local ? JSON.parse(local) : []
-    return list.filter(item => item.room === roomName).length
-  }
-
-  const handleStatusChange = (roomObj, newStatus) => {
+  const handleStatusChange = async (roomObj, newStatus) => {
     if (newStatus === 'MAINTENANCE') {
-      const affectedCount = countAffectedShowtimes(roomObj.name)
-      setMaintenanceConfirm({
-        room: roomObj,
-        targetStatus: newStatus,
-        affectedCount,
-        onConfirm: () => {
-          updateRoomStatus(roomObj.id, newStatus)
-          setMaintenanceConfirm(null)
+      setLoading(true)
+      try {
+        const showtimes = await showtimeService.getAll()
+        const affectedShowtimes = showtimes.filter(st => 
+          String(st.roomId) === String(roomObj.id) && 
+          st.startTime && 
+          new Date(st.startTime) >= new Date() &&
+          st.status !== 'FINISHED' && 
+          st.status !== 'CANCELLED'
+        )
+        const affectedCount = affectedShowtimes.length
+        
+        if (affectedCount > 0) {
+          triggerToast(`Không thể chuyển phòng sang bảo trì vì đang có ${affectedCount} suất chiếu hoạt động!`, 'error')
+          return
         }
-      })
+        
+        await updateRoomStatus(roomObj.id, newStatus)
+      } catch (err) {
+        console.error('Failed to count affected showtimes:', err)
+        triggerToast('Không thể kiểm tra lịch chiếu của phòng này.', 'error')
+      } finally {
+        setLoading(false)
+      }
     } else {
-      updateRoomStatus(roomObj.id, newStatus)
+      await updateRoomStatus(roomObj.id, newStatus)
     }
   }
 
@@ -325,7 +333,6 @@ export default function CinemaRoomListPage() {
 
       {/* Maintenance Warning Alerts */}
       {rooms.filter(r => r.status === 'MAINTENANCE').map(r => {
-        const count = countAffectedShowtimes(r.name)
         return (
           <div key={r.id} className="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl text-xs font-semibold flex items-start gap-3 max-w-4xl shadow-sm animate-fade-in">
             <AlertCircle className="shrink-0 mt-0.5" size={16} />
@@ -333,7 +340,7 @@ export default function CinemaRoomListPage() {
               <p className="font-bold uppercase tracking-wider mb-1">Cảnh báo bảo trì: {r.name}</p>
               <p className="text-gray-400 leading-relaxed font-medium">
                 Phòng chiếu này đang ở trạng thái bảo trì (<span className="text-amber-500 font-bold">MAINTENANCE</span>). 
-                Hiện có <span className="text-white font-black">{count}</span> suất chiếu liên quan đang bị ảnh hưởng hoặc tạm ngưng bán vé.
+                Các suất chiếu tại phòng này sẽ tạm ngưng bán vé cho tới khi hoàn tất bảo trì.
               </p>
             </div>
           </div>
@@ -511,37 +518,6 @@ export default function CinemaRoomListPage() {
               </button>
             </div>
           </form>
-        </div>
-      )}
-
-      {/* Maintenance Confirmation Modal */}
-      {maintenanceConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#161b2a] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full text-left">
-            <h4 className="font-bold text-amber-500 text-sm uppercase tracking-wider mb-3 flex items-center gap-2">
-              <AlertCircle size={18} />
-              Cảnh báo bảo trì phòng chiếu
-            </h4>
-            <p className="text-xs text-gray-300 mb-6 leading-relaxed">
-              Bạn đang chuyển phòng chiếu <strong>"{maintenanceConfirm.room.name}"</strong> sang trạng thái bảo trì (<span className="text-amber-500 font-bold">MAINTENANCE</span>).
-              <br /><br />
-              Phòng này hiện đang có <strong className="text-white">{maintenanceConfirm.affectedCount}</strong> suất chiếu được lên lịch. Các suất chiếu này sẽ không thể mở bán vé. Bạn có chắc chắn muốn tiếp tục không?
-            </p>
-            <div className="flex justify-end gap-3 text-xs">
-              <button
-                onClick={() => setMaintenanceConfirm(null)}
-                className="px-4 py-2 border border-white/10 text-gray-300 font-bold rounded-xl bg-white/5 hover:bg-white/10 cursor-pointer transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={maintenanceConfirm.onConfirm}
-                className="px-5 py-2 bg-amber-500 text-slate-900 font-bold rounded-xl hover:bg-amber-400 cursor-pointer shadow-md shadow-amber-500/10 transition-colors"
-              >
-                Xác nhận bảo trì
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

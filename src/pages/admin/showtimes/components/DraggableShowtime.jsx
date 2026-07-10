@@ -12,12 +12,12 @@ const DraggableShowtime = memo(function DraggableShowtime({
   handleDeleteShowtime
 }) {
   const { attributes, listeners, setNodeRef: setDraggableRef, transform } = useDraggable({
-    id: id.toString(),
+    id: id?.toString() || crypto.randomUUID(),
     data: { id, st, movieObj }
   });
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
-    id: id.toString(),
+    id: id?.toString() || crypto.randomUUID(),
     data: { id }
   });
 
@@ -27,10 +27,29 @@ const DraggableShowtime = memo(function DraggableShowtime({
     setDroppableRef(node);
   };
 
-  const { left, width } = calculatePosition(st.startTime, st.endTime)
-  const isGoldenHour = st.goldenHour || st.isGoldenHour
-  const isAnimation = movieObj?.genres?.some(g => g.name?.toLowerCase().includes('hoạt hình'))
-  const isDubbed = isAnimation && st.language === 'Lồng tiếng'
+  const safeFormatTime = (isoString) => {
+    if (!isoString) return '--:--';
+    try {
+      const parsed = parseISO(isoString);
+      if (isNaN(parsed.getTime())) return '--:--';
+      return format(parsed, 'HH:mm');
+    } catch {
+      return '--:--';
+    }
+  };
+
+  const pos = calculatePosition(st?.startTime, st?.endTime) || { left: 0, width: 0 };
+  const left = pos.left;
+  const width = pos.width;
+  
+  const isGoldenHour = st?.goldenHour || st?.isGoldenHour;
+  
+  // Safely check genres to avoid TypeError if genres is a string or undefined
+  const isAnimation = Array.isArray(movieObj?.genres) 
+    ? movieObj.genres.some(g => g?.name?.toLowerCase().includes('hoạt hình')) 
+    : false;
+    
+  const isDubbed = isAnimation && st?.language === 'Lồng tiếng';
 
   // Distinct Preview Colors
   const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
@@ -67,9 +86,9 @@ const DraggableShowtime = memo(function DraggableShowtime({
           </span>
         </div>
         <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
-          <span>{format(parseISO(st.startTime), 'HH:mm')}</span>
+          <span>{safeFormatTime(st.startTime)}</span>
           <span>-</span>
-          <span>{format(parseISO(st.endTime), 'HH:mm')}</span>
+          <span>{safeFormatTime(st.endTime)}</span>
         </p>
       </div>
 
