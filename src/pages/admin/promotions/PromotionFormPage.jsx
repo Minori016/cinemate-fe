@@ -138,22 +138,49 @@ export default function PromotionFormPage() {
       newErrors.usageLimit = 'Tổng lượt dùng phải ≥ 1.'
     }
 
+    // Validation cho discountValue
+    if (discountValue === '' || discountValue === null) {
+      newErrors.discountValue = 'Giá trị giảm là bắt buộc.'
+    } else if (isNaN(Number(discountValue)) || Number(discountValue) <= 0) {
+      newErrors.discountValue = 'Giá trị giảm phải lớn hơn 0.'
+    } else if (discountType === DISCOUNT_TYPES.PERCENT && Number(discountValue) > 100) {
+      newErrors.discountValue = 'Phần trăm giảm không được vượt quá 100%.'
+    }
+
     if (applicableHours && !/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(applicableHours)) {
       newErrors.applicableHours = 'Định dạng phải là HH:mm-HH:mm (VD: 14:00-17:00).'
     }
 
     setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+
+    // Switch to the first tab containing an error for better UX
+    if (Object.keys(newErrors).length > 0) {
+      if (newErrors.title || newErrors.startTime || newErrors.endTime || newErrors.description) {
+        setActiveTab('basic')
+      } else if (newErrors.code || newErrors.usageLimit || newErrors.discountValue) {
+        setActiveTab('discount')
+      } else if (newErrors.applicableHours) {
+        setActiveTab('conditions')
+      }
+      return false
+    }
+
+    return true
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validate()) {
-      setActiveTab('basic')
       return
     }
 
     setIsSubmitting(true)
+
+    // Helper to format LocalDateTime (YYYY-MM-DDTHH:mm:ss) required by backend
+    const formatLocalDateTime = (val) => {
+      if (!val) return null
+      return val.length === 16 ? `${val}:00` : val
+    }
 
     // Payload gửi tới backend — khớp với AddPromotionRequest / UpdatePromotionRequest v2
     // - discountValue:  giá trị tiền mặt khi FIXED_AMOUNT
@@ -167,8 +194,8 @@ export default function PromotionFormPage() {
       discountPercent: discountType === DISCOUNT_TYPES.PERCENT ? discountValueNum : null,
       discountValue: discountType === DISCOUNT_TYPES.FIXED_AMOUNT ? discountValueNum : null,
       maxTotalUsage: Number(usageLimit),
-      startTime,
-      endTime,
+      startTime: formatLocalDateTime(startTime),
+      endTime: formatLocalDateTime(endTime),
       imageUrl: imageUrl.trim() || null,
     }
 

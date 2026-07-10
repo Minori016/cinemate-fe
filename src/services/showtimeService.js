@@ -1,7 +1,7 @@
 import api from './api'
 
 // Status user được xem/chọn ghế (DRAFT bị loại — chỉ SCHEDULED trở lên mới hiển thị)
-export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'OPEN_FOR_BOOKING', 'SOLD_OUT']
+export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'SOLD_OUT']
 
 export const isPublicShowtimeStatus = (status) => {
   if (!status) return true
@@ -180,12 +180,11 @@ export const showtimeService = {
     return Array.isArray(list) ? list.map(item => mapShowtimeFromBackend(item)) : []
   },
 
-  // PUT /api/v1/admin/showtimes/{id}/status?status=SCHEDULED|OPEN_FOR_BOOKING|...
+  // PUT /api/v1/admin/showtimes/{id}/status?status=SCHEDULED|SOLD_OUT|...
   // Transition rules (BE):
   // DRAFT → SCHEDULED
-  // SCHEDULED → OPEN_FOR_BOOKING | CANCELLED
-  // OPEN_FOR_BOOKING → SOLD_OUT | CANCELLED | FINISHED
-  // SOLD_OUT → OPEN_FOR_BOOKING | CANCELLED | FINISHED
+  // SCHEDULED → SOLD_OUT | CANCELLED
+  // SOLD_OUT → SCHEDULED | CANCELLED | FINISHED
   updateStatus: async (id, status) => {
     const res = await api.put(`/api/v1/admin/showtimes/${id}/status`, null, {
       params: { status }

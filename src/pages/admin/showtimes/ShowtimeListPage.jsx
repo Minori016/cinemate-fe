@@ -18,7 +18,6 @@ const formatVND = (num) => {
 const STATUS_META = {
   DRAFT: { label: 'Nháp', className: 'bg-gray-100 text-gray-600 border-gray-300' },
   SCHEDULED: { label: 'Đã lên lịch', className: 'bg-blue-50 text-blue-700 border-blue-200' },
-  OPEN_FOR_BOOKING: { label: 'Mở bán', className: 'bg-green-50 text-green-700 border-green-200' },
   SOLD_OUT: { label: 'Hết vé', className: 'bg-orange-50 text-orange-700 border-orange-200' },
   CANCELLED: { label: 'Đã hủy', className: 'bg-red-50 text-red-700 border-red-200' },
   FINISHED: { label: 'Đã chiếu', className: 'bg-slate-100 text-slate-600 border-slate-300' },
@@ -32,7 +31,10 @@ const getNextStatusActions = (status) => {
     return [{ status: 'SCHEDULED', label: 'Publish (lên lịch)', icon: 'publish' }]
   }
   if (status === 'SCHEDULED') {
-    return [{ status: 'OPEN_FOR_BOOKING', label: 'Mở bán vé', icon: 'confirmation_number' }]
+    return [{ status: 'SOLD_OUT', label: 'Hết vé', icon: 'block' }]
+  }
+  if (status === 'SOLD_OUT') {
+    return [{ status: 'SCHEDULED', label: 'Mở lại bán', icon: 'publish' }]
   }
   return []
 }
@@ -343,8 +345,8 @@ export default function ShowtimeListPage() {
     }
   }
 
-  // Publish flow (hướng 1): DRAFT → SCHEDULED → OPEN_FOR_BOOKING
-  // Chỉ suất SCHEDULED / OPEN_FOR_BOOKING / SOLD_OUT mới hiện trên API user.
+  // Publish flow: DRAFT → SCHEDULED → SOLD_OUT
+  // Chỉ suất SCHEDULED / SOLD_OUT mới hiện trên API user.
   const handleUpdateStatus = async (st, nextStatus) => {
     if (!st?.id || !nextStatus) return
     setStatusUpdatingId(st.id)
@@ -357,9 +359,7 @@ export default function ShowtimeListPage() {
       toast.success(
         nextStatus === 'SCHEDULED'
           ? 'Đã publish suất chiếu (SCHEDULED). User đã có thể thấy lịch.'
-          : nextStatus === 'OPEN_FOR_BOOKING'
-            ? 'Đã mở bán vé (OPEN_FOR_BOOKING).'
-            : `Đã cập nhật trạng thái: ${getStatusMeta(nextStatus).label}`,
+          : `Đã cập nhật trạng thái: ${getStatusMeta(nextStatus).label}`,
         { id: toastId }
       )
     } catch (err) {
@@ -948,109 +948,6 @@ export default function ShowtimeListPage() {
             <Button variant="danger" onClick={handleDelete}>Xóa lịch</Button>
           </div>
         </div>
-      </Modal>
-
-      {/* Showtime Detail Modal */}
-      <Modal open={!!selectedShowtime} onClose={() => setSelectedShowtime(null)} title="Chi tiết Suất chiếu" theme="light">
-        {selectedShowtime && (
-          <div className="space-y-4 text-sm">
-            <div className="bg-[#f7f9fb] border border-[#e0e3e5] p-4 rounded-xl flex gap-4">
-              <div className="w-16 h-20 bg-gray-200 rounded-lg overflow-hidden shrink-0 border border-gray-300">
-                {movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.posterUrl ? (
-                  <img src={movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie)?.posterUrl} alt="Poster" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <span className="material-symbols-outlined">movie</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-[#191c1e] text-lg leading-tight mb-1 truncate" title={selectedShowtime.movie}>{selectedShowtime.movie}</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <span className="px-2 py-0.5 bg-[#e8f5e9] text-[#2e7d32] border border-[#a5d6a7] rounded text-xs font-bold uppercase">{selectedShowtime.format || '2D'}</span>
-                  {(() => {
-                    const mObj = movies.find(m => m.id === selectedShowtime.movieId || m.titleVn === selectedShowtime.movie);
-                    return Array.isArray(mObj?.genres) && mObj.genres.some(g => (g?.name || g || '').toString().toLowerCase().includes('hoạt hình'));
-                  })() && (
-                    <span className={`px-2 py-0.5 border rounded text-xs font-bold uppercase ${selectedShowtime.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#e3f2fd] text-[#1565c0] border-[#90caf9]'}`}>{selectedShowtime.language || 'Phụ đề'}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
-                <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Thời gian chiếu</span>
-                <p className="text-[#b80035] font-bold font-mono text-base">{selectedShowtime.time} - {getEndTimeForShowtime(selectedShowtime)}</p>
-                <div className="flex justify-between items-end mt-1">
-                  <p className="text-xs font-medium text-[#191c1e]">{selectedShowtime.date}</p>
-                  <p className="text-[11px] font-medium text-[#00836c] bg-[#e8f5e9] px-1.5 py-0.5 rounded flex items-center gap-1 border border-[#a5d6a7]">
-                    <span className="material-symbols-outlined text-[12px]">cleaning_services</span>
-                    <span>Dọn rạp đến {getCleaningEndTime(selectedShowtime)}</span>
-                  </p>
-                </div>
-              </div>
-              <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
-                <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-1">Địa điểm</span>
-                <p className="text-[#191c1e] font-bold text-base uppercase">{selectedShowtime.room}</p>
-                <p className="text-xs font-medium text-[#5c647a] mt-1">Cinemate</p>
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#e0e3e5] p-3 rounded-xl shadow-sm">
-              <span className="text-[10px] text-[#5c647a] font-bold uppercase block mb-2">Trạng thái</span>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`px-2.5 py-1 border rounded text-xs font-bold uppercase ${getStatusMeta(selectedShowtime.status).className}`}>
-                  {getStatusMeta(selectedShowtime.status).label}
-                </span>
-                {selectedShowtime.status === 'DRAFT' && (
-                  <span className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                    User chưa thấy suất này. Cần Publish (lên lịch).
-                  </span>
-                )}
-                {selectedShowtime.status === 'SCHEDULED' && (
-                  <span className="text-[11px] text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                    User đã thấy lịch. Có thể Mở bán vé.
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#e0e3e5] rounded-xl shadow-sm overflow-hidden">
-              <div className="bg-[#f7f9fb] px-4 py-2 border-b border-[#e0e3e5]">
-                <span className="text-[10px] text-[#5c647a] font-bold uppercase">Bảng giá vé</span>
-              </div>
-              <div className="p-4 grid grid-cols-3 gap-4">
-                <div>
-                  <span className="text-xs text-[#5c647a] block mb-1">Thường</span>
-                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.price)}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-[#5c647a] block mb-1">VIP</span>
-                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.vipPrice || selectedShowtime.price)}</p>
-                </div>
-                <div>
-                  <span className="text-xs text-[#5c647a] block mb-1">Couple</span>
-                  <p className="font-mono font-bold text-[#00836c]">{formatVND(selectedShowtime.couplePrice || selectedShowtime.price)}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end pt-2 flex-wrap">
-              {getNextStatusActions(selectedShowtime.status).map(action => (
-                <Button
-                  key={action.status}
-                  onClick={() => handleUpdateStatus(selectedShowtime, action.status)}
-                  disabled={statusUpdatingId === selectedShowtime.id}
-                >
-                  <span className="material-symbols-outlined text-sm mr-1">{action.icon}</span>
-                  {action.label}
-                </Button>
-              ))}
-              <Button variant="secondary" onClick={() => setSelectedShowtime(null)}>Đóng</Button>
-            </div>
-          </div>
-        )}
       </Modal>
 
       {/* Export Confirmation Modal */}
