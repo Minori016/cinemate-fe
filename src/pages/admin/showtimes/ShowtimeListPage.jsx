@@ -113,7 +113,6 @@ export default function ShowtimeListPage() {
 
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [showExportModal, setShowExportModal] = useState(false)
   const [statusUpdatingId, setStatusUpdatingId] = useState(null)
 
@@ -355,11 +354,6 @@ export default function ShowtimeListPage() {
       setShowtimes(prev => prev.map(item => (
         item.id === st.id ? { ...item, ...updated, status: updated.status || nextStatus } : item
       )))
-      setSelectedShowtime(prev => (
-        prev && prev.id === st.id
-          ? { ...prev, ...updated, status: updated.status || nextStatus }
-          : prev
-      ))
       toast.success(
         nextStatus === 'SCHEDULED'
           ? 'Đã publish suất chiếu (SCHEDULED). User đã có thể thấy lịch.'
@@ -777,7 +771,6 @@ export default function ShowtimeListPage() {
                           return (
                             <div
                               key={st.id}
-                              onClick={() => setSelectedShowtime(st)}
                               className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm ${isDraft ? 'opacity-80' : ''}`}
                               style={{ left, width }}
                             >
@@ -915,14 +908,7 @@ export default function ShowtimeListPage() {
                               <span className="material-symbols-outlined text-[16px]">{action.icon}</span>
                             </button>
                           ))}
-                          <button
-                            onClick={() => setSelectedShowtime(st)}
-                            className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer"
-                            title="Xem chi tiết"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">visibility</span>
-                          </button>
-                          <button
+                                                    <button
                             onClick={() => setDeleteTarget(st)}
                             className="p-2 hover:bg-[#ffdad6] text-[#ba1a1a] rounded transition-all cursor-pointer"
                             title="Xóa"
