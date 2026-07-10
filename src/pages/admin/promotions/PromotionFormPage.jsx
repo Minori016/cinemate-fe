@@ -73,15 +73,17 @@ export default function PromotionFormPage() {
             setCode(promo.code || '')
             setImageUrl(promo.imageUrl || '')
             setType(promo.type || PROMOTION_TYPES.VOUCHER)
-
-            // Map discount values from backend
-            const isPercent = promo.discountPercent != null && Number(promo.discountPercent) > 0
-            setDiscountType(isPercent ? DISCOUNT_TYPES.PERCENT : DISCOUNT_TYPES.FIXED_AMOUNT)
-            setDiscountValue(isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? ''))
-
+            // Backend v2: discountPercent + discountValue, map về discountType cho UI
+            if (promo.discountPercent != null) {
+              setDiscountType(DISCOUNT_TYPES.PERCENT)
+              setDiscountValue(String(promo.discountPercent))
+            } else if (promo.discountValue != null) {
+              setDiscountType(DISCOUNT_TYPES.FIXED_AMOUNT)
+              setDiscountValue(String(promo.discountValue))
+            }
             setMinOrderValue(promo.minOrderValue ?? '')
             setMaxDiscount(promo.maxDiscount ?? '')
-            setUsageLimit(promo.maxTotalUsage ?? promo.usageLimit ?? '')
+            setUsageLimit(promo.maxTotalUsage ?? '')           // v2 field
             setUsagePerUser(promo.usagePerUser ?? '1')
             setPriority(promo.priority ?? '0')
             setStackable(!!promo.stackable)
@@ -120,23 +122,20 @@ export default function PromotionFormPage() {
     if (!title.trim()) newErrors.title = 'Tiêu đề không được bỏ trống.'
     if (!startTime) newErrors.startTime = 'Thời gian bắt đầu không được bỏ trống.'
     if (!endTime) newErrors.endTime = 'Thời gian kết thúc không được bỏ trống.'
-    if (!content.trim()) newErrors.content = 'Nội dung ngắn không được bỏ trống.'
     if (!description.trim()) newErrors.description = 'Chi tiết khuyến mãi không được bỏ trống.'
 
-    if (startTime && endTime) {
-      const start = new Date(startTime)
-      const end = new Date(endTime)
-      if (start >= end) newErrors.endTime = 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu.'
+    // Backend v2: code bắt buộc (@NotBlank @Pattern A-Z0-9_-)
+    if (!code.trim()) {
+      newErrors.code = 'Mã khuyến mãi là bắt buộc.'
+    } else if (!/^[A-Z0-9_-]{3,32}$/.test(code.trim())) {
+      newErrors.code = 'Mã chỉ gồm chữ hoa, số, gạch ngang, gạch dưới (3-32 ký tự).'
     }
 
-    if (code && !/^[A-Z0-9_-]{3,32}$/i.test(code)) {
-      newErrors.code = 'Mã chỉ gồm chữ, số, gạch ngang, gạch dưới (3-32 ký tự).'
-    }
-    if (discountValue !== '' && (isNaN(Number(discountValue)) || Number(discountValue) <= 0)) {
-      newErrors.discountValue = 'Giá trị giảm phải > 0.'
-    }
-    if (discountType === DISCOUNT_TYPES.PERCENT && Number(discountValue) > 100) {
-      newErrors.discountValue = 'Giảm theo % không được vượt quá 100.'
+    // Backend v2: maxTotalUsage bắt buộc (@NotNull @Min 1) — map từ usageLimit
+    if (usageLimit === '' || usageLimit === null) {
+      newErrors.usageLimit = 'Tổng lượt dùng là bắt buộc.'
+    } else if (isNaN(Number(usageLimit)) || Number(usageLimit) < 1) {
+      newErrors.usageLimit = 'Tổng lượt dùng phải ≥ 1.'
     }
 
     if (applicableHours && !/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(applicableHours)) {
@@ -156,36 +155,21 @@ export default function PromotionFormPage() {
 
     setIsSubmitting(true)
 
-    // Payload gửi tới backend — bổ sung các trường chuẩn mà backend yêu cầu
+    // Payload gửi tới backend — khớp với AddPromotionRequest / UpdatePromotionRequest v2
+    // - discountValue:  giá trị tiền mặt khi FIXED_AMOUNT
+    // - discountPercent: phần trăm khi PERCENT (0.01 - 100)
+    // - maxTotalUsage:  tổng lượt dùng toàn hệ thống (bắt buộc)
+    const discountValueNum = discountValue === '' ? null : Number(discountValue)
     const payload = {
+      code: code.trim().toUpperCase(),
       title: title.trim(),
+      detail: description.trim(),
+      discountPercent: discountType === DISCOUNT_TYPES.PERCENT ? discountValueNum : null,
+      discountValue: discountType === DISCOUNT_TYPES.FIXED_AMOUNT ? discountValueNum : null,
+      maxTotalUsage: Number(usageLimit),
       startTime,
       endTime,
-      content: content.trim(),
-      description: description.trim(),
-      detail: description.trim() || content.trim(),
-
-      code: code.trim().toUpperCase() || null,
       imageUrl: imageUrl.trim() || null,
-      type,
-      discountType,
-
-      // Phân tách % giảm và tiền mặt giảm theo loại đã chọn
-      discountPercent: discountType === DISCOUNT_TYPES.PERCENT && discountValue !== '' ? Number(discountValue) : null,
-      discountValue: discountType === DISCOUNT_TYPES.FIXED_AMOUNT && discountValue !== '' ? Number(discountValue) : null,
-
-      minOrderValue: minOrderValue === '' ? null : Number(minOrderValue),
-      maxDiscount: maxDiscount === '' ? null : Number(maxDiscount),
-
-      // Bổ sung maxTotalUsage tương ứng với Tổng lượt dùng
-      maxTotalUsage: usageLimit === '' ? null : Number(usageLimit),
-      usageLimit: usageLimit === '' ? null : Number(usageLimit),
-
-      usagePerUser: usagePerUser === '' ? 1 : Number(usagePerUser),
-      priority: priority === '' ? 0 : Number(priority),
-      stackable,
-      applicableDays: applicableDays.length ? applicableDays : null,
-      applicableHours: applicableHours.trim() || null,
     }
 
     try {

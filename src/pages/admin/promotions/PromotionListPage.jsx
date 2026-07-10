@@ -31,10 +31,17 @@ export default function PromotionListPage() {
 
   const loadPromotions = (search = '') => {
     setLoading(true)
-    promotionService.getAll(search ? { search } : {})
+    promotionService.getAll({ search })
       .then(res => {
-        const data = res.data?.result || res.data || []
-        setPromotions(Array.isArray(data) ? data : [])
+        const data = res.data?.result
+        // Backend trả về PageResponse { content: [], totalElements, ... }
+        // nhưng cũng fallback nếu backend trả thẳng array (tương thích ngược)
+        const items = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.content)
+            ? data.content
+            : (res.data || [])
+        setPromotions(items)
       })
       .catch(err => {
         console.error('Lỗi tải danh sách khuyến mãi:', err)

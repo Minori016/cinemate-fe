@@ -51,6 +51,7 @@ export default function EmployeeFormPage() {
     phoneNumber: '', address: '', identityCard: '',
     cinemaId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', role: 'STAFF',
     password: '', confirmPassword: '', status: 'ACTIVE',
+    salary: 1,
   })
   const [focused, setFocused] = useState({})
   const [showPassword, setShowPassword] = useState(false)
@@ -169,7 +170,7 @@ export default function EmployeeFormPage() {
       fullName: form.fullName.trim(), dayOfBirth: form.dateOfBirth,
       gender: form.gender, phoneNumber: form.phoneNumber.trim(),
       address: form.address.trim(), identityCard: form.identityCard.trim(),
-      cinemaId: form.cinemaId, role: form.role,
+      cinemaId: form.cinemaId, role: form.role, salary: Number(form.salary) || 1,
       ...(form.password ? { password: form.password, confirmPassword: form.confirmPassword } : {}),
       ...(isEditMode ? { status: form.status } : {}),
     }
