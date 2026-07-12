@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'motion/react'
-import { 
+import { getSeatScore } from '../../../../utils/seatScoring'
+import BestViewZoneFrame from '../../../../seatRecommendation/BestViewZoneFrame'
+import {
   Square, 
   Armchair, 
   Sofa, 
@@ -72,6 +74,10 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
   const isDraggingSelectRef = useRef(false)
   const dragStartRef = useRef(null)
   const isDrawingRef = useRef(false)
+
+  // Ref map for DOM-measured Best View frame around recommended VIP seats
+  const seatRefMap = useRef({})
+  const contentWrapperRef = useRef(null)
 
   // Clear selections when tool changes
   useEffect(() => {
@@ -182,26 +188,6 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
   }, [])
 
-  // Gaussian scoring algorithm based on SMPTE/THX cinema standards
-  const getSeatScore = (r, c, rCount, cCount) => {
-    // 1. Distance score — THX Two-Thirds Rule: ideal row is at 66% depth from screen
-    const idealRow = rCount * 0.66
-    const sigmaRow = rCount * 0.20
-    const distScore = Math.exp(-Math.pow(r - idealRow, 2) / (2 * sigmaRow * sigmaRow))
-
-    // 2. Centering score — SMPTE: center column is optimal for symmetrical viewing angle
-    const idealCol = (cCount - 1) / 2
-    const sigmaCol = cCount * 0.25
-    const centerScore = Math.exp(-Math.pow(c - idealCol, 2) / (2 * sigmaCol * sigmaCol))
-
-    // 3. Front penalty — SMPTE: vertical viewing angle > 35° causes neck strain
-    const frontRatio = r / rCount
-    const frontPenalty = frontRatio < 0.15 ? 0.25 : frontRatio < 0.25 ? 0.6 : 1.0
-
-    // Weighted combination: distance 50%, centering 35%, vertical comfort 15%
-    return (0.50 * distScore + 0.35 * centerScore + 0.15 * frontPenalty)
-  }
-
   // Pre-compute score grid for performance (memoized)
   const scoreGrid = useMemo(() => {
     const grid = []
@@ -222,6 +208,25 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
     if (score > 0.35) return { bg: 'rgba(148, 163, 184, 0.08)', border: 'rgba(148, 163, 184, 0.15)' } // Gray — Standard
     return { bg: 'transparent', border: 'transparent' }                                               // Economy
   }
+
+  // Recommended VIP seat IDs for the Best View frame (only when sweetSpotMode is active)
+  // Derived from scoreGrid directly so the frame adapts when rows/cols change,
+  // not just when gridData.type has been manually converted to VIP.
+  const vipSeatIds = useMemo(() => {
+    if (!sweetSpotMode) return []
+    const ids = []
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if ((scoreGrid[r]?.[c] ?? 0) > 0.80) {
+          const cell = gridData[r]?.[c]
+          if (cell && !cell.isSecondHalf) {
+            ids.push(cell.id)
+          }
+        }
+      }
+    }
+    return ids
+  }, [sweetSpotMode, gridData, rows, cols, scoreGrid])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -779,7 +784,7 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
             </div>
 
             {/* Grid Map with Sightline Guides */}
-            <div className="relative p-6 md:p-8 border-[3px] border-slate-300 rounded-3xl bg-white shadow-xl ring-[10px] ring-slate-100/50">
+            <div ref={contentWrapperRef} className="relative p-6 md:p-8 border-[3px] border-slate-300 rounded-3xl bg-white shadow-xl ring-[10px] ring-slate-100/50">
               
               {/* Lối đi bên trái (Walkway) */}
               <div className="absolute left-3 md:left-5 top-8 bottom-8 w-14 border-x-2 border-dashed border-slate-200 bg-slate-50/60 flex items-center justify-center rounded-lg pointer-events-none z-0">
@@ -806,24 +811,16 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
                    <span className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em] ml-1" style={{ writingMode: 'vertical-rl' }}>CỬA RA</span>
                  </div>
               </div>
-              {/* SVG Viewing Angle Overlay (MindYourDecisions Best Seat Algorithm) */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none z-[30] overflow-visible" preserveAspectRatio="none">
-                <line 
-                  x1={`calc(50% - ${(Math.max(420, cols * 48 + 40) * 0.8) / 2}px)`} y1="-80" 
-                  x2="50%" y2="66%" 
-                  stroke="rgba(239, 68, 68, 0.45)" strokeWidth="1.5" className="laser-line" 
-                />
-                <line 
-                  x1={`calc(50% + ${(Math.max(420, cols * 48 + 40) * 0.8) / 2}px)`} y1="-80" 
-                  x2="50%" y2="66%" 
-                  stroke="rgba(239, 68, 68, 0.45)" strokeWidth="1.5" className="laser-line" 
-                />
-                <circle cx="50%" cy="66%" r="6" fill="rgba(239, 68, 68, 0.4)" fillOpacity="0.25" className="animate-pulse" />
-                <circle cx="50%" cy="66%" r="2" fill="rgba(239, 68, 68, 0.8)" />
-                <text x="50%" y="66%" textAnchor="middle" dy="18" fill="rgba(239, 68, 68, 0.6)" fillOpacity="0.8" fontSize="9" fontWeight="800" fontFamily="monospace" className="tracking-widest">
-                  OPTIMAL VIEWING ANGLE
-                </text>
-              </svg>
+              {/* VIP Zone Frame — only visible when sweetSpotMode is enabled */}
+              {vipSeatIds.length > 0 && (
+                <div className="absolute inset-0 pointer-events-none z-[25]" style={{ overflow: 'visible' }}>
+                  <BestViewZoneFrame
+                    seatIds={vipSeatIds}
+                    seatRefs={seatRefMap.current}
+                    measureRoot={contentWrapperRef.current}
+                  />
+                </div>
+              )}
 
             <div className="flex flex-col pt-4 pb-8 relative z-[20]">
               {gridData.map((rowArr, rIndex) => (
@@ -892,6 +889,13 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
 
                       return (
                         <motion.div
+                          ref={(el) => {
+                            if (el) {
+                              seatRefMap.current[cell.id] = el
+                            } else {
+                              delete seatRefMap.current[cell.id]
+                            }
+                          }}
                           key={`${cell.rowIdx}-${cell.colIdx}`}
                           whileHover={{ scale: cell.type !== 'EMPTY' ? 1.08 : 1, zIndex: 10 }}
                           whileTap={{ scale: 0.95 }}
@@ -906,9 +910,9 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
                             ${sweetSpotHint ? 'ring-2 ring-amber-500 ring-offset-1' : ''}
                             ${isSelected ? 'ring-2 ring-emerald-500 ring-offset-2 bg-emerald-500/20 scale-[1.02] z-30' : ''}
                           `}
-                          style={heatmap ? { 
-                            boxShadow: `inset 0 0 0 1.5px ${heatmap.border}`, 
-                            backgroundColor: cell.type === 'EMPTY' ? heatmap.bg : undefined 
+                          style={heatmap ? {
+                            boxShadow: `inset 0 0 0 1.5px ${heatmap.border}`,
+                            backgroundColor: cell.type === 'EMPTY' ? heatmap.bg : undefined
                           } : undefined}
                         >
                           {isCouple && (
@@ -1309,15 +1313,6 @@ export default function SeatLayoutBuilder({ initialSeats = [], onSave, onCancel,
           background: linear-gradient(to bottom, rgba(229, 9, 20, 0.3) 0%, transparent 100%);
           box-shadow: 0 15px 35px rgba(229, 9, 20, 0.15);
           transform: perspective(200px) rotateX(-5deg);
-        }
-        @keyframes laserSweep {
-          to {
-            stroke-dashoffset: -20;
-          }
-        }
-        .laser-line {
-          stroke-dasharray: 5, 5;
-          animation: laserSweep 2s linear infinite;
         }
         input[type="range"]::-webkit-slider-thumb {
           background: var(--color-primary);

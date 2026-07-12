@@ -15,6 +15,10 @@ import {
   applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../utils/seatValidation'
+import { useRecommendation } from '../../seatRecommendation/useRecommendation'
+import RecommendationOverlay from '../../seatRecommendation/RecommendationOverlay'
+import BestViewZoneFrame from '../../seatRecommendation/BestViewZoneFrame'
+import { getSeatScore } from '../../utils/seatScoring'
 
 // Default seat layout (fallback when API unavailable)
 const SEAT_ROWS = [
@@ -86,6 +90,8 @@ export default function SeatSelectionPage() {
   const [seatLayout, setSeatLayout] = useState(null)
   const [seatError, setSeatError] = useState('')
   const [matchedShowtime, setMatchedShowtime] = useState(null)
+  const seatRefs = useRef({})
+  const [gridRoot, setGridRoot] = useState(null)
 
   // Build occupied set from real API seat data (or fallback labels)
   const occupiedSet = useMemo(() => {
@@ -131,6 +137,49 @@ export default function SeatSelectionPage() {
 
   // Gap validation rejects invalid selections immediately, so no residual violations.
   const violations = []
+
+  const { recommendation } = useRecommendation({
+    rows: validationRows,
+    ticketQuantity: 1,
+    selectedSeats: selected,
+    enabled: !loading && !seatError,
+  })
+
+  const bestViewGeometry = useMemo(() => {
+    const scoringRows = seatLayout?.seatMatrix?.length
+      ? seatLayout.seatMatrix
+      : SEAT_ROWS.map(({ row, type }) => ({
+        rowLabel: row,
+        seats: Array.from({ length: 12 }, (_, index) => ({
+          id: `${row}${index + 1}`,
+          number: index + 1,
+          type,
+        })),
+      }))
+
+    const regularRows = scoringRows.filter(row => !((row.seats || []).some(seat => (
+      String(seat.type || '').toUpperCase() === 'COUPLE'
+    ))))
+    const rowCount = regularRows.length
+    const columnCount = Math.max(0, ...regularRows.flatMap(row => (
+      (row.seats || []).map((seat, index) => Number(seat.number) || index + 1)
+    )))
+    if (!rowCount || !columnCount) return { seatIds: [], key: 'empty' }
+
+    const seatIds = regularRows.flatMap((row, rowIndex) => (
+      (row.seats || []).flatMap((seat, index) => {
+        const type = String(seat.type || '').toUpperCase()
+        const columnIndex = (Number(seat.number) || index + 1) - 1
+        if (type === 'AISLE' || type === 'COUPLE_EXTENSION') return []
+        return getSeatScore(rowIndex, columnIndex, rowCount, columnCount) > 0.80 ? [seat.id] : []
+      })
+    ))
+
+    return {
+      seatIds,
+      key: `${seatLayout?.roomId || 'fallback'}:${rowCount}:${columnCount}:${regularRows.map(row => row.rowLabel).join(',')}`,
+    }
+  }, [seatLayout])
 
   // Combo selection states (from API)
   const [combos, setCombos] = useState(FALLBACK_COMBOS)
@@ -220,6 +269,27 @@ export default function SeatSelectionPage() {
     return () => { cancelled = true }
   }, [movieId, dateStr, time, roomIdParam])
 
+  // Refresh availability without resetting the rest of the booking screen.
+  useEffect(() => {
+    if (!matchedShowtime?.roomId) return undefined
+    let cancelled = false
+    const refreshLayout = async () => {
+      try {
+        const data = await cinemaRoomService.getLayoutNormalized(matchedShowtime.roomId, {
+          roomName: matchedShowtime.roomName || matchedShowtime.room || '',
+        })
+        if (!cancelled && data?.seatMatrix?.length) setSeatLayout(data)
+      } catch {
+        // Keep the last successful layout visible while the next poll retries.
+      }
+    }
+    const pollId = window.setInterval(refreshLayout, 10000)
+    return () => {
+      cancelled = true
+      window.clearInterval(pollId)
+    }
+  }, [matchedShowtime?.roomId, matchedShowtime?.roomName, matchedShowtime?.room])
+
   // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
   const toggleSeat = useCallback((seatId) => {
     if (currentOccupied.has(seatId)) return
@@ -298,7 +368,7 @@ export default function SeatSelectionPage() {
     const isSelected = selected.includes(seat.id)
 
     return (
-      <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
         {seat.row ? `${seat.row}${seat.number}` : seat.id}
       </label>
@@ -309,7 +379,7 @@ export default function SeatSelectionPage() {
     const occupied = isSeatOccupied(seat.id)
     const isSelected = selected.includes(seat.id)
     return (
-      <label key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
         {seat.number != null ? `${seat.row}${seat.number}` : seat.id}
       </label>
@@ -317,7 +387,6 @@ export default function SeatSelectionPage() {
   }
 
   function renderRow(rowLabel, type) {
-    const isVip = type === 'vip'
     const leftSeats = [{ id: `${rowLabel}1`, number: 1 }, { id: `${rowLabel}2`, number: 2 }, { id: `${rowLabel}3`, number: 3 }]
     const centerSeats = [{ id: `${rowLabel}4`, number: 4 }, { id: `${rowLabel}5`, number: 5 }, { id: `${rowLabel}6`, number: 6 }, { id: `${rowLabel}7`, number: 7 }, { id: `${rowLabel}8`, number: 8 }, { id: `${rowLabel}9`, number: 9 }]
     const rightSeats = [{ id: `${rowLabel}10`, number: 10 }, { id: `${rowLabel}11`, number: 11 }, { id: `${rowLabel}12`, number: 12 }]
@@ -328,8 +397,7 @@ export default function SeatSelectionPage() {
         <div className="flex items-center gap-3">
           <div className="flex gap-2">{leftSeats.map(seat => renderSeatButton(seat, type))}</div>
           <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className={`flex gap-2 p-1 rounded-xl transition-all ${isVip ? 'border border-dashed border-[#f59e0b]/40 bg-[#f59e0b]/5 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)] relative' : 'border border-transparent'}`}>
-            {isVip && rowLabel === 'D' && <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#06080F] px-2 py-0.5 tracking-widest whitespace-nowrap border border-[#f59e0b] rounded select-none">VÙNG TRUNG TÂM (BEST VIEW)</span>}
+          <div className="flex gap-2 p-1 rounded-xl border border-transparent">
             {centerSeats.map(seat => renderSeatButton(seat, type))}
           </div>
           <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
@@ -454,7 +522,7 @@ export default function SeatSelectionPage() {
 
           {/* Seat Rows Grid Container */}
           <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
-            <div className="min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
+            <div ref={setGridRoot} className="relative min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
               {/* Render Rows Dynamically from API or fallback */}
               {seatLayout?.seatMatrix
                 ? seatLayout.seatMatrix.map(row => renderDynamicRow(row))
@@ -476,6 +544,18 @@ export default function SeatSelectionPage() {
                   <DoorOpen size={14} className="font-bold" /><span>Lối ra / Exit</span>
                 </div>
               </div>
+              <RecommendationOverlay
+                recommendedSeats={recommendation?.seats}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                isVisible={Boolean(recommendation)}
+              />
+              <BestViewZoneFrame
+                seatIds={bestViewGeometry.seatIds}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                layoutKey={bestViewGeometry.key}
+              />
             </div>
           </div>
         </div>

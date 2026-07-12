@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion } from 'motion/react'
 import { toast } from 'sonner'
 import { cinemaRoomService } from '../../../../services/cinemaRoomService'
@@ -9,6 +9,10 @@ import {
   applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../../../utils/seatValidation'
+import { useRecommendation } from '../../../../seatRecommendation/useRecommendation'
+import RecommendationOverlay from '../../../../seatRecommendation/RecommendationOverlay'
+import BestViewZoneFrame from '../../../../seatRecommendation/BestViewZoneFrame'
+import { getSeatScore } from '../../../../utils/seatScoring'
 
 // Fallback occupied labels used when API layout is unavailable
 const FALLBACK_OCCUPIED = [
@@ -33,6 +37,8 @@ export default function SeatStep({
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
   const [seatError, setSeatError] = useState('')
+  const seatRefs = useRef({})
+  const [gridRoot, setGridRoot] = useState(null)
 
   const formatDate = (dateString) => {
     if (!dateString || dateString === 'Hôm nay') return 'Hôm nay'
@@ -62,28 +68,32 @@ export default function SeatStep({
     return 90000
   }
 
-  // Fetch room layout when showtime changes (/layout, fallback /seats → seatMatrix)
-  useEffect(() => {
-    if (!selectedShowtime?.roomId) { setLayout(null); return }
-    let cancelled = false
-    setLoadingSeats(true)
+  // Fetch room layout when showtime changes and refresh availability in place.
+  const loadLayout = useCallback(async ({ showLoading = false } = {}) => {
+    if (!selectedShowtime?.roomId) {
+      setLayout(null)
+      return
+    }
+    if (showLoading) setLoadingSeats(true)
     setSeatError('')
-    cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
-      roomName: selectedShowtime.roomName || selectedShowtime.room || '',
-    })
-      .then(data => {
-        if (cancelled) return
-        if (data?.seatMatrix?.length) setLayout(data)
-        else setSeatError('Không thể tải sơ đồ ghế')
+    try {
+      const data = await cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
+        roomName: selectedShowtime.roomName || selectedShowtime.room || '',
       })
-      .catch(() => {
-        if (!cancelled) setSeatError('Không thể tải sơ đồ ghế')
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingSeats(false)
-      })
-    return () => { cancelled = true }
+      if (data?.seatMatrix?.length) setLayout(data)
+      else setSeatError('Không thể tải sơ đồ ghế')
+    } catch {
+      setSeatError('Không thể tải sơ đồ ghế')
+    } finally {
+      if (showLoading) setLoadingSeats(false)
+    }
   }, [selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
+
+  useEffect(() => {
+    loadLayout({ showLoading: true })
+    const pollId = window.setInterval(() => loadLayout(), 10000)
+    return () => window.clearInterval(pollId)
+  }, [loadLayout])
 
   // Build occupied seat set from layout (or fallback labels)
   const occupiedSet = useMemo(() => {
@@ -122,6 +132,49 @@ export default function SeatStep({
       const type = firstActive?.type === 'VIP' ? 'vip' : firstActive?.type === 'COUPLE' ? 'couple' : 'standard'
       return { row: row.rowLabel, type, price: getSeatPrice(firstActive?.type) }
     })
+  }, [layout, SEAT_ROWS])
+
+  const { recommendation } = useRecommendation({
+    rows: validationRows,
+    ticketQuantity: 1,
+    selectedSeats,
+    enabled: !loadingSeats && !seatError,
+  })
+
+  const bestViewGeometry = useMemo(() => {
+    const scoringRows = layout?.seatMatrix?.length
+      ? layout.seatMatrix
+      : (SEAT_ROWS || []).map(({ row, type }) => ({
+        rowLabel: row,
+        seats: Array.from({ length: 12 }, (_, index) => ({
+          id: `${row}${index + 1}`,
+          number: index + 1,
+          type,
+        })),
+      }))
+
+    const regularRows = scoringRows.filter(row => !((row.seats || []).some(seat => (
+      String(seat.type || '').toUpperCase() === 'COUPLE'
+    ))))
+    const rowCount = regularRows.length
+    const columnCount = Math.max(0, ...regularRows.flatMap(row => (
+      (row.seats || []).map((seat, index) => Number(seat.number) || index + 1)
+    )))
+    if (!rowCount || !columnCount) return { seatIds: [], key: 'empty' }
+
+    const seatIds = regularRows.flatMap((row, rowIndex) => (
+      (row.seats || []).flatMap((seat, index) => {
+        const type = String(seat.type || '').toUpperCase()
+        const columnIndex = (Number(seat.number) || index + 1) - 1
+        if (type === 'AISLE' || type === 'COUPLE_EXTENSION') return []
+        return getSeatScore(rowIndex, columnIndex, rowCount, columnCount) > 0.80 ? [seat.id] : []
+      })
+    ))
+
+    return {
+      seatIds,
+      key: `${layout?.roomId || 'fallback'}:${rowCount}:${columnCount}:${regularRows.map(row => row.rowLabel).join(',')}`,
+    }
   }, [layout, SEAT_ROWS])
 
   const roomName = selectedShowtime?.roomName || 'Phòng Chiếu'
@@ -167,7 +220,7 @@ export default function SeatStep({
     const isVip = String(seatType).toUpperCase() === 'VIP'
     const displayLabel = resolveSeatLabel(seat)
     return (
-      <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -185,7 +238,7 @@ export default function SeatStep({
     const isSelected = selectedSeats.includes(seat.id)
     const displayLabel = resolveSeatLabel(seat)
     return (
-      <label key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -199,7 +252,6 @@ export default function SeatStep({
   }
 
   function SeatRow({ rowLabel, type }) {
-    const isVip = type === 'vip'
     const leftSeats = [
       { id: `${rowLabel}1`, label: '1' },
       { id: `${rowLabel}2`, label: '2' },
@@ -219,10 +271,7 @@ export default function SeatStep({
         <div className="flex items-center gap-3">
           <div className="flex gap-2">{leftSeats.map(seat => <SeatButton key={seat.id} seat={seat} type={type} />)}</div>
           <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
-          <div className={`flex gap-2 p-0.5 rounded-lg ${isVip ? 'border border-dashed border-[#f59e0b]/40 bg-[#f59e0b]/5 relative' : 'border border-transparent'}`}>
-            {isVip && rowLabel === 'D' && (
-              <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#0c0c0c] px-2 py-0.5 tracking-widest whitespace-nowrap border border-[#f59e0b] rounded select-none">VÙNG TRUNG TÂM (BEST VIEW)</span>
-            )}
+          <div className="flex gap-2 p-0.5 rounded-lg border border-transparent">
             {centerSeats.map(seat => <SeatButton key={seat.id} seat={seat} type={type} />)}
           </div>
           <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
@@ -324,7 +373,7 @@ export default function SeatStep({
 
           {/* Seat grid */}
           <div className="overflow-x-auto w-full pb-6">
-            <div className="min-w-max mx-auto px-4 flex flex-col gap-3 items-center">
+            <div ref={setGridRoot} className="relative min-w-max mx-auto px-4 flex flex-col gap-3 items-center">
               {loadingSeats ? (
                 <div className="flex justify-center py-8">
                   <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
@@ -350,6 +399,18 @@ export default function SeatStep({
                   <span className="material-symbols-outlined text-sm">logout</span>Lối ra
                 </div>
               </div>
+              <RecommendationOverlay
+                recommendedSeats={recommendation?.seats}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                isVisible={Boolean(recommendation)}
+              />
+              <BestViewZoneFrame
+                seatIds={bestViewGeometry.seatIds}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                layoutKey={bestViewGeometry.key}
+              />
             </div>
           </div>
         </div>
