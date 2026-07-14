@@ -81,6 +81,15 @@ class WebSocketService {
     // STOMPJS 5 tự động quản lý unsubscribe qua StompSubscription return từ subscribe. 
     // Do cách implement hiện tại đơn giản, ta chỉ xóa khỏi danh sách.
   }
+
+  sendSeatToggle(showtimeId, seatId, isSelected) {
+    if (this.client && this.client.connected) {
+      this.client.publish({
+        destination: `/app/showtimes/${showtimeId}/seats/toggle`,
+        body: JSON.stringify({ seatId, isSelected })
+      });
+    }
+  }
 }
 
 const websocketService = new WebSocketService();

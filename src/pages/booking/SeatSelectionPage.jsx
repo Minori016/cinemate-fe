@@ -94,6 +94,35 @@ export default function SeatSelectionPage() {
   const [matchedShowtime, setMatchedShowtime] = useState(null)
   const seatRefs = useRef({})
   const [gridRoot, setGridRoot] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
+
+  useEffect(() => {
+    if (timeLeft <= 0) return
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          toast.error('Thời gian chọn ghế đã hết!', {
+            description: 'Hệ thống tự động hủy phiên giao dịch của bạn.',
+            duration: 4000
+          })
+          navigate(-1)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, navigate])
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
 
   // Build occupied set from real API seat data (or fallback labels)
   const occupiedSet = useMemo(() => {
@@ -577,7 +606,10 @@ export default function SeatSelectionPage() {
         <div className="text-center">
           <h1 className="custom-font-title text-2xl md:text-3xl tracking-widest uppercase" style={{ fontWeight: 900 }}><span className="text-white">Cine</span><span className="text-red-500">mate</span></h1>
         </div>
-        <div className="w-20"></div>
+        <div className="flex items-center gap-2 text-red-500 font-mono font-bold text-lg bg-red-500/10 px-4 py-1.5 rounded-lg border border-red-500/20">
+          <Clock size={18} />
+          {formatTime(timeLeft)}
+        </div>
       </header>
 
       {/* Main Container */}
