@@ -28,6 +28,7 @@ import CareersPage from '../pages/user/CareersPage'
 import VideoIntro from '../components/intro/VideoIntro'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
+import CheckoutPage from '../pages/booking/CheckoutPage'
 import DashboardPage from '../pages/admin/DashboardPage'
 import MovieListPage from '../pages/admin/movies/MovieListPage'
 import MovieFormPage from '../pages/admin/movies/MovieFormPage'
@@ -105,6 +106,7 @@ export default function AppRoutes() {
 
         {/* Booking */}
         <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
+        <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
         <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
 
         {/* Staff */}
