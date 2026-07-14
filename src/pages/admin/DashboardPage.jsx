@@ -1,86 +1,68 @@
 import { useState, useEffect } from 'react'
-import {
-  Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity,
-  LayoutDashboard, Sparkles, Crown, BarChart3, ArrowUpRight,
-  CheckCircle2, Clock, Wallet, Calendar, Star, Tv,
-} from 'lucide-react'
+import { Film, Users, Ticket, Tag, TrendingUp, DollarSign, Activity } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 
-function TicketStrip({ count = 14 }) {
-  return (
-    <div className="flex w-full">
-      {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="flex-1 h-2 bg-red-600" style={{ clipPath: 'polygon(0 0, 100% 0, 75% 100%, 25% 100%)' }} />
-      ))}
-    </div>
-  )
-}
-
 const STAT_DEFS = [
   {
     key: 'movies',
-    label: 'TONG PHIM',
+    label: 'Tổng phim',
     fallback: '0',
     icon: Film,
-    bg: 'bg-red-600',
-    lightBg: 'bg-red-100',
+    color: 'from-red-500/20 to-red-500/5',
+    iconColor: 'text-red-500',
+    borderColor: 'group-hover:border-red-500/30',
     route: '/admin/movies'
   },
   {
     key: 'employees',
-    label: 'NHAN VIEN',
+    label: 'Nhân viên',
     fallback: '0',
     icon: Users,
-    bg: 'bg-sky-600',
-    lightBg: 'bg-sky-100',
+    color: 'from-blue-500/20 to-blue-500/5',
+    iconColor: 'text-blue-400',
+    borderColor: 'group-hover:border-blue-500/30',
     route: '/admin/employees'
   },
   {
     key: 'tickets',
-    label: 'VE BAN HOM NAY',
+    label: 'Vé bán hôm nay',
     fallback: '0',
     icon: Ticket,
-    bg: 'bg-emerald-600',
-    lightBg: 'bg-emerald-100',
+    color: 'from-green-500/20 to-green-500/5',
+    iconColor: 'text-green-400',
+    borderColor: 'group-hover:border-green-500/30',
     route: '/admin/bookings'
   },
   {
     key: 'promotions',
-    label: 'KHUYEN MAI HOAT DONG',
+    label: 'Khuyến mãi hoạt động',
     fallback: '0',
     icon: Tag,
-    bg: 'bg-amber-500',
-    lightBg: 'bg-amber-100',
+    color: 'from-yellow-500/20 to-yellow-500/5',
+    iconColor: 'text-yellow-400',
+    borderColor: 'group-hover:border-yellow-500/30',
     route: '/admin/promotions'
   },
 ]
 
 const recentBookings = [
-  { id: '1', user: 'Nguyen Minh', movie: 'Assassin Classroom', time: '10 phut truoc', price: '95,000d', status: 'SUCCESS' },
-  { id: '2', user: 'Le Trong Nghia', movie: 'Spider-man: Brand New Day', time: '25 phut truoc', price: '120,000d', status: 'SUCCESS' },
-  { id: '3', user: 'Tran Thi A', movie: 'The Backrooms', time: '1 gio truoc', price: '95,000d', status: 'PENDING' },
-  { id: '4', user: 'Pham Van B', movie: 'Spider Noir', time: '2 gio truoc', price: '110,000d', status: 'SUCCESS' },
+  { id: '1', user: 'Nguyễn Minh', movie: 'Assassin Classroom', time: '10 phút trước', price: '95,000đ', status: 'SUCCESS' },
+  { id: '2', user: 'Lê Trọng Nghĩa', movie: 'Spider-man: Brand New Day', time: '25 phút trước', price: '120,000đ', status: 'SUCCESS' },
+  { id: '3', user: 'Trần Thị A', movie: 'The Backrooms', time: '1 giờ trước', price: '95,000đ', status: 'PENDING' },
+  { id: '4', user: 'Phạm Văn B', movie: 'Spider Noir', time: '2 giờ trước', price: '110,000đ', status: 'SUCCESS' },
 ]
 
 const revenueData = [
-  { day: 'Thu 2', amount: 4200000, percentage: 45 },
-  { day: 'Thu 3', amount: 5600000, percentage: 60 },
-  { day: 'Thu 4', amount: 3800000, percentage: 40 },
-  { day: 'Thu 5', amount: 7200000, percentage: 80 },
-  { day: 'Thu 6', amount: 9800000, percentage: 100 },
-  { day: 'Thu 7', amount: 8500000, percentage: 90 },
-  { day: 'Chu nhat', amount: 9000000, percentage: 95 },
+  { day: 'Thứ 2', amount: 4200000, percentage: '45%' },
+  { day: 'Thứ 3', amount: 5600000, percentage: '60%' },
+  { day: 'Thứ 4', amount: 3800000, percentage: '40%' },
+  { day: 'Thứ 5', amount: 7200000, percentage: '80%' },
+  { day: 'Thứ 6', amount: 9800000, percentage: '100%' },
+  { day: 'Thứ 7', amount: 8500000, percentage: '90%' },
+  { day: 'Chủ nhật', amount: 9000000, percentage: '95%' },
 ]
-
-const formatVND = (n) => `${(n / 1000000).toFixed(1)}M`
-const formatVNDShort = (n) => {
-  if (n >= 1000000000) return `${(n / 1000000000).toFixed(1)}B`
-  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(0)}K`
-  return String(n)
-}
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(
@@ -89,13 +71,17 @@ export default function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true)
   const navigate = useNavigate()
 
+  // Fetch dashboard stats from API
   useEffect(() => {
     const update = (key, value) => setStats(prev => ({ ...prev, [key]: String(value) }))
 
+    // Interceptor sẽ tự gắn Bearer token từ localStorage
     Promise.allSettled([
+      // Tổng phim - endpoint public
       api.get('/api/v1/movies', { params: { size: 1 } })
         .then(r => update('movies', r.data?.result?.totalElements ?? r.data?.result?.length ?? 0)),
 
+      // Nhân viên (endpoint admin) — chỉ đếm STAFF, loại trừ MANAGER
       api.get('/api/v1/admin/employees', { params: { page: 0, size: 1, role: 'STAFF' } })
         .then(r => {
           const result = r.data?.result
@@ -103,6 +89,7 @@ export default function DashboardPage() {
           update('employees', count)
         }),
 
+      // Vé bán hôm nay
       api.get('/api/v1/bookings/today')
         .then(r => {
           const result = r.data?.result
@@ -110,6 +97,7 @@ export default function DashboardPage() {
           update('tickets', count)
         }),
 
+      // Khuyến mãi đang hoạt động
       api.get('/api/v1/promotions', { params: { status: 'ACTIVE', size: 1 } })
         .then(r => {
           const result = r.data?.result
@@ -119,252 +107,170 @@ export default function DashboardPage() {
     ]).finally(() => setStatsLoading(false))
   }, [])
 
-  const totalWeek = revenueData.reduce((s, d) => s + d.amount, 0)
-  const peakDay = revenueData.reduce((max, d) => d.amount > max.amount ? d : max, revenueData[0])
-  const avgPerDay = Math.round(totalWeek / revenueData.length)
-
   return (
     <motion.div
-      className="space-y-6 max-w-[1400px]"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      className="space-y-8"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.35 }}
     >
-      {/* HERO */}
-      <div className="relative overflow-hidden rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-2 border-slate-900 bg-gradient-to-br from-sky-50 via-violet-50 to-rose-50">
-        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
-          backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 12px)'
-        }} />
-        <div className="relative"><TicketStrip count={20} /></div>
-        <div className="relative px-6 md:px-10 py-6 md:py-8">
-          <div className="flex items-start justify-between flex-wrap gap-4">
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 bg-slate-900 border-2 border-slate-900 rounded-2xl flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] shrink-0">
-                <LayoutDashboard size={26} className="text-amber-300" strokeWidth={2.5} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 rounded-md text-[10px] font-black uppercase tracking-[0.15em] text-amber-300">
-                    <Crown size={10} fill="currentColor" /> ADMIN DASHBOARD
-                  </span>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                    HE THONG TRUC TUYEN
-                  </span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 leading-[0.95]">
-                  Tong quan <span className="text-red-600">he thong</span>
-                </h1>
-                <p className="text-sm text-slate-600 mt-3 max-w-md leading-relaxed">
-                  Bao cao thong ke thoi gian thuc & hoat dong ban ve hom nay.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
-              <Calendar size={14} strokeWidth={3} className="text-slate-700" />
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-900">REALTIME 2026</span>
-            </div>
-          </div>
+      {/* Welcome & Overview Header */}
+      <motion.div
+        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div>
+          <h1
+            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+          >
+            Tổng Quan Hệ Thống
+          </h1>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+            Báo cáo thống kê thời gian thực & hoạt động bán vé hôm nay.
+          </p>
         </div>
-        <TicketStrip count={20} />
-      </div>
+        <div
+          className="flex items-center gap-2.5 px-4 py-2 rounded-lg border border-gray-200 backdrop-blur-md"
+          style={{ backgroundColor: '#f1f5f9' }}
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+          <span className="text-xs font-semibold tracking-wider uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#1f2937' }}>
+            Hệ thống trực tuyến
+          </span>
+        </div>
+      </motion.div>
 
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAT_DEFS.map((s, i) => {
+      {/* Stats Counter Section */}
+      <motion.div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
+        initial="hidden"
+        animate="visible"
+        variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.15 } } }}
+      >
+        {STAT_DEFS.map(s => {
           const Icon = s.icon
           const value = stats[s.key]
           return (
-            <motion.button
+            <motion.div
               key={s.key}
-              type="button"
-              onClick={() => s.route && navigate(s.route)}
-              title={s.route ? 'Click de xem chi tiet' : undefined}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: i * 0.05 }}
-              whileHover={{ y: -3 }}
-              className="group bg-white border-2 border-slate-900 rounded-2xl shadow-[5px_5px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[3px] hover:translate-y-[3px] p-5 text-left transition-all cursor-pointer"
+              onDoubleClick={() => s.route && navigate(s.route)}
+              title={s.route ? 'Double-click để xem chi tiết' : undefined}
+              className={`group bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-6 flex items-center justify-between transition-all duration-300 hover:shadow-[0_8px_30px_rgba(229,9,20,0.08)] ${s.borderColor} ${s.route ? 'cursor-pointer select-none' : ''}`}
+              variants={{ hidden: { opacity: 0, y: 24, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } } }}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className={`w-12 h-12 ${s.bg} border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center`}>
-                  <Icon size={20} className="text-white" strokeWidth={3} />
-                </div>
-                <div className="w-7 h-7 bg-slate-100 border-2 border-slate-300 rounded-lg flex items-center justify-center group-hover:bg-amber-100 group-hover:border-slate-900 transition-all">
-                  <ArrowUpRight size={12} strokeWidth={3} className="text-slate-700 group-hover:text-slate-900" />
-                </div>
-              </div>
-              <div>
-                <p className={`text-[10px] font-black uppercase tracking-[0.15em] ${s.lightBg} text-slate-900 inline-block px-2 py-0.5 rounded mb-1.5`}>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {s.label}
                 </p>
-                <p className="text-3xl font-black text-slate-900 leading-none tracking-tight">
-                  {statsLoading ? <span className="inline-block w-10 h-8 bg-slate-200 rounded animate-pulse" /> : value}
+                <p className="text-3xl font-extrabold text-gray-900 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  {statsLoading ? '...' : value}
                 </p>
               </div>
-            </motion.button>
+              <div className={`p-4 rounded-xl bg-gradient-to-br ${s.color} transition-all duration-300 group-hover:scale-110`}>
+                <Icon className={`w-6 h-6 ${s.iconColor}`} />
+              </div>
+            </motion.div>
           )
         })}
-      </div>
+      </motion.div>
 
-      {/* MAIN GRID: REVENUE + BOOKINGS */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      {/* Main Analysis Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* REVENUE CHART */}
-        <div className="lg:col-span-2 bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-          <div className="flex items-stretch border-b-2 border-slate-900">
-            <div className="bg-emerald-600 text-white px-4 py-3 flex items-center border-r-2 border-slate-900">
-              <BarChart3 size={20} strokeWidth={2.5} />
+        {/* Revenue chart mockup */}
+        <div
+          className="lg:col-span-2 rounded-xl border border-[var(--color-border)] p-6 space-y-6"
+          style={{ backgroundColor: 'var(--color-surface)' }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-red-500" />
+              <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                Doanh thu tuần này
+              </h2>
             </div>
-            <div className="flex-1 px-5 py-3 flex items-center justify-between bg-emerald-50 gap-3">
-              <div>
-                <h2 className="text-base font-black uppercase tracking-wider text-slate-900">Doanh thu tuan nay</h2>
-                <p className="text-[11px] text-slate-600 mt-0.5 font-medium">7 ngay gan nhat</p>
+            <div className="text-sm font-bold text-red-500 flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <DollarSign className="w-4 h-4" />
+              <span>49,100,000đ</span>
+            </div>
+          </div>
+
+          {/* Bar Chart Simulation */}
+          <div className="h-64 flex items-end justify-between gap-3 pt-6 border-b border-white/5 pb-2">
+            {revenueData.map((d, i) => (
+              <div key={d.day} className="flex-1 flex flex-col items-center gap-3 group h-full justify-end relative">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-white py-1 px-1.5 rounded border border-white/10 absolute -translate-y-16 pointer-events-none whitespace-nowrap z-30">
+                  {(d.amount / 1000000).toFixed(1)}M đ
+                </div>
+                <motion.div
+                  className="w-full rounded-t-md bg-gradient-to-t from-red-600 to-rose-500 group-hover:from-red-500 group-hover:to-rose-400 group-hover:shadow-[0_0_15px_rgba(229,9,20,0.3)]"
+                  initial={{ height: 0 }}
+                  animate={{ height: d.percentage }}
+                  transition={{ duration: 0.7, delay: 0.3 + i * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
+                />
+                <span className="text-[10px] md:text-xs text-[var(--color-text-muted)] group-hover:text-white transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  {d.day}
+                </span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 bg-red-600 text-white border-2 border-slate-900 rounded-lg px-3 py-1.5 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                  <Wallet size={12} strokeWidth={3} />
-                  <span className="text-xs font-black uppercase tracking-wider">
-                    {formatVNDShort(totalWeek)} d
+            ))}
+          </div>
+        </div>
+
+        {/* Recent booking list */}
+        <div
+          className="rounded-xl border border-[var(--color-border)] p-6 space-y-6"
+          style={{ backgroundColor: 'var(--color-surface)' }}
+        >
+          <div className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-red-500" />
+            <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              Vé đặt gần đây
+            </h2>
+          </div>
+
+          <motion.div
+            className="space-y-4"
+            initial="hidden"
+            animate="visible"
+            variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.4 } } }}
+          >
+            {recentBookings.map((b) => (
+              <motion.div
+                key={b.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-white/10 transition-colors"
+                variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.4 } } }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-xs font-bold text-red-500">
+                    {b.user.charAt(0)}
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-900 truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif' }} title={b.user}>
+                      {b.user}
+                    </h4>
+                    <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[120px]">
+                      {b.movie}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-xs font-bold text-white block" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    {b.price}
+                  </span>
+                  <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${b.status === 'SUCCESS' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>
+                    {b.status === 'SUCCESS' ? 'THÀNH CÔNG' : 'ĐANG XỬ LÝ'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1 bg-amber-500 text-white border-2 border-slate-900 rounded-lg px-2.5 py-1.5 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
-                  <TrendingUp size={11} strokeWidth={3} />
-                  <span className="text-[10px] font-black uppercase tracking-wider">+{formatVNDShort(avgPerDay)}/ngay</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="p-5">
-            <div className="grid grid-cols-7 gap-3 items-end h-56 mb-3">
-              {revenueData.map((d, i) => {
-                const isPeak = d.day === peakDay.day
-                return (
-                  <div key={d.day} className="flex flex-col items-center gap-2 h-full justify-end group">
-                    <div className="relative w-full">
-                      <div className="absolute -top-7 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-amber-300 text-[10px] font-black uppercase px-2 py-1 rounded border-2 border-slate-900 pointer-events-none whitespace-nowrap z-10">
-                        {formatVND(d.amount)} d
-                      </div>
-                      <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: `${d.percentage}%` }}
-                        transition={{ duration: 0.7, delay: 0.2 + i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
-                        className={`w-full rounded-t-lg border-2 border-slate-900 ${
-                          isPeak
-                            ? 'bg-gradient-to-t from-amber-600 to-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.5)]'
-                            : 'bg-gradient-to-t from-red-600 to-rose-400'
-                        } group-hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] transition-shadow relative`}
-                      >
-                        {isPeak && (
-                          <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded border-2 border-slate-900 whitespace-nowrap">
-                            PEAK
-                          </div>
-                        )}
-                      </motion.div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            <div className="grid grid-cols-7 gap-3 pt-3 border-t-2 border-slate-900">
-              {revenueData.map(d => (
-                <div key={d.day} className="text-center">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">{d.day}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Mini stats */}
-            <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t-2 border-dashed border-slate-200">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-red-600 border-2 border-slate-900 rounded-lg flex items-center justify-center shrink-0">
-                  <DollarSign size={14} strokeWidth={3} className="text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">CAO NHAT</p>
-                  <p className="text-xs font-black text-slate-900 truncate">{peakDay.day}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-emerald-600 border-2 border-slate-900 rounded-lg flex items-center justify-center shrink-0">
-                  <TrendingUp size={14} strokeWidth={3} className="text-white" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">TRUNG BINH</p>
-                  <p className="text-xs font-black text-slate-900 truncate">{formatVND(avgPerDay)} d</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 bg-violet-600 border-2 border-slate-900 rounded-lg flex items-center justify-center shrink-0">
-                  <Star size={14} strokeWidth={3} className="text-white" fill="currentColor" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">TONG CONG</p>
-                  <p className="text-xs font-black text-slate-900 truncate">{formatVNDShort(totalWeek)} d</p>
-                </div>
-              </div>
-            </div>
-          </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
 
-        {/* RECENT BOOKINGS */}
-        <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
-          <div className="flex items-stretch border-b-2 border-slate-900">
-            <div className="bg-violet-600 text-white px-4 py-3 flex items-center border-r-2 border-slate-900">
-              <Activity size={20} strokeWidth={2.5} />
-            </div>
-            <div className="flex-1 px-5 py-3 flex items-center justify-between bg-violet-50">
-              <div>
-                <h2 className="text-base font-black uppercase tracking-wider text-slate-900">Ve dat gan day</h2>
-                <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{recentBookings.length} giao dich</p>
-              </div>
-              <Sparkles size={20} className="text-slate-900" strokeWidth={2.5} />
-            </div>
-          </div>
-
-          <div className="p-4 space-y-3">
-            {recentBookings.map((b, idx) => {
-              const isSuccess = b.status === 'SUCCESS'
-              const accent = isSuccess ? 'bg-emerald-600' : 'bg-amber-500'
-              return (
-                <motion.div
-                  key={b.id}
-                  initial={{ opacity: 0, x: 12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.3, delay: 0.2 + idx * 0.06 }}
-                  className="relative flex items-center gap-3 p-3 bg-slate-50 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
-                >
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${accent} rounded-l-lg`} />
-                  <div className={`w-9 h-9 ${accent} border-2 border-slate-900 rounded-lg flex items-center justify-center shrink-0 shadow-[1px_1px_0px_0px_rgba(15,23,42,1)]`}>
-                    <Tv size={14} strokeWidth={3} className="text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-sm font-black text-slate-900 truncate">{b.user}</p>
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 truncate">{b.movie}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Clock size={9} strokeWidth={3} className="text-slate-400" />
-                      <span className="text-[9px] font-black uppercase tracking-wider text-slate-500">{b.time}</span>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-black text-slate-900">{b.price}</p>
-                    <span className={`inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
-                      isSuccess
-                        ? 'bg-emerald-100 text-emerald-900 border-emerald-700'
-                        : 'bg-amber-100 text-amber-900 border-amber-700'
-                    }`}>
-                      {isSuccess ? <CheckCircle2 size={9} strokeWidth={3} /> : <Clock size={9} strokeWidth={3} />}
-                      {isSuccess ? 'OK' : 'WAIT'}
-                    </span>
-                  </div>
-                </motion.div>
-              )
-            })}
-          </div>
-        </div>
       </div>
     </motion.div>
   )
