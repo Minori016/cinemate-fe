@@ -256,9 +256,10 @@ export default function MovieDetailPage() {
 
   const queryDate = searchParams.get('date')
   const queryTime = searchParams.get('time')
+  const queryBook = searchParams.get('book')
 
   // Booking states
-  const [isBookingMode, setIsBookingMode] = useState((queryDate && queryTime) ? true : false)
+  const [isBookingMode, setIsBookingMode] = useState(((queryDate && queryTime) || queryBook) ? true : false)
   const [bookingStep, setBookingStep] = useState((queryDate && queryTime) ? 2 : 1)
   const [selectedDate, setSelectedDate] = useState(queryDate || DAYS[0].date)
   const [selectedTime, setSelectedTime] = useState(queryTime || '')

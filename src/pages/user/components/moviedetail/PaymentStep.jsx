@@ -285,28 +285,6 @@ export default function PaymentStep({
               </select>
             </div>
 
-            {/* Pay button */}
-            <div className="mt-6 border-t border-white/5 pt-4">
-              <button
-                type="button"
-                onClick={handleSubmitPayment}
-                disabled={submitting}
-                className="w-full font-black text-xs py-3.5 rounded-xl text-white uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer border-none"
-                style={{ background: 'var(--color-primary)', boxShadow: '0 4px 15px rgba(229,9,20,0.35)' }}
-              >
-                {submitting ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                    <span>{processingStep || 'Đang xử lý...'}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">lock</span>
-                    Thanh toán {formatCurrency(totalPrice)}
-                  </>
-                )}
-              </button>
-            </div>
           </GlassCard>
         </div>
 
