@@ -4,6 +4,7 @@ import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
+import websocketService from '../../services/websocketService'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
 import { Ticket, CalendarDays, Armchair, CreditCard, Check, CloudOff, ArrowLeft, Play } from 'lucide-react'
@@ -460,6 +461,12 @@ export default function MovieDetailPage() {
   const toggleSeat = (seatId, meta = {}) => {
     setSelectedSeats(prev => {
       const exists = prev.includes(seatId)
+      
+      // Notify other clients instantly via WebSocket
+      if (selectedShowtime?.id) {
+        websocketService.sendSeatToggle(selectedShowtime.id, seatId, !exists)
+      }
+
       if (exists) {
         setSeatMetaMap(m => {
           const next = { ...m }

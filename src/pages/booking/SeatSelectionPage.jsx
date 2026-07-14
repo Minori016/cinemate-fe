@@ -8,6 +8,8 @@ import { showtimeService, isPublicShowtimeStatus } from '../../services/showtime
 import { cinemaRoomService } from '../../services/cinemaRoomService'
 import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
+import { bookingService } from '../../services/bookingService'
+import websocketService from '../../services/websocketService'
 import {
   validateSeatSelection,
   getRowsFromLayout,
@@ -92,6 +94,35 @@ export default function SeatSelectionPage() {
   const [matchedShowtime, setMatchedShowtime] = useState(null)
   const seatRefs = useRef({})
   const [gridRoot, setGridRoot] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
+
+  useEffect(() => {
+    if (timeLeft <= 0) return
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          toast.error('Thời gian chọn ghế đã hết!', {
+            description: 'Hệ thống tự động hủy phiên giao dịch của bạn.',
+            duration: 4000
+          })
+          navigate(-1)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [timeLeft, navigate])
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
 
   // Build occupied set from real API seat data (or fallback labels)
   const occupiedSet = useMemo(() => {
@@ -126,8 +157,7 @@ export default function SeatSelectionPage() {
     })
   }, [seatLayout])
 
-  // Use API occupied set if available, otherwise fallback
-  const currentOccupied = dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
+
 
   // Rows used by gap validator
   const validationRows = useMemo(() => {
@@ -189,6 +219,32 @@ export default function SeatSelectionPage() {
     setSelectedCombos(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }))
   }
 
+  const [isHolding, setIsHolding] = useState(false)
+
+  const handleHoldSeats = async () => {
+    if (selected.length === 0) return
+    if (violations.length > 0) {
+      alert('Không được để trống 1 ghế đơn độc giữa các ghế đã chọn!')
+      return
+    }
+
+    try {
+      setIsHolding(true)
+      const res = await bookingService.holdSeats({
+        showtimeId: seatLayout.showtimeId,
+        seatIds: selected
+      })
+      
+      const bookingData = res.data?.result || res.data
+      navigate(`/checkout?bookingId=${bookingData.bookingId}`)
+    } catch (err) {
+      console.error(err)
+      alert(err.response?.data?.message || 'Đã có lỗi xảy ra khi giữ ghế. Vui lòng thử lại.')
+    } finally {
+      setIsHolding(false)
+    }
+  }
+
   // Fetch movie info from API
   useEffect(() => {
     if (movieId) {
@@ -247,16 +303,37 @@ export default function SeatSelectionPage() {
         }
 
         setMatchedShowtime(matched)
-        const data = await cinemaRoomService.getLayoutNormalized(matched.roomId, {
-          roomName: matched.roomName || matched.room || '',
-        })
+        const [data, seatMapRes] = await Promise.all([
+          cinemaRoomService.getLayoutNormalized(matched.roomId, {
+            roomName: matched.roomName || matched.room || '',
+          }),
+          bookingService.getSeatMap(matched.id)
+        ])
+        
         if (cancelled) return
         if (data?.seatMatrix?.length) {
-          setSeatLayout(data)
+          setSeatLayout({ ...data, showtimeId: matched.id })
+          updateOccupiedFromSeatMap(seatMapRes.data?.result || seatMapRes.data)
         } else {
           setSeatError('Không tải được sơ đồ ghế')
           setSeatLayout(null)
         }
+
+        // Connect Websocket
+        websocketService.connect(() => {
+          if (cancelled) return;
+          websocketService.subscribeToSeatMap(matched.id, (message) => {
+            if (message && message.type === 'SEAT_MAP_UPDATED') {
+              // Nhận tín hiệu -> Gọi API lấy seat map mới
+              bookingService.getSeatMap(matched.id).then(res => {
+                if (!cancelled) {
+                  updateOccupiedFromSeatMap(res.data?.result || res.data)
+                }
+              }).catch(console.error);
+            }
+          })
+        })
+
       } catch (err) {
         if (cancelled) return
         console.error('Failed to fetch seat layout:', err)
@@ -266,34 +343,69 @@ export default function SeatSelectionPage() {
       }
     }
     fetchSeatLayout()
-    return () => { cancelled = true }
-  }, [movieId, dateStr, time, roomIdParam])
-
-  // Refresh availability without resetting the rest of the booking screen.
-  useEffect(() => {
-    if (!matchedShowtime?.roomId) return undefined
-    let cancelled = false
-    const refreshLayout = async () => {
-      try {
-        const data = await cinemaRoomService.getLayoutNormalized(matchedShowtime.roomId, {
-          roomName: matchedShowtime.roomName || matchedShowtime.room || '',
-        })
-        if (!cancelled && data?.seatMatrix?.length) setSeatLayout(data)
-      } catch {
-        // Keep the last successful layout visible while the next poll retries.
+    return () => { 
+      cancelled = true 
+      if (seatLayout?.showtimeId) {
+        websocketService.unsubscribeFromSeatMap(seatLayout.showtimeId)
       }
     }
-    const pollId = window.setInterval(refreshLayout, 10000)
-    return () => {
-      cancelled = true
-      window.clearInterval(pollId)
+  }, [movieId, dateStr, time, roomIdParam])
+
+  const [realSeatMap, setRealSeatMap] = useState(null)
+
+  const updateOccupiedFromSeatMap = useCallback((seatMapData) => {
+    if (!seatMapData || !seatMapData.seats) return
+    setRealSeatMap(seatMapData.seats)
+  }, [])
+
+  // Override currentOccupied from realSeatMap
+  const currentOccupied = useMemo(() => {
+    if (realSeatMap) {
+      const set = new Set()
+      realSeatMap.forEach(s => {
+        if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
+          set.add(s.seatId)
+        }
+      })
+      // Thêm các ghế Aisle/Couple_Extension từ layout
+      if (seatLayout?.seatMatrix) {
+        seatLayout.seatMatrix.forEach(row => {
+          row.seats.forEach(seat => {
+            if (seat.type === 'AISLE' || seat.type === 'MAINTENANCE') {
+              set.add(seat.id)
+            }
+          })
+        })
+      }
+      return set
     }
-  }, [matchedShowtime?.roomId, matchedShowtime?.roomName, matchedShowtime?.room])
+    return dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
+  }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet])
 
   // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
-  const toggleSeat = useCallback((seatId) => {
+  const toggleSeat = useCallback((seatId, type) => {
     if (currentOccupied.has(seatId)) return
 
+    let targetIds = [seatId]
+    if (type === 'couple' || type === 'COUPLE') {
+      if (seatLayout && seatLayout.seatMatrix) {
+        for (let row of seatLayout.seatMatrix) {
+          const idx = row.seats.findIndex(s => s.id === seatId)
+          if (idx !== -1 && idx + 1 < row.seats.length && row.seats[idx + 1].type === 'COUPLE_EXTENSION') {
+            targetIds.push(row.seats[idx + 1].id)
+          }
+        }
+      }
+    }
+
+    const isSelected = selected.includes(seatId)
+    
+    if (isSelected) {
+      setSelected(prev => prev.filter(id => !targetIds.includes(id)))
+      return
+    }
+
+    // validate gap rule trước khi cập nhật state
     const result = validateSeatSelection({
       rows: validationRows,
       currentSelected: selected,
@@ -309,9 +421,14 @@ export default function SeatSelectionPage() {
       })
       return
     }
+    
+    if (selected.length + targetIds.length > 8) {
+      alert('Chỉ được chọn tối đa 8 ghế!')
+      return
+    }
 
-    setSelected(prev => prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId])
-  }, [currentOccupied, validationRows, selected])
+    setSelected(prev => [...prev, ...targetIds])
+  }, [currentOccupied, validationRows, selected, seatLayout])
 
   // Giá của từng loại ghế (ưu tiên giá từ showtime nếu có)
   const getSeatPrice = useCallback((seatId) => {
@@ -324,12 +441,18 @@ export default function SeatSelectionPage() {
       if (type === 'COUPLE' && matchedShowtime.couplePrice) return Number(matchedShowtime.couplePrice)
       if (type === 'STANDARD' && matchedShowtime.price) return Number(matchedShowtime.price)
     }
-    const row = seatId.charAt(0)
+    
+    if (realSeatMap) {
+      const seat = realSeatMap.find(s => s.seatId === seatId)
+      if (seat && seat.price) return seat.price
+    }
+    
+    const row = String(seatId).charAt(0)
     if (row === 'A' || row === 'B' || row === 'C') return 90000
     if (row === 'D' || row === 'E' || row === 'F') return 110000
     if (row === 'G' || row === 'H') return 130000
     return 0
-  }, [matchedShowtime, seatLayout])
+  }, [matchedShowtime, seatLayout, realSeatMap])
 
   // Tính tổng tiền vé
   const ticketPrice = selected.reduce((sum, id) => sum + getSeatPrice(id), 0)
@@ -483,7 +606,10 @@ export default function SeatSelectionPage() {
         <div className="text-center">
           <h1 className="custom-font-title text-2xl md:text-3xl tracking-widest uppercase" style={{ fontWeight: 900 }}><span className="text-white">Cine</span><span className="text-red-500">mate</span></h1>
         </div>
-        <div className="w-20"></div>
+        <div className="flex items-center gap-2 text-red-500 font-mono font-bold text-lg bg-red-500/10 px-4 py-1.5 rounded-lg border border-red-500/20">
+          <Clock size={18} />
+          {formatTime(timeLeft)}
+        </div>
       </header>
 
       {/* Main Container */}
@@ -564,13 +690,40 @@ export default function SeatSelectionPage() {
       {/* Floating Bottom Action/Checkout Bar */}
       <div className="fixed bottom-0 left-0 w-full z-30 p-4 md:p-6 pointer-events-none flex justify-center">
         <div className="pointer-events-auto w-full max-w-4xl bg-[#1a1c1c]/90 backdrop-blur-2xl rounded-2xl border border-white/10 shadow-[0_-10px_45px_rgba(229,9,20,0.25)] p-4 md:p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3 flex-grow text-left">
-            <Ticket size={22} className="text-red-500 select-none animate-pulse" />
-            <p className="text-base md:text-lg font-bold text-white tracking-wide m-0">Bạn muốn xem phim? Đặt vé tại đây</p>
-          </div>
+          
+          {selected.length === 0 ? (
+            <div className="flex items-center gap-3 flex-grow text-left">
+              <Ticket size={22} className="text-red-500 select-none animate-pulse" />
+              <p className="text-base md:text-lg font-bold text-white tracking-wide m-0">Vui lòng chọn ghế để tiếp tục</p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-6 flex-grow text-left">
+              <div>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Ghế đã chọn</p>
+                <div className="flex gap-2 flex-wrap max-w-[250px]">
+                  {selected.map(id => (
+                    <span key={id} className="text-sm font-bold text-white bg-white/10 px-2 py-0.5 rounded">{id}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="w-[1px] h-10 bg-white/10"></div>
+              <div>
+                <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Tạm tính</p>
+                <p className="text-xl md:text-2xl font-black text-red-500">{formatCurrency(ticketPrice)}</p>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-6 shrink-0">
-            <motion.button onClick={() => { navigate(`/movies/${movieId}?date=${dateStr}&time=${time}`) }} className="bg-[var(--color-primary)] text-white font-bold text-base px-10 py-4 rounded-xl shadow-[0_0_24px_rgba(229,9,20,0.35)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <span>Đặt vé ngay</span><Ticket size={18} className="font-black group-hover:translate-x-1 transition-transform" />
+            <motion.button 
+              disabled={selected.length === 0 || isHolding || violations.length > 0} 
+              onClick={handleHoldSeats} 
+              className="bg-[var(--color-primary)] text-white font-bold text-base px-10 py-4 rounded-xl shadow-[0_0_24px_rgba(229,9,20,0.35)] hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 group uppercase tracking-wider cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100" 
+              whileHover={{ scale: (selected.length === 0 || isHolding || violations.length > 0) ? 1 : 1.05 }} 
+              whileTap={{ scale: (selected.length === 0 || isHolding || violations.length > 0) ? 1 : 0.95 }}
+            >
+              {isHolding ? <Loader2 size={18} className="animate-spin" /> : <span>Tiếp tục</span>}
+              {!isHolding && <ArrowLeft size={18} className="font-black group-hover:-translate-x-1 transition-transform rotate-180" />}
             </motion.button>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { useRecommendation } from '../../../../seatRecommendation/useRecommendat
 import RecommendationOverlay from '../../../../seatRecommendation/RecommendationOverlay'
 import BestViewZoneFrame from '../../../../seatRecommendation/BestViewZoneFrame'
 import { getSeatScore } from '../../../../utils/seatScoring'
+import websocketService from '../../../../services/websocketService'
 
 // Fallback occupied labels used when API layout is unavailable
 const FALLBACK_OCCUPIED = [
@@ -37,8 +38,37 @@ export default function SeatStep({
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
   const [seatError, setSeatError] = useState('')
+  const [tempHolds, setTempHolds] = useState(new Set())
   const seatRefs = useRef({})
   const [gridRoot, setGridRoot] = useState(null)
+  const [timeLeft, setTimeLeft] = useState(300) // 5 minutes
+
+  // Countdown timer
+  useEffect(() => {
+    if (timeLeft <= 0) return
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          toast.error('Thời gian chọn ghế đã hết!', {
+            description: 'Hệ thống tự động hủy phiên chọn ghế.',
+            duration: 4000
+          })
+          setBookingStep(1)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [timeLeft, setBookingStep])
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
+    const s = (seconds % 60).toString().padStart(2, '0')
+    return `${m}:${s}`
+  }
+
 
   const formatDate = (dateString) => {
     if (!dateString || dateString === 'Hôm nay') return 'Hôm nay'
@@ -69,12 +99,13 @@ export default function SeatStep({
   }
 
   // Fetch room layout when showtime changes and refresh availability in place.
-  const loadLayout = useCallback(async ({ showLoading = false } = {}) => {
-    if (!selectedShowtime?.roomId) {
+  const loadLayout = useCallback(async (opts = { showLoading: false }) => {
+    if (!selectedShowtime?.id || !selectedShowtime?.roomId) {
       setLayout(null)
+      setSeatError('Thiếu thông tin phòng chiếu')
       return
     }
-    if (showLoading) setLoadingSeats(true)
+    if (opts.showLoading) setLoadingSeats(true)
     setSeatError('')
     try {
       const data = await cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
@@ -85,9 +116,9 @@ export default function SeatStep({
     } catch {
       setSeatError('Không thể tải sơ đồ ghế')
     } finally {
-      if (showLoading) setLoadingSeats(false)
+      if (opts.showLoading) setLoadingSeats(false)
     }
-  }, [selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
+  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
 
   useEffect(() => {
     loadLayout({ showLoading: true })
@@ -95,28 +126,72 @@ export default function SeatStep({
     return () => window.clearInterval(pollId)
   }, [loadLayout])
 
+  // WebSocket Integration
+  useEffect(() => {
+    if (!selectedShowtime?.id) return
+    
+    let isSubscribed = false
+    websocketService.connect(() => {
+      websocketService.subscribeToSeatMap(selectedShowtime.id, (message) => {
+        if (message && message.type === 'SEAT_MAP_UPDATED') {
+          // Fetch the layout again instantly without showing full loading
+          loadLayout({ showLoading: false })
+        } else if (message && message.type === 'SEAT_TOGGLE_TEMP') {
+          // Instantly lock/unlock the seat visually when someone else clicks it
+          setTempHolds(prev => {
+            const next = new Set(prev)
+            if (message.isSelected) next.add(message.seatId)
+            else next.delete(message.seatId)
+            return next
+          })
+        }
+      })
+      isSubscribed = true
+    })
+
+    return () => {
+      if (isSubscribed) {
+        websocketService.unsubscribeFromSeatMap(selectedShowtime.id)
+      }
+    }
+  }, [selectedShowtime?.id, loadLayout])
+
   // Build occupied seat set from layout (or fallback labels)
   const occupiedSet = useMemo(() => {
     const set = new Set()
     if (!layout?.seatMatrix) {
       FALLBACK_OCCUPIED.forEach(id => set.add(id))
-      return set
-    }
-    layout.seatMatrix.forEach(row => {
-      row.seats.forEach(seat => {
-        const status = String(seat.status || '').toUpperCase()
-        const type = String(seat.type || '').toUpperCase()
-        if (
-          status === 'MAINTENANCE' || status === 'SOLD' || status === 'RESERVED' ||
-          status === 'DISABLED' || status === 'BROKEN' ||
-          type === 'AISLE' || type === 'COUPLE_EXTENSION'
-        ) {
-          set.add(seat.id)
-        }
+    } else {
+      layout.seatMatrix.forEach(row => {
+        row.seats.forEach(seat => {
+          const status = String(seat.status || '').toUpperCase()
+          const type = String(seat.type || '').toUpperCase()
+          if (
+            status === 'MAINTENANCE' || status === 'SOLD' || status === 'RESERVED' ||
+            status === 'DISABLED' || status === 'BROKEN' ||
+            type === 'AISLE' || type === 'COUPLE_EXTENSION'
+          ) {
+            set.add(seat.id)
+          }
+        })
       })
+    }
+    
+    // Add temp holds from other clients, excluding our own selections
+    tempHolds.forEach(id => {
+      if (!selectedSeats.includes(id)) {
+        set.add(id)
+      }
     })
+
     return set
-  }, [layout])
+  }, [layout, tempHolds, selectedSeats])
+
+  // Clear stale temp holds every minute to prevent deadlocks if someone disconnects without releasing
+  useEffect(() => {
+    const timer = setInterval(() => setTempHolds(new Set()), 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Rows used by gap validator (API layout preferred, fallback otherwise)
   const validationRows = useMemo(() => {
@@ -220,7 +295,7 @@ export default function SeatStep({
     const isVip = String(seatType).toUpperCase() === 'VIP'
     const displayLabel = resolveSeatLabel(seat)
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -228,7 +303,7 @@ export default function SeatStep({
           onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: String(seatType).toUpperCase() })}
           className="sr-only"
         />
-        {displayLabel}
+        {isOccupied ? 'X' : displayLabel}
       </label>
     )
   }
@@ -238,7 +313,7 @@ export default function SeatStep({
     const isSelected = selectedSeats.includes(seat.id)
     const displayLabel = resolveSeatLabel(seat)
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -246,7 +321,7 @@ export default function SeatStep({
           onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: 'COUPLE' })}
           className="sr-only"
         />
-        {displayLabel}
+        {isOccupied ? 'X' : displayLabel}
       </label>
     )
   }
@@ -334,9 +409,15 @@ export default function SeatStep({
   return (
     <motion.div key="step2" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.35 }}>
       {/* Summary bar */}
-      <div className="flex items-center gap-3 mb-5 p-3 rounded-xl text-sm" style={{ background: 'rgba(229,9,20,0.08)', border: '1px solid rgba(229,9,20,0.2)' }}>
-        <span className="material-symbols-outlined text-[var(--color-primary)]">info</span>
-        <span className="text-gray-300">{movie?.title} · <strong className="text-white">{selectedTime}</strong> · {formatDate(selectedDate)} · {roomName}</span>
+      <div className="flex justify-between items-center mb-5 p-3 rounded-xl text-sm" style={{ background: 'rgba(229,9,20,0.08)', border: '1px solid rgba(229,9,20,0.2)' }}>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[var(--color-primary)]">info</span>
+          <span className="text-gray-300">{movie?.title} · <strong className="text-white">{selectedTime}</strong> · {formatDate(selectedDate)} · {roomName}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-red-500 font-mono font-bold text-base bg-red-500/10 px-3 py-1 rounded-lg border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+          <span className="material-symbols-outlined text-[18px]">schedule</span>
+          {formatTime(timeLeft)}
+        </div>
       </div>
 
       <div className="w-full flex flex-col justify-between p-1 sm:p-2">
