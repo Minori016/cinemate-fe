@@ -277,11 +277,17 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
     if (movies.length === 0) return
     const N = movies.length
     const isDesktop = windowWidth >= 768
-    const sideX = Math.max(150, windowWidth * 0.23)
-    const outerX = Math.max(260, windowWidth * 0.40)
+    const sideX = isDesktop 
+      ? (180 + windowWidth * 0.045) 
+      : (110 + windowWidth * 0.05)
+    const outerX = isDesktop 
+      ? (330 + windowWidth * 0.08) 
+      : (200 + windowWidth * 0.1)
     const scaleCenter = 1.0
-    const scaleSide = isDesktop ? 0.6 : 0.65
-    const scaleOuter = isDesktop ? 0.45 : 0.5
+    const scaleSide = isDesktop ? 0.82 : 0.8
+    const scaleOuter = isDesktop ? 0.67 : 0.65
+    const scaleCenterHovered = 1.05
+
 
     movies.forEach((_, i) => {
       let diff = i - activeIndex
@@ -420,7 +426,8 @@ export default function MovieArcCarousel3D({ movies: propMovies, onMovieChange }
                 else if (shortestDiff === -2) { prevMovie(); setTimeout(prevMovie, 100); }
                 else if (shortestDiff === 2) { nextMovie(); setTimeout(nextMovie, 100); }
               }}
-              className="absolute w-[260px] h-[390px] md:w-[380px] md:h-[570px] rounded-2xl overflow-hidden cursor-pointer select-none bg-zinc-900 border border-white/5"
+              className="absolute w-[260px] h-[390px] md:w-[380px] md:h-[570px] rounded-2xl overflow-hidden cursor-pointer select-none bg-zinc-900 border border-white/5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)]"
+
               style={{
                 pointerEvents: isVisible ? 'auto' : 'none',
                 transformStyle: 'preserve-3d',

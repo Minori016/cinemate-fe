@@ -181,7 +181,7 @@ export default function RegisterPage() {
               <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
                 <div>
                   <h2 style={{ fontFamily: 'Montserrat, sans-serif', fontSize: '56px', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.03em', color: '#fff', textShadow: '0 4px 30px rgba(229,9,20,0.4)', marginBottom: '16px' }}>
-                    CINEMATE
+                    CINE<span style={{ color: 'var(--color-primary)' }}>MATE</span>
                   </h2>
                 </div>
                 <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'rgba(255,255,255,0.35)', letterSpacing: '0.06em' }}>
@@ -333,20 +333,7 @@ export default function RegisterPage() {
             <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
               {/* Brand block */}
               <div>
-                {/* Film-strip decoration */}
-                <div className="flex items-center gap-[5px] mb-6" aria-hidden="true">
-                  {Array.from({ length: 11 }).map((_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        width: '16px',
-                        height: '9px',
-                        borderRadius: '2px',
-                        backgroundColor: i === 5 ? 'var(--color-primary)' : 'rgba(255,255,255,0.15)',
-                      }}
-                    />
-                  ))}
-                </div>
+
 
                 <h2
                   style={{
@@ -360,7 +347,7 @@ export default function RegisterPage() {
                     marginBottom: '16px',
                   }}
                 >
-                  CINEMATE
+                  CINE<span style={{ color: 'var(--color-primary)' }}>MATE</span>
                 </h2>
                 <p
                   style={{
@@ -439,7 +426,7 @@ export default function RegisterPage() {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  CINEMATE
+                  CINE<span style={{ color: 'var(--color-primary)' }}>MATE</span>
                 </p>
               </div>
 

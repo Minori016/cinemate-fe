@@ -1,6 +1,12 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
+import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
+import {
+  promotionService,
+  getQuickDiscountText,
+  formatPromoDateRange,
+} from '../../services/promotionService'
 import { useAuth } from '../../contexts/AuthContext'
 import {
   Search, LogOut, User, Settings, ChevronDown, Bell, X, Menu,
@@ -20,14 +26,16 @@ import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
 const DEFAULT_POSTER_SMALL = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop'
 
-// ── Static Data ────────────────────────────────────────────────
-const PROMOTIONS = [
-  { id: 1, tag: 'HOT', tagColor: '#e50914', title: 'Happy Monday — Đồng Giá 45K', desc: 'Ưu đãi đồng giá vé 2D chỉ 45.000đ cho mọi thành viên vào mỗi ngày Thứ Hai hàng tuần.', date: 'Mỗi Thứ Hai', img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700' },
-  { id: 2, tag: 'MỚI', tagColor: '#2563eb', title: 'Khai Trương CineMate Thủ Đức', desc: 'Giảm 50% bắp nước khi mua kèm 2 vé tại chi nhánh Thủ Đức.', date: 'Đến 30/06/2026', img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700' },
-  { id: 3, tag: 'VIP', tagColor: '#d97706', title: 'Hội Viên Vàng — Tích Điểm Đôi', desc: 'Tích lũy điểm thành viên gấp đôi và nhận thêm bắp nước miễn phí vào tháng sinh nhật.', date: 'Chương trình thường niên', img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700' },
-  { id: 4, tag: 'COMBO', tagColor: '#16a34a', title: 'Combo Cuối Tuần — Tiết Kiệm 30%', desc: 'Mua combo 2 vé + 2 bắp lớn + 2 nước vào Thứ 7 & Chủ Nhật, tiết kiệm đến 30%.', date: 'Thứ 7 & Chủ Nhật', img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700' },
+const FALLBACK_PROMOTION_IMGS = [
+  'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=700',
+  'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=700',
+  'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=700',
+  'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=700',
 ]
 
+const TAG_COLORS = ['#e50914', '#2563eb', '#d97706', '#16a34a', '#9333ea']
+
+// ── Static Data ────────────────────────────────────────────────
 const CINEMAS = [
   { id: 1, name: 'CineMate Quận 1', badge: 'CHI NHÁNH TỔNG', badgeColor: '#d97706', address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh', phone: '1900 1234', rooms: 10, screens: ['2D', '3D', 'IMAX', '4DX'], img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800' },
   { id: 2, name: 'CineMate Bình Thạnh', badge: null, badgeColor: null, address: '156 Xo Vìt Nghệ Tĩnh, Phường 26, Quận Bình Thạnh, TP. Hồ Chí Minh', phone: '1900 1235', rooms: 8, screens: ['2D', '3D', '4DX'], img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800' },
@@ -248,6 +256,8 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
 
 export default function HomePage() {
   const [movies, setMovies] = useState([])
+  const [promotions, setPromotions] = useState([])
+  const [promotionsLoading, setPromotionsLoading] = useState(true)
   const location = useLocation()
 
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -274,37 +284,77 @@ export default function HomePage() {
   // Debug: Log component mount and location
   console.log('🏠 HomePage rendering. Path:', location.pathname, 'Movies count:', movies.length)
 
-  // ── Quick Booking state ────────────────────────────────────────
+  // ── Quick Booking state (API-backed showtimes) ──────────────────
   const [bookingMovieId, setBookingMovieId] = useState('')
   const [bookingDate, setBookingDate] = useState('')
   const [bookingTime, setBookingTime] = useState('')
+  const [bookingRoomId, setBookingRoomId] = useState('')
+  // Full select value "time|roomId" so CustomSelect can match the option
+  const [bookingTimeValue, setBookingTimeValue] = useState('')
   const [bookingErrors, setBookingErrors] = useState({ movie: '', date: '', time: '' })
+  // Map date → showtimes[] from API for selected movie
+  const [showtimesByDate, setShowtimesByDate] = useState({})
+  const [showtimesLoading, setShowtimesLoading] = useState(false)
 
-  const getAvailableDates = () => {
-    if (!bookingMovieId) return []
-    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
-    if (!movie) return []
-    const charCodeSum = movie.id.toString().split('').reduce((s, c) => s + c.charCodeAt(0), 0)
-    const numDays = (charCodeSum % 5) + 3
-    return DAYS.slice(0, numDays).map(d => d.date)
-  }
+  // Fetch real showtimes for next 7 days when movie changes
+  useEffect(() => {
+    if (!bookingMovieId) {
+      setShowtimesByDate({})
+      return
+    }
+    let cancelled = false
+    setShowtimesLoading(true)
+    setShowtimesByDate({})
 
-  const getAvailableTimes = () => {
-    if (!bookingMovieId || !bookingDate) return []
-    if (!getAvailableDates().includes(bookingDate)) return []
-    const SCHEDULE_TEMPLATES = [
-      ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15'],
-      ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30'],
-      ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30'],
-      ['10:15', '13:00', '16:45', '19:30', '22:15'],
-      ['11:00', '14:30', '18:00', '20:30', '22:30'],
-    ]
-    const movie = movies.find(m => m.id?.toString() === bookingMovieId)
-    if (!movie) return []
-    const idx = movies.indexOf(movie)
-    return movie.showtimes?.map(st => new Date(st.startTime).toTimeString().slice(0, 5)) ||
-      SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
-  }
+    Promise.all(
+      DAYS.map(async (d) => {
+        try {
+          const list = await showtimeService.getByMovie(bookingMovieId, d.date)
+          const publicList = (list || []).filter(s => s && isPublicShowtimeStatus(s.status))
+          return [d.date, publicList]
+        } catch {
+          return [d.date, []]
+        }
+      })
+    )
+      .then((entries) => {
+        if (cancelled) return
+        const map = {}
+        entries.forEach(([date, list]) => { map[date] = list })
+        setShowtimesByDate(map)
+      })
+      .finally(() => {
+        if (!cancelled) setShowtimesLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [bookingMovieId])
+
+  // Dates that actually have at least one public showtime
+  const availableDates = useMemo(() => {
+    return DAYS
+      .map(d => d.date)
+      .filter(date => (showtimesByDate[date] || []).length > 0)
+  }, [showtimesByDate])
+
+  // Time options for selected date (include roomName + roomId for navigation)
+  const availableTimeOptions = useMemo(() => {
+    if (!bookingDate) return []
+    const list = showtimesByDate[bookingDate] || []
+    return list.map(st => {
+      const time = st.time
+        || (st.startTime ? st.startTime.split('T')[1]?.substring(0, 5) : '')
+        || ''
+      const room = st.roomName || st.room || ''
+      return {
+        value: `${time}|${st.roomId || ''}`,
+        label: room ? `${time} · ${room}` : time,
+        time,
+        roomId: st.roomId || '',
+        showtime: st,
+      }
+    }).filter(opt => opt.time)
+  }, [bookingDate, showtimesByDate])
 
   const handleQuickBook = (e) => {
     e.preventDefault()
@@ -314,7 +364,11 @@ export default function HomePage() {
     if (!bookingDate) { newErrors.date = 'Vui lòng chọn ngày'; valid = false }
     if (!bookingTime) { newErrors.time = 'Vui lòng chọn giờ'; valid = false }
     setBookingErrors(newErrors)
-    if (valid) navigate(`/movies/${bookingMovieId}?date=${bookingDate}&time=${bookingTime}`)
+    if (!valid) return
+
+    const params = new URLSearchParams({ date: bookingDate, time: bookingTime })
+    if (bookingRoomId) params.set('roomId', bookingRoomId)
+    navigate(`/movies/${bookingMovieId}?${params.toString()}`)
   }
   // ─────────────────────────────────────────────────────────────
 
@@ -345,6 +399,33 @@ export default function HomePage() {
       return prev + 4
     })
   }
+
+  // Load active promotions for homepage cards
+  useEffect(() => {
+    let cancelled = false
+    setPromotionsLoading(true)
+    promotionService.getActiveForUi()
+      .then(list => {
+        if (cancelled) return
+        const cards = (Array.isArray(list) ? list : []).slice(0, 8).map((p, i) => {
+          const discountText = getQuickDiscountText(p)
+          return {
+            id: p.id || p.code || i,
+            tag: discountText ? discountText.replace('Giảm ', '').toUpperCase() : (p.code || 'HOT'),
+            tagColor: TAG_COLORS[i % TAG_COLORS.length],
+            title: p.title || p.code || 'Khuyến mãi',
+            desc: p.detail || p.description || p.content || discountText || 'Ưu đãi đặc biệt từ CineMate.',
+            date: formatPromoDateRange(p),
+            img: p.imageUrl || FALLBACK_PROMOTION_IMGS[i % FALLBACK_PROMOTION_IMGS.length],
+            code: p.code || '',
+          }
+        })
+        setPromotions(cards)
+      })
+      .catch(() => { if (!cancelled) setPromotions([]) })
+      .finally(() => { if (!cancelled) setPromotionsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     console.log('🔍 Fetching movies...')
@@ -399,6 +480,8 @@ export default function HomePage() {
       setBookingMovieId(movieId?.toString() || '')
       setBookingDate('')
       setBookingTime('')
+      setBookingRoomId('')
+      setBookingTimeValue('')
       setBookingErrors({ movie: '', date: '', time: '' })
     }
 
@@ -810,29 +893,35 @@ export default function HomePage() {
                   value={bookingMovieId}
                   options={movies.map(m => ({ value: m.id?.toString(), label: m.titleVn || m.titleEn || 'Phim' }))}
                   error={bookingErrors.movie}
-                  onChange={val => { setBookingMovieId(val); setBookingDate(''); setBookingTime(''); setBookingErrors({ movie: '', date: '', time: '' }) }}
+                  onChange={val => { setBookingMovieId(val); setBookingDate(''); setBookingTime(''); setBookingRoomId(''); setBookingTimeValue(''); setBookingErrors({ movie: '', date: '', time: '' }) }}
                 />
                 <CustomSelect
                   label="Chọn ngày chiếu"
-                  placeholder="-- Chọn ngày --"
+                  placeholder={showtimesLoading ? 'Đang tải...' : (availableDates.length === 0 && bookingMovieId && !showtimesLoading ? 'Không có lịch' : '-- Chọn ngày --')}
                   value={bookingDate}
-                  disabled={!bookingMovieId}
-                  options={getAvailableDates().map(d => {
-                    const dateObj = new Date(d)
+                  disabled={!bookingMovieId || showtimesLoading}
+                  options={availableDates.map(d => {
+                    const dateObj = new Date(d + 'T12:00:00')
                     const label = `${['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][dateObj.getDay()]} - ${dateObj.getDate().toString().padStart(2, '0')}/${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`
                     return { value: d, label }
                   })}
                   error={bookingErrors.date}
-                  onChange={val => { setBookingDate(val); setBookingTime(''); setBookingErrors(p => ({ ...p, date: '', time: '' })) }}
+                  onChange={val => { setBookingDate(val); setBookingTime(''); setBookingRoomId(''); setBookingTimeValue(''); setBookingErrors(p => ({ ...p, date: '', time: '' })) }}
                 />
                 <CustomSelect
                   label="Chọn suất chiếu"
-                  placeholder="-- Chọn giờ --"
-                  value={bookingTime}
-                  disabled={!bookingDate}
-                  options={getAvailableTimes().map(t => ({ value: t, label: t }))}
+                  placeholder={availableTimeOptions.length === 0 && bookingDate ? 'Không có suất' : '-- Chọn giờ --'}
+                  value={bookingTimeValue}
+                  disabled={!bookingDate || availableTimeOptions.length === 0}
+                  options={availableTimeOptions.map(t => ({ value: t.value, label: t.label }))}
                   error={bookingErrors.time}
-                  onChange={val => { setBookingTime(val); setBookingErrors(p => ({ ...p, time: '' })) }}
+                  onChange={val => {
+                    const [time, roomId = ''] = String(val).split('|')
+                    setBookingTimeValue(val)
+                    setBookingTime(time)
+                    setBookingRoomId(roomId)
+                    setBookingErrors(p => ({ ...p, time: '' }))
+                  }}
                 />
                 <div className="flex flex-col gap-2 w-full">
                   <span className="hidden md:block text-[10px] uppercase font-bold tracking-wider" style={{ color: 'transparent' }}>Đặt vé</span>
@@ -937,6 +1026,16 @@ export default function HomePage() {
               </motion.div>
 
               {/* Cards grid */}
+              {promotionsLoading ? (
+                <div className="flex justify-center py-16">
+                  <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
+                </div>
+              ) : promotions.length === 0 ? (
+                <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]">
+                  <p className="text-white/60 text-sm">Chưa có chương trình ưu đãi đang chạy.</p>
+                  <Link to="/promotions" className="inline-block mt-3 text-sm font-bold text-red-500 hover:text-red-400">Xem trang khuyến mãi</Link>
+                </div>
+              ) : (
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
                 initial="hidden"
@@ -944,10 +1043,10 @@ export default function HomePage() {
                 viewport={{ once: true, margin: '-60px' }}
                 variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
               >
-                {PROMOTIONS.map((promo) => (
+                {promotions.map((promo) => (
+                  <Link to="/promotions" key={promo.id}>
                   <motion.div
-                    key={promo.id}
-                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card"
+                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card h-full"
                     variants={{ hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
                     whileHover={{ y: -6, transition: { duration: 0.22 } }}
                     style={{
@@ -963,6 +1062,7 @@ export default function HomePage() {
                         alt={promo.title}
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                         style={{ filter: 'brightness(0.75)' }}
+                        onError={(e) => { e.currentTarget.src = FALLBACK_PROMOTION_IMGS[0] }}
                       />
                       {/* Tag badge */}
                       <span
@@ -983,14 +1083,19 @@ export default function HomePage() {
                       <p className="text-xs leading-relaxed flex-1 mb-4" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
                         {promo.desc}
                       </p>
+                      {promo.code && (
+                        <p className="text-[11px] font-mono font-bold text-yellow-400/90 mb-2 tracking-wider">Mã: {promo.code}</p>
+                      )}
                       <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: promo.tagColor }}>
                         <Calendar size={12} />
                         <span>{promo.date}</span>
                       </div>
                     </div>
                   </motion.div>
+                  </Link>
                 ))}
               </motion.div>
+              )}
 
               <div className="flex justify-center mt-8 sm:hidden">
                 <Link to="/promotions" className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors flex items-center gap-1.5">

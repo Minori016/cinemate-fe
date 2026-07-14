@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Tag, Sparkles, Copy, Check, Clock, Zap, Cake } from 'lucide-react'
+import { Calendar, Tag, Sparkles, Copy, Check, Clock } from 'lucide-react'
 import { motion } from 'motion/react'
 import {
   promotionService,
   getDaysRemaining,
   getQuickDiscountText,
   computePromotionStatus,
-  PROMOTION_TYPES,
+  mapPromotionForUi,
+  PROMOTION_STATUS,
 } from '../../services/promotionService'
+import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 
 // Ảnh placeholder nếu KM chưa có imageUrl
 const DEFAULT_IMAGES = [
@@ -16,64 +18,53 @@ const DEFAULT_IMAGES = [
   'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=600',
 ]
 
-const COMBOS = [
-  {
-    id: 1,
-    name: 'Combo Solo',
-    desc: '1 bắp ngọt lớn 60oz + 1 nước ngọt lớn 22oz (Coca-Cola/Sprite/Fanta) tự chọn vị.',
-    price: '75.000đ',
-    img: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?q=80&w=600'
-  },
-  {
-    id: 2,
-    name: 'Combo Couple',
-    desc: '1 bắp ngọt lớn 60oz + 2 nước ngọt lớn 22oz (Coca-Cola/Sprite/Fanta) chia sẻ niềm vui.',
-    price: '95.000đ',
-    img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=600'
-  },
-  {
-    id: 3,
-    name: 'Combo Party',
-    desc: '2 bắp ngọt lớn 60oz (tự chọn vị bơ/phô mai/caramel) + 4 nước ngọt lớn 22oz cực đã.',
-    price: '165.000đ',
-    img: 'https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=600'
-  }
-]
-
-// Icon theo loại KM
-const TYPE_ICONS = {
-  [PROMOTION_TYPES.FLASH_SALE]: Zap,
-  [PROMOTION_TYPES.BIRTHDAY]: Cake,
-  [PROMOTION_TYPES.COMBO]: Sparkles,
-  [PROMOTION_TYPES.MEMBER_ONLY]: Sparkles,
-  [PROMOTION_TYPES.MOVIE_SPECIFIC]: Tag,
-}
-
-const TYPE_BADGES = {
-  [PROMOTION_TYPES.FLASH_SALE]: { text: 'FLASH', color: 'bg-yellow-500 text-black' },
-  [PROMOTION_TYPES.BIRTHDAY]: { text: 'BIRTHDAY', color: 'bg-pink-500 text-white' },
-  [PROMOTION_TYPES.COMBO]: { text: 'COMBO', color: 'bg-orange-500 text-white' },
-  [PROMOTION_TYPES.MEMBER_ONLY]: { text: 'MEMBER', color: 'bg-blue-500 text-white' },
-  [PROMOTION_TYPES.MOVIE_SPECIFIC]: { text: 'PHIM', color: 'bg-purple-500 text-white' },
-}
-
 export default function PromotionsPage() {
   const [promotions, setPromotions] = useState([])
   const [loading, setLoading] = useState(true)
   const [copiedId, setCopiedId] = useState(null)
+  const [combos, setCombos] = useState(FALLBACK_COMBOS)
+  const [combosLoading, setCombosLoading] = useState(true)
 
   useEffect(() => {
-    promotionService.getAll()
-      .then(res => {
-        const data = res.data?.result || res.data || []
-        setPromotions(Array.isArray(data) ? data : [])
+    let cancelled = false
+    setLoading(true)
+    promotionService.getActiveForUi()
+      .then(list => {
+        if (cancelled) return
+        // Nếu active rỗng, thử getAll rồi map (admin có thể tạo chưa ACTIVE)
+        if (Array.isArray(list) && list.length > 0) {
+          setPromotions(list)
+          return
+        }
+        return promotionService.getAll({ page: 0, size: 50 })
+          .then(res => {
+            if (cancelled) return
+            const data = res.data?.result?.content || res.data?.result || res.data || []
+            const arr = Array.isArray(data) ? data : []
+            setPromotions(arr.map(mapPromotionForUi))
+          })
       })
       .catch(err => {
         console.error('Lỗi khi tải khuyến mãi phía user:', err)
+        if (!cancelled) setPromotions([])
       })
       .finally(() => {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       })
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    setCombosLoading(true)
+    concessionService.getActiveForUi({ fallback: true })
+      .then(list => {
+        if (!cancelled) setCombos(Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS)
+      })
+      .finally(() => {
+        if (!cancelled) setCombosLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   const formatDate = (dateStr) => {
@@ -110,7 +101,7 @@ export default function PromotionsPage() {
   // Lọc ra KM còn hạn để hiển thị
   const visiblePromotions = promotions.filter(p => {
     const s = computePromotionStatus(p)
-    return s !== 'EXPIRED'
+    return s !== PROMOTION_STATUS.EXPIRED
   })
 
   return (
@@ -158,8 +149,6 @@ export default function PromotionsPage() {
           variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
         >
           {visiblePromotions.map((promo, i) => {
-            const TypeIcon = TYPE_ICONS[promo.type] || Tag
-            const typeBadge = TYPE_BADGES[promo.type]
             const discountText = getQuickDiscountText(promo)
             const daysLeft = getDaysRemaining(promo.endTime)
             const isCopied = copiedId === promo.id
@@ -186,15 +175,10 @@ export default function PromotionsPage() {
 
                   {/* Top-left badges */}
                   <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
-                    {typeBadge ? (
-                      <div className={`${typeBadge.color} text-[10px] font-extrabold uppercase px-2.5 py-1 rounded flex items-center gap-1 shadow-md`}>
-                        <TypeIcon size={10} />
-                        <span>{typeBadge.text}</span>
-                      </div>
-                    ) : (
+                    {promo.code && (
                       <div className="bg-red-600 text-white text-[10px] font-extrabold uppercase px-2.5 py-1 rounded flex items-center gap-1 shadow-md">
                         <Tag size={10} />
-                        <span>HOT</span>
+                        <span>Voucher</span>
                       </div>
                     )}
 
@@ -219,8 +203,8 @@ export default function PromotionsPage() {
                   <h2 className="text-lg text-white font-bold mb-2 line-clamp-2" style={{ fontFamily: 'Montserrat, sans-serif' }} title={promo.title}>
                     {promo.title}
                   </h2>
-                  <p className="text-sm text-[var(--color-on-surface-variant)] mb-4 leading-relaxed line-clamp-3" title={promo.description}>
-                    {promo.content}
+                  <p className="text-sm text-[var(--color-on-surface-variant)] mb-4 leading-relaxed line-clamp-3" title={promo.description || promo.detail}>
+                    {promo.content || promo.detail || promo.description || 'Ưu đãi đặc biệt từ CineMate.'}
                   </p>
 
                   {/* Voucher code block */}
@@ -276,13 +260,23 @@ export default function PromotionsPage() {
         </p>
       </motion.div>
 
+      {combosLoading ? (
+        <div className="flex justify-center py-12">
+          <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
+        </div>
+      ) : (
       <motion.div
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
         initial="hidden"
         animate="visible"
         variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.12 } } }}
       >
-        {COMBOS.map((combo) => (
+        {combos.map((combo) => {
+          const hasImg = combo.img && (String(combo.img).startsWith('http') || String(combo.img).startsWith('/') || String(combo.img).startsWith('data:'))
+          const priceLabel = typeof combo.price === 'number'
+            ? `${Number(combo.price).toLocaleString('vi-VN')}đ`
+            : combo.price
+          return (
           <motion.div
             key={combo.id}
             className="rounded-xl overflow-hidden border border-white/8 hover:border-red-500/30 transition-all duration-300 flex flex-col"
@@ -293,11 +287,15 @@ export default function PromotionsPage() {
             variants={{ hidden: { opacity: 0, y: 30, scale: 0.96 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
             whileHover={{ y: -6, boxShadow: '0 20px 48px rgba(229,9,20,0.15)', transition: { duration: 0.22 } }}
           >
-            <div className="relative aspect-video overflow-hidden">
-              <img src={combo.img} alt={combo.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+            <div className="relative aspect-video overflow-hidden bg-white/5 flex items-center justify-center">
+              {hasImg ? (
+                <img src={combo.img} alt={combo.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+              ) : (
+                <span className="text-5xl select-none">{combo.img || '🍿'}</span>
+              )}
               <div className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-extrabold uppercase px-2.5 py-1 rounded flex items-center gap-1 shadow-md">
                 <Sparkles size={10} />
-                <span>POPULAR</span>
+                <span>{(combo.category || 'combo').toUpperCase()}</span>
               </div>
             </div>
             <div className="p-6 flex flex-col flex-1">
@@ -305,7 +303,7 @@ export default function PromotionsPage() {
                 <h2 className="text-lg text-white font-bold" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                   {combo.name}
                 </h2>
-                <span className="text-lg font-black text-red-500 font-mono whitespace-nowrap">{combo.price}</span>
+                <span className="text-lg font-black text-red-500 font-mono whitespace-nowrap">{priceLabel}</span>
               </div>
               <p className="text-sm text-[var(--color-on-surface-variant)] mb-5 leading-relaxed">
                 {combo.desc}
@@ -315,8 +313,10 @@ export default function PromotionsPage() {
               </button>
             </div>
           </motion.div>
-        ))}
+          )
+        })}
       </motion.div>
+      )}
     </motion.div>
   )
 }

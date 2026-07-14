@@ -11,7 +11,12 @@ export default function SuccessModal({
   bookingId,
   onClose,
   onBookAnother,
-  navigate
+  navigate,
+  selectedCombos = {},
+  combos = [],
+  promoCode = '',
+  discountAmount = 0,
+  movieDuration,
 }) {
   if (!bookingSuccess) return null
 
@@ -29,6 +34,19 @@ export default function SuccessModal({
       return dateString
     }
   }
+
+  // Calculate end time = start time + movie duration
+  const endTime = (() => {
+    if (!selectedTime || !movieDuration) return ''
+    try {
+      const [h, m] = selectedTime.split(':').map(Number)
+      const end = new Date()
+      end.setHours(h, m + Number(movieDuration), 0, 0)
+      return `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
+    } catch {
+      return ''
+    }
+  })()
 
   const formatSeatsLeftText = (seats) => {
     if (!seats || !seats.length) return ''
@@ -48,6 +66,11 @@ export default function SuccessModal({
     if (!seats || !seats.length) return ''
     return seats.map(s => s.substring(1)).join(' · ')
   }
+
+  // Combo items with qty > 0
+  const orderedCombos = (combos || []).filter(c => (selectedCombos?.[c.id] || 0) > 0)
+  const hasCombos = orderedCombos.length > 0
+  const hasPromo = Boolean(promoCode) && Number(discountAmount) > 0
 
   return (
     <motion.div
@@ -123,17 +146,8 @@ export default function SuccessModal({
               </div>
               <div className="success-ticket-row">
                 <span className="success-ticket-label">⏰ Suất chiếu</span>
-                <span className="success-ticket-val">{selectedTime}</span>
-              </div>
-              <div className="success-ticket-row">
-                <span className="success-ticket-label">Phân loại ghế</span>
                 <span className="success-ticket-val">
-                  {(() => {
-                    const rows = selectedSeats.map(s => s.charAt(0))
-                    if (rows.some(r => r === 'G' || r === 'H')) return 'Ghế Đôi (Couple)'
-                    if (rows.some(r => r === 'D' || r === 'E' || r === 'F')) return 'Ghế VIP'
-                    return 'Ghế Thường'
-                  })()}
+                  {endTime ? `${selectedTime} – ${endTime}` : selectedTime}
                 </span>
               </div>
               <div className="success-ticket-row">
@@ -150,6 +164,38 @@ export default function SuccessModal({
                 <span className="success-ticket-label">Số lượng</span>
                 <span className="success-ticket-val">{selectedSeats.length} vé</span>
               </div>
+
+              {/* Combo bắp nước */}
+              {hasCombos && (
+                <div className="success-ticket-row" style={{ alignItems: 'flex-start' }}>
+                  <span className="success-ticket-label">Bắp nước</span>
+                  <span className="success-ticket-val" style={{ whiteSpace: 'normal', textAlign: 'right', maxWidth: '240px' }}>
+                    {orderedCombos.map(c => {
+                      const qty = selectedCombos[c.id] || 0
+                      return (
+                        <div key={c.id} style={{ marginBottom: 2 }}>
+                          {c.name} x{qty}
+                          <span style={{ color: 'rgba(255,255,255,0.45)', marginLeft: 6, fontWeight: 400 }}>
+                            {formatCurrency(c.price * qty)}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {/* Mã giảm giá / promotion */}
+              {hasPromo && (
+                <div className="success-ticket-row">
+                  <span className="success-ticket-label">Mã giảm giá</span>
+                  <span className="success-ticket-val" style={{ color: '#4ade80' }}>
+                    {promoCode}
+                    <span style={{ marginLeft: 6 }}>-{formatCurrency(discountAmount)}</span>
+                  </span>
+                </div>
+              )}
+
               <div className="success-ticket-total-row">
                 <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.45)' }}>Tổng tiền đã thanh toán</span>
                 <span style={{ fontSize: '26px', fontWeight: 700, color: 'var(--color-primary)' }}>
@@ -211,17 +257,8 @@ export default function SuccessModal({
                   </div>
                   <div className="success-ticket-physical-field">
                     <div className="stf-label">Giờ</div>
-                    <div className="stf-val">{selectedTime}</div>
-                  </div>
-                  <div className="success-ticket-physical-field">
-                    <div className="stf-label">Loại vé</div>
                     <div className="stf-val">
-                      {(() => {
-                        const rows = selectedSeats.map(s => s.charAt(0))
-                        if (rows.some(r => r === 'G' || r === 'H')) return 'COUPLE'
-                        if (rows.some(r => r === 'D' || r === 'E' || r === 'F')) return 'VIP'
-                        return 'STANDARD'
-                      })()}
+                      {endTime ? `${selectedTime} – ${endTime}` : selectedTime}
                     </div>
                   </div>
                   <div className="success-ticket-physical-field">
@@ -234,7 +271,32 @@ export default function SuccessModal({
                       {formatSeatsRightText(selectedSeats)}
                     </div>
                   </div>
+                  <div className="success-ticket-physical-field">
+                    <div className="stf-label">Số vé</div>
+                    <div className="stf-val">{selectedSeats.length}</div>
+                  </div>
                 </div>
+                {hasCombos && (
+                  <>
+                    <hr className="success-ticket-physical-divider" />
+                    <div style={{ marginBottom: 12 }}>
+                      <div className="stf-label" style={{ marginBottom: 4 }}>Bắp nước</div>
+                      {orderedCombos.map(c => (
+                        <div key={c.id} className="stf-val" style={{ fontSize: 12, marginBottom: 2 }}>
+                          {c.name} x{selectedCombos[c.id] || 0}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {hasPromo && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="stf-label" style={{ marginBottom: 2 }}>Khuyến mãi</div>
+                    <div className="stf-val" style={{ fontSize: 12, color: '#4ade80' }}>
+                      {promoCode} (-{formatCurrency(discountAmount)})
+                    </div>
+                  </div>
+                )}
                 <div className="success-ticket-physical-barcode-box">
                   <svg width="100%" height="44" viewBox="0 0 240 44" xmlns="http://www.w3.org/2000/svg">
                     <rect x="0" y="0" width="2" height="44" fill="#111" />

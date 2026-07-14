@@ -53,56 +53,63 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 py-4 px-3 flex flex-col gap-0.5 overflow-y-auto">
-        {navItems.map(({ to, icon: Icon, label, active }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
-                isActive ? 'text-[var(--color-sidebar-foreground)] font-semibold' : 'text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)]'
-              }`
-            }
-            style={{ fontFamily: 'Inter, sans-serif' }}
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active"
-                    className="absolute inset-0 rounded-xl"
-                    style={{
-                      background: 'rgba(229,9,20,0.08)',
-                      border: '1px solid rgba(229,9,20,0.15)',
-                    }}
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10 flex items-center gap-3">
-                  <Icon
-                    size={18}
-                    style={{
-                      color: isActive ? 'var(--color-sidebar-primary)' : 'var(--color-sidebar-foreground)',
-                      opacity: isActive ? 1 : 0.4,
-                      transition: 'color 0.2s ease, opacity 0.2s ease',
-                    }}
-                  />
-                  {label}
-                </span>
-                {isActive && (
-                  <span
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                    style={{
-                      background: '#e50914',
-                      boxShadow: '0 0 10px rgba(229,9,20,0.5)',
-                    }}
-                  />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
+        {navItems.map(({ to, icon: Icon, label, active }) => {
+          const currentPath = window.location.pathname
+          // Check if link should be active: either exact match, or it is a subpath of the current path
+          const isCustomActive = to === '/' || to === '/admin' || to === '/manager'
+            ? currentPath === to
+            : currentPath.startsWith(to)
+
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              className={() =>
+                `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
+                  isCustomActive ? 'text-[var(--color-sidebar-foreground)] font-semibold' : 'text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)]'
+                }`
+              }
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              {() => (
+                <>
+                  {isCustomActive && (
+                    <motion.div
+                      layoutId="sidebar-active"
+                      className="absolute inset-0 rounded-xl"
+                      style={{
+                        background: 'rgba(229,9,20,0.08)',
+                        border: '1px solid rgba(229,9,20,0.15)',
+                      }}
+                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-3">
+                    <Icon
+                      size={18}
+                      style={{
+                        color: isCustomActive ? 'var(--color-sidebar-primary)' : 'var(--color-sidebar-foreground)',
+                        opacity: isCustomActive ? 1 : 0.4,
+                        transition: 'color 0.2s ease, opacity 0.2s ease',
+                      }}
+                    />
+                    {label}
+                  </span>
+                  {isCustomActive && (
+                    <span
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                      style={{
+                        background: '#e50914',
+                        boxShadow: '0 0 10px rgba(229,9,20,0.5)',
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            </NavLink>
+          )
+        })}
 
         <div className="my-3 mx-4 h-px" style={{ background: 'var(--color-sidebar-border)' }} />
 

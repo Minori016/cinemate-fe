@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { 
-  LayoutGrid, Ticket, ShoppingBag, CheckCircle, 
-  AlertCircle, X, Search, CreditCard, QrCode, 
-  Coins, User, Printer, RotateCcw, ChevronRight, 
-  ChevronLeft, Armchair, Square, Sofa, Wrench, ShieldAlert 
+import {
+  LayoutGrid, Ticket, ShoppingBag, CheckCircle,
+  AlertCircle, X, Search, CreditCard, QrCode,
+  Coins, User, Printer, RotateCcw, ChevronRight,
+  ChevronLeft, Armchair, Square, Sofa, Wrench, ShieldAlert
 } from 'lucide-react'
 import { movieService } from '../../../services/movieService'
 import { showtimeService } from '../../../services/showtimeService'
-import { concessionService } from '../../../services/concessionService'
+import { concessionService, FALLBACK_COMBOS } from '../../../services/concessionService'
 
 // Mock Members Database for checking (consistent with CounterCheckoutPage.jsx)
 const MOCK_MEMBERS = [
@@ -17,17 +17,11 @@ const MOCK_MEMBERS = [
   { memberId: 'MEM-332211', idCard: '034567890123', fullName: 'Lê Văn Cường', phone: '0933445566', score: 500 }
 ]
 
-const COMBOS = [
-  { id: 1, name: 'Combo Solo', desc: '1 bắp ngọt 60oz + 1 nước ngọt 22oz', price: 75000 },
-  { id: 2, name: 'Combo Couple', desc: '1 bắp ngọt 60oz + 2 nước ngọt 22oz', price: 95000 },
-  { id: 3, name: 'Combo Party', desc: '2 bắp ngọt 60oz + 4 nước ngọt 22oz', price: 165000 },
-]
-
 export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [movies, setMovies] = useState([])
   const [showtimes, setShowtimes] = useState([])
-  const [combos, setCombos] = useState(COMBOS)
+  const [combos, setCombos] = useState(FALLBACK_COMBOS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -35,7 +29,7 @@ export default function StaffTicketingPage() {
   const [selectedMovie, setSelectedMovie] = useState(null)
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
-  const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+  const [selectedCombos, setSelectedCombos] = useState({})
 
   // Member states
   const [memberQuery, setMemberQuery] = useState('')
@@ -94,25 +88,19 @@ export default function StaffTicketingPage() {
     fetchData()
   }, [])
 
-  // Tải combo từ backend, fallback về COMBOS cứng nếu API lỗi/rỗng
+  // Tải combo từ backend, fallback về FALLBACK_COMBOS nếu API lỗi/rỗng
   useEffect(() => {
-    concessionService.getActive()
-      .then(res => {
-        const data = res.data?.result || res.data || []
-        if (Array.isArray(data) && data.length > 0) {
-          const mapped = data.map(item => ({
-            id: item.id,
-            name: item.name,
-            desc: item.description,
-            price: Number(item.price),
-          }))
-          setCombos(mapped)
-          const initQty = {}
-          mapped.forEach(c => { initQty[c.id] = 0 })
-          setSelectedCombos(initQty)
-        }
+    let cancelled = false
+    concessionService.getActiveForUi({ fallback: true })
+      .then(list => {
+        if (cancelled) return
+        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        setCombos(mapped)
+        const initQty = {}
+        mapped.forEach(c => { initQty[c.id] = 0 })
+        setSelectedCombos(initQty)
       })
-      .catch(() => { /* giữ nguyên COMBOS mock */ })
+    return () => { cancelled = true }
   }, [])
 
   // Filter showtimes for selected movie
@@ -183,7 +171,7 @@ export default function StaffTicketingPage() {
 
   const handleSeatClick = (seatId) => {
     if (occupiedSeats.includes(seatId) || maintenanceSeats.includes(seatId)) return
-    setSelectedSeats(prev => 
+    setSelectedSeats(prev =>
       prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId]
     )
   }
@@ -297,7 +285,7 @@ export default function StaffTicketingPage() {
     try {
       // Simulate network delay
       await new Promise(resolve => setTimeout(resolve, 800))
-      
+
       // Save directly into local database
       const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
       localStorage.setItem('staff_bookings_db', JSON.stringify([payload, ...localBookings]))
@@ -333,7 +321,7 @@ export default function StaffTicketingPage() {
 
   return (
     <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
-      
+
       {/* Page Header */}
       <div className="flex justify-between items-center pb-4 border-b border-[var(--color-border)]">
         <div>
@@ -346,8 +334,8 @@ export default function StaffTicketingPage() {
         </div>
 
         {selectedMovie && (
-          <button 
-            onClick={handleReset} 
+          <button
+            onClick={handleReset}
             className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer"
           >
             <RotateCcw size={14} />
@@ -357,10 +345,10 @@ export default function StaffTicketingPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
+
         {/* LEFT WORKFLOW: Steps 1-4 */}
         <div className="lg:col-span-8 space-y-6">
-          
+
           {/* Stepper Navigation bar */}
           <div className="flex justify-between items-center bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xl select-none">
             {[
@@ -376,11 +364,11 @@ export default function StaffTicketingPage() {
                   className={`flex items-center gap-2 cursor-pointer border-none bg-transparent transition-all outline-none disabled:opacity-30 disabled:cursor-not-allowed`}
                 >
                   <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2
-                    ${currentStep === s.step 
-                      ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-transparent shadow-[0_0_8px_rgba(229,9,20,0.15)]' 
-                      : currentStep > s.step 
-                      ? 'border-green-500 text-green-500 bg-transparent' 
-                      : 'border-slate-700 text-slate-500 bg-transparent'}`}
+                    ${currentStep === s.step
+                      ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-transparent shadow-[0_0_8px_rgba(229,9,20,0.15)]'
+                      : currentStep > s.step
+                        ? 'border-green-500 text-green-500 bg-transparent'
+                        : 'border-slate-700 text-slate-500 bg-transparent'}`}
                   >
                     {currentStep > s.step ? '✓' : s.step}
                   </span>
@@ -397,14 +385,14 @@ export default function StaffTicketingPage() {
 
           {/* Step Contents */}
           <AnimatePresence mode="wait">
-            
+
             {/* STEP 1: SELECT MOVIE & SHOWTIME */}
             {currentStep === 1 && (
-              <motion.div 
-                key="step1" 
+              <motion.div
+                key="step1"
                 className="space-y-6"
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
               >
                 {loading ? (
@@ -418,16 +406,16 @@ export default function StaffTicketingPage() {
                       const isSelected = selectedMovie && selectedMovie.id === movie.id
                       const movieTitle = movie.titleVn || movie.title
                       return (
-                        <div 
-                          key={movie.id} 
+                        <div
+                          key={movie.id}
                           className={`flex rounded-2xl bg-[var(--color-surface)] border transition-all duration-200 overflow-hidden shadow-xl hover:border-white/10
                             ${isSelected ? 'border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]' : 'border-[var(--color-border)]'}`}
                         >
                           <div className="w-28 shrink-0 relative bg-black/40">
-                            <img 
-                              src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
-                              alt={movieTitle} 
-                              className="w-full h-full object-cover" 
+                            <img
+                              src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'}
+                              alt={movieTitle}
+                              className="w-full h-full object-cover"
                             />
                           </div>
 
@@ -450,8 +438,8 @@ export default function StaffTicketingPage() {
                                 setSelectedShowtime(null) // reset showtime on movie switch
                               }}
                               className={`w-fit mt-3 px-4 py-1.5 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer border
-                                ${isSelected 
-                                  ? 'bg-[var(--color-primary)] text-white border-transparent shadow-md' 
+                                ${isSelected
+                                  ? 'bg-[var(--color-primary)] text-white border-transparent shadow-md'
                                   : 'bg-transparent text-gray-400 hover:text-white border-white/10 hover:border-white/20'}`}
                             >
                               {isSelected ? 'Đang chọn' : 'Chọn phim'}
@@ -465,7 +453,7 @@ export default function StaffTicketingPage() {
 
                 {/* Showtimes Selection panel */}
                 {selectedMovie && (
-                  <motion.div 
+                  <motion.div
                     className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-left space-y-4"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -473,7 +461,7 @@ export default function StaffTicketingPage() {
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
                       Suất chiếu khả dụng cho: {selectedMovie.titleVn || selectedMovie.title}
                     </h3>
-                    
+
                     {availableShowtimes.length === 0 ? (
                       <div className="py-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
                         Không có suất chiếu nào được lên lịch cho phim này trong ngày hôm nay.
@@ -491,8 +479,8 @@ export default function StaffTicketingPage() {
                                 setCurrentStep(2) // proceed to step 2 automatically
                               }}
                               className={`p-3.5 rounded-xl text-left border cursor-pointer transition-all flex flex-col justify-between gap-1
-                                ${isStSelected 
-                                  ? 'bg-red-600/10 border-[var(--color-primary)] text-red-400 shadow-sm' 
+                                ${isStSelected
+                                  ? 'bg-red-600/10 border-[var(--color-primary)] text-red-400 shadow-sm'
                                   : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-300 hover:text-white'
                                 }`}
                             >
@@ -511,11 +499,11 @@ export default function StaffTicketingPage() {
 
             {/* STEP 2: SELECT SEAT LAYOUT */}
             {currentStep === 2 && (
-              <motion.div 
-                key="step2" 
+              <motion.div
+                key="step2"
                 className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-center space-y-8"
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
               >
                 <div>
@@ -538,14 +526,14 @@ export default function StaffTicketingPage() {
                       <div key={rowConfig.row} className="flex items-center gap-3">
                         {/* Row letter left */}
                         <span className="w-6 text-right font-black text-slate-500 text-[10px] font-mono pr-1.5">{rowConfig.row}</span>
-                        
+
                         <div className="flex gap-2">
                           {Array.from({ length: 12 }).map((_, colIndex) => {
                             const seatId = `${rowConfig.row}${colIndex + 1}`
                             const isOccupied = occupiedSeats.includes(seatId)
                             const isMaintenance = maintenanceSeats.includes(seatId)
                             const isSelected = selectedSeats.includes(seatId)
-                            
+
                             let seatStyle = ''
                             if (rowConfig.type === 'STANDARD') {
                               seatStyle = 'border border-slate-700 bg-transparent text-slate-400 hover:bg-slate-800'
@@ -630,11 +618,11 @@ export default function StaffTicketingPage() {
 
             {/* STEP 3: CONCESSIONS & MEMBERS */}
             {currentStep === 3 && (
-              <motion.div 
-                key="step3" 
+              <motion.div
+                key="step3"
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
               >
                 {/* Popcorn Concessions counter */}
@@ -730,7 +718,7 @@ export default function StaffTicketingPage() {
                                 <option key={i} value={i}>{i} vé</option>
                               ))}
                             </select>
-                            
+
                             {scoreError && (
                               <span className="text-[10px] text-red-500 font-bold block mt-1 leading-normal">
                                 ⚠️ {scoreError}
@@ -764,11 +752,11 @@ export default function StaffTicketingPage() {
 
             {/* STEP 4: CHECKOUT PAYMENT */}
             {currentStep === 4 && (
-              <motion.div 
-                key="step4" 
+              <motion.div
+                key="step4"
                 className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-6 text-left"
-                initial={{ opacity: 0, x: -10 }} 
-                animate={{ opacity: 1, x: 0 }} 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 10 }}
               >
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2 font-mono">
@@ -777,7 +765,7 @@ export default function StaffTicketingPage() {
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
+
                   {/* Select payment method */}
                   <div className="space-y-4">
                     <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Chọn hình thức thanh toán</label>
@@ -798,8 +786,8 @@ export default function StaffTicketingPage() {
                               if (method.id !== 'cash') setCashReceived('')
                             }}
                             className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all
-                              ${isSelected 
-                                ? 'bg-red-650/10 border-[var(--color-primary)] text-red-400' 
+                              ${isSelected
+                                ? 'bg-red-650/10 border-[var(--color-primary)] text-red-400'
                                 : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
                               }`}
                           >
@@ -874,7 +862,7 @@ export default function StaffTicketingPage() {
                   {/* Summary Checklist */}
                   <div className="space-y-4 bg-black/10 border border-white/5 p-4 rounded-xl text-xs font-semibold leading-relaxed">
                     <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Xác nhận chi tiết hóa đơn</label>
-                    
+
                     <div className="space-y-2 border-b border-white/5 pb-3 text-[var(--color-text-muted)]">
                       <div className="flex justify-between">
                         <span>Số lượng vé:</span>
@@ -936,7 +924,7 @@ export default function StaffTicketingPage() {
 
         {/* RIGHT ORDER SUMMARY PANEL */}
         <div className="lg:col-span-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-6 text-left relative overflow-hidden">
-          
+
           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-white/5 pb-3 font-mono">
             Hóa đơn chi tiết (Summary)
           </h3>
@@ -944,10 +932,10 @@ export default function StaffTicketingPage() {
           {/* Movie poster info */}
           {selectedMovie ? (
             <div className="flex gap-3">
-              <img 
-                src={selectedMovie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=150'} 
-                alt={selectedMovie.titleVn} 
-                className="w-14 h-20 object-cover rounded-lg border border-white/10" 
+              <img
+                src={selectedMovie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=150'}
+                alt={selectedMovie.titleVn}
+                className="w-14 h-20 object-cover rounded-lg border border-white/10"
               />
               <div className="space-y-1">
                 <span className="px-2 py-0.5 rounded text-[9px] font-bold text-white bg-red-650 inline-block uppercase leading-none">
@@ -1065,7 +1053,7 @@ export default function StaffTicketingPage() {
                 <span>Quay lại</span>
               </button>
             )}
-            
+
             {currentStep < 4 && (
               <button
                 type="button"
@@ -1090,15 +1078,15 @@ export default function StaffTicketingPage() {
       {/* TICKET PRINT PREVIEW MODAL */}
       <AnimatePresence>
         {printedTicket && (
-          <div 
+          <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ 
-              backgroundColor: 'rgba(15, 23, 42, 0.45)', 
+            style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.45)',
               backdropFilter: 'blur(4px)',
               WebkitBackdropFilter: 'blur(4px)'
             }}
           >
-            <motion.div 
+            <motion.div
               className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-slate-800 text-left relative overflow-hidden"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -1110,7 +1098,7 @@ export default function StaffTicketingPage() {
                   <CheckCircle size={10} className="text-emerald-500" />
                   XUẤT VÉ THÀNH CÔNG
                 </span>
-                
+
                 <h4 className="text-lg font-black tracking-widest text-slate-900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                   CINE<span className="text-red-650">MATE</span>
                 </h4>
@@ -1122,7 +1110,7 @@ export default function StaffTicketingPage() {
 
               {/* Receipt details */}
               <div className="py-5 space-y-3.5 text-[11px] font-semibold text-slate-600">
-                
+
                 <div className="space-y-1">
                   <span className="text-[9px] uppercase font-bold text-slate-400 block">Tên Phim</span>
                   <span className="text-xs font-black text-slate-900 leading-snug block">{printedTicket.movie}</span>

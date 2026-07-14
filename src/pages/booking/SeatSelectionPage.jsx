@@ -2,12 +2,25 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { ArrowLeft, CalendarDays, Clock, DoorOpen, Armchair, Check, Ticket, Users, Crown, Loader2, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { movieService } from '../../services/movieService'
-import { showtimeService } from '../../services/showtimeService'
+import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { cinemaRoomService } from '../../services/cinemaRoomService'
+import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
 import { bookingService } from '../../services/bookingService'
 import websocketService from '../../services/websocketService'
+import {
+  validateSeatSelection,
+  getRowsFromLayout,
+  buildFallbackRows,
+  applyOccupiedToRows,
+  SEAT_GAP_ERROR_MESSAGE,
+} from '../../utils/seatValidation'
+import { useRecommendation } from '../../seatRecommendation/useRecommendation'
+import RecommendationOverlay from '../../seatRecommendation/RecommendationOverlay'
+import BestViewZoneFrame from '../../seatRecommendation/BestViewZoneFrame'
+import { getSeatScore } from '../../utils/seatScoring'
 
 // Default seat layout (fallback when API unavailable)
 const SEAT_ROWS = [
@@ -25,12 +38,6 @@ const FALLBACK_OCCUPIED = [
   'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
   'E4', 'E8', 'E9', 'F6', 'F7',
   'G1', 'H3', 'H5'
-]
-
-const COMBOS = [
-  { id: 1, name: 'Combo Solo', desc: '1 bắp ngọt 60oz + 1 nước ngọt 22oz', price: 75000, img: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?q=80&w=600' },
-  { id: 2, name: 'Combo Couple', desc: '1 bắp ngọt 60oz + 2 nước ngọt 22oz', price: 95000, img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=600' },
-  { id: 3, name: 'Combo Party', desc: '2 bắp ngọt 60oz + 4 nước ngọt 22oz', price: 165000, img: 'https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=600' },
 ]
 
 /* ── Custom Select Component ── */
@@ -68,42 +75,6 @@ function CustomSelect({ value, onChange, options, placeholder, disabled, error, 
   )
 }
 
-/* ── Seat Single Empty Validator ── */
-const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F']
-  const coupleRows = ['G', 'H']
-  const getRowSections = (rowLabel) => {
-    if (rows.includes(rowLabel)) return [['1','2','3'],['4','5','6','7','8','9'],['10','11','12']]
-    if (coupleRows.includes(rowLabel)) return [['1'],['2','3','4'],['5']]
-    return []
-  }
-  const allRows = [...rows, ...coupleRows]
-  const violations = []
-  for (const row of allRows) {
-    const sections = getRowSections(row)
-    for (let s = 0; s < sections.length; s++) {
-      const section = sections[s]
-      if (section.length <= 1) continue
-      const initialStates = section.map(num => occupiedSeats.includes(`${row}${num}`) ? 1 : 0)
-      const finalStates = section.map(num => (occupiedSeats.includes(`${row}${num}`) || selectedSeats.includes(`${row}${num}`)) ? 1 : 0)
-      const countSingleEmpty = (states) => {
-        let count = 0; let i = 0
-        while (i < states.length) {
-          if (states[i] === 0) { let len = 0; while (i < states.length && states[i] === 0) { len++; i++ }; if (len === 1) count++ } else i++
-        }
-        return count
-      }
-      if (countSingleEmpty(finalStates) > countSingleEmpty(initialStates)) {
-        let i = 0
-        while (i < finalStates.length) {
-          if (finalStates[i] === 0) { let start = i; let len = 0; while (i < finalStates.length && finalStates[i] === 0) { len++; i++ } if (len === 1) { let initLen = 0; let j = start; while (j >= 0 && initialStates[j] === 0) { initLen++; j-- } j = start + 1; while (j < initialStates.length && initialStates[j] === 0) { initLen++; j++ } if (initLen !== 1) violations.push(`${row}${section[start]}`) } } else i++
-        }
-      }
-    }
-  }
-  return violations
-}
-
 export default function SeatSelectionPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -112,6 +83,7 @@ export default function SeatSelectionPage() {
   const movieId = params.get('movie')
   const time = params.get('time') || '19:30'
   const dateStr = params.get('date') || 'Hôm nay'
+  const roomIdParam = params.get('roomId') || ''
 
   const [movie, setMovie] = useState(null)
   const [selected, setSelected] = useState([])
@@ -119,14 +91,26 @@ export default function SeatSelectionPage() {
   const [loading, setLoading] = useState(true)
   const [seatLayout, setSeatLayout] = useState(null)
   const [seatError, setSeatError] = useState('')
+  const [matchedShowtime, setMatchedShowtime] = useState(null)
+  const seatRefs = useRef({})
+  const [gridRoot, setGridRoot] = useState(null)
 
-  // Build occupied set from real API seat data
+  // Build occupied set from real API seat data (or fallback labels)
   const occupiedSet = useMemo(() => {
     const set = new Set()
-    if (!seatLayout?.seatMatrix) return set
+    if (!seatLayout?.seatMatrix) {
+      FALLBACK_OCCUPIED.forEach(id => set.add(id))
+      return set
+    }
     seatLayout.seatMatrix.forEach(row => {
       row.seats.forEach(seat => {
-        if (seat.status === 'MAINTENANCE' || seat.type === 'AISLE' || seat.type === 'COUPLE_EXTENSION') {
+        const status = String(seat.status || '').toUpperCase()
+        const type = String(seat.type || '').toUpperCase()
+        if (
+          status === 'MAINTENANCE' || status === 'SOLD' || status === 'RESERVED' ||
+          status === 'DISABLED' || status === 'BROKEN' ||
+          type === 'AISLE' || type === 'COUPLE_EXTENSION'
+        ) {
           set.add(seat.id)
         }
       })
@@ -146,13 +130,61 @@ export default function SeatSelectionPage() {
 
 
 
-  // Calculate single empty seat violations
-  const violations = selected.length > 0
-    ? checkSingleEmptySeats(selected, currentOccupied)
-    : []
+  // Rows used by gap validator
+  const validationRows = useMemo(() => {
+    if (seatLayout?.seatMatrix?.length) return getRowsFromLayout(seatLayout)
+    return applyOccupiedToRows(buildFallbackRows(), FALLBACK_OCCUPIED)
+  }, [seatLayout])
 
-  // Combo selection states
-  const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+  // Gap validation rejects invalid selections immediately, so no residual violations.
+  const violations = []
+
+  const { recommendation } = useRecommendation({
+    rows: validationRows,
+    ticketQuantity: 1,
+    selectedSeats: selected,
+    enabled: !loading && !seatError,
+  })
+
+  const bestViewGeometry = useMemo(() => {
+    const scoringRows = seatLayout?.seatMatrix?.length
+      ? seatLayout.seatMatrix
+      : SEAT_ROWS.map(({ row, type }) => ({
+        rowLabel: row,
+        seats: Array.from({ length: 12 }, (_, index) => ({
+          id: `${row}${index + 1}`,
+          number: index + 1,
+          type,
+        })),
+      }))
+
+    const regularRows = scoringRows.filter(row => !((row.seats || []).some(seat => (
+      String(seat.type || '').toUpperCase() === 'COUPLE'
+    ))))
+    const rowCount = regularRows.length
+    const columnCount = Math.max(0, ...regularRows.flatMap(row => (
+      (row.seats || []).map((seat, index) => Number(seat.number) || index + 1)
+    )))
+    if (!rowCount || !columnCount) return { seatIds: [], key: 'empty' }
+
+    const seatIds = regularRows.flatMap((row, rowIndex) => (
+      (row.seats || []).flatMap((seat, index) => {
+        const type = String(seat.type || '').toUpperCase()
+        const columnIndex = (Number(seat.number) || index + 1) - 1
+        if (type === 'AISLE' || type === 'COUPLE_EXTENSION') return []
+        return getSeatScore(rowIndex, columnIndex, rowCount, columnCount) > 0.80 ? [seat.id] : []
+      })
+    ))
+
+    return {
+      seatIds,
+      key: `${seatLayout?.roomId || 'fallback'}:${rowCount}:${columnCount}:${regularRows.map(row => row.rowLabel).join(',')}`,
+    }
+  }, [seatLayout])
+
+  // Combo selection states (from API)
+  const [combos, setCombos] = useState(FALLBACK_COMBOS)
+  const [selectedCombos, setSelectedCombos] = useState({})
 
   const handleUpdateComboQty = (id, delta) => {
     setSelectedCombos(prev => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) + delta) }))
@@ -197,33 +229,60 @@ export default function SeatSelectionPage() {
     }
   }, [movieId])
 
-  // Fetch seat layout from API
+  // Fetch combos/bắp nước from public API
+  useEffect(() => {
+    let cancelled = false
+    concessionService.getActiveForUi({ fallback: true })
+      .then(list => {
+        if (cancelled) return
+        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        setCombos(mapped)
+        const initQty = {}
+        mapped.forEach(c => { initQty[c.id] = 0 })
+        setSelectedCombos(initQty)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  // Fetch seat layout from API (public statuses include DRAFT)
   useEffect(() => {
     if (!movieId || !dateStr || !time) return
     let cancelled = false
     const fetchSeatLayout = async () => {
+      setSeatError('')
       try {
         const showtimes = await showtimeService.getByMovie(movieId, dateStr)
-        const matched = showtimes.find(st => {
+        const matched = (showtimes || []).find(st => {
           if (!st.startTime) return false
           const stTime = st.startTime.split('T')[1]?.substring(0, 5)
-          return stTime === time && st.status === 'SCHEDULED'
+          const matchesTime = stTime === time
+          const matchesRoom = roomIdParam ? String(st.roomId) === String(roomIdParam) : true
+          return matchesTime && matchesRoom && isPublicShowtimeStatus(st.status)
+        }) || (showtimes || []).find(st => {
+          // fallback: time only if roomId query mismatched
+          if (!st.startTime) return false
+          const stTime = st.startTime.split('T')[1]?.substring(0, 5)
+          return stTime === time && isPublicShowtimeStatus(st.status)
         })
 
+        if (cancelled) return
         if (!matched || !matched.roomId) {
+          setMatchedShowtime(null)
           setSeatLayout(null)
+          setSeatError('Không tìm thấy suất chiếu phù hợp để tải sơ đồ ghế')
           return
         }
 
-        // Fetch cả layout (để lấy ma trận hiển thị) và seat map realtime (để lấy trạng thái)
-        const [layoutRes, seatMapRes] = await Promise.all([
-          cinemaRoomService.getLayout(matched.roomId),
+        setMatchedShowtime(matched)
+        const [data, seatMapRes] = await Promise.all([
+          cinemaRoomService.getLayoutNormalized(matched.roomId, {
+            roomName: matched.roomName || matched.room || '',
+          }),
           bookingService.getSeatMap(matched.id)
         ])
         
-        const data = layoutRes.data?.result || layoutRes.data
         if (cancelled) return
-        if (data) {
+        if (data?.seatMatrix?.length) {
           setSeatLayout({ ...data, showtimeId: matched.id })
           updateOccupiedFromSeatMap(seatMapRes.data?.result || seatMapRes.data)
         } else {
@@ -251,6 +310,7 @@ export default function SeatSelectionPage() {
         console.error('Failed to fetch seat layout:', err)
         setSeatError('Không tải được sơ đồ ghế')
         setSeatLayout(null)
+        setMatchedShowtime(null)
       }
     }
     fetchSeatLayout()
@@ -260,7 +320,7 @@ export default function SeatSelectionPage() {
         websocketService.unsubscribeFromSeatMap(seatLayout.showtimeId)
       }
     }
-  }, [movieId, dateStr, time])
+  }, [movieId, dateStr, time, roomIdParam])
 
   const [realSeatMap, setRealSeatMap] = useState(null)
 
@@ -293,63 +353,84 @@ export default function SeatSelectionPage() {
     return dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
   }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet])
 
-  // Chọn/bỏ chọn ghế
+  // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
   const toggleSeat = useCallback((seatId, type) => {
-    setSelected(prev => {
-      // Logic Couple: chọn 2 ghế cùng lúc
-      let targetIds = [seatId]
-      if (type === 'couple' || type === 'COUPLE') {
-        // Tìm cặp của ghế này trong layout
-        if (seatLayout && seatLayout.seatMatrix) {
-          for (let row of seatLayout.seatMatrix) {
-            const idx = row.seats.findIndex(s => s.id === seatId)
-            if (idx !== -1) {
-              // Nếu là COUPLE, ghế tiếp theo thường là COUPLE_EXTENSION
-              if (idx + 1 < row.seats.length && row.seats[idx + 1].type === 'COUPLE_EXTENSION') {
-                targetIds.push(row.seats[idx + 1].id)
-              }
-            }
+    if (currentOccupied.has(seatId)) return
+
+    let targetIds = [seatId]
+    if (type === 'couple' || type === 'COUPLE') {
+      if (seatLayout && seatLayout.seatMatrix) {
+        for (let row of seatLayout.seatMatrix) {
+          const idx = row.seats.findIndex(s => s.id === seatId)
+          if (idx !== -1 && idx + 1 < row.seats.length && row.seats[idx + 1].type === 'COUPLE_EXTENSION') {
+            targetIds.push(row.seats[idx + 1].id)
           }
         }
       }
+    }
 
-      const isSelected = prev.includes(seatId)
-      let newSelected
-      if (isSelected) {
-        newSelected = prev.filter(id => !targetIds.includes(id))
-      } else {
-        newSelected = [...prev, ...targetIds]
-      }
+    const isSelected = selected.includes(seatId)
+    
+    if (isSelected) {
+      setSelected(prev => prev.filter(id => !targetIds.includes(id)))
+      return
+    }
 
-      // Max 8 seats
-      if (newSelected.length > 8) {
-        alert('Chỉ được chọn tối đa 8 ghế!')
-        return prev
-      }
-      return newSelected
+    // validate gap rule trước khi cập nhật state
+    const result = validateSeatSelection({
+      rows: validationRows,
+      currentSelected: selected,
+      toggledSeatId: seatId,
     })
-  }, [seatLayout])
 
-  // Giá của từng loại ghế
+    if (!result.valid) {
+      toast.error(result.reason || SEAT_GAP_ERROR_MESSAGE, {
+        description: result.affectedRow
+          ? `Hàng ${result.affectedRow} — không để lại 1 ghế trống đơn lẻ.`
+          : undefined,
+        duration: 2800,
+      })
+      return
+    }
+    
+    if (selected.length + targetIds.length > 8) {
+      alert('Chỉ được chọn tối đa 8 ghế!')
+      return
+    }
+
+    setSelected(prev => [...prev, ...targetIds])
+  }, [currentOccupied, validationRows, selected, seatLayout])
+
+  // Giá của từng loại ghế (ưu tiên giá từ showtime nếu có)
   const getSeatPrice = useCallback((seatId) => {
+    if (matchedShowtime) {
+      const seat = seatLayout?.seatMatrix
+        ?.flatMap(r => r.seats || [])
+        ?.find(s => s.id === seatId)
+      const type = String(seat?.type || '').toUpperCase()
+      if (type === 'VIP' && matchedShowtime.vipPrice) return Number(matchedShowtime.vipPrice)
+      if (type === 'COUPLE' && matchedShowtime.couplePrice) return Number(matchedShowtime.couplePrice)
+      if (type === 'STANDARD' && matchedShowtime.price) return Number(matchedShowtime.price)
+    }
+    
     if (realSeatMap) {
       const seat = realSeatMap.find(s => s.seatId === seatId)
-      if (seat) return seat.price
+      if (seat && seat.price) return seat.price
     }
-    // Fallback logic
+    
     const row = String(seatId).charAt(0)
     if (row === 'A' || row === 'B' || row === 'C') return 90000
     if (row === 'D' || row === 'E' || row === 'F') return 110000
     if (row === 'G' || row === 'H') return 130000
     return 0
-  }, [realSeatMap])
+  }, [matchedShowtime, seatLayout, realSeatMap])
 
   // Tính tổng tiền vé
   const ticketPrice = selected.reduce((sum, id) => sum + getSeatPrice(id), 0)
 
   // Tính tổng tiền bắp nước
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-    const combo = COMBOS.find(c => c.id === parseInt(id, 10))
+    const combo = combos.find(c => String(c.id) === String(id))
     return sum + (combo ? combo.price * qty : 0)
   }, 0)
 
@@ -381,7 +462,7 @@ export default function SeatSelectionPage() {
     const isSelected = selected.includes(seat.id)
 
     return (
-      <label key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
         {seat.row ? `${seat.row}${seat.number}` : seat.id}
       </label>
@@ -392,7 +473,7 @@ export default function SeatSelectionPage() {
     const occupied = isSeatOccupied(seat.id)
     const isSelected = selected.includes(seat.id)
     return (
-      <label key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
         <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
         {seat.number != null ? `${seat.row}${seat.number}` : seat.id}
       </label>
@@ -400,7 +481,6 @@ export default function SeatSelectionPage() {
   }
 
   function renderRow(rowLabel, type) {
-    const isVip = type === 'vip'
     const leftSeats = [{ id: `${rowLabel}1`, number: 1 }, { id: `${rowLabel}2`, number: 2 }, { id: `${rowLabel}3`, number: 3 }]
     const centerSeats = [{ id: `${rowLabel}4`, number: 4 }, { id: `${rowLabel}5`, number: 5 }, { id: `${rowLabel}6`, number: 6 }, { id: `${rowLabel}7`, number: 7 }, { id: `${rowLabel}8`, number: 8 }, { id: `${rowLabel}9`, number: 9 }]
     const rightSeats = [{ id: `${rowLabel}10`, number: 10 }, { id: `${rowLabel}11`, number: 11 }, { id: `${rowLabel}12`, number: 12 }]
@@ -411,8 +491,7 @@ export default function SeatSelectionPage() {
         <div className="flex items-center gap-3">
           <div className="flex gap-2">{leftSeats.map(seat => renderSeatButton(seat, type))}</div>
           <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className={`flex gap-2 p-1 rounded-xl transition-all ${isVip ? 'border border-dashed border-[#f59e0b]/40 bg-[#f59e0b]/5 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)] relative' : 'border border-transparent'}`}>
-            {isVip && rowLabel === 'D' && <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase text-[#f59e0b] bg-[#06080F] px-2 py-0.5 tracking-widest whitespace-nowrap border border-[#f59e0b] rounded select-none">VÙNG TRUNG TÂM (BEST VIEW)</span>}
+          <div className="flex gap-2 p-1 rounded-xl border border-transparent">
             {centerSeats.map(seat => renderSeatButton(seat, type))}
           </div>
           <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
@@ -513,7 +592,7 @@ export default function SeatSelectionPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
             <span className="flex items-center gap-1"><Clock size={14} />{time}</span>
             <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
-            <span className="flex items-center gap-1"><DoorOpen size={14} />{seatLayout?.roomName || 'Phòng Chiếu 03 (IMAX)'}</span>
+            <span className="flex items-center gap-1"><DoorOpen size={14} />{seatLayout?.roomName || matchedShowtime?.roomName || matchedShowtime?.room || 'Phòng chiếu'}</span>
           </p>
           {seatError && <p className="text-xs text-yellow-500 mt-2">{seatError} — Đang dùng sơ đồ mặc định</p>}
         </div>
@@ -537,7 +616,7 @@ export default function SeatSelectionPage() {
 
           {/* Seat Rows Grid Container */}
           <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
-            <div className="min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
+            <div ref={setGridRoot} className="relative min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
               {/* Render Rows Dynamically from API or fallback */}
               {seatLayout?.seatMatrix
                 ? seatLayout.seatMatrix.map(row => renderDynamicRow(row))
@@ -559,6 +638,18 @@ export default function SeatSelectionPage() {
                   <DoorOpen size={14} className="font-bold" /><span>Lối ra / Exit</span>
                 </div>
               </div>
+              <RecommendationOverlay
+                recommendedSeats={recommendation?.seats}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                isVisible={Boolean(recommendation)}
+              />
+              <BestViewZoneFrame
+                seatIds={bestViewGeometry.seatIds}
+                seatRefs={seatRefs.current}
+                measureRoot={gridRoot}
+                layoutKey={bestViewGeometry.key}
+              />
             </div>
           </div>
         </div>

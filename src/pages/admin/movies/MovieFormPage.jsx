@@ -13,6 +13,15 @@ export default function MovieFormPage() {
   const { id } = useParams()
   
   const isEditMode = !!id
+
+  // Helper: trả về "YYYY-MM-DD" theo local timezone (tránh lệch 1 ngày so với UTC)
+  const todayStr = () => {
+    const d = new Date()
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
   
   // State for reference data
   const [genres, setGenres] = useState([])
@@ -29,6 +38,7 @@ export default function MovieFormPage() {
   const [rating, setRating] = useState('P')
   const [selectedVersions, setSelectedVersions] = useState(['2D'])
   const [fromDate, setFromDate] = useState('')
+  const [originalFromDate, setOriginalFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [language, setLanguage] = useState('Tiếng Việt - Phụ đề Tiếng Anh')
   const [trailerUrl, setTrailerUrl] = useState('')
@@ -113,6 +123,7 @@ export default function MovieFormPage() {
               setSelectedVersions(['2D'])
             }
             setFromDate(movie.fromDate || '')
+            setOriginalFromDate(movie.fromDate || '')
             setToDate(movie.toDate || '')
             setLanguage(movie.language || 'Tiếng Việt - Phụ đề Tiếng Anh')
             setTrailerUrl(movie.trailerUrl || '')
@@ -190,15 +201,26 @@ export default function MovieFormPage() {
     if (!titleVn.trim()) tempErrors.titleVn = 'Tên phim (tiếng Việt) không được để trống'
     if (!description.trim()) tempErrors.description = 'Mô tả phim không được để trống'
     if (!director.trim()) tempErrors.director = 'Tên đạo diễn không được để trống'
-    if (!durationMinutes || isNaN(durationMinutes) || Number(durationMinutes) <= 0) {
-      tempErrors.durationMinutes = 'Thời lượng phim phải lớn hơn 0 phút'
+    if (!durationMinutes || isNaN(durationMinutes) || Number(durationMinutes) < 30) {
+      tempErrors.durationMinutes = 'Thời lượng phim tối thiểu 30 phút'
+    } else if (Number(durationMinutes) > 600) {
+      tempErrors.durationMinutes = 'Thời lượng phim tối đa 600 phút'
     }
     if (selectedVersions.length === 0) {
       tempErrors.version = 'Chọn ít nhất 1 phiên bản chiếu cho phim'
     }
-    if (!fromDate) tempErrors.fromDate = 'Ngày bắt đầu chiếu chiếu không được để trống'
-    if (!toDate) tempErrors.toDate = 'Ngày kết thúc chiếu không được để trống'
-    if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
+    if (!fromDate) {
+      tempErrors.fromDate = 'Ngày bắt đầu chiếu không được để trống'
+    } else {
+      const today = todayStr()
+      const isEditingOldPastDate = isEditMode && fromDate < today && fromDate === originalFromDate
+      if (!isEditingOldPastDate && fromDate < today) {
+        tempErrors.fromDate = 'Ngày khởi chiếu phải từ hôm nay trở đi'
+      }
+    }
+    if (!toDate) {
+      tempErrors.toDate = 'Ngày kết thúc chiếu không được để trống'
+    } else if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
       tempErrors.toDate = 'Ngày kết thúc chiếu phải sau ngày bắt đầu chiếu'
     }
     if (selectedGenres.length === 0) {
@@ -372,7 +394,36 @@ export default function MovieFormPage() {
                   type="number"
                   placeholder="Ví dụ: 138"
                   value={durationMinutes}
-                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  min={30}
+                  max={600}
+                  step={1}
+                  inputMode="numeric"
+                  onKeyDown={(e) => {
+                    if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    if (raw === '') {
+                      setDurationMinutes('')
+                      return
+                    }
+                    const n = parseInt(raw, 10)
+                    if (Number.isNaN(n)) {
+                      setDurationMinutes('')
+                      return
+                    }
+                    if (n < 30) {
+                      setDurationMinutes('30')
+                      return
+                    }
+                    if (n > 600) {
+                      setDurationMinutes('600')
+                      return
+                    }
+                    setDurationMinutes(String(n))
+                  }}
                   error={errors.durationMinutes}
                 />
 
@@ -450,15 +501,63 @@ export default function MovieFormPage() {
                   label="Khởi chiếu từ ngày *"
                   type="date"
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  min={(() => {
+                    // Trong edit mode, nếu fromDate cũ thuộc quá khứ, vẫn cho giữ
+                    if (isEditMode && fromDate && fromDate < todayStr()) return fromDate
+                    return todayStr()
+                  })()}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (!v) { setFromDate(v); return }
+                    if (isEditMode && fromDate && fromDate < todayStr() && v === fromDate) {
+                      setFromDate(v); return
+                    }
+                    if (v < todayStr()) {
+                      setFromDate(todayStr())
+                      return
+                    }
+                    setFromDate(v)
+                  }}
                   error={errors.fromDate}
                 />
-                
+
                 <Input
                   label="Chiếu đến ngày *"
                   type="date"
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  min={fromDate || todayStr()}
+                  max={(() => {
+                    if (!fromDate || (isEditMode && fromDate < todayStr() && fromDate === originalFromDate)) {
+                      if (fromDate) {
+                        const d = new Date(fromDate)
+                        d.setDate(d.getDate() + 90)
+                        return d.toISOString().slice(0, 10)
+                      }
+                      return undefined
+                    }
+                    const d = new Date(fromDate)
+                    d.setDate(d.getDate() + 90)
+                    return d.toISOString().slice(0, 10)
+                  })()}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (!v) { setToDate(v); return }
+                    const minAllowed = fromDate || todayStr()
+                    if (v < minAllowed) {
+                      setToDate(minAllowed)
+                      return
+                    }
+                    if (fromDate) {
+                      const maxDate = new Date(fromDate)
+                      maxDate.setDate(maxDate.getDate() + 90)
+                      const maxStr = maxDate.toISOString().slice(0, 10)
+                      if (v > maxStr) {
+                        setToDate(maxStr)
+                        return
+                      }
+                    }
+                    setToDate(v)
+                  }}
                   error={errors.toDate}
                 />
               </div>

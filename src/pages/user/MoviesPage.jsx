@@ -186,8 +186,8 @@ export default function MoviesPage() {
                       <span className="material-symbols-outlined text-base text-red-500">play_circle</span>
                       <span className="underline decoration-1 underline-offset-2 text-[10px] font-semibold">Chi Tiết</span>
                     </Link>
-                    <Link 
-                      to={`/movies/${movie.id}`} 
+                    <Link
+                      to={`/movies/${movie.id}?book=1`}
                       className="text-white text-[10px] font-black px-4 py-2 transition-all duration-200 hover:scale-105 active:scale-95 uppercase rounded-sm"
                       style={{
                         background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)',

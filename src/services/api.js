@@ -27,14 +27,33 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// Chỉ ép login trên các khu vực thật sự yêu cầu auth.
+// Trang public (/, /home, /movies, …) không được hard-redirect — nếu không
+// token cũ/hỏng + API homepage 401 sẽ đá user về /login ngay sau intro.
+const PROTECTED_PATH_PREFIXES = [
+  '/admin',
+  '/staff',
+  '/manager',
+  '/profile',
+  '/booking',
+  '/first-login',
+]
+
+function isProtectedPath(pathname) {
+  return PROTECTED_PATH_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  )
+}
+
 api.interceptors.response.use(
   (res) => res,
   (error) => {
-    // Token hết hạn hoặc không hợp lệ: dọn session local, tránh reload vòng lặp ở trang public.
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      if (window.location.pathname !== '/login') {
+
+      const path = window.location.pathname
+      if (isProtectedPath(path) && path !== '/login') {
         window.location.href = '/login'
       }
     }

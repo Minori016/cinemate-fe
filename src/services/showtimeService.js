@@ -1,5 +1,13 @@
 import api from './api'
 
+// Status user được xem/chọn ghế (DRAFT bị loại — chỉ SCHEDULED trở lên mới hiển thị)
+export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'SOLD_OUT']
+
+export const isPublicShowtimeStatus = (status) => {
+  if (!status) return true
+  return PUBLIC_SHOWTIME_STATUSES.includes(String(status).toUpperCase())
+}
+
 const mapShowtimeFromBackend = (backendData, requestData = {}) => {
   try {
     const startTimeStr = backendData.startTime || ''
@@ -11,13 +19,13 @@ const mapShowtimeFromBackend = (backendData, requestData = {}) => {
       if (!isNaN(d.getTime())) {
         date = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
         time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-        
+
         const hours = d.getHours()
         isFrontendGoldenHour = hours >= 18 && hours < 21
       } else {
         date = startTimeStr.split('T')[0]
         time = startTimeStr.split('T')[1]?.substring(0, 5) || ''
-        
+
         if (time) {
           const hours = parseInt(time.substring(0, 2), 10)
           isFrontendGoldenHour = hours >= 18 && hours < 21
@@ -92,8 +100,16 @@ export const showtimeService = {
 
   // GET /api/v1/admin/showtimes/{id}
   getById: async (id) => {
-    const res = await api.get(`/api/v1/admin/showtimes/${id}`)
-    return mapShowtimeFromBackend(res.data?.result || res.data)
+    try {
+      const res = await api.get(`/api/v1/admin/showtimes/${id}`)
+      return mapShowtimeFromBackend(res.data?.result || res.data)
+    } catch (err) {
+      console.warn('GET showtime by ID failed, falling back to client-side filter:', err)
+      const all = await showtimeService.getAll()
+      const found = all.find(st => String(st.id) === String(id))
+      if (found) return found
+      throw err
+    }
   },
 
   // POST /api/v1/admin/showtimes
@@ -143,11 +159,46 @@ export const showtimeService = {
     return savedItems
   },
 
+  // GET /api/v1/showtimes?date=...&cinemaId=...
+  // Public endpoint for user booking pages
+  getPublicShowtimes: async (filterParams = {}) => {
+    const params = {}
+    if (filterParams.date) params.date = filterParams.date
+    if (filterParams.cinemaId) params.cinemaId = filterParams.cinemaId
+
+    const res = await api.get('/api/v1/showtimes', { params })
+    const list = res.data?.result || res.data || []
+    if (!Array.isArray(list)) return []
+
+    // Optional client-side room filter (BE only supports cinemaId + date)
+    let mapped = list.map(item => mapShowtimeFromBackend(item))
+    if (filterParams.roomId) {
+      mapped = mapped.filter(st => {
+        const rid = String(st.roomId || st.room?.id || '')
+        return rid === String(filterParams.roomId)
+      })
+    }
+    return mapped
+  },
+
   // GET /api/v1/showtimes/by-movie?movieId=...&date=...
   getByMovie: async (movieId, date) => {
     const res = await api.get('/api/v1/showtimes/by-movie', { params: { movieId, date } })
     const list = res.data?.result || res.data || []
     return Array.isArray(list) ? list.map(item => mapShowtimeFromBackend(item)) : []
+  },
+
+  // PUT /api/v1/admin/showtimes/{id}/status?status=SCHEDULED|SOLD_OUT|...
+  // Transition rules (BE):
+  // DRAFT → SCHEDULED
+  // SCHEDULED → SOLD_OUT | CANCELLED
+  // SOLD_OUT → SCHEDULED | CANCELLED | FINISHED
+  updateStatus: async (id, status) => {
+    const res = await api.put(`/api/v1/admin/showtimes/${id}/status`, null, {
+      params: { status }
+    })
+    const data = res.data?.result || res.data
+    return mapShowtimeFromBackend(data)
   },
 
   // DELETE /api/v1/admin/showtimes/{id}

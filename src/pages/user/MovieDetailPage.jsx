@@ -2,8 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
-import { showtimeService } from '../../services/showtimeService'
-import { concessionService } from '../../services/concessionService'
+import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
+import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
 import { Ticket, CalendarDays, Armchair, CreditCard, Check, CloudOff, ArrowLeft, Play } from 'lucide-react'
@@ -17,6 +17,7 @@ import ComboStep from './components/moviedetail/ComboStep'
 import PaymentStep from './components/moviedetail/PaymentStep'
 import SuccessModal from './components/moviedetail/SuccessModal'
 import TrailerModal from './components/moviedetail/TrailerModal'
+import RequireAuthModal from './components/common/RequireAuthModal'
 
 // ── Seat layout config ──
 const SEAT_ROWS = [
@@ -26,19 +27,6 @@ const SEAT_ROWS = [
   { row: 'D', type: 'vip', price: 110000 },
   { row: 'E', type: 'vip', price: 110000 },
   { row: 'F', type: 'vip', price: 110000 },
-]
-
-const OCCUPIED_SEATS = [
-  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
-  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
-  'E4', 'E8', 'E9', 'F6', 'F7',
-  'G1', 'H3', 'H5'
-]
-
-const COMBOS = [
-  { id: 1, name: 'Combo Solo', desc: '1 bap ngot 60oz + 1 nuoc ngot 22oz', price: 75000, img: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?q=80&w=600' },
-  { id: 2, name: 'Combo Couple', desc: '1 bap ngot 60oz + 2 nuoc ngot 22oz', price: 95000, img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=600' },
-  { id: 3, name: 'Combo Party', desc: '2 bap ngot 60oz (tu chon vi) + 4 nuoc ngot 22oz', price: 165000, img: 'https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=600' },
 ]
 
 const DAYS = Array.from({ length: 7 }, (_, i) => {
@@ -54,41 +42,6 @@ const SCHEDULE_TEMPLATES = [
   ['10:15', '13:00', '16:45', '19:30', '22:15'],
   ['11:00', '14:30', '18:00', '20:30', '22:30'],
 ]
-
-const checkSingleEmptySeats = (selectedSeats, occupiedSeats) => {
-  const rows = ['A', 'B', 'C', 'D', 'E', 'F']
-  const coupleRows = ['G', 'H']
-  const getRowSections = (rowLabel) => {
-    if (rows.includes(rowLabel)) return [['1', '2', '3'], ['4', '5', '6', '7', '8', '9'], ['10', '11', '12']]
-    if (coupleRows.includes(rowLabel)) return [['1'], ['2', '3', '4'], ['5']]
-    return []
-  }
-  const allRows = [...rows, ...coupleRows]
-  const violations = []
-  for (const row of allRows) {
-    const sections = getRowSections(row)
-    for (let s = 0; s < sections.length; s++) {
-      const section = sections[s]
-      if (section.length <= 1) continue
-      const initialStates = section.map(num => occupiedSeats.includes(`${row}${num}`) ? 1 : 0)
-      const finalStates = section.map(num => (occupiedSeats.includes(`${row}${num}`) || selectedSeats.includes(`${row}${num}`)) ? 1 : 0)
-      const countSingleEmpty = (states) => {
-        let count = 0; let i = 0
-        while (i < states.length) {
-          if (states[i] === 0) { let len = 0; while (i < states.length && states[i] === 0) { len++; i++ }; if (len === 1) count++ } else i++
-        }
-        return count
-      }
-      if (countSingleEmpty(finalStates) > countSingleEmpty(initialStates)) {
-        let i = 0
-        while (i < finalStates.length) {
-          if (finalStates[i] === 0) { let start = i; let len = 0; while (i < finalStates.length && finalStates[i] === 0) { len++; i++ } if (len === 1) { let initLen = 0; let j = start; while (j >= 0 && initialStates[j] === 0) { initLen++; j-- } j = start + 1; while (j < initialStates.length && initialStates[j] === 0) { initLen++; j++ } if (initLen !== 1) violations.push(`${row}${section[start]}`) } } else i++
-        }
-      }
-    }
-  }
-  return violations
-}
 
 const getEmbedUrl = (url) => {
   if (!url) return ''
@@ -272,19 +225,23 @@ export default function MovieDetailPage() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const { user } = useAuth()
-  const bookingSectionRef = useRef(null)
 
   // Back button config
-  const [backInfo, setBackInfo] = useState({ label: 'Quay lại trang chủ', target: '/' })
+  const [backInfo, setBackInfo] = useState({ label: 'Quay lại trang chủ', target: '/home' })
 
   useEffect(() => {
     const prevPath = sessionStorage.getItem('prevPath')
     if (prevPath) {
       const prevPathname = prevPath.split('?')[0]
-      if (prevPathname === '/movies') setBackInfo({ label: 'Quay lại trang phim', target: prevPath })
-      else if (prevPathname === '/showtimes') setBackInfo({ label: 'Quay lại lịch chiếu', target: prevPath })
-      else if (prevPathname === '/') setBackInfo({ label: 'Quay lại trang chủ', target: prevPath })
-      else setBackInfo({ label: 'Quay lại trang chủ', target: '/' })
+      if (prevPathname === '/movies') {
+        setBackInfo({ label: 'Quay lại trang phim', target: prevPath })
+      } else if (prevPathname === '/home' || prevPathname === '/') {
+        setBackInfo({ label: 'Quay lại trang chủ', target: prevPath })
+      } else if (prevPathname === '/showtimes') {
+        setBackInfo({ label: 'Quay lại lịch chiếu', target: prevPath })
+      } else {
+        setBackInfo({ label: 'Quay lại trang chủ', target: '/home' })
+      }
     } else {
       setBackInfo({ label: 'Quay lại trang phim', target: '/movies' })
     }
@@ -299,16 +256,19 @@ export default function MovieDetailPage() {
 
   const queryDate = searchParams.get('date')
   const queryTime = searchParams.get('time')
+  const queryBook = searchParams.get('book')
 
   // Booking states
-  const [isBookingMode, setIsBookingMode] = useState((queryDate && queryTime) ? true : false)
+  const [isBookingMode, setIsBookingMode] = useState(((queryDate && queryTime) || queryBook) ? true : false)
   const [bookingStep, setBookingStep] = useState((queryDate && queryTime) ? 2 : 1)
   const [selectedDate, setSelectedDate] = useState(queryDate || DAYS[0].date)
   const [selectedTime, setSelectedTime] = useState(queryTime || '')
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
+  // seatMetaMap: { [seatId]: { label, type } } — dùng để hiển thị tên ghế & tính giá đúng (kể cả khi id là UUID)
+  const [seatMetaMap, setSeatMetaMap] = useState({})
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
-  const [dbCombos, setDbCombos] = useState([])   // combos từ DB, fallback về COMBOS nếu rỗng
+  const [dbCombos, setDbCombos] = useState([])   // combos từ API, fallback FALLBACK_COMBOS nếu rỗng
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
 
@@ -337,8 +297,12 @@ export default function MovieDetailPage() {
             if (!st.startTime) return false
             const time = st.startTime.split('T')[1]?.substring(0, 5)
             const matchesTime = time === qTime
-            const matchesRoom = qRoomId ? st.roomId === qRoomId : true
-            return matchesTime && matchesRoom && st.status === 'SCHEDULED'
+            const matchesRoom = qRoomId ? String(st.roomId) === String(qRoomId) : true
+            return matchesTime && matchesRoom && isPublicShowtimeStatus(st.status)
+          }) || showtimes.find(st => {
+            if (!st.startTime) return false
+            const time = st.startTime.split('T')[1]?.substring(0, 5)
+            return time === qTime && isPublicShowtimeStatus(st.status)
           })
           if (matched) {
             setSelectedShowtime(matched)
@@ -370,9 +334,12 @@ export default function MovieDetailPage() {
       if (saved) {
         const parsed = JSON.parse(saved)
         if (parsed && String(parsed.movieId) === String(movieId) && user) {
-          setSelectedDate(parsed.selectedDate)
-          setSelectedTime(parsed.selectedTime)
-          setSelectedSeats(parsed.selectedSeats)
+          if (parsed.selectedDate) setSelectedDate(parsed.selectedDate)
+          if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
+          if (Array.isArray(parsed.selectedSeats)) setSelectedSeats(parsed.selectedSeats)
+          if (parsed.seatMetaMap && typeof parsed.seatMetaMap === 'object') setSeatMetaMap(parsed.seatMetaMap)
+          if (parsed.selectedShowtime) setSelectedShowtime(parsed.selectedShowtime)
+          setIsBookingMode(true)
           setBookingStep(parsed.bookingStep || 3)
         }
         sessionStorage.removeItem('pending_booking_state')
@@ -395,6 +362,9 @@ export default function MovieDetailPage() {
   const [simulatedOutcome, setSimulatedOutcome] = useState('success')
   const [bookingSuccess, setBookingSuccess] = useState(false)
   const [bookingId, setBookingId] = useState('')
+
+  // Auth modal state
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   useEffect(() => {
     if (bookingStep === 3 && !bookingId) {
@@ -428,29 +398,20 @@ export default function MovieDetailPage() {
     return () => { cancelled = true }
   }, [movieId])
 
-  // Tải danh sách bắp nước từ server
+  // Tải danh sách bắp nước từ server (public /concessions/active)
   useEffect(() => {
-    concessionService.getActive()
-      .then(res => {
-        const data = res.data?.result || res.data || []
-        if (Array.isArray(data) && data.length > 0) {
-          const mapped = data.map(item => ({
-            id: item.id,           // UUID string từ DB
-            name: item.name,
-            desc: item.description,
-            price: Number(item.price),
-            img: item.imageUrl || '🍿',
-            category: item.itemType
-          }))
-          setDbCombos(mapped)
-          // Khởi tạo selectedCombos với key UUID
-          const initQty = {}
-          mapped.forEach(c => { initQty[c.id] = 0 })
-          setSelectedCombos(initQty)
-        }
-        // Nếu rỗng → giữ nguyên COMBOS cứng mặc định
+    let cancelled = false
+    concessionService.getActiveForUi({ fallback: true })
+      .then(list => {
+        if (cancelled) return
+        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        setDbCombos(mapped)
+        const initQty = {}
+        mapped.forEach(c => { initQty[c.id] = 0 })
+        setSelectedCombos(initQty)
       })
       .catch(err => console.error('Lỗi tải bắp nước:', err))
+    return () => { cancelled = true }
   }, [])
 
   const getMovieSchedules = () => {
@@ -459,26 +420,94 @@ export default function MovieDetailPage() {
   }
 
   const getSeatPrice = (seatId) => {
-    const r = seatId.charAt(0)
+    const meta = seatMetaMap[seatId] || {}
+    const type = String(meta.type || '').toUpperCase()
+    const label = meta.label || seatId
+
+    // 1) Ưu tiên bảng giá theo loại ghế từ suất chiếu
+    if (selectedShowtime?.prices?.length) {
+      const matched = selectedShowtime.prices.find(p => String(p.seatType || '').toUpperCase() === type)
+      if (matched?.price != null) return Number(matched.price)
+    }
+
+    // 2) Giá phẳng trên showtime object (nếu BE trả về)
+    if (type === 'VIP' && selectedShowtime?.vipPrice != null) return Number(selectedShowtime.vipPrice)
+    if (type === 'COUPLE' && selectedShowtime?.couplePrice != null) return Number(selectedShowtime.couplePrice)
+    if ((type === 'STANDARD' || type === 'NORMAL') && selectedShowtime?.price != null) return Number(selectedShowtime.price)
+
+    // 3) Fallback theo type
+    if (type === 'VIP') return 110000
+    if (type === 'COUPLE') return 190000
+    if (type === 'STANDARD' || type === 'NORMAL') return 90000
+
+    // 4) Fallback theo chữ cái hàng (A1 / A-1 / label)
+    const rowMatch = String(label).match(/[A-Za-z]/)
+    const r = (rowMatch?.[0] || '').toUpperCase()
     if (r === 'A' || r === 'B' || r === 'C') return 90000
     if (r === 'D' || r === 'E' || r === 'F') return 110000
     if (r === 'G' || r === 'H') return 130000
-    return 0
+
+    // 5) Không để giá = 0 cho ghế đã chọn
+    return 90000
   }
 
-  const toggleSeat = (seatId) => {
-    setSelectedSeats(prev => prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId])
+  const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
+
+  /**
+   * Toggle seat AFTER gap-validation (handled in SeatStep).
+   * SeatStep only calls this when the proposed change is valid.
+   */
+  const toggleSeat = (seatId, meta = {}) => {
+    setSelectedSeats(prev => {
+      const exists = prev.includes(seatId)
+      if (exists) {
+        setSeatMetaMap(m => {
+          const next = { ...m }
+          delete next[seatId]
+          return next
+        })
+        return prev.filter(id => id !== seatId)
+      }
+      if (meta && (meta.label || meta.type)) {
+        setSeatMetaMap(m => ({
+          ...m,
+          [seatId]: {
+            label: meta.label || seatId,
+            type: meta.type || 'STANDARD',
+          },
+        }))
+      }
+      return [...prev, seatId]
+    })
   }
 
-  const violations = selectedSeats.length > 0 ? checkSingleEmptySeats(selectedSeats, OCCUPIED_SEATS) : []
+  // Lưu trạng thái đặt vé trước khi bắt đăng nhập (để restore sau login)
+  const savePendingBooking = (nextStep) => {
+    try {
+      sessionStorage.setItem('pending_booking_state', JSON.stringify({
+        movieId,
+        selectedDate,
+        selectedTime,
+        selectedSeats,
+        seatMetaMap,
+        selectedShowtime,
+        bookingStep: nextStep ?? bookingStep,
+        isBookingMode: true,
+      }))
+    } catch (e) {
+      console.error('Lỗi khi lưu trạng thái đặt vé', e)
+    }
+  }
+
+  // Gap validation runs in SeatStep (realtime reject + toast), so no residual violations.
+  const violations = []
 
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
-  const activeCombos = dbCombos.length > 0 ? dbCombos : COMBOS
+  const activeCombos = dbCombos.length > 0 ? dbCombos : FALLBACK_COMBOS
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
     const combo = activeCombos.find(c => String(c.id) === String(id))
     return sum + (combo ? combo.price * qty : 0)
   }, 0)
-  const totalPrice = ticketPrice + comboPrice
 
   const discountAmount = useMemo(() => {
     if (discount <= 0) return 0
@@ -556,9 +585,11 @@ export default function MovieDetailPage() {
       setSubmitError('Thanh toán thất bại: ' + (msgs[simulatedOutcome] || 'Lỗi không xác định.'))
       return
     }
+    const roomDisplayName = selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'
+    const seatLabels = selectedSeats.map(getSeatLabel)
     const payload = {
       bookingId, movieId, movieName: movie.title, showTime: selectedTime, showDate: selectedDate,
-      seats: selectedSeats, totalPrice: finalPrice, room: 'Phong Chieu 03 (IMAX)',
+      seats: seatLabels, seatIds: selectedSeats, totalPrice: finalPrice, room: roomDisplayName,
       fullName: user?.fullName || 'Thanh vien CineMate', email: user?.email || '',
       identityCard: 'Chua cap nhat', phoneNumber: 'Chua cap nhat'
     }
@@ -566,9 +597,9 @@ export default function MovieDetailPage() {
     finally {
       const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
       localStorage.setItem('staff_bookings_db', JSON.stringify([{
-        id: bookingId, movie: movie.title, screen: 'Phong Chieu 03 (IMAX)',
+        id: bookingId, movie: movie.title, screen: roomDisplayName,
         date: new Date(selectedDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-        time: selectedTime, seats: selectedSeats.join(', '), price: getSeatPrice(selectedSeats[0] || 'A1'),
+        time: selectedTime, seats: seatLabels.join(', '), price: getSeatPrice(selectedSeats[0] || 'A1'),
         total: finalPrice, convertTickets: 0, scoreUsed: 0,
         memberId: 'MEM-' + Math.floor(100000 + Math.random() * 900000),
         customerName: user?.fullName || 'Thanh vien CineMate', phone: '0123456789',
@@ -585,6 +616,7 @@ export default function MovieDetailPage() {
     setBookingStep(1)
     setBookingId('')
     setSelectedSeats([])
+    setSeatMetaMap({})
     const initQty = {}
     activeCombos.forEach(c => { initQty[c.id] = 0 })
     setSelectedCombos(initQty)
@@ -600,11 +632,22 @@ export default function MovieDetailPage() {
     setSelectedShowtime(st)
   }
 
+  // Guard: nếu chưa đăng nhập thì lưu trạng thái + hiện modal thay vì tiến trình đặt vé
+  const requireAuth = (nextStep) => {
+    if (!user) {
+      savePendingBooking(nextStep)
+      setShowAuthModal(true)
+      return false
+    }
+    return true
+  }
+
   const handleBookAnother = () => {
     setBookingSuccess(false)
     setBookingStep(1)
     setSelectedTime('')
     setSelectedSeats([])
+    setSeatMetaMap({})
     const initQty = {}
     activeCombos.forEach(c => { initQty[c.id] = 0 })
     setSelectedCombos(initQty)
@@ -655,37 +698,50 @@ export default function MovieDetailPage() {
               </div>
             )}
             <div className="absolute inset-0 z-10 hero-gradient" />
-            
+
+            {/* Back Button */}
+            <div className="absolute top-6 left-6 md:left-12 z-30">
+              <motion.button
+                onClick={handleBack}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all hover:bg-white/10 active:scale-95 cursor-pointer border border-white/20 text-white bg-black/40 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <ArrowLeft size={14} className="text-red-500 font-bold" />
+                <span>{backInfo.label}</span>
+              </motion.button>
+            </div>
+
             <div className="relative z-20 w-full max-w-6xl mx-auto px-6 md:px-12 py-20 flex flex-col md:flex-row gap-10 items-center md:items-end text-left">
               {/* Animated Shared Poster */}
-              <motion.div 
+              <motion.div
                 layoutId="hero-poster"
                 transition={{ type: 'spring', stiffness: 220, damping: 26 }}
                 className="w-48 sm:w-56 md:w-64 flex-shrink-0 z-30 relative group"
               >
-                <img 
-                  src={movie.poster} 
-                  alt={`${movie.title} poster`} 
-                  className="w-full rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 hover:scale-[1.02] transition-transform duration-300" 
-                  style={{ aspectRatio: '2/3', objectFit: 'cover' }} 
+                <img
+                  src={movie.poster}
+                  alt={`${movie.title} poster`}
+                  className="w-full rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/10 hover:scale-[1.02] transition-transform duration-300"
+                  style={{ aspectRatio: '2/3', objectFit: 'cover' }}
                 />
                 <div className="absolute inset-0 border border-white/10 pointer-events-none rounded-2xl" />
               </motion.div>
 
               {/* Movie info metadata */}
-              <motion.div 
+              <motion.div
                 className="flex flex-col gap-4 text-left flex-grow max-w-2xl"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <h1 
+                <h1
                   className="text-white text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-wider leading-none text-glow-red"
                   style={{ fontFamily: 'Montserrat, sans-serif' }}
                 >
                   {movie.title}
                 </h1>
-                
+
                 <div className="flex flex-wrap items-center gap-3 text-xs text-white/60 font-medium">
                   {getRatingBadge(movie.rating)}
                   <span>•</span>
@@ -698,11 +754,11 @@ export default function MovieDetailPage() {
 
 
                 <div className="flex gap-4 mt-4 flex-wrap">
-                  <motion.button 
+                  <motion.button
                     onClick={() => setIsBookingMode(true)}
-                    className="flex items-center gap-2.5 py-3.5 px-10 rounded-full font-bold uppercase tracking-widest text-xs text-white cursor-pointer border-none" 
-                    style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 6px 20px rgba(229,9,20,0.4)', border: '1px solid rgba(255,255,255,0.08)' }} 
-                    whileHover={{ scale: 1.05, boxShadow: '0 8px 28px rgba(229,9,20,0.55)' }} 
+                    className="flex items-center gap-2.5 py-3.5 px-10 rounded-full font-bold uppercase tracking-widest text-xs text-white cursor-pointer border-none"
+                    style={{ background: 'linear-gradient(135deg, #e50914 0%, #b3070f 100%)', boxShadow: '0 6px 20px rgba(229,9,20,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}
+                    whileHover={{ scale: 1.05, boxShadow: '0 8px 28px rgba(229,9,20,0.55)' }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <Ticket size={18} />
@@ -710,7 +766,7 @@ export default function MovieDetailPage() {
                   </motion.button>
 
                   {movie.trailerUrl && (
-                    <motion.button 
+                    <motion.button
                       onClick={() => setIsTrailerOpen(true)}
                       className="flex items-center gap-2 py-3 px-8 rounded-full text-xs font-bold uppercase tracking-wider transition-all hover:bg-white/5 active:scale-95 cursor-pointer border border-white/20 text-white bg-black/40 backdrop-blur-md"
                       whileHover={{ scale: 1.02 }}
@@ -735,13 +791,13 @@ export default function MovieDetailPage() {
                 {movie.description || 'Không có mô tả chi tiết.'}
               </p>
             </div>
-            
+
             {/* Display static MovieInfo card spanning full width */}
             <div className="w-full">
-              <MovieInfo 
-                movie={movie} 
-                movieId={movieId} 
-                onShowtimeSelect={handleShowtimeSelect} 
+              <MovieInfo
+                movie={movie}
+                movieId={movieId}
+                onShowtimeSelect={handleShowtimeSelect}
                 onDateChange={handleDateChange}
                 onTrailerClick={() => setIsTrailerOpen(true)}
               />
@@ -761,7 +817,7 @@ export default function MovieDetailPage() {
         >
           {/* Column 1: Poster & Summary info */}
           <div className="lg:col-span-1 flex flex-col gap-5 text-left">
-            <button 
+            <button
               onClick={() => {
                 setIsBookingMode(false)
                 setBookingStep(1)
@@ -772,7 +828,7 @@ export default function MovieDetailPage() {
             </button>
 
             {/* Poster shared element */}
-            <motion.div 
+            <motion.div
               layoutId="hero-poster"
               transition={{ type: 'spring', stiffness: 220, damping: 26 }}
               className="w-full rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] border border-white/10"
@@ -792,7 +848,7 @@ export default function MovieDetailPage() {
                 { step: 4, label: 'Thanh toán', icon: <CreditCard size={16} /> },
               ].map(({ step, label, icon }, idx) => (
                 <div key={step} className="flex items-center flex-1 last:flex-initial">
-                  <button 
+                  <button
                     onClick={() => {
                       if (bookingStep > step) setBookingStep(step)
                     }}
@@ -835,6 +891,7 @@ export default function MovieDetailPage() {
                     selectedDate={selectedDate}
                     totalPrice={ticketPrice}
                     selectedSeats={selectedSeats}
+                    seatMetaMap={seatMetaMap}
                     violations={violations}
                     toggleSeat={toggleSeat}
                     setBookingStep={setBookingStep}
@@ -844,6 +901,10 @@ export default function MovieDetailPage() {
                     navigate={navigate}
                     movieId={movieId}
                     location={location}
+                    onRequireAuth={() => {
+                      savePendingBooking(3)
+                      setShowAuthModal(true)
+                    }}
                   />
                 )}
                 {bookingStep === 3 && (
@@ -857,6 +918,7 @@ export default function MovieDetailPage() {
                     discount={discount}
                     onApplyPromo={onApplyPromo}
                     setBookingStep={setBookingStep}
+                    orderAmount={ticketPrice + comboPrice}
                   />
                 )}
                 {bookingStep === 4 && (
@@ -867,6 +929,8 @@ export default function MovieDetailPage() {
                     selectedDate={selectedDate}
                     selectedTime={selectedTime}
                     selectedSeats={selectedSeats}
+                    seatLabels={selectedSeats.map(getSeatLabel)}
+                    roomName={selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'}
                     totalPrice={finalPrice}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
@@ -896,12 +960,12 @@ export default function MovieDetailPage() {
           <div className="lg:col-span-1">
             <div className="sticky top-24 bg-white/5 border border-white/10 rounded-2xl p-6 text-left flex flex-col gap-5 backdrop-blur-md">
               <h3 className="text-xs font-black uppercase text-red-500 tracking-widest border-b border-white/5 pb-3 m-0">Vé Của Bạn</h3>
-              
+
               {/* Showtime info */}
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Suất Chiếu</span>
                 <span className="text-sm font-bold text-white uppercase">{selectedDate ? new Date(selectedDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit' }) : 'Chưa chọn'}</span>
-                <span className="text-xs text-gray-400 font-semibold">{selectedTime ? `Giờ chiếu: ${selectedTime} tại Phòng IMAX` : 'Chưa chọn giờ chiếu'}</span>
+                <span className="text-xs text-gray-400 font-semibold">{selectedTime ? `Giờ chiếu: ${selectedTime} tại ${selectedShowtime?.roomName || selectedShowtime?.room || 'Phòng chiếu'}` : 'Chưa chọn giờ chiếu'}</span>
               </div>
 
               {/* Seats info */}
@@ -909,7 +973,7 @@ export default function MovieDetailPage() {
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Ghế Ngồi</span>
                 {selectedSeats.length > 0 ? (
                   <>
-                    <span className="text-sm font-bold text-white">{selectedSeats.join(', ')}</span>
+                    <span className="text-sm font-bold text-white">{selectedSeats.map(getSeatLabel).join(', ')}</span>
                     <span className="text-xs text-gray-400 font-semibold">Tạm tính: {ticketPrice.toLocaleString('vi-VN')} đ</span>
                   </>
                 ) : (
@@ -922,7 +986,7 @@ export default function MovieDetailPage() {
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Bắp Nước (Combo)</span>
                 {Object.values(selectedCombos).some(qty => qty > 0) ? (
                   <div className="flex flex-col gap-1">
-                    {COMBOS.map(c => {
+                    {activeCombos.map(c => {
                       const qty = selectedCombos[c.id] || 0
                       if (qty === 0) return null
                       return (
@@ -960,7 +1024,7 @@ export default function MovieDetailPage() {
               <div className="mt-2">
                 {bookingStep === 1 && (
                   <button
-                    onClick={() => setBookingStep(2)}
+                    onClick={() => { if (!requireAuth(2)) return; setBookingStep(2) }}
                     disabled={!selectedTime}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
@@ -969,7 +1033,7 @@ export default function MovieDetailPage() {
                 )}
                 {bookingStep === 2 && (
                   <button
-                    onClick={() => setBookingStep(3)}
+                    onClick={() => { if (!requireAuth(3)) return; setBookingStep(3) }}
                     disabled={selectedSeats.length === 0 || violations.length > 0}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
@@ -978,7 +1042,7 @@ export default function MovieDetailPage() {
                 )}
                 {bookingStep === 3 && (
                   <button
-                    onClick={() => setBookingStep(4)}
+                    onClick={() => { if (!requireAuth(4)) return; setBookingStep(4) }}
                     className="w-full py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs uppercase tracking-widest cursor-pointer border-none transition-all shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
                   >
                     Tiếp tục thanh toán
@@ -1007,12 +1071,17 @@ export default function MovieDetailPage() {
             movie={movie}
             selectedDate={selectedDate}
             selectedTime={selectedTime}
-            selectedSeats={selectedSeats}
+            selectedSeats={selectedSeats.map(getSeatLabel)}
             totalPrice={finalPrice}
             bookingId={bookingId}
             onClose={handleCloseSuccessModal}
             onBookAnother={handleBookAnother}
             navigate={navigate}
+            selectedCombos={selectedCombos}
+            combos={activeCombos}
+            promoCode={promoCode}
+            discountAmount={discountAmount}
+            movieDuration={movie?.duration}
           />
         )}
       </AnimatePresence>
@@ -1028,7 +1097,17 @@ export default function MovieDetailPage() {
         )}
       </AnimatePresence>
 
-  <style>{`
+      {/* ── Require Auth Modal ── */}
+      <RequireAuthModal
+        open={showAuthModal}
+        onLogin={() => {
+          setShowAuthModal(false)
+          navigate('/login', { state: { from: location } })
+        }}
+        onCancel={() => setShowAuthModal(false)}
+      />
+
+      <style>{`
         .seat-btn {
           transition: all 0.2s ease;
           cursor: pointer;

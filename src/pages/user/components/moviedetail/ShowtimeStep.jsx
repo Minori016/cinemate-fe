@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
-import { showtimeService } from '../../../../services/showtimeService'
+import { showtimeService, isPublicShowtimeStatus } from '../../../../services/showtimeService'
 
 function GlassCard({ children, className = '' }) {
   return (
@@ -19,7 +19,7 @@ export default function ShowtimeStep({ DAYS, selectedDate, setSelectedDate, sele
     setLoading(true)
     showtimeService.getByMovie(movieId, selectedDate)
       .then(list => {
-        const filtered = (list || []).filter(s => s && s.status === 'SCHEDULED')
+        const filtered = (list || []).filter(s => s && isPublicShowtimeStatus(s.status))
         setShowtimes(filtered)
       })
       .catch(() => setShowtimes([]))

@@ -1,28 +1,37 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
-import { Plus, Minus, Ticket, Check, RefreshCw } from 'lucide-react'
-
-const COMBOS = [
-  { id: 1, name: 'Combo Solo', desc: '1 bắp ngọt lớn 60oz + 1 nước ngọt mát lạnh 22oz', price: 75000, img: 'https://images.unsplash.com/photo-1578849278619-e73505e9610f?q=80&w=600' },
-  { id: 2, name: 'Combo Couple', desc: '1 bắp ngọt lớn 60oz + 2 nước ngọt mát lạnh 22oz', price: 95000, img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=600' },
-  { id: 3, name: 'Combo Party', desc: '2 bắp lớn tự chọn vị + 4 nước ngọt mát lạnh 22oz', price: 165000, img: 'https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?q=80&w=600' },
-]
+import { Plus, Minus, Ticket, Check } from 'lucide-react'
+import { FALLBACK_COMBOS } from '../../../../services/concessionService'
+import { promotionService, getQuickDiscountText } from '../../../../services/promotionService'
 
 export default function ComboStep({
-  combos = COMBOS,
-  selectedCombos,
+  combos = FALLBACK_COMBOS,
+  selectedCombos = {},
   onChangeCombo,
   promoCode,
   setPromoCode,
   discount,
   onApplyPromo,
-  setBookingStep
+  loading = false,
+  orderAmount = 0,
 }) {
-  const [promoInput, setPromoInput] = useState(promoCode)
+  const [promoInput, setPromoInput] = useState(promoCode || '')
   const [promoError, setPromoError] = useState('')
   const [promoSuccess, setPromoSuccess] = useState(discount > 0 ? 'Đã áp dụng thành công!' : '')
+  const [applying, setApplying] = useState(false)
+  const [activePromos, setActivePromos] = useState([])
 
-  const handleApply = () => {
+  useEffect(() => {
+    let cancelled = false
+    promotionService.getActiveForUi()
+      .then(list => {
+        if (!cancelled) setActivePromos(Array.isArray(list) ? list.slice(0, 6) : [])
+      })
+      .catch(() => { if (!cancelled) setActivePromos([]) })
+    return () => { cancelled = true }
+  }, [])
+
+  const handleApply = async () => {
     setPromoError('')
     setPromoSuccess('')
     if (!promoInput.trim()) {
@@ -30,24 +39,36 @@ export default function ComboStep({
       return
     }
 
-    // Custom coupon check
-    const code = promoInput.trim().toUpperCase()
-    if (code === 'CINEMATE10') {
-      onApplyPromo(code, 0.10) // 10% discount
-      setPromoSuccess('Áp dụng thành công mã CINEMATE10 (Giảm 10%)!')
-      setPromoCode(code)
-    } else if (code === 'BAPNUOC20') {
-      onApplyPromo(code, 20000) // Flat 20K discount
-      setPromoSuccess('Áp dụng thành công mã BAPNUOC20 (Giảm 20.000đ)!')
-      setPromoCode(code)
-    } else {
-      setPromoError('Mã giảm giá không chính xác hoặc đã hết hạn')
+    setApplying(true)
+    try {
+      const result = await promotionService.validateForUi(promoInput, orderAmount)
+      if (!result.success) {
+        setPromoError(result.message || 'Mã giảm giá không chính xác hoặc đã hết hạn')
+        return
+      }
+
+      // Parent onApplyPromo(code, val): val < 1 = percent ratio, val >= 1 = fixed VND
+      let applyVal = 0
+      if (result.discountPercent != null && Number(result.discountPercent) > 0) {
+        applyVal = Number(result.discountPercent) / 100
+      } else if (result.discountAmount != null && Number(result.discountAmount) > 0) {
+        applyVal = Number(result.discountAmount)
+      }
+
+      const code = result.promotionCode || promoInput.trim().toUpperCase()
+      onApplyPromo?.(code, applyVal)
+      setPromoCode?.(code)
+      setPromoSuccess(result.message || `Áp dụng thành công mã ${code}!`)
+    } catch (err) {
+      setPromoError(err?.response?.data?.message || 'Không thể xác thực mã giảm giá')
+    } finally {
+      setApplying(false)
     }
   }
 
   const handleRemovePromo = () => {
-    onApplyPromo('', 0)
-    setPromoCode('')
+    onApplyPromo?.('', 0)
+    setPromoCode?.('')
     setPromoInput('')
     setPromoSuccess('')
     setPromoError('')
@@ -67,18 +88,24 @@ export default function ComboStep({
           Chọn Bắp & Nước
         </h3>
         <div className="flex flex-col gap-4">
-          {combos.map(combo => {
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <span className="material-symbols-outlined animate-spin text-3xl text-red-500">progress_activity</span>
+            </div>
+          ) : combos.length === 0 ? (
+            <p className="text-sm text-gray-500 italic py-4 text-center">Hiện chưa có combo bắp nước.</p>
+          ) : combos.map(combo => {
             const qty = selectedCombos[combo.id] || 0
-            const hasImg = combo.img && (combo.img.startsWith('http') || combo.img.startsWith('/') || combo.img.startsWith('data:'))
+            const hasImg = combo.img && (String(combo.img).startsWith('http') || String(combo.img).startsWith('/') || String(combo.img).startsWith('data:'))
             return (
-              <div 
+              <div
                 key={combo.id}
                 className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 transition-all duration-300 hover:border-white/20"
               >
                 {hasImg ? (
-                  <img 
-                    src={combo.img} 
-                    alt={combo.name} 
+                  <img
+                    src={combo.img}
+                    alt={combo.name}
                     className="w-20 h-20 rounded-xl object-cover border border-white/5 flex-shrink-0"
                   />
                 ) : (
@@ -89,11 +116,16 @@ export default function ComboStep({
                 <div className="flex-grow">
                   <h4 className="text-white font-bold text-base mb-1">{combo.name}</h4>
                   <p className="text-xs text-gray-400 mb-2 leading-relaxed">{combo.desc}</p>
+                  {combo.category && (
+                    <span className="inline-block text-[10px] uppercase tracking-wider text-gray-500 mb-1 mr-2">
+                      {combo.category}
+                    </span>
+                  )}
                   <span className="text-red-500 font-extrabold text-sm">
                     {Number(combo.price).toLocaleString('vi-VN')} đ
                   </span>
                 </div>
-                
+
                 {/* Quantity counters */}
                 <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-xl p-1 shrink-0">
                   <motion.button
@@ -151,9 +183,10 @@ export default function ComboStep({
             ) : (
               <button
                 onClick={handleApply}
-                className="px-6 rounded-xl bg-red-600 text-white hover:bg-red-500 hover:scale-102 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer border-none"
+                disabled={applying}
+                className="px-6 rounded-xl bg-red-600 text-white hover:bg-red-500 hover:scale-102 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer border-none disabled:opacity-60"
               >
-                Áp dụng
+                {applying ? 'Đang kiểm tra...' : 'Áp dụng'}
               </button>
             )}
           </div>
@@ -161,42 +194,26 @@ export default function ComboStep({
           {promoError && <p className="text-xs text-red-500 font-semibold m-0">{promoError}</p>}
           {promoSuccess && <p className="text-xs text-green-500 font-semibold m-0 flex items-center gap-1"><Check size={14} />{promoSuccess}</p>}
 
-          {/* Quick suggestions tags */}
+          {/* Quick suggestions from active promotions API */}
           <div className="flex items-center gap-2 mt-4 flex-wrap">
             <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black shrink-0">Mã gợi ý:</span>
-            <button
-              onClick={() => { if (discount === 0) { setPromoInput('CINEMATE10'); } }}
-              disabled={discount > 0}
-              className="text-[10px] font-bold border border-dashed border-white/20 bg-white/5 rounded-full px-3 py-1 text-gray-300 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              CINEMATE10 (Giảm 10%)
-            </button>
-            <button
-              onClick={() => { if (discount === 0) { setPromoInput('BAPNUOC20'); } }}
-              disabled={discount > 0}
-              className="text-[10px] font-bold border border-dashed border-white/20 bg-white/5 rounded-full px-3 py-1 text-gray-300 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              BAPNUOC20 (Giảm 20K)
-            </button>
+            {activePromos.length === 0 ? (
+              <span className="text-[10px] text-gray-500 italic">Chưa có mã khuyến mãi đang chạy</span>
+            ) : activePromos.map(p => (
+              <button
+                key={p.id || p.code}
+                onClick={() => { if (discount === 0 && p.code) setPromoInput(p.code) }}
+                disabled={discount > 0 || !p.code}
+                title={getQuickDiscountText(p) || p.title}
+                className="text-[10px] font-bold border border-dashed border-white/20 bg-white/5 rounded-full px-3 py-1 text-gray-300 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {p.code}{getQuickDiscountText(p) ? ` (${getQuickDiscountText(p)})` : ''}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Back & Proceed navigation buttons */}
-      <div className="flex gap-4 border-t border-white/5 pt-6">
-        <button
-          onClick={() => setBookingStep(2)}
-          className="flex-1 py-3.5 rounded-xl border border-white/10 bg-transparent text-white font-bold text-sm uppercase tracking-wider cursor-pointer transition-all hover:bg-white/5 active:scale-95"
-        >
-          Quay lại chọn ghế
-        </button>
-        <button
-          onClick={() => setBookingStep(4)}
-          className="flex-1 py-3.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm uppercase tracking-wider cursor-pointer border-none transition-all hover:scale-102 active:scale-95 shadow-[0_4px_14px_rgba(229,9,20,0.3)]"
-        >
-          Tiếp tục thanh toán
-        </button>
-      </div>
     </motion.div>
   )
 }
