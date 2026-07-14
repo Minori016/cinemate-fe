@@ -1,19 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User, Hash, Search, Phone, IdCard, Film, Tv, MapPin, Star, Sparkles, Users } from 'lucide-react'
 import { motion } from 'motion/react'
-import Table from '../../../components/common/Table'
-import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User } from 'lucide-react'
 
-// Initial seeds fallback if localStorage is empty
 const INITIAL_BOOKINGS = [
   {
     id: 'CM-1718556391',
-    movie: 'Dune: Hành Tinh Cát - Phần 2',
-    screen: 'Phòng chiếu 3 (IMAX)',
+    movie: 'Dune: Hanh Tinh Cat - Phan 2',
+    screen: 'Phong chieu 3 (IMAX)',
     date: '17/06/2026',
     time: '18:30',
     seats: 'D4, D5',
-    customerName: 'Nguyễn Văn Anh',
+    customerName: 'Nguyen Van Anh',
     phone: '0912345678',
     email: 'vananh@gmail.com',
     price: 120000,
@@ -23,18 +21,18 @@ const INITIAL_BOOKINGS = [
     memberId: 'MEM-889922',
     memberScore: 1500,
     idCard: '012345678901',
-    status: 'Đã thanh toán',
+    status: 'Da thanh toan',
     checkedIn: false,
     checkInTime: null
   },
   {
     id: 'CM-9988112233',
-    movie: 'Lật Mặt 7: Một Điều Ước',
-    screen: 'Phòng chiếu 1 (Standard)',
+    movie: 'Lat Mat 7: Mot Dieu Uoc',
+    screen: 'Phong chieu 1 (Standard)',
     date: '17/06/2026',
     time: '20:15',
     seats: 'H12, H13, H14',
-    customerName: 'Trần Thị Bình',
+    customerName: 'Tran Thi Binh',
     phone: '0987654321',
     email: 'thibinh@gmail.com',
     price: 110000,
@@ -44,18 +42,18 @@ const INITIAL_BOOKINGS = [
     memberId: 'MEM-445511',
     memberScore: 3500,
     idCard: '023456789012',
-    status: 'Đã thanh toán',
+    status: 'Da thanh toan',
     checkedIn: false,
     checkInTime: null
   },
   {
     id: 'CM-5566778899',
-    movie: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc',
-    screen: 'Phòng chiếu 2 (3D)',
+    movie: 'Inside Out 2: Nhung Manh Ghep Cam Xuc',
+    screen: 'Phong chieu 2 (3D)',
     date: '17/06/2026',
     time: '17:00',
     seats: 'C1, C2',
-    customerName: 'Lê Văn Cường',
+    customerName: 'Le Van Cuong',
     phone: '0933445566',
     email: 'vancuong@gmail.com',
     price: 90000,
@@ -65,16 +63,28 @@ const INITIAL_BOOKINGS = [
     memberId: 'MEM-332211',
     memberScore: 500,
     idCard: '034567890123',
-    status: 'Đã thanh toán',
+    status: 'Da thanh toan',
     checkedIn: true,
     checkInTime: '17/06/2026 - 16:48'
-  }
+  },
 ]
 
-const getSeatCount = (seats) => {
-  if (!seats) return 1
-  if (Array.isArray(seats)) return seats.length
-  return seats.split(',').map(s => s.trim()).filter(Boolean).length
+const STATUS_META = {
+  'Da thanh toan': { label: 'Da thanh toan', bg: 'bg-emerald-500', border: 'border-emerald-700', text: 'text-white' },
+  'Cho thanh toan': { label: 'Cho thanh toan', bg: 'bg-amber-500', border: 'border-amber-700', text: 'text-white' },
+  'Da huy': { label: 'Da huy', bg: 'bg-rose-500', border: 'border-rose-700', text: 'text-white' },
+  'Da xac nhan': { label: 'Da xac nhan', bg: 'bg-sky-500', border: 'border-sky-700', text: 'text-white' },
+}
+const getStatusMeta = (s) => STATUS_META[s] || { label: s, bg: 'bg-slate-500', border: 'border-slate-700', text: 'text-white' }
+
+function TicketStrip({ count = 14 }) {
+  return (
+    <div className="flex w-full">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex-1 h-2 bg-red-600" style={{ clipPath: 'polygon(0 0, 100% 0, 75% 100%, 25% 100%)' }} />
+      ))}
+    </div>
+  )
 }
 
 export default function TicketManagementPage() {
@@ -82,17 +92,16 @@ export default function TicketManagementPage() {
   const [bookings, setBookings] = useState([])
   const [search, setSearch] = useState('')
   const [successBanner, setSuccessBanner] = useState(location.state?.successMessage || '')
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [convertOption, setConvertOption] = useState('no')
+  const [convertTicketsCount, setConvertTicketsCount] = useState(0)
 
   useEffect(() => {
     if (location.state?.successMessage) {
       window.history.replaceState({}, document.title)
     }
   }, [location.state])
-  const [selectedBooking, setSelectedBooking] = useState(null)
-  const [convertOption, setConvertOption] = useState('no')
-  const [convertTicketsCount, setConvertTicketsCount] = useState(0)
 
-  // Load from local storage dynamically (AC-05)
   const loadBookings = () => {
     const local = localStorage.getItem('staff_bookings_db')
     if (local) {
@@ -126,26 +135,21 @@ export default function TicketManagementPage() {
 
   const handleFinalizeBooking = () => {
     if (!selectedBooking) return
-
     const scoreUsed = convertOption === 'yes' ? convertTicketsCount * 1000 : 0
     const convertTickets = convertOption === 'yes' ? convertTicketsCount : 0
-
-    if (convertOption === 'yes' && selectedBooking.memberScore < scoreUsed) {
-      return
-    }
+    if (convertOption === 'yes' && selectedBooking.memberScore < scoreUsed) return
 
     const local = localStorage.getItem('staff_bookings_db')
     const currentList = local ? JSON.parse(local) : bookings
-    
+
     const updatedBookings = currentList.map(b => {
       if (b.id === selectedBooking.id) {
         const updatedScore = b.memberScore - scoreUsed
         const singlePrice = b.price || 0
         const discountedTotal = Math.max(0, b.total - (convertTickets * singlePrice))
-        
         return {
           ...b,
-          status: 'Đã xác nhận',
+          status: 'Da xac nhan',
           convertTickets: convertTickets,
           scoreUsed: scoreUsed,
           memberScore: updatedScore,
@@ -158,17 +162,17 @@ export default function TicketManagementPage() {
     setBookings(updatedBookings)
     localStorage.setItem('staff_bookings_db', JSON.stringify(updatedBookings))
     setSelectedBooking(null)
+    setSuccessBanner('Xac nhan dat ve thanh cong!')
+    setTimeout(() => setSuccessBanner(''), 4000)
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadBookings()
   }, [])
 
-  // Listen to storage changes to ensure real-time dynamic updates (AC-05)
   useEffect(() => {
-    const handleStorageChange = () => {
-      loadBookings()
-    }
+    const handleStorageChange = () => loadBookings()
     window.addEventListener('storage', handleStorageChange)
     return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
@@ -177,310 +181,332 @@ export default function TicketManagementPage() {
     b.id?.toLowerCase().includes(search.toLowerCase()) ||
     b.memberId?.toLowerCase().includes(search.toLowerCase()) ||
     b.phone?.includes(search) ||
-    b.idCard?.includes(search)
+    b.idCard?.includes(search) ||
+    b.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+    b.movie?.toLowerCase().includes(search.toLowerCase())
   )
 
-  // Columns specification mapping exactly to AC-01
-  const columns = [
-    { key: 'id', label: 'Booking ID' },
-    { key: 'idCard', label: 'Identity Card Number (CCCD)' },
-    { key: 'phone', label: 'Phone Number' },
-    { key: 'movie', label: 'Movie Title' },
-    { key: 'showtime', label: 'Showtime', render: row => `${row.date} - ${row.time}` },
-  ]
-
-  const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
-
   return (
-    <motion.div
-      className="space-y-6 text-left"
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45 }}
-    >
+    <div className="text-left space-y-6">
+
       {successBanner && (
-        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold flex items-center justify-between shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, y: -10, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className="p-4 rounded-2xl bg-emerald-100 border-2 border-emerald-700 text-emerald-900 text-sm font-bold flex items-center justify-between shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]"
+        >
           <div className="flex items-center gap-2">
-            <CheckCircle className="shrink-0" size={16} />
+            <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center border-2 border-slate-900">
+              <CheckCircle size={16} className="text-white" strokeWidth={3} />
+            </div>
             <span>{successBanner}</span>
           </div>
-          <button onClick={() => setSuccessBanner('')} className="text-emerald-400 hover:text-emerald-300 transition-colors bg-transparent border-0 outline-none cursor-pointer">
-            <X size={16} />
+          <button onClick={() => setSuccessBanner('')} className="text-emerald-900 hover:bg-emerald-200 p-1.5 rounded-lg border-2 border-emerald-900 transition-all">
+            <X size={14} strokeWidth={3} />
           </button>
-        </div>
+        </motion.div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
-        <div>
-          <h1 
-            className="text-4xl text-gray-900 font-bold tracking-wider uppercase" 
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
-          >
-            Quản lý đặt vé
-          </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Xem danh sách đặt vé của khách hàng, đối chiếu thông tin giao dịch và kiểm tra trạng thái vé.
-          </p>
-        </div>
-        <input 
-          placeholder="Tìm theo Booking ID, CCCD, SĐT..." 
-          value={search} 
-          onChange={e => setSearch(e.target.value)}
-          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 w-80 transition-colors shadow-sm"
-          style={{ fontFamily: 'Inter, sans-serif' }}
-        />
-      </div>
-
-      {/* Bookings Table List */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xl p-4">
-        {filtered.length > 0 ? (
-          <Table
-            columns={columns}
-            data={filtered}
-            actions={row => (
-              <button
-                onClick={() => handleSelectBooking(row)}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center gap-1.5 ml-auto"
-              >
-                <CheckCircle size={13} />
-                Successful Booking
-              </button>
-            )}
-          />
-        ) : (
-          <div className="text-center py-12 text-[var(--color-text-muted)] font-semibold flex flex-col items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-4xl text-gray-600">search_off</span>
-            <span className="text-sm">No booking found!</span>
-          </div>
-        )}
-      </div>
-
-      {/* Detailed Customer Booking Information Modal (AC-03 & AC-05) */}
-      {selectedBooking && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0f121d] border border-[var(--color-border)] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col">
-            <div className="px-6 py-5 border-b border-[var(--color-border)] flex justify-between items-center bg-white/5">
-              <h4 className="font-extrabold uppercase tracking-wider text-sm text-white flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
-                <Ticket size={16} className="text-emerald-400" />
-                Chi tiết giao dịch đặt vé (Booking Details)
-              </h4>
-              <button
-                onClick={() => setSelectedBooking(null)}
-                className="text-[var(--color-text-muted)] hover:text-white"
-              >
-                <X size={18} />
-              </button>
+      {/* HERO */}
+      <div className="relative overflow-hidden rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-2 border-slate-900 bg-gradient-to-br from-sky-50 via-violet-50 to-rose-50">
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 12px)'
+        }} />
+        <div className="relative"><TicketStrip count={20} /></div>
+        <div className="relative px-6 md:px-10 py-6 md:py-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-slate-900 border-2 border-slate-900 rounded-2xl flex items-center justify-center shadow-lg">
+                <Ticket size={26} className="text-amber-300" strokeWidth={2.5} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 rounded-md text-[10px] font-black uppercase tracking-[0.15em] text-amber-300">
+                    <Star size={10} fill="currentColor" /> BOOKING CENTER
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider">
+                    <Hash size={11} /> {bookings.length} ve
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider">
+                    <CheckCircle size={10} strokeWidth={3} /> {bookings.filter(b => b.checkedIn).length} check-in
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[0.95]">
+                  Quan ly<br /><span className="text-red-600">dat ve</span>
+                </h1>
+                <p className="text-sm text-slate-600 mt-3 max-w-md leading-relaxed">
+                  Xem danh sach dat ve cua khach hang, doi chieu thong tin giao dich va kiem tra trang thai ve.
+                </p>
+              </div>
             </div>
+          </div>
+        </div>
+        <TicketStrip count={20} />
+      </div>
 
-            <div className="p-6 space-y-6 max-h-[480px] overflow-y-auto">
-              {/* Ticket Information Section (AC-01 & AC-02) */}
-              <div className="space-y-3">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                  <span>🎟️</span> Thông tin vé (Ticket Information)
-                </h5>
-                
-                {/* Labels instead of inputs to prevent edits (AC-05) */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                  <div className="col-span-2 md:col-span-4 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Tên Phim (Movie Name)</span>
-                    <span className="text-sm font-extrabold text-white mt-1 block leading-snug">{selectedBooking.movie}</span>
-                  </div>
+      {/* PART_LIST_HERE */}
+      <div className="bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] overflow-hidden">
+        <div className="flex items-stretch border-b-2 border-slate-900">
+          <div className="bg-slate-900 text-amber-300 px-5 py-3 flex items-center gap-2 border-r-2 border-slate-900">
+            <Users size={18} strokeWidth={2.5} />
+          </div>
+          <div className="flex-1 px-5 py-3 flex items-center justify-between bg-violet-50 gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-black uppercase tracking-wider text-slate-900">Danh sach dat ve</h2>
+              <p className="text-[11px] text-slate-600 mt-0.5 font-medium">{filtered.length} ket qua hien thi</p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700 pointer-events-none" strokeWidth={2.5} />
+              <input
+                placeholder="Tim theo ID, CCCD, SĐT..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-72 pl-10 pr-4 py-2.5 bg-white border-2 border-slate-900 rounded-xl text-sm font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-amber-50 transition-all shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] focus:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] focus:translate-x-[2px] focus:translate-y-[2px]"
+              />
+            </div>
+          </div>
+        </div>
 
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Booking ID</span>
-                    <span className="text-xs font-black text-white mt-1 block font-mono">{selectedBooking.id}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Phòng Chiếu (Screen)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.screen}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Ngày Chiếu (Date)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.date}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Suất Chiếu (Time)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.time}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Ghế Ngồi (Seat)</span>
-                    <span className="text-xs font-black text-[var(--color-primary-container)] mt-1 block">{selectedBooking.seats}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Giá Vé (Price)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{formatVND(selectedBooking.price)}</span>
-                  </div>
-
-                  <div className="col-span-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-emerald-400 block">Tổng tiền (Total)</span>
-                    <span className="text-sm font-black text-emerald-400 mt-1 block">
-                      {selectedBooking.status !== 'Đã xác nhận' && convertOption === 'yes'
-                        ? formatVND(Math.max(0, selectedBooking.total - (convertTicketsCount * (selectedBooking.price || 0))))
-                        : formatVND(selectedBooking.total)
-                      }
-                    </span>
-                  </div>
-
-                  {/* Converted points fields (AC-02) */}
-                  {selectedBooking.convertTickets > 0 && (
-                    <>
-                      <div className="col-span-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                        <span className="text-[10px] uppercase font-bold text-yellow-500 block">Convert to Ticket</span>
-                        <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.convertTickets} vé</span>
-                      </div>
-                      <div className="col-span-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                        <span className="text-[10px] uppercase font-bold text-yellow-500 block">Score for Ticket Converting</span>
-                        <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.scoreUsed} điểm</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Member Information Section (AC-03 / AC-01) */}
-              <div className="space-y-3 pt-4 border-t border-white/5">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                  <User size={14} className="text-red-400" />
-                  Thông tin thành viên (Member Information)
-                </h5>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Mã Thành Viên (Member ID)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedBooking.memberId}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Họ Tên Khách Hàng (Full Name)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.customerName}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Điểm tích lũy (Member Score)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedBooking.memberScore}</span>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số Điện Thoại</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.phone}</span>
-                  </div>
-
-                  <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số CCCD (Identity Card)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.idCard}</span>
-                  </div>
-
-                  <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Email</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block truncate" title={selectedBooking.email}>{selectedBooking.email}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Score Conversion Option (AC-02, AC-03) */}
-              {selectedBooking.status !== 'Đã xác nhận' && (
-                <div className="space-y-4 pt-4 border-t border-white/5">
-                  <h5 className="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                    <span>🪙</span> Quy đổi điểm thành viên (Member Score Conversion)
-                  </h5>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <span className="text-xs font-medium text-gray-300">Quy đổi điểm thành viên sang vé?</span>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                          <input
-                            type="radio"
-                            name="convertOption"
-                            value="no"
-                            checked={convertOption === 'no'}
-                            onChange={() => {
-                              setConvertOption('no')
-                              setConvertTicketsCount(0)
-                            }}
-                            className="accent-red-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span>Không quy đổi</span>
-                        </label>
-                        <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                          <input
-                            type="radio"
-                            name="convertOption"
-                            value="yes"
-                            checked={convertOption === 'yes'}
-                            onChange={() => {
-                              setConvertOption('yes')
-                              setConvertTicketsCount(1)
-                            }}
-                            className="accent-red-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span>Quy đổi sang vé</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {convertOption === 'yes' && (
-                      <div className="space-y-3 pt-2 border-t border-white/5 animate-fade-in">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <label className="text-[10px] uppercase font-bold text-gray-400">Chọn số vé muốn đổi (1000 điểm / vé)</label>
-                          <select
-                            value={convertTicketsCount}
-                            onChange={(e) => setConvertTicketsCount(parseInt(e.target.value, 10))}
-                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer min-w-[100px]"
-                          >
-                            {Array.from({ length: getSeatCount(selectedBooking.seats) }).map((_, i) => (
-                              <option key={i + 1} value={i + 1}>{i + 1} vé</option>
-                            ))}
-                          </select>
+        <div className="overflow-x-auto">
+          {filtered.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead className="bg-sky-100 border-b-2 border-slate-900">
+                <tr className="text-[10px] uppercase font-black tracking-[0.15em] text-slate-900">
+                  <th className="px-4 py-3 text-left">Booking ID</th>
+                  <th className="px-4 py-3 text-left">CCCD</th>
+                  <th className="px-4 py-3 text-left">Phone</th>
+                  <th className="px-4 py-3 text-left">Movie</th>
+                  <th className="px-4 py-3 text-left">Showtime</th>
+                  <th className="px-4 py-3 text-left">Trang thai</th>
+                  <th className="px-4 py-3 text-right">Thao tac</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-slate-200 bg-white">
+                {filtered.map(b => {
+                  const statusMeta = getStatusMeta(b.status)
+                  return (
+                    <tr key={b.id} className="hover:bg-amber-50 transition-colors">
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs font-black text-slate-900 bg-slate-100 px-2 py-1 rounded-md border-2 border-slate-300">
+                          {b.id}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 font-mono">
+                          <IdCard size={12} className="text-slate-500" strokeWidth={2.5} />
+                          {b.idCard}
                         </div>
-
-                        {selectedBooking.memberScore < convertTicketsCount * 1000 && (
-                          <div className="text-xs text-red-500 font-bold flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
-                            <span>⚠️</span>
-                            <span>Not enough score to convert into ticket</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                          <Phone size={12} className="text-slate-500" strokeWidth={2.5} />
+                          {b.phone}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-10 bg-slate-900 rounded flex items-center justify-center shrink-0">
+                            <Film size={14} className="text-amber-300" strokeWidth={2.5} />
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                          <span className="text-xs font-black text-slate-900 line-clamp-2 max-w-[200px]" title={b.movie}>
+                            {b.movie}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-[10px] font-black text-slate-700">
+                            <Calendar size={10} strokeWidth={3} className="text-red-600" />
+                            <span>{b.date}</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] font-black text-red-600">
+                            <Clock size={10} strokeWidth={3} />
+                            <span>{b.time}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-black uppercase border-2 ${statusMeta.bg} ${statusMeta.text} ${statusMeta.border}`}>
+                            {statusMeta.label}
+                          </span>
+                          {b.checkedIn && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-100 border-2 border-violet-700 text-violet-900 rounded-md text-[9px] font-black uppercase">
+                              <CheckCircle size={9} strokeWidth={3} /> Check-in
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleSelectBooking(b)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-wider text-[10px] rounded-lg border-2 border-slate-900 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
+                        >
+                          <CheckCircle size={12} strokeWidth={3} /> Xac nhan
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          ) : (
+            <div className="p-16 flex flex-col items-center gap-3">
+              <div className="w-20 h-20 bg-slate-100 border-2 border-dashed border-slate-300 rounded-3xl flex items-center justify-center">
+                <Search size={36} className="text-slate-400" strokeWidth={2} />
+              </div>
+              <p className="text-base font-black uppercase tracking-wider text-slate-700">Khong tim thay dat ve</p>
+              <p className="text-xs font-bold text-slate-500">Hay thu voi tu khoa khac</p>
             </div>
+          )}
+        </div>
+      </div>
 
-            {/* Modal Actions */}
-            <div className="p-4 border-t border-[var(--color-border)] bg-slate-900/40 flex justify-end gap-2">
+      {/* PART_MODAL_HERE */}
+      {selectedBooking && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="bg-white border-4 border-slate-900 rounded-3xl w-full max-w-2xl overflow-hidden shadow-[12px_12px_0px_0px_rgba(15,23,42,1)] max-h-[90vh] flex flex-col"
+          >
+            <TicketStrip count={18} />
+            <div className="bg-gradient-to-br from-violet-50 to-rose-50 px-6 py-5 flex justify-between items-center border-b-2 border-slate-900">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-600 border-2 border-slate-900 rounded-xl flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+                  <Ticket size={18} className="text-white" strokeWidth={3} />
+                </div>
+                <div>
+                  <h4 className="font-black uppercase tracking-wider text-base text-slate-900 leading-none">Chi tiet dat ve</h4>
+                  <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider mt-1">{selectedBooking.id}</p>
+                </div>
+              </div>
               <button
                 onClick={() => setSelectedBooking(null)}
-                className="px-5 py-3 text-xs bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-white/5 transition-all cursor-pointer"
+                className="w-9 h-9 bg-white hover:bg-rose-100 text-slate-900 rounded-lg border-2 border-slate-900 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:shadow-[0px_0px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer flex items-center justify-center"
               >
-                Đóng
+                <X size={16} strokeWidth={3} />
               </button>
-              {selectedBooking.status !== 'Đã xác nhận' ? (
-                <button
-                  onClick={handleFinalizeBooking}
-                  disabled={convertOption === 'yes' && selectedBooking.memberScore < convertTicketsCount * 1000}
-                  className="px-5 py-3 text-xs bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all cursor-pointer"
-                >
-                  Confirm Booking
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="px-5 py-3 text-xs bg-gray-700 text-gray-400 font-bold rounded-xl border border-white/5"
-                >
-                  Đã xác nhận thành công
-                </button>
-              )}
             </div>
-          </div>
+
+            <div className="p-6 space-y-4 overflow-y-auto bg-white">
+              <div className="bg-amber-50 border-2 border-slate-900 rounded-2xl p-4 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-slate-900 border-2 border-slate-900 rounded-lg flex items-center justify-center shrink-0">
+                    <Film size={18} className="text-amber-300" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex-1">
+                    <h5 className="text-base font-black uppercase tracking-wider text-slate-900 leading-tight mb-1">{selectedBooking.movie}</h5>
+                    <div className="flex items-center gap-3 text-[11px] font-bold text-slate-700 flex-wrap">
+                      <span className="inline-flex items-center gap-1">
+                        <Tv size={11} strokeWidth={2.5} className="text-red-600" /> {selectedBooking.screen}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar size={11} strokeWidth={2.5} className="text-red-600" /> {selectedBooking.date}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Clock size={11} strokeWidth={2.5} className="text-red-600" /> {selectedBooking.time}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-sky-50 border-2 border-slate-900 rounded-xl p-3 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <User size={11} className="text-sky-700" strokeWidth={2.5} />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-sky-700">Khach hang</span>
+                  </div>
+                  <p className="text-sm font-black text-slate-900 leading-tight">{selectedBooking.customerName}</p>
+                  <p className="text-[10px] font-bold text-slate-600 mt-0.5">{selectedBooking.email}</p>
+                </div>
+                <div className="bg-violet-50 border-2 border-slate-900 rounded-xl p-3 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Phone size={11} className="text-violet-700" strokeWidth={2.5} />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-700">Lien lac</span>
+                  </div>
+                  <p className="text-sm font-black text-slate-900 leading-tight font-mono">{selectedBooking.phone}</p>
+                  <p className="text-[10px] font-bold text-slate-600 mt-0.5 font-mono">CCCD: {selectedBooking.idCard}</p>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50 border-2 border-slate-900 rounded-xl p-3 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <MapPin size={11} className="text-emerald-700" strokeWidth={2.5} />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Ghe da dat</span>
+                </div>
+                <div className="flex gap-1.5 flex-wrap">
+                  {selectedBooking.seats?.split(',').map((s, i) => (
+                    <span key={i} className="px-2.5 py-1 bg-white border-2 border-slate-900 rounded-md text-xs font-black text-slate-900 font-mono shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
+                      {s.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-rose-50 border-2 border-slate-900 rounded-xl p-3 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <DollarSign size={11} className="text-rose-700" strokeWidth={2.5} />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-rose-700">Tong thanh toan</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold text-slate-600 line-through">
+                      {selectedBooking.price?.toLocaleString('vi-VN')} VND/ghe
+                    </p>
+                    <p className="text-lg font-black text-red-600">
+                      {selectedBooking.total?.toLocaleString('vi-VN')} VND
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 text-white border-2 border-slate-900 rounded-xl p-3 shadow-[3px_3px_0px_0px_rgba(15,23,42,1)]">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Sparkles size={11} className="text-amber-300" strokeWidth={2.5} />
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">Quy doi diem</span>
+                </div>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Diem hien co</div>
+                    <div className="text-lg font-black text-amber-300">{selectedBooking.memberScore || 0}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">So ve quy doi</div>
+                    <input
+                      type="number"
+                      min={0}
+                      value={convertTicketsCount}
+                      onChange={e => setConvertTicketsCount(Math.max(0, parseInt(e.target.value) || 0))}
+                      className="w-full bg-slate-800 border-2 border-slate-700 rounded text-center py-1 text-sm font-black text-amber-300 focus:outline-none focus:border-amber-300"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Diem su dung</div>
+                    <div className="text-lg font-black text-rose-400">{convertTicketsCount * 1000}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 border-t-2 border-slate-900 bg-slate-50 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedBooking(null)}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-white hover:bg-slate-100 text-slate-900 font-black uppercase tracking-wider text-xs rounded-xl border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
+              >
+                <X size={14} strokeWidth={3} /> Huy
+              </button>
+              <button
+                onClick={handleFinalizeBooking}
+                className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wider text-xs rounded-xl border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
+              >
+                <CheckCircle size={14} strokeWidth={3} /> Xac nhan dat ve
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }

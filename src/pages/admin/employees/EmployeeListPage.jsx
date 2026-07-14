@@ -1,42 +1,78 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { employeeService } from '../../../services/employeeService'
-import Button from '../../../components/common/Button'
 import { motion, AnimatePresence } from 'motion/react'
 import {
-  Plus, Search, Pencil, Trash2, Users,
-  UserCheck, X,
-  Mail, Phone, Calendar,
+  Plus, Search, Pencil, Trash2, Users, UserCheck, X,
+  Mail, Phone, Crown, ShieldAlert, AlertTriangle, BadgeCheck,
+  Briefcase, AtSign, Cake, Hash, ToggleRight,
 } from 'lucide-react'
+import { toast } from 'sonner'
+
+function TicketStrip({ count = 14 }) {
+  return (
+    <div className="flex w-full">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex-1 h-2 bg-red-600" style={{ clipPath: 'polygon(0 0, 100% 0, 75% 100%, 25% 100%)' }} />
+      ))}
+    </div>
+  )
+}
+
+const STATUS_META = {
+  ACTIVE: { bg: 'bg-emerald-500', border: 'border-emerald-700', text: 'text-white', dot: 'bg-emerald-500', label: 'HOAT DONG' },
+  LOCKED: { bg: 'bg-rose-500', border: 'border-rose-700', text: 'text-white', dot: 'bg-rose-500', label: 'BI KHOA' },
+  INACTIVE: { bg: 'bg-slate-500', border: 'border-slate-700', text: 'text-white', dot: 'bg-slate-500', label: 'VO HIEU' },
+}
+
+const ROLE_META = {
+  STAFF: { bg: 'bg-sky-100', border: 'border-sky-700', text: 'text-sky-900', icon: UserCheck, label: 'NHAN VIEN' },
+  MANAGER: { bg: 'bg-amber-100', border: 'border-amber-700', text: 'text-amber-900', icon: Crown, label: 'QUAN LY' },
+  ADMIN: { bg: 'bg-violet-100', border: 'border-violet-700', text: 'text-violet-900', icon: ShieldAlert, label: 'ADMIN' },
+}
+
+function StatusPill({ status }) {
+  const m = STATUS_META[status] || STATUS_META.INACTIVE
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border-2 ${m.border} ${m.bg} ${m.text} text-[10px] font-black uppercase tracking-wider`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${m.dot} border border-white`} />
+      {m.label}
+    </span>
+  )
+}
+
+function RolePill({ roles }) {
+  const roleKey = roles?.includes('MANAGER') ? 'MANAGER' : roles?.includes('ADMIN') ? 'ADMIN' : 'STAFF'
+  const m = ROLE_META[roleKey]
+  const Icon = m.icon
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border-2 ${m.border} ${m.bg} ${m.text} text-[10px] font-black uppercase tracking-wider`}>
+      <Icon size={10} strokeWidth={3} /> {m.label}
+    </span>
+  )
+}
 
 export default function EmployeeListPage() {
   const navigate = useNavigate()
+
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(false)
-
-  // Status Modal
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [statusTarget, setStatusTarget] = useState(null)
   const [pendingStatus, setPendingStatus] = useState(null)
-  // Lưu status tạm theo uuid để <select> hiển thị đúng option user vừa chọn
-  // khi modal xác nhận đang mở (tránh dropdown "không hoạt động" do employee.status
-  // chưa được cập nhật từ backend).
   const [pendingStatusMap, setPendingStatusMap] = useState({})
-
-  // Trả về status hiện tại đang hiển thị cho từng nhân viên — ưu tiên giá trị tạm
-  // mà user vừa chọn (nếu đang mở modal); fallback về status thực tế.
-  const getCurrentStatus = (employee) => {
-    const key = employee.uuid || employee.id
-    return pendingStatusMap[key] ?? employee.status
-  }
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [totalElements, setTotalElements] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
+
+  const getCurrentStatus = (employee) => {
+    const key = employee.uuid || employee.id
+    return pendingStatusMap[key] ?? employee.status
+  }
 
   const load = useCallback((pageNum = 0) => {
     setLoading(true)
@@ -47,7 +83,6 @@ export default function EmployeeListPage() {
       .then(r => {
         const resData = r.data?.result ?? r.data ?? {}
         const list = resData.content ?? []
-        // Loại bỏ user có role MANAGER (chỉ hiển thị STAFF cho admin quản lý)
         let filtered = list.filter(e => !e.roles?.includes('MANAGER'))
         if (statusFilter !== 'all') {
           filtered = filtered.filter(e => e.status === statusFilter)
@@ -55,7 +90,6 @@ export default function EmployeeListPage() {
         setEmployees(filtered)
         setPage(resData.pageNumber ?? pageNum)
         setTotalPages(resData.totalPages ?? 1)
-        setTotalElements(resData.totalElements ?? list.length)
       })
       .catch(err => {
         console.error('Error loading employees:', err)
@@ -64,86 +98,12 @@ export default function EmployeeListPage() {
       .finally(() => setLoading(false))
   }, [searchTerm, roleFilter, statusFilter])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(0) }, [load])
 
   const stats = {
     total: employees.length,
     staff: employees.filter(e => e.roles?.includes('STAFF')).length,
-  }
-
-  const getRoleBadge = (roles) => {
-    if (roles?.includes('MANAGER')) {
-      return (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-          padding: '0.25rem 0.75rem', borderRadius: '9999px',
-          fontSize: '0.75rem', fontWeight: 600,
-          background: 'rgba(245,158,11,0.15)', color: '#b45309',
-          border: '1px solid rgba(245,158,11,0.3)'
-        }}>
-          <Crown size={12} />
-          Quản lý
-        </span>
-      )
-    }
-    return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-        padding: '0.25rem 0.75rem', borderRadius: '9999px',
-        fontSize: '0.75rem', fontWeight: 600,
-        background: 'rgba(16,185,129,0.12)', color: '#059669',
-        border: '1px solid rgba(16,185,129,0.25)'
-      }}>
-        <UserCheck size={12} />
-        Nhân viên
-      </span>
-    )
-  }
-
-  const getStatusBadge = (status) => {
-    if (status === 'ACTIVE') {
-      return (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-          padding: '0.2rem 0.6rem', borderRadius: '9999px',
-          fontSize: '0.7rem', fontWeight: 600,
-          background: 'rgba(16,185,129,0.12)', color: '#059669',
-          border: '1px solid rgba(16,185,129,0.25)'
-        }}>
-          Hoạt động
-        </span>
-      )
-    }
-    if (status === 'INACTIVE') {
-      return (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-          padding: '0.2rem 0.6rem', borderRadius: '9999px',
-          fontSize: '0.7rem', fontWeight: 600,
-          background: 'rgba(100,116,139,0.1)', color: '#475569',
-          border: '1px solid rgba(100,116,139,0.25)'
-        }}>
-          Đã xóa (Vô hiệu)
-        </span>
-      )
-    }
-    return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-        padding: '0.2rem 0.6rem', borderRadius: '9999px',
-        fontSize: '0.7rem', fontWeight: 600,
-        background: 'rgba(239,68,68,0.1)', color: '#dc2626',
-        border: '1px solid rgba(239,68,68,0.25)'
-      }}>
-        Bị khóa
-      </span>
-    )
-  }
-
-  const getStatusDotColor = (status) => {
-    if (status === 'ACTIVE') return '#10b981'
-    if (status === 'INACTIVE') return '#64748b'
-    return '#ef4444'
   }
 
   const getInitials = (name) => {
@@ -153,18 +113,14 @@ export default function EmployeeListPage() {
 
   const getAvatarGradient = (id) => {
     const gradients = [
-      'linear-gradient(135deg, #7c3aed, #6d28d9)',
-      'linear-gradient(135deg, #2563eb, #0891b2)',
-      'linear-gradient(135deg, #db2777, #f43f5e)',
-      'linear-gradient(135deg, #059669, #14b8a6)',
-      'linear-gradient(135deg, #ea580c, #f59e0b)',
-      'linear-gradient(135deg, #4f46e5, #3b82f6)',
+      'bg-violet-600', 'bg-sky-600', 'bg-rose-600',
+      'bg-emerald-600', 'bg-orange-600', 'bg-indigo-600',
     ]
     return gradients[(id || 0) % gradients.length]
   }
 
   const formatDate = (date) => {
-    if (!date) return '-'
+    if (!date) return 'Chua cap nhat'
     return new Date(date).toLocaleDateString('vi-VN')
   }
 
@@ -175,12 +131,14 @@ export default function EmployeeListPage() {
       .then(() => {
         setDeleteTarget(null)
         setShowModal(false)
+        toast.success('Vo hieu hoa nhan vien thanh cong')
         load(page)
       })
       .catch(err => {
         console.error('Delete error:', err)
         setDeleteTarget(null)
         setShowModal(false)
+        toast.error('Khong the vo hieu hoa nhan vien')
       })
   }
 
@@ -202,8 +160,6 @@ export default function EmployeeListPage() {
   const handleUpdateStatus = () => {
     if (!statusTarget || !pendingStatus) return
     setLoading(true)
-    // Gọi PATCH /status endpoint (đồng bộ với gitlab main) — không cần gửi
-    // lại toàn bộ payload như PUT /{id}.
     employeeService.updateStatus(statusTarget.uuid || statusTarget.id, pendingStatus)
       .then(() => {
         const key = statusTarget.uuid || statusTarget.id
@@ -215,14 +171,15 @@ export default function EmployeeListPage() {
         setShowStatusModal(false)
         setStatusTarget(null)
         setPendingStatus(null)
+        toast.success('Cap nhat trang thai thanh cong')
         load(page)
       })
       .catch(err => {
         console.error('Update status error:', err.response?.data || err)
         const errCode = err.response?.data?.code
-        const errMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
-        if (errCode === 1007) alert('Bạn không có quyền thực hiện thao tác này')
-        else alert(`Cập nhật trạng thái thất bại: ${errMsg}`)
+        const errMsg = err.response?.data?.message || err.message || 'Loi he thong'
+        if (errCode === 1007) toast.error('Ban khong co quyen thuc hien thao tac nay')
+        else toast.error(`Cap nhat trang thai that bai: ${errMsg}`)
         setLoading(false)
       })
   }
@@ -248,194 +205,160 @@ export default function EmployeeListPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35 }}
+      className="space-y-6 max-w-[1400px]"
     >
-      {/* Header */}
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-        marginBottom: '1.75rem', flexWrap: 'wrap', gap: '1rem'
-      }}>
-        <div>
-          <h1
-            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
-          >
-            Quản lý nhân viên
-          </h1>
-          <p style={{
-            color: '#64748b', marginTop: '0.35rem', fontSize: '0.875rem', margin: '0.35rem 0 0'
-          }}>
-            Quản lý danh sách nhân viên và thông tin tài khoản vận hành hệ thống.
-          </p>
-        </div>
-        <Button
-          onClick={() => navigate('/admin/employees/add')}
-          style={{
-            background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-            border: 'none', color: '#fff', fontWeight: 600,
-            boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
-            padding: '0.625rem 1.25rem', borderRadius: '0.75rem',
-            display: 'flex', alignItems: 'center', gap: '0.4rem',
-            cursor: 'pointer', fontSize: '0.875rem'
-          }}
-        >
-          <Plus size={16} />
-          Thêm nhân viên
-        </Button>
-      </div>
-
-      {/* Stats */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '1rem', marginBottom: '1.5rem'
-      }}>
-        {[
-          { icon: Users, label: 'Tổng nhân viên', value: stats.total, gradient: '135deg, #7c3aed, #6d28d9', bg: 'rgba(124,58,237,0.08)' },
-          { icon: UserCheck, label: 'Nhân viên', value: stats.staff, gradient: '135deg, #059669, #047857', bg: 'rgba(5,150,105,0.08)' },
-        ].map((stat, i) => (
-          <div key={i} style={{
-            background: '#fff', border: '1px solid #e2e8f0',
-            borderRadius: '1rem', padding: '1.25rem',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            display: 'flex', alignItems: 'center', gap: '1rem'
-          }}>
-            <div style={{
-              width: '3rem', height: '3rem', borderRadius: '0.875rem',
-              background: `linear-gradient(${stat.gradient})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 12px ${stat.bg.replace('0.08', '0.25')}`,
-              flexShrink: 0
-            }}>
-              <stat.icon size={18} color="#fff" />
+      {/* PART_HERO */}
+      {/* HERO */}
+      <div className="relative overflow-hidden rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-2 border-slate-900 bg-gradient-to-br from-violet-50 via-fuchsia-50 to-sky-50">
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 12px)'
+        }} />
+        <div className="relative"><TicketStrip count={20} /></div>
+        <div className="relative px-6 md:px-10 py-6 md:py-8">
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-violet-600 border-2 border-slate-900 rounded-2xl flex items-center justify-center shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] shrink-0">
+                <Users size={26} className="text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 rounded-md text-[10px] font-black uppercase tracking-[0.15em] text-amber-300">
+                    <Briefcase size={10} /> STAFF MGMT
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-violet-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider">
+                    <BadgeCheck size={10} strokeWidth={3} /> HE THONG
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 leading-[0.95]">
+                  Quan ly <span className="text-red-600">nhan vien</span>
+                </h1>
+                <p className="text-sm text-slate-600 mt-3 max-w-md leading-relaxed">
+                  Quan ly danh sach nhan vien va thong tin tai khoan van hanh he thong.
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ color: '#64748b', fontSize: '0.8rem', margin: 0, fontWeight: 500 }}>{stat.label}</p>
-              <p style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1e293b', margin: 0, lineHeight: 1.1 }}>{stat.value}</p>
-            </div>
+            <button
+              onClick={() => navigate('/admin/employees/add')}
+              className="inline-flex items-center gap-2 px-5 py-3 bg-violet-600 hover:bg-violet-700 text-white font-black uppercase tracking-wider text-xs rounded-xl border-2 border-slate-900 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
+            >
+              <Plus size={14} strokeWidth={3} /> Them nhan vien
+            </button>
           </div>
-        ))}
+        </div>
+        <TicketStrip count={20} />
       </div>
 
-      {/* Search & Filter */}
-      <div style={{
-        display: 'flex', gap: '0.75rem', marginBottom: '1.5rem',
-        flexWrap: 'wrap', alignItems: 'center'
-      }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '0.875rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+      {/* PART_BODY */}
+      {/* STATS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white border-2 border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] p-5 flex items-center gap-4">
+          <div className="w-14 h-14 bg-violet-600 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center shrink-0">
+            <Users size={22} className="text-white" strokeWidth={3} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">Tong nhan vien</p>
+            <p className="text-3xl font-black text-slate-900 leading-none">{stats.total}</p>
+          </div>
+          <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-1 rounded">
+            <Hash size={8} className="inline" /> ALL
+          </div>
+        </div>
+        <div className="bg-white border-2 border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] p-5 flex items-center gap-4">
+          <div className="w-14 h-14 bg-emerald-600 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center shrink-0">
+            <UserCheck size={22} className="text-white" strokeWidth={3} />
+          </div>
+          <div className="flex-1">
+            <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">Nhan vien</p>
+            <p className="text-3xl font-black text-slate-900 leading-none">{stats.staff}</p>
+          </div>
+          <div className="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+            <UserCheck size={8} className="inline" /> STAFF
+          </div>
+        </div>
+      </div>
+
+      {/* FILTER BAR */}
+      <div className="bg-white border-2 border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] p-4 space-y-3">
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm tên, tài khoản, email, SĐT..."
+            placeholder="Tim kiem ten, tai khoan, email, SĐT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') load(0) }}
-            style={{
-              width: '100%', paddingLeft: '2.75rem', paddingRight: '2.75rem',
-              paddingTop: '0.75rem', paddingBottom: '0.75rem',
-              background: '#fff', border: '1px solid #e2e8f0',
-              borderRadius: '0.75rem', color: '#1e293b',
-              outline: 'none', fontSize: '0.875rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              boxSizing: 'border-box',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-            }}
-            onFocus={(e) => { e.target.style.borderColor = '#7c3aed'; e.target.style.boxShadow = '0 0 0 3px rgba(124,58,237,0.1)' }}
-            onBlur={(e) => { e.target.style.borderColor = '#e2e8f0'; e.target.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)' }}
+            className="w-full pl-10 pr-10 py-2.5 bg-white border-2 border-slate-200 focus:border-slate-900 focus:bg-amber-50 rounded-xl text-sm font-bold text-slate-900 outline-none transition-all"
           />
           {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              style={{
-                position: 'absolute', right: '0.875rem', top: '50%',
-                transform: 'translateY(-50%)', background: 'none', border: 'none',
-                color: '#94a3b8', cursor: 'pointer', padding: '0.125rem',
-                display: 'flex', alignItems: 'center'
-              }}
-            >
+            <button onClick={() => setSearchTerm('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 transition-colors">
               <X size={16} />
             </button>
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {[
-            { key: 'all', label: 'Tất cả', color: '#7c3aed' },
-            { key: 'STAFF', label: 'Nhân viên', color: '#059669' },
-          ].map(filter => (
-            <button
-              key={filter.key}
-              onClick={() => setRoleFilter(filter.key)}
-              style={{
-                padding: '0.625rem 1rem', borderRadius: '0.625rem',
-                fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
-                border: roleFilter === filter.key ? 'none' : '1px solid #e2e8f0',
-                background: roleFilter === filter.key ? filter.color : '#fff',
-                color: roleFilter === filter.key ? '#fff' : '#64748b',
-                boxShadow: roleFilter === filter.key ? `0 3px 10px ${filter.color}30` : '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center',
-              }}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            {[
+              { key: 'all', label: 'Tat ca', bg: 'bg-violet-600' },
+              { key: 'STAFF', label: 'Nhan vien', bg: 'bg-emerald-600' },
+            ].map(filter => (
+              <button
+                key={filter.key}
+                onClick={() => setRoleFilter(filter.key)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border-2 border-slate-900 text-[11px] font-black uppercase tracking-wider transition-all ${
+                  roleFilter === filter.key
+                    ? `${filter.bg} text-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]`
+                    : 'bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          {[
-            { key: 'all', label: 'Tất cả trạng thái', color: '#7c3aed' },
-            { key: 'ACTIVE', label: 'Hoạt động', color: '#059669' },
-            { key: 'LOCKED', label: 'Bị khóa', color: '#ef4444' },
-            { key: 'INACTIVE', label: 'Đã xóa', color: '#64748b' },
-          ].map(filter => (
-            <button
-              key={filter.key}
-              onClick={() => setStatusFilter(filter.key)}
-              style={{
-                padding: '0.625rem 1rem', borderRadius: '0.625rem',
-                fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
-                border: statusFilter === filter.key ? 'none' : '1px solid #e2e8f0',
-                background: statusFilter === filter.key ? filter.color : '#fff',
-                color: statusFilter === filter.key ? '#fff' : '#64748b',
-                boxShadow: statusFilter === filter.key ? `0 3px 10px ${filter.color}30` : '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center',
-              }}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+          <div className="h-6 w-px bg-slate-300" />
 
-        {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            style={{
-              padding: '0.625rem 1rem', borderRadius: '0.625rem',
-              fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
-              border: '1px solid #e2e8f0', background: '#fff',
-              color: '#64748b', boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              transition: 'all 0.2s', display: 'flex', alignItems: 'center',
-            }}
-          >
-            <X size={14} style={{ marginRight: '0.3rem' }} />
-            Xóa bộ lọc
-          </button>
-        )}
+          <div className="flex items-center gap-1">
+            {[
+              { key: 'all', label: 'Tat ca', bg: 'bg-violet-600' },
+              { key: 'ACTIVE', label: 'Hoat dong', bg: 'bg-emerald-600' },
+              { key: 'LOCKED', label: 'Bi khoa', bg: 'bg-rose-600' },
+              { key: 'INACTIVE', label: 'Da xoa', bg: 'bg-slate-600' },
+            ].map(filter => (
+              <button
+                key={filter.key}
+                onClick={() => setStatusFilter(filter.key)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border-2 border-slate-900 text-[11px] font-black uppercase tracking-wider transition-all ${
+                  statusFilter === filter.key
+                    ? `${filter.bg} text-white shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]`
+                    : 'bg-white text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border-2 border-slate-900 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all"
+            >
+              <X size={12} strokeWidth={3} /> Xoa bo loc
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Employee Grid */}
+      {/* PART_GRID */}
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4rem' }}>
-          <span style={{ fontSize: '40px', color: '#7c3aed', animation: 'spin 1s linear infinite' }}>&#9696;</span>
-          <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <div className="w-12 h-12 border-4 border-slate-200 border-t-violet-600 rounded-full animate-spin" />
+          <p className="text-sm font-black uppercase tracking-wider text-slate-700">Dang tai...</p>
         </div>
       ) : employees.length > 0 ? (
         <>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-            gap: '1rem'
-          }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             <AnimatePresence mode="popLayout">
               {employees.map((employee, index) => (
                 <motion.div
@@ -445,124 +368,72 @@ export default function EmployeeListPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.3) }}
-                  style={{
-                    background: '#fff', border: '1px solid #e2e8f0',
-                    borderRadius: '1rem', padding: '1.25rem',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-                    transition: 'box-shadow 0.25s, border-color 0.25s, transform 0.25s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.1)'
-                    e.currentTarget.style.borderColor = '#c4b5fd'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.05)'
-                    e.currentTarget.style.borderColor = '#e2e8f0'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                  }}
+                  className="bg-white border-2 border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(15,23,42,1)] overflow-hidden hover:shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
                 >
-                  {/* Avatar & Name */}
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-                      <div style={{
-                        width: '3.25rem', height: '3.25rem', borderRadius: '0.75rem',
-                        background: getAvatarGradient(employee.id),
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        flexShrink: 0, position: 'relative'
-                      }}>
-                        <span style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                          {getInitials(employee.fullName)}
-                        </span>
-                        <div style={{
-                          position: 'absolute', bottom: '-0.2rem', right: '-0.2rem',
-                          width: '0.875rem', height: '0.875rem', borderRadius: '50%',
-                          background: getStatusDotColor(employee.status),
-                          border: '2px solid #fff'
-                        }} />
-                      </div>
-                      <div>
-                        <h3 style={{
-                          fontWeight: 600, fontSize: '1rem', color: '#1e293b',
-                          margin: 0, lineHeight: 1.3
-                        }}>
-                          {employee.fullName || 'Chưa cập nhật'}
-                        </h3>
-                        <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: '0.15rem 0 0' }}>
-                          @{employee.username}
-                        </p>
-                        <div style={{ marginTop: '0.35rem' }}>
-                          {getStatusBadge(employee.status)}
-                        </div>
-                      </div>
+                  {/* Header: avatar + name + role */}
+                  <div className="flex items-start gap-3 p-4 border-b-2 border-dashed border-slate-200">
+                    <div className={`relative w-12 h-12 ${getAvatarGradient(employee.id)} border-2 border-slate-900 rounded-xl shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center shrink-0`}>
+                      <span className="text-white font-black text-base">{getInitials(employee.fullName)}</span>
+                      <span className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full ${STATUS_META[employee.status]?.dot || 'bg-slate-500'} border-2 border-white`} />
                     </div>
-                    {getRoleBadge(employee.roles)}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-black text-sm text-slate-900 truncate">
+                        {employee.fullName || 'Chua cap nhat'}
+                      </h3>
+                      <p className="text-[11px] font-bold text-slate-500 truncate">@{employee.username}</p>
+                      <div className="mt-1.5"><StatusPill status={employee.status} /></div>
+                    </div>
+                    <RolePill roles={employee.roles} />
                   </div>
 
                   {/* Info */}
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', gap: '0.4rem',
-                    marginBottom: '1rem', paddingLeft: '0.25rem'
-                  }}>
+                  <div className="px-4 py-3 space-y-1.5 bg-slate-50/50">
                     {[
-                      { icon: Mail, value: employee.email },
-                      { icon: Phone, value: employee.phoneNumber },
-                      { icon: Calendar, value: `${formatDate(employee.dayOfBirth)}${employee.gender ? ' | ' + (employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nữ' : 'Khác') : ''}` },
+                      { icon: AtSign, value: employee.username, label: 'ID' },
+                      { icon: Mail, value: employee.email, label: 'EMAIL' },
+                      { icon: Phone, value: employee.phoneNumber, label: 'SĐT' },
+                      { icon: Cake, value: `${formatDate(employee.dayOfBirth)}${employee.gender ? ' | ' + (employee.gender === 'MALE' ? 'Nam' : employee.gender === 'FEMALE' ? 'Nu' : 'Khac') : ''}`, label: 'NGAY SINH' },
                     ].map((item, idx) => (
-                      <div key={idx} style={{
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        fontSize: '0.8125rem', color: '#64748b'
-                      }}>
-                        <item.icon size={13} style={{ flexShrink: 0, color: '#94a3b8' }} />
-                        <span style={{
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          color: item.value ? '#475569' : '#cbd5e1'
-                        }}>
-                          {item.value || 'Chưa cập nhật'}
+                      <div key={idx} className="flex items-center gap-2 text-xs">
+                        <div className="w-6 h-6 bg-slate-200 border border-slate-300 rounded-md flex items-center justify-center shrink-0">
+                          <item.icon size={11} className="text-slate-700" strokeWidth={2.5} />
+                        </div>
+                        <span className={`font-bold truncate ${item.value ? 'text-slate-700' : 'text-slate-400'}`}>
+                          {item.value || `${item.label}: chua cap nhat`}
                         </span>
                       </div>
                     ))}
                   </div>
 
                   {/* Actions */}
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    paddingTop: '0.875rem',
-                    borderTop: '1px solid #f1f5f9'
-                  }}>
+                  <div className="flex items-center justify-between gap-2 p-3 bg-white border-t-2 border-slate-200">
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                      <ToggleRight size={12} strokeWidth={3} /> TRANG THAI
+                    </div>
                     <select
                       value={getCurrentStatus(employee)}
                       onChange={(e) => confirmUpdateStatus(employee, e.target.value)}
-                      style={{
-                        padding: '0 0.5rem', borderRadius: '0.375rem',
-                        border: '1px solid #e2e8f0', fontSize: '0.8125rem',
-                        background: '#f8fafc', outline: 'none', cursor: 'pointer',
-                        color: '#475569', fontWeight: 500
-                      }}
+                      className="flex-1 bg-white border-2 border-slate-900 rounded-lg px-2 py-1.5 text-xs font-black uppercase tracking-wider text-slate-900 cursor-pointer focus:outline-none focus:bg-amber-50"
                     >
-                      <option value="ACTIVE">Hoạt động</option>
-                      <option value="LOCKED">Khóa</option>
-                      <option value="INACTIVE">Vô hiệu</option>
+                      <option value="ACTIVE">HOAT DONG</option>
+                      <option value="LOCKED">KHOA</option>
+                      <option value="INACTIVE">VO HIEU</option>
                     </select>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <Button
-                        variant="info"
-                        style={{ fontSize: '0.8125rem' }}
+                    <div className="flex gap-1.5">
+                      <button
                         onClick={() => navigate(`/admin/employees/edit/${employee.uuid || employee.id}`)}
+                        className="w-9 h-9 bg-amber-500 hover:bg-amber-600 text-white border-2 border-slate-900 rounded-lg shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all flex items-center justify-center cursor-pointer"
+                        title="Chinh sua"
                       >
-                        <Pencil size={13} />
-                      </Button>
-                      <Button
-                        variant="danger"
-                        style={{ fontSize: '0.8125rem' }}
+                        <Pencil size={13} strokeWidth={3} />
+                      </button>
+                      <button
                         onClick={() => { setDeleteTarget(employee); setShowModal(true) }}
+                        className="w-9 h-9 bg-rose-500 hover:bg-rose-600 text-white border-2 border-slate-900 rounded-lg shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[1px] hover:translate-y-[1px] transition-all flex items-center justify-center cursor-pointer"
+                        title="Vo hieu hoa"
                       >
-                        <Trash2 size={13} />
-                      </Button>
+                        <Trash2 size={13} strokeWidth={3} />
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -572,38 +443,21 @@ export default function EmployeeListPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div style={{
-              display: 'flex', justifyContent: 'center', alignItems: 'center',
-              gap: '0.5rem', marginTop: '1.5rem'
-            }}>
+            <div className="flex justify-center items-center gap-3 pt-2">
               <button
                 onClick={() => load(page - 1)}
                 disabled={page <= 0}
-                style={{
-                  padding: '0.5rem 1rem', borderRadius: '0.5rem',
-                  border: '1px solid #e2e8f0', background: '#fff',
-                  color: page <= 0 ? '#cbd5e1' : '#475569',
-                  cursor: page <= 0 ? 'not-allowed' : 'pointer',
-                  fontWeight: 600, fontSize: '0.875rem',
-                  transition: 'all 0.2s',
-                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-slate-900 rounded-lg text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-amber-50 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] disabled:opacity-30 disabled:hover:bg-white disabled:hover:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed"
               >
-                Trước
+                Truoc
               </button>
-              <span style={{ color: '#64748b', fontSize: '0.875rem', fontWeight: 600 }}>
+              <span className="text-xs font-black uppercase tracking-wider text-slate-900 bg-amber-100 border-2 border-slate-900 rounded-lg px-3 py-1.5 shadow-[2px_2px_0px_0px_rgba(15,23,42,1)]">
                 Trang {page + 1} / {totalPages}
               </span>
               <button
                 onClick={() => load(page + 1)}
                 disabled={page >= totalPages - 1}
-                style={{
-                  padding: '0.5rem 1rem', borderRadius: '0.5rem',
-                  border: '1px solid #e2e8f0', background: '#fff',
-                  color: page >= totalPages - 1 ? '#cbd5e1' : '#475569',
-                  cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer',
-                  fontWeight: 600, fontSize: '0.875rem',
-                  transition: 'all 0.2s',
-                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border-2 border-slate-900 rounded-lg text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-amber-50 hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] disabled:opacity-30 disabled:hover:bg-white disabled:hover:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed"
               >
                 Sau
               </button>
@@ -612,48 +466,34 @@ export default function EmployeeListPage() {
         </>
       ) : (
         /* Empty State */
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center',
-          justifyContent: 'center', padding: '4rem 1rem',
-          background: '#fff', border: '2px dashed #e2e8f0',
-          borderRadius: '1rem'
-        }}>
-          <div style={{
-            width: '4.5rem', height: '4.5rem', borderRadius: '50%',
-            background: '#f8fafc', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', marginBottom: '1rem'
-          }}>
-            <Users size={32} style={{ color: '#cbd5e1' }} />
+        <div className="bg-white border-2 border-dashed border-slate-300 rounded-3xl p-12 flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-slate-100 border-2 border-slate-300 rounded-3xl flex items-center justify-center mb-4">
+            <Users size={36} className="text-slate-400" strokeWidth={2} />
           </div>
-          <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1e293b', margin: '0 0 0.35rem' }}>
-            Không tìm thấy nhân viên
-          </h3>
-          <p style={{ color: '#94a3b8', fontSize: '0.875rem', margin: '0 0 1.25rem', textAlign: 'center' }}>
-            {hasActiveFilters
-              ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
-              : 'Danh sách nhân viên trống'}
+          <h3 className="text-lg font-black uppercase tracking-wider text-slate-900 mb-2">Khong tim thay nhan vien</h3>
+          <p className="text-sm text-slate-500 mb-5 max-w-sm">
+            {hasActiveFilters ? 'Thu thay doi bo loc hoac tu khoa tim kiem' : 'Danh sach nhan vien trong'}
           </p>
           {hasActiveFilters && (
-            <Button variant="secondary" onClick={clearFilters}>
-              Xóa bộ lọc
-            </Button>
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white border-2 border-slate-900 rounded-lg shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer text-xs font-black uppercase tracking-wider"
+            >
+              <X size={12} strokeWidth={3} /> Xoa bo loc
+            </button>
           )}
         </div>
       )}
 
-      {/* Delete Modal */}
+      {/* PART_MODALS */}
+      {/* DELETE CONFIRM MODAL */}
       <AnimatePresence>
         {showModal && deleteTarget && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 1000,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)',
-              padding: '1rem'
-            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
             onClick={() => { setShowModal(false); setDeleteTarget(null) }}
           >
             <motion.div
@@ -661,138 +501,90 @@ export default function EmployeeListPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              style={{
-                background: '#fff', borderRadius: '1rem', padding: '1.75rem',
-                width: '100%', maxWidth: '26rem',
-                boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
-              }}
+              className="bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] p-7 w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem'
-              }}>
-                <div style={{
-                  width: '3rem', height: '3rem', borderRadius: '50%',
-                  background: 'rgba(239,68,68,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                }}>
-                  <Trash2 size={20} style={{ color: '#ef4444' }} />
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-12 h-12 bg-rose-500 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center shrink-0">
+                  <Trash2 size={22} className="text-white" strokeWidth={3} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                    Xóa nhân viên
-                  </h3>
-                  <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.15rem 0 0' }}>
-                    Hành động này không thể hoàn tác
-                  </p>
+                  <h3 className="text-lg font-black uppercase tracking-wider text-slate-900 leading-tight">Vo hieu hoa nhan vien</h3>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5 uppercase tracking-wider">Hanh dong khong the hoan tac</p>
                 </div>
               </div>
 
-              <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                Bạn có chắc chắn muốn vô hiệu hóa nhân viên{' '}
-                <strong style={{ color: '#1e293b' }}>"{deleteTarget.fullName}"</strong>?
-                Tài khoản sẽ bị vô hiệu hóa (Đã xóa) và không thể đăng nhập vào hệ thống.
+              <p className="text-sm text-slate-700 leading-relaxed mb-6">
+                Ban co chac chan muon vo hieu hoa nhan vien{' '}
+                <strong className="text-slate-900 font-black">"{deleteTarget.fullName}"</strong>?
+                Tai khoan se bi vo hieu hoa (Da xoa) va khong the dang nhap vao he thong.
               </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="secondary"
+              <div className="flex gap-3 justify-end">
+                <button
                   onClick={() => { setShowModal(false); setDeleteTarget(null) }}
+                  className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
                 >
-                  Hủy bỏ
-                </Button>
-                <Button
-                  variant="danger"
+                  Huy bo
+                </button>
+                <button
                   onClick={confirmDelete}
-                  style={{
-                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                    border: 'none', color: '#fff'
-                  }}
+                  className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white border-2 border-slate-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
                 >
-                  Vô hiệu hóa nhân viên
-                </Button>
+                  Vo hieu hoa nhan vien
+                </button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Status Confirmation Modal */}
+      {/* STATUS CONFIRM MODAL */}
       <AnimatePresence>
         {showStatusModal && statusTarget && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              zIndex: 1000, padding: '1rem'
-            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
             onClick={closeStatusModal}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              style={{
-                background: '#fff', borderRadius: '1rem', padding: '1.75rem',
-                width: '100%', maxWidth: '26rem',
-                boxShadow: '0 25px 50px rgba(0,0,0,0.2)',
-              }}
+              className="bg-white border-2 border-slate-900 rounded-3xl shadow-[8px_8px_0px_0px_rgba(15,23,42,1)] p-7 w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem'
-              }}>
-                <div style={{
-                  width: '3rem', height: '3rem', borderRadius: '50%',
-                  background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                }}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-                    <line x1="12" y1="9" x2="12" y2="13"></line>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-12 h-12 bg-amber-500 border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] flex items-center justify-center shrink-0">
+                  <AlertTriangle size={22} className="text-white" strokeWidth={3} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                    Thay đổi trạng thái
-                  </h3>
-                  <p style={{ color: '#94a3b8', fontSize: '0.8125rem', margin: '0.15rem 0 0' }}>
-                    Xác nhận hành động của bạn
-                  </p>
+                  <h3 className="text-lg font-black uppercase tracking-wider text-slate-900 leading-tight">Thay doi trang thai</h3>
+                  <p className="text-xs font-bold text-slate-500 mt-0.5 uppercase tracking-wider">Xac nhan hanh dong cua ban</p>
                 </div>
               </div>
 
-              <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-                Bạn có chắc chắn muốn thay đổi trạng thái của nhân viên{' '}
-                <strong style={{ color: '#1e293b' }}>"{statusTarget.fullName}"</strong> thành{' '}
-                <strong style={{ color: '#1e293b' }}>
-                  {pendingStatus === 'ACTIVE' ? 'Hoạt động' : pendingStatus === 'LOCKED' ? 'Khóa' : 'Vô hiệu'}
-                </strong>?
+              <p className="text-sm text-slate-700 leading-relaxed mb-6">
+                Ban co chac chan muon thay doi trang thai cua nhan vien{' '}
+                <strong className="text-slate-900 font-black">"{statusTarget.fullName}"</strong> thanh{' '}
+                <span className="inline-flex items-center align-middle"><StatusPill status={pendingStatus} /></span>?
               </p>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <Button
-                  variant="secondary"
+              <div className="flex gap-3 justify-end">
+                <button
                   onClick={closeStatusModal}
-                  style={{ background: '#f1f5f9', color: '#475569', border: 'none' }}
+                  className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border-2 border-slate-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
                 >
-                  Hủy bỏ
-                </Button>
-                <Button
-                  variant="primary"
+                  Huy bo
+                </button>
+                <button
                   onClick={handleUpdateStatus}
-                  style={{
-                    background: '#f59e0b',
-                    border: 'none', color: '#fff'
-                  }}
+                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white border-2 border-slate-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_rgba(15,23,42,1)] hover:shadow-[1px_1px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all cursor-pointer"
                 >
-                  Xác nhận
-                </Button>
+                  Xac nhan
+                </button>
               </div>
             </motion.div>
           </motion.div>

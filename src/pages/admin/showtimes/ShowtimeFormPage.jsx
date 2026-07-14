@@ -7,8 +7,19 @@ import { priceConfigService } from '../../../services/priceConfigService'
 import { systemConfigService } from '../../../services/systemConfigService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, Plus, Calendar, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar, CheckCircle, AlertCircle, X, Star, Hash, Clock, Film, MapPin, Languages, DollarSign, Save, Ticket, Sparkles, ChevronDown } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useAuth } from '../../../contexts/AuthContext'
+
+function TicketStrip({ count = 14 }) {
+  return (
+    <div className="flex w-full">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex-1 h-2 bg-red-600" style={{ clipPath: 'polygon(0 0, 100% 0, 75% 100%, 25% 100%)' }} />
+      ))}
+    </div>
+  )
+}
 
 export default function ShowtimeFormPage() {
   const { user } = useAuth()
@@ -27,7 +38,7 @@ export default function ShowtimeFormPage() {
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [format, setFormat] = useState('2D')
-  const [language, setLanguage] = useState('Phụ đề')
+  const [language, setLanguage] = useState('Phu de')
   const [price, setPrice] = useState(70000)
   const [formatPrices, setFormatPrices] = useState({})
   const [systemConfigs, setSystemConfigs] = useState([])
@@ -52,18 +63,15 @@ export default function ShowtimeFormPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch movies
         const mRes = await movieService.getAll()
         const mList = mRes.data || []
         setMovies(mList)
-        // Fetch rooms
         const rRes = await cinemaRoomService.getAll()
         const rList = rRes.data?.result || rRes.data || []
         const sortedList = (Array.isArray(rList) ? rList : []).sort((a, b) =>
           String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
         );
         setRooms(sortedList)
-        // Fetch prices
         const pRes = await priceConfigService.getAll()
         const pList = pRes || []
         const pMap = {}
@@ -75,7 +83,6 @@ export default function ShowtimeFormPage() {
         if (!isEditMode && pMap['2D']) {
           setPrice(pMap['2D'])
         }
-        // Fetch system configs
         try {
           const sRes = await systemConfigService.getAll()
           setSystemConfigs(sRes.data || sRes || [])
@@ -84,7 +91,7 @@ export default function ShowtimeFormPage() {
         }
       } catch (err) {
         console.error('Failed to load reference data', err)
-        setToast({ message: 'Không thể tải dữ liệu phim và phòng chiếu', type: 'danger' })
+        setToast({ message: 'Khong the tai du lieu phim va phong chieu', type: 'danger' })
       }
     }
     fetchData()
@@ -99,19 +106,18 @@ export default function ShowtimeFormPage() {
           setDate(st.date || '')
           setTime(st.time || '')
           setFormat(st.format || '2D')
-          setLanguage(st.language || 'Phụ đề')
+          setLanguage(st.language || 'Phu de')
           setPrice(st.price || 90000)
         } else {
-          setToast({ message: 'Không tìm thấy lịch chiếu', type: 'danger' })
+          setToast({ message: 'Khong tim thay lich chieu', type: 'danger' })
         }
       }).catch(err => {
         console.error('Failed to load showtime', err)
-        setToast({ message: 'Không thể tải thông tin lịch chiếu', type: 'danger' })
+        setToast({ message: 'Khong the tai thong tin lich chieu', type: 'danger' })
       })
     }
   }, [id, isEditMode])
 
-  // Calculations based on business logic
   const selectedMovie = movies.find(m => m.id === movieId)
   const duration = selectedMovie?.duration || 120
 
@@ -120,26 +126,21 @@ export default function ShowtimeFormPage() {
     const v = selectedMovie.version.toUpperCase();
     const formats = [];
     const systemFormats = Object.keys(formatPrices);
-
-    // We try to match with system formats
     systemFormats.forEach(fmt => {
       if (v.includes(fmt)) formats.push(fmt);
     });
-
     return formats.length > 0 ? formats : ['2D'];
   }, [selectedMovie, formatPrices]);
 
   const availableLanguages = useMemo(() => {
-    if (!selectedMovie?.language) return ['Phụ đề'];
+    if (!selectedMovie?.language) return ['Phu de'];
     const l = selectedMovie.language.toLowerCase();
     const langs = [];
-    if (l.includes('phụ đề') || l.includes('sub')) langs.push('Phụ đề');
-    if (l.includes('lồng tiếng') || l.includes('dub')) langs.push('Lồng tiếng');
-
-    return langs.length > 0 ? langs : ['Phụ đề'];
+    if (l.includes('phu de') || l.includes('sub')) langs.push('Phu de');
+    if (l.includes('long tieng') || l.includes('dub')) langs.push('Long tieng');
+    return langs.length > 0 ? langs : ['Phu de'];
   }, [selectedMovie]);
 
-  // Auto-select valid format and language when movie changes
   useEffect(() => {
     if (selectedMovie) {
       if (!availableFormats.includes(format) && availableFormats.length > 0) {
@@ -153,9 +154,8 @@ export default function ShowtimeFormPage() {
         setLanguage(availableLanguages[0]);
       }
     }
-  }, [selectedMovie, availableFormats, availableLanguages]); // excluded format/language to prevent loops, wait, if we exclude them, it won't loop if they change manually.
+  }, [selectedMovie, availableFormats, availableLanguages]);
 
-  // Filter rooms based on the currently selected format
   const filteredRooms = useMemo(() => {
     if (!format) return rooms;
     return rooms.filter(r => {
@@ -164,7 +164,6 @@ export default function ShowtimeFormPage() {
     });
   }, [rooms, format]);
 
-  // Reset selected room if it's no longer supported by the new format
   useEffect(() => {
     if (roomId && format) {
       const isRoomValid = filteredRooms.some(r => r.id === roomId);
@@ -182,7 +181,7 @@ export default function ShowtimeFormPage() {
     return defaultValue;
   };
 
-  const calculatedTimes = (() => {
+ const calculatedTimes = (() => {
     if (!date || !time) return null
     try {
       const startT = new Date(`${date}T${time}:00`)
@@ -222,9 +221,7 @@ export default function ShowtimeFormPage() {
           cleanMins
         }
       }
-    } catch {
-      // Ignore parsing errors for partial date/time input
-    }
+    } catch {}
     return null
   })();
 
@@ -238,11 +235,11 @@ export default function ShowtimeFormPage() {
 
   const validateForm = () => {
     const tempErrors = {}
-    if (!movieId) tempErrors.movieId = 'Vui lòng chọn phim'
-    if (!roomId) tempErrors.roomId = 'Vui lòng chọn phòng chiếu'
-    if (!date) tempErrors.date = 'Vui lòng chọn ngày chiếu'
-    if (!time) tempErrors.time = 'Vui lòng chọn giờ chiếu'
-    if (!price || price <= 0) tempErrors.price = 'Giá vé phải lớn hơn 0'
+    if (!movieId) tempErrors.movieId = 'Vui long chon phim'
+    if (!roomId) tempErrors.roomId = 'Vui long chon phong chieu'
+    if (!date) tempErrors.date = 'Vui long chon ngay chieu'
+    if (!time) tempErrors.time = 'Vui long chon gio chieu'
+    if (!price || price <= 0) tempErrors.price = 'Gia ve phai lon hon 0'
 
     if (date) {
       const today = new Date()
@@ -250,14 +247,14 @@ export default function ShowtimeFormPage() {
       const selectedDate = new Date(date)
       selectedDate.setHours(0, 0, 0, 0)
       if (selectedDate <= today) {
-        tempErrors.date = 'Ngày chiếu phải từ ngày mai trở đi'
+        tempErrors.date = 'Ngay chieu phai tu ngay mai tro di'
       }
     }
 
     if (date && time) {
       const selectedTime = new Date(`${date}T${time}:00`)
       if (selectedTime <= new Date()) {
-        tempErrors.time = 'Thời gian chiếu phải ở tương lai'
+        tempErrors.time = 'Thoi gian chieu phai o tuong lai'
       }
     }
 
@@ -268,7 +265,7 @@ export default function ShowtimeFormPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!validateForm()) {
-      setToast({ message: 'Vui lòng điền đầy đủ thông tin.', type: 'danger' })
+      setToast({ message: 'Vui long dien day du thong tin.', type: 'danger' })
       return
     }
 
@@ -312,38 +309,36 @@ export default function ShowtimeFormPage() {
     }
 
     try {
-      // 1. Validate first
       const valRes = await showtimeService.validateManual(payload)
       if (valRes && !valRes.valid) {
-        setToast({ message: valRes.hardErrors?.join(', ') || 'Lỗi không xác định', type: 'danger' })
+        setToast({ message: valRes.hardErrors?.join(', ') || 'Loi khong xac dinh', type: 'danger' })
         setIsSubmitting(false)
         return
       }
 
       if (valRes && valRes.softWarnings && valRes.softWarnings.length > 0) {
-        const confirmMsg = valRes.softWarnings.join('\n') + '\n\nBạn có muốn tiếp tục lưu không?'
+        const confirmMsg = valRes.softWarnings.join('\n') + '\n\nBan co muon tiep tuc luu khong?'
         if (!window.confirm(confirmMsg)) {
           setIsSubmitting(false)
           return
         }
       }
 
-      // 2. Create or Update
       if (isEditMode) {
-        await showtimeService.delete(id) // delete old
-        await showtimeService.create(payload) // create new (simple approach)
-        setToast({ message: 'Cập nhật lịch chiếu thành công!', type: 'success' })
+        await showtimeService.delete(id)
+        await showtimeService.create(payload)
+        setToast({ message: 'Cap nhat lich chieu thanh cong!', type: 'success' })
       } else {
         await showtimeService.create(payload)
-        setToast({ message: 'Thêm lịch chiếu mới thành công!', type: 'success' })
+        setToast({ message: 'Them lich chieu moi thanh cong!', type: 'success' })
       }
       setTimeout(() => {
         navigate(`${basePath}/showtimes`)
       }, 1500)
     } catch (err) {
       console.error('Failed to save showtime', err)
-      const serverMsg = err.response?.data?.message || err.message || 'Lỗi hệ thống'
-      setToast({ message: `Không thể lưu: ${serverMsg}`, type: 'danger' })
+      const serverMsg = err.response?.data?.message || err.message || 'Loi he thong'
+      setToast({ message: `Khong the luu: ${serverMsg}`, type: 'danger' })
     } finally {
       setIsSubmitting(false)
     }
@@ -354,139 +349,167 @@ export default function ShowtimeFormPage() {
   }
 
   return (
-    <div className="space-y-6 text-[#191c1e] text-left relative pb-36 bg-[#f7f9fb] min-h-[calc(100vh-80px)] p-6 rounded-2xl">
+    <div className="text-left space-y-6">
       {toast && (
-        <div
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-xl border text-sm max-w-md transition-all duration-300 animate-slide-in-up bg-white"
-          style={{
-            borderColor: toast.type === 'success' ? '#10b981' : '#ef4444',
-            color: toast.type === 'success' ? '#10b981' : '#ef4444',
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border-2 text-sm max-w-sm font-bold ${toast.type === 'danger' ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-emerald-50 border-emerald-300 text-emerald-900'}`}
         >
-          {toast.type === 'success' ? <CheckCircle className="shrink-0" size={20} /> : <AlertCircle className="shrink-0" size={20} />}
-          <span className="font-medium">{toast.message}</span>
-          <button onClick={() => setToast(null)} className="ml-auto hover:opacity-80">
-            <X size={16} />
-          </button>
-        </div>
+          {toast.type === 'danger' ? <AlertCircle size={20} /> : <CheckCircle size={20} />}
+          <span>{toast.message}</span>
+        </motion.div>
       )}
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <button
-            onClick={handleCancel}
-            className="flex items-center gap-1.5 text-xs text-[#5c647a] hover:text-[#b80035] uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
-          >
-            <ArrowLeft size={14} />
-            <span>Quay lại Quản lý Lịch chiếu</span>
-          </button>
-          <h1 className="text-3xl font-black tracking-wider uppercase text-[#191c1e]" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-            {isEditMode ? 'Cập nhật lịch chiếu' : 'Thêm lịch chiếu mới'}
-          </h1>
-          <p className="text-sm text-[#5c647a] mt-1">
-            {isEditMode ? 'Chỉnh sửa thông tin lịch chiếu.' : 'Tạo lịch chiếu mới cho phim tại phòng.'}
-          </p>
+      {/* HERO */}
+      <div className="relative overflow-hidden rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] border-2 border-slate-900 bg-gradient-to-br from-sky-50 via-rose-50 to-amber-50">
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{
+          backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 1px, transparent 12px)'
+        }} />
+        <div className="relative"><TicketStrip count={20} /></div>
+        <div className="relative px-6 md:px-10 py-6 md:py-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <button
+                onClick={handleCancel}
+                className="group w-12 h-12 bg-slate-900 hover:bg-red-600 border-2 border-slate-900 rounded-2xl flex items-center justify-center text-white transition-all cursor-pointer shadow-lg hover:shadow-red-500/30 hover:scale-105"
+              >
+                <ArrowLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" strokeWidth={2.5} />
+              </button>
+              <div>
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-900 rounded-md text-[10px] font-black uppercase tracking-[0.15em] text-amber-300">
+                    <Star size={10} fill="currentColor" />
+                    {isEditMode ? 'EDIT MODE' : 'NEW ENTRY'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-600 text-white rounded-md text-[10px] font-black uppercase tracking-wider">
+                    <Ticket size={11} /> Showtime
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[0.95]">
+                  {isEditMode ? <>Cap nhat<br /><span className="text-red-600">lich chieu</span></> : <>Them lich chieu<br /><span className="text-red-600">moi cho phim</span></>}
+                </h1>
+                <p className="text-sm text-slate-600 mt-3 max-w-md leading-relaxed">
+                  {isEditMode ? 'Chinh sua thong tin lich chieu hien co.' : 'Tao lich chieu moi cho phim tai phong, dinh dang va ngon ngu.'}
+                </p>
+              </div>
+            </div>
+            <div className="hidden lg:flex flex-col items-end gap-2">
+              <div className="bg-slate-900 text-white px-4 py-2 rounded-xl border-2 border-slate-900 shadow-lg">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                  <Hash size={11} /> Showtime ID
+                </div>
+                <div className="text-xl font-black font-mono tracking-tight">#{String(Date.now()).slice(-6)}</div>
+              </div>
+            </div>
+          </div>
         </div>
+        <TicketStrip count={20} />
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white border border-[#e0e3e5] rounded-2xl p-6 pb-48 space-y-4 shadow-sm">
-            <h3 className="text-lg font-bold text-[#191c1e] flex items-center gap-2 mb-4 border-b border-[#e0e3e5] pb-3" style={{ fontFamily: 'Montserrat' }}>
-              <Calendar className="text-red-500" size={18} />
-              Thông tin lịch chiếu
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Phim *</label>
-                <select
-                  value={movieId}
-                  onChange={(e) => setMovieId(e.target.value)}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                >
-                  <option value="">Chọn phim...</option>
-                  {movies.map(m => (
-                    <option key={m.id} value={m.id}>{m.titleVn} ({m.duration} phút)</option>
-                  ))}
-                </select>
-                {errors.movieId && <span className="text-xs text-red-400 mt-1">{errors.movieId}</span>}
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 space-y-6">
+          {/* SECTION 01 - SHOWTIME INFO */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative bg-white border-2 border-slate-900 rounded-3xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]"
+          >
+            <div className="flex items-stretch border-b-2 border-slate-900">
+              <div className="bg-slate-900 text-amber-300 px-5 py-3 flex items-center gap-2 border-r-2 border-slate-900">
+                <span className="text-xl font-black">01</span>
               </div>
-
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Định dạng *</label>
-                <select
-                  value={format}
-                  onChange={handleFormatChange}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                >
-                  {availableFormats.map(fmt => (
-                    <option key={fmt} value={fmt}>{fmt}</option>
-                  ))}
-                </select>
+              <div className="flex-1 px-5 py-3 flex items-center justify-between bg-rose-50">
+                <div>
+                  <h2 className="text-base font-black uppercase tracking-wider text-slate-900">Thong tin lich chieu</h2>
+                  <p className="text-[11px] text-slate-600 mt-0.5 font-medium">Phim, phong, dinh dang va ngon ngu</p>
+                </div>
+                <Calendar size={20} className="text-slate-900" strokeWidth={2.5} />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Phòng chiếu *</label>
-                <select
-                  value={roomId}
-                  onChange={(e) => setRoomId(e.target.value)}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                  disabled={!format}
-                >
-                  <option value="">Chọn phòng...</option>
-                  {filteredRooms.map(r => (
-                    <option key={r.id} value={r.id}>{r.name} ({(r.capacity || r.seatsCount)} ghế)</option>
-                  ))}
-                  {filteredRooms.length === 0 && format && (
-                    <option value="" disabled>Không có phòng hỗ trợ định dạng {format}</option>
-                  )}
-                </select>
-                {errors.roomId && <span className="text-xs text-red-400 mt-1">{errors.roomId}</span>}
-              </div>
-
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Ngôn ngữ *</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full cursor-pointer"
-                >
-                  {availableLanguages.map(lang => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              <div className="md:col-span-2">
-                <Input
-                  label="Ngày chiếu *"
-                  type="date"
-                  value={date}
-                  min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-                  onChange={(e) => setDate(e.target.value)}
-                  error={errors.date}
-                />
-              </div>
-              <div className="flex flex-col gap-1 w-full text-left md:col-span-1" ref={timeDropdownRef}>
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Giờ chiếu *</label>
-                <div className="relative w-full">
-                  <button
-                    type="button"
-                    onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
-                    className={`bg-[#f7f9fb] border ${errors.time ? 'border-red-400' : 'border-[#e0e3e5]'} rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full flex justify-between items-center cursor-pointer`}
+            <div className="p-6 md:p-8 space-y-5 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <Film size={11} strokeWidth={2.5} className="text-red-600" /> Phim <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={movieId} onChange={(e) => setMovieId(e.target.value)}
+                    className={`w-full bg-rose-50/50 border-2 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold cursor-pointer ${errors.movieId ? 'border-red-600' : 'border-slate-200'}`}
                   >
-                    <span>{time || 'Chọn giờ...'}</span>
-                    <span className="material-symbols-outlined text-[16px] text-gray-400">
-                      {isTimeDropdownOpen ? 'expand_less' : 'expand_more'}
-                    </span>
+                    <option value="">Chon phim...</option>
+                    {movies.map(m => (<option key={m.id} value={m.id}>{m.titleVn} ({m.duration} phut)</option>))}
+                  </select>
+                  {errors.movieId && <span className="text-[10px] text-red-600 font-bold mt-1 block">{errors.movieId}</span>}
+                </div>
+                <div>
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <Sparkles size={11} strokeWidth={2.5} className="text-red-600" /> Dinh dang
+                  </label>
+                  <select
+                    value={format} onChange={handleFormatChange}
+                    className="w-full bg-rose-50/50 border-2 border-slate-200 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold cursor-pointer"
+                  >
+                    {availableFormats.map(fmt => (<option key={fmt} value={fmt}>{fmt}</option>))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <MapPin size={11} strokeWidth={2.5} className="text-red-600" /> Phong chieu <span className="text-red-600">*</span>
+                  </label>
+                  <select
+                    value={roomId} onChange={(e) => setRoomId(e.target.value)} disabled={!format}
+                    className={`w-full bg-rose-50/50 border-2 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold cursor-pointer ${errors.roomId ? 'border-red-600' : 'border-slate-200'}`}
+                  >
+                    <option value="">Chon phong...</option>
+                    {filteredRooms.map(r => (<option key={r.id} value={r.id}>{r.name} ({(r.capacity || r.seatsCount)} ghe)</option>))}
+                    {filteredRooms.length === 0 && format && (<option value="" disabled>Khong co phong ho tro dinh dang {format}</option>)}
+                  </select>
+                  {errors.roomId && <span className="text-[10px] text-red-600 font-bold mt-1 block">{errors.roomId}</span>}
+                </div>
+                <div>
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <Languages size={11} strokeWidth={2.5} className="text-red-600" /> Ngon ngu
+                  </label>
+                  <select
+                    value={language} onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full bg-rose-50/50 border-2 border-slate-200 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold cursor-pointer"
+                  >
+                    {availableLanguages.map(lang => (<option key={lang} value={lang}>{lang}</option>))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-5">
+                <div className="md:col-span-2">
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <Calendar size={11} strokeWidth={2.5} className="text-red-600" /> Ngay chieu <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="date" value={date}
+                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                    onChange={(e) => setDate(e.target.value)}
+                    className={`w-full bg-rose-50/50 border-2 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold ${errors.date ? 'border-red-600' : 'border-slate-200'}`}
+                  />
+                  {errors.date && <span className="text-[10px] text-red-600 font-bold mt-1 block">{errors.date}</span>}
+                </div>
+                <div className="md:col-span-1 relative" ref={timeDropdownRef}>
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <Clock size={11} strokeWidth={2.5} className="text-red-600" /> Gio chieu <span className="text-red-600">*</span>
+                  </label>
+                  <button
+                    type="button" onClick={() => setIsTimeDropdownOpen(!isTimeDropdownOpen)}
+                    className={`w-full bg-rose-50/50 border-2 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold flex justify-between items-center cursor-pointer ${errors.time ? 'border-red-600' : 'border-slate-200'}`}
+                  >
+                    <span>{time || 'Chon gio...'}</span>
+                    <ChevronDown size={14} className={`text-slate-700 transition-transform ${isTimeDropdownOpen ? 'rotate-180' : ''}`} strokeWidth={2.5} />
                   </button>
                   {isTimeDropdownOpen && (
-                    <div className="absolute left-0 top-full mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                    <div className="absolute left-0 top-full mt-1 w-full max-h-60 overflow-y-auto bg-white border-2 border-slate-900 rounded-xl shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] z-50 py-1">
                       {Array.from({ length: 192 }, (_, i) => {
                         const hour = Math.floor(i / 12) + 8;
                         if (hour > 23) return null;
@@ -495,12 +518,8 @@ export default function ShowtimeFormPage() {
                         return (
                           <div
                             key={timeString}
-                            onClick={() => {
-                              setTime(timeString)
-                              setIsTimeDropdownOpen(false)
-                            }}
-                            className={`px-3 py-2 text-xs font-semibold cursor-pointer hover:bg-[#ffdad6]/20 hover:text-[#b80035] transition-colors ${time === timeString ? 'bg-[#ffdad6]/40 text-[#b80035] font-bold' : 'text-[#191c1e]'
-                              }`}
+                            onClick={() => { setTime(timeString); setIsTimeDropdownOpen(false) }}
+                            className={`px-3 py-2 text-xs font-bold cursor-pointer hover:bg-red-100 transition-colors ${time === timeString ? 'bg-red-600 text-white' : 'text-slate-900'}`}
                           >
                             {timeString}
                           </div>
@@ -508,75 +527,164 @@ export default function ShowtimeFormPage() {
                       })}
                     </div>
                   )}
+                  {errors.time && <span className="text-[10px] text-red-600 font-bold mt-1 block">{errors.time}</span>}
                 </div>
-                {errors.time && <span className="text-xs text-red-400 mt-1">{errors.time}</span>}
+                <div className="md:col-span-2">
+                  <label className="text-[11px] font-black tracking-[0.15em] text-slate-900 uppercase block mb-2 flex items-center gap-1.5">
+                    <DollarSign size={11} strokeWidth={2.5} className="text-red-600" /> Gia ve co ban <span className="text-red-600">*</span>
+                  </label>
+                  <input
+                    type="number" min={0} value={price}
+                    onChange={(e) => setPrice(Number(e.target.value))}
+                    className={`w-full bg-rose-50/50 border-2 rounded-xl py-3 px-4 outline-none text-sm text-slate-900 transition-all focus:border-slate-900 focus:bg-rose-50 h-[46px] font-bold ${errors.price ? 'border-red-600' : 'border-slate-200'}`}
+                  />
+                  {errors.price && <span className="text-[10px] text-red-600 font-bold mt-1 block">{errors.price}</span>}
+                </div>
               </div>
-              <div className="flex flex-col gap-1 w-full text-left md:col-span-2">
-                <label className="text-sm font-bold text-[#5c647a] mb-1">Giá vé cơ bản (Base Price) *</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={price}
-                  onChange={(e) => setPrice(Number(e.target.value))}
-                  className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg py-2.5 px-3 text-sm text-[#191c1e] font-semibold focus:outline-none focus:border-[#b80035] focus:ring-1 focus:ring-[#b80035] transition-all w-full"
-                />
-                {errors.price && <span className="text-xs text-red-400 mt-1">{errors.price}</span>}
-              </div>
-            </div>
 
-            {calculatedTimes && (
-              <div className="bg-[#fff0f1] p-4 rounded-xl border border-[#ffdad6] flex flex-col gap-2 text-sm text-[#5c3f40] mt-2">
-                <div className="flex justify-between items-center pb-2 border-b border-[#ffdad6]">
-                  <span>Thời lượng phim:</span>
-                  <span className="font-bold text-[#ba1a1a]">{duration} phút + 10 phút quảng cáo</span>
+              {calculatedTimes && (
+                <div className="bg-gradient-to-r from-red-100 to-amber-100 border-2 border-slate-900 rounded-2xl p-5 shadow-[4px_4px_0px_0px_rgba(15,23,42,1)]">
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b-2 border-dashed border-slate-300">
+                    <Clock size={14} className="text-slate-900" strokeWidth={2.5} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900">Thoi gian chieu</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-3 bg-white rounded-xl border-2 border-slate-200">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Phim</p>
+                      <p className="text-sm font-black text-slate-900">{duration} phut + 10p QC</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border-2 border-slate-900">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Gio chieu</p>
+                      <p className="text-base font-black text-red-600 font-mono">{calculatedTimes.start} - {calculatedTimes.end}</p>
+                    </div>
+                    <div className="p-3 bg-white rounded-xl border-2 border-slate-200">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Chiem phong (+{calculatedTimes.cleanMins}p)</p>
+                      <p className="text-xs font-bold text-slate-900 font-mono">{calculatedTimes.bufferStart} - {calculatedTimes.bufferEnd}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-xs pt-1">
-                  <span className="text-[#5c647a]">Giờ chiếu thực tế:</span>
-                  <span className="text-[#191c1e] font-mono font-bold">
-                    {calculatedTimes.start} - {calculatedTimes.end}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span>Khoảng thời gian chiếm dụng phòng (kèm {calculatedTimes.cleanMins}p dọn dẹp):</span>
-                  <span className="font-mono text-[#b80035] font-bold">
-                    {calculatedTimes.bufferStart} - {calculatedTimes.bufferEnd}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          </motion.div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white border border-[#e0e3e5] rounded-2xl p-5 space-y-3 shadow-sm">
-            <Button type="submit" disabled={isSubmitting} className="w-full py-3.5 uppercase tracking-wider font-extrabold">
-              {isSubmitting ? (
-                <span className="flex items-center gap-2 justify-center">
-                  <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                  Đang lưu...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 justify-center">
-                  <Plus size={16} /> {isEditMode ? 'Cập nhật' : 'Thêm mới'}
-                </span>
+        <div className="lg:col-span-2 space-y-6">
+          {/* TOM TAT */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="relative bg-white border-2 border-slate-900 rounded-3xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(15,23,42,1)]"
+          >
+            <div className="flex items-stretch border-b-2 border-slate-900">
+              <div className="bg-slate-900 text-amber-300 px-5 py-3 flex items-center gap-2 border-r-2 border-slate-900">
+                <span className="text-xl font-black">S</span>
+              </div>
+              <div className="flex-1 px-5 py-3 flex items-center justify-between bg-sky-50">
+                <div>
+                  <h2 className="text-base font-black uppercase tracking-wider text-slate-900">Tom tat</h2>
+                  <p className="text-[11px] text-slate-600 mt-0.5 font-medium">Thong tin chinh</p>
+                </div>
+                <Sparkles size={20} className="text-slate-900" strokeWidth={2.5} />
+              </div>
+            </div>
+            <div className="p-6 space-y-3 bg-white">
+              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Film size={14} className="text-amber-300" strokeWidth={2.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Phim</p>
+                  <p className="text-sm font-black text-slate-900 truncate">{selectedMovie?.titleVn || 'Chua chon'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <MapPin size={14} className="text-amber-300" strokeWidth={2.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Phong chieu</p>
+                  <p className="text-sm font-black text-slate-900 truncate">{rooms.find(r => r.id === roomId)?.name || 'Chua chon'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Calendar size={14} className="text-amber-300" strokeWidth={2.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Ngay / Gio</p>
+                  <p className="text-sm font-black text-slate-900 truncate font-mono">{date || '--'} / {time || '--'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-red-50 to-amber-50 rounded-xl border-2 border-slate-900">
+                <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <DollarSign size={14} className="text-white" strokeWidth={2.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Gia ve</p>
+                  <p className="text-base font-black text-red-600">{price ? new Intl.NumberFormat('vi-VN').format(price) + ' d' : '--'}</p>
+                </div>
+              </div>
+              {(format || language) && (
+                <div className="flex items-start gap-3 p-3 bg-violet-50 rounded-xl border-2 border-slate-200">
+                  <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Sparkles size={14} className="text-white" strokeWidth={2.5} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Dinh dang / Ngon ngu</p>
+                    <p className="text-sm font-black text-slate-900 truncate">{format} - {language}</p>
+                  </div>
+                </div>
               )}
-            </Button>
-            <Button type="button" variant="secondary" disabled={isSubmitting} onClick={handleCancel} className="w-full py-3.5 uppercase tracking-wider font-extrabold">
-              Hủy bỏ
-            </Button>
-          </div>
+            </div>
+          </motion.div>
 
-          <div className="bg-white border border-[#e0e3e5] rounded-2xl p-5 space-y-3 shadow-sm">
-            <h4 className="text-sm font-bold text-[#191c1e] flex items-center gap-2 mb-3" style={{ fontFamily: 'Montserrat' }}>
-              <CheckCircle className="text-[#00836c]" size={16} />
-              Lưu ý
-            </h4>
-            <ul className="text-xs text-[#5c647a] space-y-2 font-medium">
-              <li>• Chọn phim và phòng chiếu đã được tạo</li>
-              <li>• Giờ chiếu không được trùng lặp trong cùng phòng</li>
-              <li>• Giá vé có thể điều chỉnh theo suất chiếu</li>
-            </ul>
-          </div>
+          {/* LUU Y */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative bg-amber-100 border-2 border-slate-900 rounded-3xl overflow-hidden shadow-[6px_6px_0px_0px_rgba(15,23,42,1)]"
+          >
+            <div className="p-5">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <CheckCircle size={16} className="text-amber-300" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-900 mb-1">Luu y</p>
+                  <ul className="text-xs text-slate-800 space-y-1 font-bold leading-relaxed">
+                    <li>-- Chon phim va phong chieu da duoc tao</li>
+                    <li>-- Gio chieu khong duoc trung lap trong cung phong</li>
+                    <li>-- Gia ve co the dieu chinh theo suat chieu</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="flex gap-3"
+          >
+            <Button
+              variant="secondary"
+              onClick={handleCancel}
+              className="flex-1 py-4 !rounded-2xl !border-2 !border-dashed !border-slate-500 !bg-slate-600 hover:!bg-slate-500 !text-white hover:!text-white font-black uppercase tracking-wider text-xs !shadow-none transition-all"
+              type="button"
+            >
+              <X size={14} className="inline mr-1.5 -mt-0.5" strokeWidth={3} /> Huy bo
+            </Button>
+            <Button
+              className="flex-1 py-4 rounded-2xl border-2 border-slate-900 bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-wider text-xs shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] hover:shadow-[2px_2px_0px_0px_rgba(15,23,42,1)] hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+              disabled={isSubmitting} type="submit"
+            >
+              {isSubmitting ? 'Dang luu...' : <><Save size={14} className="inline mr-1.5 -mt-0.5" strokeWidth={2.5} />{isEditMode ? 'Cap nhat' : 'Them moi'}</>}
+            </Button>
+          </motion.div>
         </div>
       </form>
     </div>
