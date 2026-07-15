@@ -17,10 +17,7 @@ import {
   applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../utils/seatValidation'
-import { useRecommendation } from '../../seatRecommendation/useRecommendation'
-import RecommendationOverlay from '../../seatRecommendation/RecommendationOverlay'
-import BestViewZoneFrame from '../../seatRecommendation/BestViewZoneFrame'
-import { getSeatScore } from '../../utils/seatScoring'
+// removed BestViewZoneFrame and RecommendationOverlay
 
 // Default seat layout (fallback when API unavailable)
 const SEAT_ROWS = [
@@ -168,48 +165,7 @@ export default function SeatSelectionPage() {
   // Gap validation rejects invalid selections immediately, so no residual violations.
   const violations = []
 
-  const { recommendation } = useRecommendation({
-    rows: validationRows,
-    ticketQuantity: 1,
-    selectedSeats: selected,
-    enabled: !loading && !seatError,
-  })
 
-  const bestViewGeometry = useMemo(() => {
-    const scoringRows = seatLayout?.seatMatrix?.length
-      ? seatLayout.seatMatrix
-      : SEAT_ROWS.map(({ row, type }) => ({
-        rowLabel: row,
-        seats: Array.from({ length: 12 }, (_, index) => ({
-          id: `${row}${index + 1}`,
-          number: index + 1,
-          type,
-        })),
-      }))
-
-    const regularRows = scoringRows.filter(row => !((row.seats || []).some(seat => (
-      String(seat.type || '').toUpperCase() === 'COUPLE'
-    ))))
-    const rowCount = regularRows.length
-    const columnCount = Math.max(0, ...regularRows.flatMap(row => (
-      (row.seats || []).map((seat, index) => Number(seat.number) || index + 1)
-    )))
-    if (!rowCount || !columnCount) return { seatIds: [], key: 'empty' }
-
-    const seatIds = regularRows.flatMap((row, rowIndex) => (
-      (row.seats || []).flatMap((seat, index) => {
-        const type = String(seat.type || '').toUpperCase()
-        const columnIndex = (Number(seat.number) || index + 1) - 1
-        if (type === 'AISLE' || type === 'COUPLE_EXTENSION') return []
-        return getSeatScore(rowIndex, columnIndex, rowCount, columnCount) > 0.80 ? [seat.id] : []
-      })
-    ))
-
-    return {
-      seatIds,
-      key: `${seatLayout?.roomId || 'fallback'}:${rowCount}:${columnCount}:${regularRows.map(row => row.rowLabel).join(',')}`,
-    }
-  }, [seatLayout])
 
   // Combo selection states (from API)
   const [combos, setCombos] = useState(FALLBACK_COMBOS)
@@ -232,7 +188,10 @@ export default function SeatSelectionPage() {
       setIsHolding(true)
       const res = await bookingService.holdSeats({
         showtimeId: seatLayout.showtimeId,
-        seatIds: selected
+        seatIds: selected,
+        concessions: Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
       })
       
       const bookingData = res.data?.result || res.data
@@ -670,18 +629,7 @@ export default function SeatSelectionPage() {
                   <DoorOpen size={14} className="font-bold" /><span>Lối ra / Exit</span>
                 </div>
               </div>
-              <RecommendationOverlay
-                recommendedSeats={recommendation?.seats}
-                seatRefs={seatRefs.current}
-                measureRoot={gridRoot}
-                isVisible={Boolean(recommendation)}
-              />
-              <BestViewZoneFrame
-                seatIds={bestViewGeometry.seatIds}
-                seatRefs={seatRefs.current}
-                measureRoot={gridRoot}
-                layoutKey={bestViewGeometry.key}
-              />
+
             </div>
           </div>
         </div>
