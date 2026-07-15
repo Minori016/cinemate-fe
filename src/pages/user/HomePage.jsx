@@ -996,6 +996,79 @@ export default function HomePage() {
           </motion.section>
           {/* ================= HẾT PHẦN PHIM ĐANG CHIẾU ================= */}
 
+          {/* ================= SECTION: TOP 5 PHIM HOT TRONG THÁNG ================= */}
+          <section className="w-full py-16 px-6 md:px-14 relative z-10" style={{ backgroundColor: 'var(--color-background)' }}>
+            <div className="max-w-7xl mx-auto">
+              <motion.div
+                className="mb-12 text-left"
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.55 }}
+              >
+                <h2 className="text-3xl md:text-4xl font-black uppercase text-white" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '1px' }}>
+                  TOP 5 PHIM HOT NHẤT THÁNG
+                </h2>
+              </motion.div>
+
+              <div className="flex gap-14 md:gap-16 overflow-x-auto pb-8 scrollbar-none justify-start lg:justify-between items-end select-none">
+                {movies.slice(0, 5).map((movie, i) => {
+                  const posterUrl = movie.posterUrl || movie.poster || DEFAULT_POSTER_SMALL
+                  const title = movie.titleVn || movie.titleEn || movie.title || 'Phim'
+                  const detailLink = `/movies/${movie.id}`
+                  
+                  // Netflix status styling copy matching user's request
+                  const topLabels = ["Tập tiếp theo", "Tập mới", "Độc Quyền", "Suất Chiếu Sớm", "Mới Thêm"]
+                  const bottomLabels = ["Thứ Sáu", "Xem Ngay", "2D/3D/IMAX", "Đặt Vé Ngay", "Đặt Vé"]
+
+                  return (
+                    <motion.div
+                      key={movie.id}
+                      className="relative flex items-end pl-12 md:pl-16 group cursor-pointer flex-shrink-0"
+                      initial={{ opacity: 0, x: 40 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true, margin: '-40px' }}
+                      transition={{ duration: 0.5, delay: i * 0.1, ease: 'easeOut' }}
+                    >
+                      {/* Giant Outline Number */}
+                      <span className="absolute left-0 bottom-[-16px] select-none font-black text-[180px] md:text-[220px] z-0 text-outline-number">
+                        {i + 1}
+                      </span>
+
+                      {/* Poster Card wrapper */}
+                      <Link to={detailLink} className="relative z-10 w-[130px] md:w-[160px] aspect-[2/3] block">
+                        <div
+                          className="w-full h-full transition-all duration-300 group-hover:-translate-y-4 shadow-[0_12px_24px_rgba(0,0,0,0.6)] group-hover:shadow-[0_20px_40px_rgba(229,9,20,0.3)] border border-white/10 group-hover:border-red-500/35 relative"
+                          style={{ borderRadius: '16px', overflow: 'hidden' }}
+                        >
+                          <img
+                            src={posterUrl}
+                            alt={title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            onError={handleImageError}
+                          />
+                          
+                          {/* Inner shadow/vignette gradient */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent z-10" />
+                          
+                          {/* Badges container matching user's image exactly */}
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 w-[90%] z-20">
+                            <span className="bg-[#e50914] text-white text-[8px] md:text-[9.5px] font-black uppercase px-2 py-0.5 rounded shadow-md tracking-wider text-center w-max select-none">
+                              {topLabels[i]}
+                            </span>
+                            <span className="bg-white text-black text-[8px] md:text-[9.5px] font-black uppercase px-2.5 py-0.5 rounded shadow-md tracking-wider text-center w-max select-none">
+                              {bottomLabels[i]}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+
           {/* ====================================================
               SECTION: ƯU ĐÃI NỔI BẬT
           ==================================================== */}
