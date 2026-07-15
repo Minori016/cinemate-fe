@@ -104,6 +104,7 @@ export function splitSeatSegments(rowSeats, effectiveOccupied) {
 
     current.push({
       id: seat.id,
+      type: String(seat.type || '').toUpperCase(),
       occupied: effectiveOccupied.has(seat.id),
     })
   }
@@ -144,7 +145,9 @@ export function validateRow(segment) {
     const size = i - start
 
     if (size === 1) {
-      return { valid: false, orphanSeatId: segment[start].id }
+      if (segment[start].type !== 'COUPLE') {
+        return { valid: false, orphanSeatId: segment[start].id }
+      }
     }
   }
 
@@ -168,7 +171,9 @@ function countOrphans(segments) {
       if (seg[i].occupied) { i++; continue }
       const start = i
       while (i < seg.length && !seg[i].occupied) { i++ }
-      if (i - start === 1) count++
+      if (i - start === 1) {
+        if (seg[start].type !== 'COUPLE') count++
+      }
     }
   }
   return count

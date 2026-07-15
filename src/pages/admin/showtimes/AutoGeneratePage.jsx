@@ -70,6 +70,7 @@ export default function AutoGeneratePage() {
     endDate: '',
     openTime: '08:00',
     closeTime: '23:00',
+    staggerDelay: 15,
     movies: []
   })
 
@@ -310,7 +311,8 @@ export default function AutoGeneratePage() {
         startTime: form.openTime + ":00",
         endTime: form.closeTime + ":00",
         startDate: form.startDate,
-        endDate: form.endDate
+        endDate: form.endDate,
+        staggerDelay: form.staggerDelay || 15
       }
 
       const res = await showtimeService.autoGenerate(requestPayload)
@@ -432,6 +434,24 @@ export default function AutoGeneratePage() {
                     <div className="flex flex-col gap-2">
                       <label className="text-xs text-[#5c647a] font-semibold">Đóng cửa</label>
                       <input type="time" value={form.closeTime} onChange={e => setForm({...form, closeTime: e.target.value})} className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-2">
+                      <label className="text-xs text-[#5c647a] font-semibold flex items-center gap-1">
+                        <Clock size={12} />
+                        So le giữa các phòng (phút)
+                      </label>
+                      <select
+                        value={form.staggerDelay}
+                        onChange={e => setForm({...form, staggerDelay: parseInt(e.target.value)})}
+                        className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none cursor-pointer"
+                      >
+                        {[0, 5, 10, 15, 20, 25, 30].map(v => (
+                          <option key={v} value={v}>{v === 0 ? 'Không so le' : `${v} phút`}</option>
+                        ))}
+                      </select>
+                      <span className="text-[10px] text-[#8c8c9a]">Suất chiếu giữa các phòng cùng format sẽ lệch nhau khoảng thời gian này</span>
                     </div>
                   </div>
                 </div>
