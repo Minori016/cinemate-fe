@@ -323,7 +323,9 @@ export default function SeatSelectionPage() {
       const set = new Set()
       realSeatMap.forEach(s => {
         if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
-          set.add(s.seatId)
+          if (!selected.includes(s.seatId)) {
+            set.add(s.seatId)
+          }
         }
       })
       // Thêm các ghế Aisle/Couple_Extension từ layout
@@ -342,8 +344,11 @@ export default function SeatSelectionPage() {
   }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet])
 
   // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
-  const toggleSeat = useCallback((seatId, type) => {
-    if (currentOccupied.has(seatId)) return
+  const toggleSeat = useCallback(async (seatId, type) => {
+    const isSelected = selected.includes(seatId)
+
+    // Nếu ghế ĐANG trong danh sách selected của user hiện tại, cho phép bỏ chọn dù currentOccupied có nó (do Backend trả về HELD)
+    if (!isSelected && currentOccupied.has(seatId)) return
 
     let targetIds = [seatId]
     if (type === 'couple' || type === 'COUPLE') {
@@ -357,8 +362,6 @@ export default function SeatSelectionPage() {
       }
     }
 
-    const isSelected = selected.includes(seatId)
-    
     // validate gap rule trước khi cập nhật state (cả khi chọn và bỏ chọn)
     const result = validateSeatSelection({
       rows: validationRows,
@@ -378,6 +381,11 @@ export default function SeatSelectionPage() {
     }
 
     if (isSelected) {
+      try {
+        await bookingService.unlockSeat(matchedShowtime.id, seatId);
+      } catch (error) {
+        console.error('Failed to unlock seat', error);
+      }
       setSelected(prev => prev.filter(id => !targetIds.includes(id)))
       return
     }
@@ -387,8 +395,14 @@ export default function SeatSelectionPage() {
       return
     }
 
-    setSelected(prev => [...prev, ...targetIds])
-  }, [currentOccupied, validationRows, selected, seatLayout])
+    try {
+      await bookingService.lockSeats(matchedShowtime.id, targetIds);
+      setSelected(prev => [...prev, ...targetIds])
+    } catch (error) {
+      console.error('Failed to lock seats', error);
+      alert(error.response?.data?.message || 'Không thể chọn ghế này. Có thể người khác đang giữ.');
+    }
+  }, [currentOccupied, validationRows, selected, seatLayout, matchedShowtime])
 
   // Giá của từng loại ghế (ưu tiên giá từ showtime nếu có)
   const getSeatPrice = useCallback((seatId) => {
