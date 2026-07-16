@@ -145,14 +145,6 @@ export default function SeatStep({
         if (message && message.type === 'SEAT_MAP_UPDATED') {
           // Fetch the layout again instantly without showing full loading
           loadLayout({ showLoading: false })
-        } else if (message && message.type === 'SEAT_TOGGLE_TEMP') {
-          // Instantly lock/unlock the seat visually when someone else clicks it
-          setTempHolds(prev => {
-            const next = new Map(prev)
-            if (message.isSelected) next.set(message.seatId, Date.now())
-            else next.delete(message.seatId)
-            return next
-          })
         }
       })
       isSubscribed = true
@@ -173,7 +165,9 @@ export default function SeatStep({
     if (realSeatMap && realSeatMap.length > 0) {
       realSeatMap.forEach(s => {
         if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
-          set.add(s.seatId)
+          if (!selectedSeats.includes(s.seatId)) {
+            set.add(s.seatId)
+          }
         }
       })
     }
@@ -257,7 +251,8 @@ export default function SeatStep({
    * Reject + toast if the action would create an orphan seat.
    */
   const handleToggleSeat = useCallback((seatId, meta = {}) => {
-    if (occupiedSet.has(seatId)) return
+    const isSelected = selectedSeats.includes(seatId)
+    if (!isSelected && occupiedSet.has(seatId)) return
 
     // Limit to maximum 8 seats per booking
     if (!selectedSeats.includes(seatId) && selectedSeats.length >= 8) {

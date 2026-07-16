@@ -452,38 +452,44 @@ export default function MovieDetailPage() {
 
   const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
 
-  /**
-   * Toggle seat AFTER gap-validation (handled in SeatStep).
-   * SeatStep only calls this when the proposed change is valid.
-   */
-  const toggleSeat = (seatId, meta = {}) => {
-    setSelectedSeats(prev => {
-      const exists = prev.includes(seatId)
+  const toggleSeat = async (seatId, meta = {}) => {
+    const isCurrentlySelected = selectedSeats.includes(seatId);
 
-      // Notify other clients instantly via WebSocket
-      if (selectedShowtime?.id) {
-        websocketService.sendSeatToggle(selectedShowtime.id, seatId, !exists)
+    try {
+      if (!isCurrentlySelected) {
+        // Optimistically try to lock the seat via API
+        await bookingService.lockSeats(selectedShowtime.id, [seatId]);
+      } else {
+        // Unlock seat via API
+        await bookingService.unlockSeat(selectedShowtime.id, seatId);
       }
+      
+      setSelectedSeats(prev => {
+        const exists = prev.includes(seatId)
 
-      if (exists) {
-        setSeatMetaMap(m => {
-          const next = { ...m }
-          delete next[seatId]
-          return next
-        })
-        return prev.filter(id => id !== seatId)
-      }
-      if (meta && (meta.label || meta.type)) {
-        setSeatMetaMap(m => ({
-          ...m,
-          [seatId]: {
-            label: meta.label || seatId,
-            type: meta.type || 'STANDARD',
-          },
-        }))
-      }
-      return [...prev, seatId]
-    })
+        if (exists) {
+          setSeatMetaMap(m => {
+            const next = { ...m }
+            delete next[seatId]
+            return next
+          })
+          return prev.filter(id => id !== seatId)
+        }
+        if (meta && (meta.label || meta.type)) {
+          setSeatMetaMap(m => ({
+            ...m,
+            [seatId]: {
+              label: meta.label || seatId,
+              type: meta.type || 'STANDARD',
+            },
+          }))
+        }
+        return [...prev, seatId]
+      })
+    } catch (error) {
+      console.error('Failed to toggle seat lock:', error);
+      alert(error.response?.data?.message || 'Không thể chọn ghế này. Có thể người khác đang giữ.');
+    }
   }
 
   // Lưu trạng thái đặt vé trước khi bắt đăng nhập (để restore sau login)
