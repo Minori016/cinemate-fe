@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import { userService } from '../../services/userService'
 import { movieService } from '../../services/movieService'
+import { bookingService } from '../../services/bookingService'
+import { paymentService } from '../../services/paymentService'
 import Input from '../../components/common/Input'
 
 const MOCK_BOOKINGS = [
@@ -181,9 +183,8 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState(null)
   const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
-  const [bookings, setBookings] = useState(MOCK_BOOKINGS)
+  const [bookings, setBookings] = useState([])
   const [moviePosters, setMoviePosters] = useState({})
-  const [cancelingTicketId, setCancelingTicketId] = useState(null)
 
   // Fetch movie posters map
   useEffect(() => {
@@ -206,43 +207,54 @@ export default function ProfilePage() {
     fetchPosters()
   }, [])
 
-  // Sync with local storage bookings
+  // Fetch real bookings
   useEffect(() => {
-    const local = localStorage.getItem('staff_bookings_db')
-    if (local) {
+    const fetchBookings = async () => {
       try {
-        const parsed = JSON.parse(local)
-        const userBookings = parsed
-          .filter(b => b.email === user?.email)
-          .map(b => ({
-            id: b.id,
-            movieName: b.movie,
-            bookingDate: new Date().toISOString(),
-            showDate: b.date,
-            showTime: b.time,
-            room: b.screen,
-            seats: typeof b.seats === 'string' ? b.seats.split(', ') : b.seats,
-            totalPrice: b.total,
-            status: b.status === 'Đã thanh toán' ? 'COMPLETED' : b.status === 'Đã hủy' ? 'CANCELED' : 'COMPLETED'
-          }))
-        
-        setBookings(prev => {
-          const combined = [...userBookings, ...MOCK_BOOKINGS]
-          const unique = []
-          const ids = new Set()
-          combined.forEach(item => {
-            if (!ids.has(item.id)) {
-              ids.add(item.id)
-              unique.push(item)
-            }
-          })
-          return unique
-        })
-      } catch (e) {
-        console.error(e)
+        const res = await bookingService.getMyBookings()
+        const data = res.data?.result ?? []
+        const mappedData = data.map(b => ({
+          id: b.id.substring(0, 8).toUpperCase(),
+          movieName: b.movieName,
+          bookingDate: b.createdAt,
+          showDate: b.date,
+          showTime: b.showtime,
+          room: b.roomName,
+          seats: b.seatNames,
+          totalPrice: b.totalAmount,
+          status: b.status
+        }))
+        setBookings(mappedData)
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách vé:', err)
       }
     }
+    
+    if (user) {
+      fetchBookings()
+    }
   }, [user])
+
+  const [payments, setPayments] = useState([])
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchPayments = async () => {
+      setPaymentsLoading(true)
+      try {
+        const res = await paymentService.getMyPayments()
+        setPayments(res.data?.result ?? [])
+      } catch (err) {
+        console.error('Lỗi khi tải lịch sử thanh toán:', err)
+      } finally {
+        setPaymentsLoading(false)
+      }
+    }
+
+    if (user && activeTab === 'payments') {
+      fetchPayments()
+    }
+  }, [user, activeTab])
 
   const [fromDateStr, setFromDateStr] = useState('01/05/2026')
   const [toDateStr, setToDateStr] = useState('30/06/2026')
@@ -329,38 +341,6 @@ export default function ProfilePage() {
       }
     }
   }, [activeTab])
-
-
-  const handleCancelTicket = (ticketId) => {
-    setCancelingTicketId(ticketId)
-  }
-
-  const confirmCancelTicket = (ticketId) => {
-    const local = localStorage.getItem('staff_bookings_db')
-    if (local) {
-      try {
-        const parsed = JSON.parse(local)
-        const updated = parsed.map(b => {
-          if (b.id === ticketId) {
-            return { ...b, status: 'Đã hủy' }
-          }
-          return b
-        })
-        localStorage.setItem('staff_bookings_db', JSON.stringify(updated))
-      } catch (e) {
-        console.error('Failed to update local bookings db', e)
-      }
-    }
-
-    setBookings(prevBookings => 
-      prevBookings.map(b => 
-        b.id === ticketId ? { ...b, status: 'CANCELED' } : b
-      )
-    );
-    
-    setSuccess(`Hủy vé ${ticketId} thành công!`);
-    setTimeout(() => setSuccess(''), 4000);
-  }
 
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({
@@ -937,18 +917,20 @@ export default function ProfilePage() {
           
           {/* ── Sidebar Navigation ── */}
           <div className="w-full md:w-[260px] flex-shrink-0 flex flex-col gap-2.5">
-            {['info', 'history', 'booked', 'canceled'].map((tabKey) => {
+            {['info', 'history', 'booked', 'canceled', 'payments'].map((tabKey) => {
               const tabLabels = {
                 info: 'Thông tin tài khoản',
                 history: 'Xem hạng thành viên',
                 booked: 'Vé đã đặt',
-                canceled: 'Vé đã hủy'
+                canceled: 'Vé đã hủy',
+                payments: 'Lịch sử thanh toán'
               }
               const tabIcons = {
                 info: 'account_circle',
                 history: 'stars',
                 booked: 'confirmation_number',
-                canceled: 'cancel'
+                canceled: 'cancel',
+                payments: 'payments'
               }
               const isActive = activeTab === tabKey
               return (
@@ -1769,7 +1751,7 @@ export default function ProfilePage() {
 
           {/* ── Tab Booked (Vé đã đặt hoạt động) ── */}
           {activeTab === 'booked' && (() => {
-            const activeBookings = bookings.filter(b => b.status === 'COMPLETED')
+            const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
             return (
               <div className="w-full space-y-4">
                 {activeBookings.length === 0 ? (
@@ -1864,14 +1846,6 @@ export default function ProfilePage() {
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
                                 </p>
                               </div>
-                              <motion.button
-                                whileHover={{ scale: 1.05, backgroundColor: 'rgba(239,68,68,0.2)' }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleCancelTicket(booking.id)}
-                                className="mt-1.5 px-3 py-1 text-[11px] font-bold text-red-500 border border-red-500/30 hover:border-red-500 rounded transition-all duration-200 cursor-pointer"
-                              >
-                                Hủy vé
-                              </motion.button>
                             </div>
                           </div>
                         </div>
@@ -1885,7 +1859,7 @@ export default function ProfilePage() {
 
           {/* ── Tab Canceled (Vé đã hủy) ── */}
           {activeTab === 'canceled' && (() => {
-            const canceledBookings = bookings.filter(b => b.status === 'CANCELED')
+            const canceledBookings = bookings.filter(b => b.status === 'CANCELED' || b.status === 'CANCELLED')
             return (
               <div className="w-full space-y-4">
                 {canceledBookings.length === 0 ? (
@@ -1988,61 +1962,97 @@ export default function ProfilePage() {
               </div>
             )
           })()}
+
+          {/* ── Tab Payments (Lịch sử thanh toán) ── */}
+          {activeTab === 'payments' && (() => {
+            return (
+              <div className="w-full space-y-4">
+                {paymentsLoading ? (
+                  <div className="text-center py-20 w-full">
+                    <span className="material-symbols-outlined animate-spin text-5xl text-red-500 mb-3">progress_activity</span>
+                    <p className="text-gray-400 font-medium">Đang tải lịch sử thanh toán...</p>
+                  </div>
+                ) : payments.length === 0 ? (
+                  <GlassCard 
+                    className="text-center py-20 w-full"
+                    delay={0.05}
+                  >
+                    <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">receipt_long</span>
+                    <p className="text-gray-400 font-medium">Không tìm thấy lịch sử thanh toán nào.</p>
+                  </GlassCard>
+                ) : (
+                  <div className="w-full">
+                    <GlassCard className="p-6 overflow-hidden text-white" delay={0.05}>
+                      <h3 className="text-lg font-bold text-white tracking-wide border-b border-white/10 pb-4 mb-4 text-left" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                        Lịch sử thanh toán MoMo
+                      </h3>
+                      <div className="overflow-x-auto scrollbar-none">
+                        <table className="w-full text-left border-collapse min-w-[700px]">
+                          <thead>
+                            <tr className="border-b border-white/10 text-xs text-gray-400 font-bold uppercase tracking-wider">
+                              <th className="py-3 px-4">Mã giao dịch</th>
+                              <th className="py-3 px-4">Tên Phim</th>
+                              <th className="py-3 px-4">Phương thức</th>
+                              <th className="py-3 px-4">Thời gian</th>
+                              <th className="py-3 px-4">Số tiền</th>
+                              <th className="py-3 px-4 text-right">Trạng thái</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5 text-sm">
+                            {payments.map((p, idx) => {
+                              const dateStr = new Date(p.createdAt).toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })
+                              const statusConfig = {
+                                COMPLETED: { text: 'Thành công', bg: 'bg-green-500/15', textClr: 'text-green-400', border: 'border-green-500/20' },
+                                PENDING: { text: 'Chờ thanh toán', bg: 'bg-yellow-500/15', textClr: 'text-yellow-400', border: 'border-yellow-500/20' },
+                                FAILED: { text: 'Thất bại', bg: 'bg-red-500/15', textClr: 'text-red-400', border: 'border-red-500/20' }
+                              }
+                              const currentStatus = statusConfig[p.status] || { text: p.status, bg: 'bg-gray-500/15', textClr: 'text-gray-400', border: 'border-gray-500/20' }
+                              
+                              return (
+                                <tr key={p.uuid} className="hover:bg-white/5 transition-colors">
+                                  <td className="py-4 px-4 font-mono text-xs text-gray-400">
+                                    {p.transactionId || p.uuid.substring(0, 8).toUpperCase() + '...'}
+                                  </td>
+                                  <td className="py-4 px-4 text-white font-semibold">{p.movieName || 'N/A'}</td>
+                                  <td className="py-4 px-4 text-gray-300 font-medium">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-fuchsia-500/10 text-fuchsia-400 border border-fuchsia-500/20 text-xs font-bold uppercase tracking-wider">
+                                      {p.paymentMethod}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 text-gray-300 font-medium">{dateStr}</td>
+                                  <td className="py-4 px-4 font-mono font-bold text-red-500 text-base">
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.amount)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right">
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border ${currentStatus.bg} ${currentStatus.textClr} ${currentStatus.border} uppercase tracking-wider`}>
+                                      {currentStatus.text}
+                                    </span>
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </GlassCard>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
           </div>
           {/* ── End Content Pane ── */}
         </div>
         {/* ── End Main Dashboard Layout ── */}
       </div>
 
-      {/* ── Custom Confirm Cancel Modal ── */}
-      <AnimatePresence>
-        {cancelingTicketId && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm">
-            <motion.div 
-              initial={{ scale: 0.92, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.92, opacity: 0 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="w-full max-w-md p-6 rounded-2xl border text-left"
-              style={{
-                background: 'rgba(23, 23, 23, 0.95)',
-                borderColor: 'rgba(255, 255, 255, 0.08)',
-                boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8)'
-              }}
-            >
-              <div className="flex items-center gap-3 text-red-500 mb-4">
-                <span className="material-symbols-outlined text-3xl">warning</span>
-                <h3 className="text-lg font-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  Xác nhận hủy vé
-                </h3>
-              </div>
-              <p className="text-sm text-white/70 leading-relaxed mb-6" style={{ fontFamily: 'Inter, sans-serif' }}>
-                Bạn có chắc chắn muốn hủy vé <strong className="text-white font-black">{cancelingTicketId}</strong> không? 
-                Hành động này <span className="text-red-500 font-bold">không thể hoàn tác</span>.
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setCancelingTicketId(null)}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border border-white/10 hover:bg-white/5 text-white/80 cursor-pointer"
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}
-                >
-                  Đóng
-                </button>
-                <button
-                  onClick={() => {
-                    confirmCancelTicket(cancelingTicketId)
-                    setCancelingTicketId(null)
-                  }}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/35 cursor-pointer"
-                  style={{ fontFamily: 'Montserrat, sans-serif' }}
-                >
-                  Xác nhận hủy
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* ── Removed Custom Confirm Cancel Modal ── */}
 
       <style>{`
         @keyframes fadeInScale {
