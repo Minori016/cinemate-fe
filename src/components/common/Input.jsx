@@ -66,7 +66,7 @@ export default function Input({
               ? 'border-red-500/60 shadow-[0_0_0_3px_rgba(229,9,20,0.1)]'
               : isFocused
                 ? 'border-[#e50914] shadow-[0_0_0_3px_rgba(229,9,20,0.12)]'
-                : 'border-white/[0.08] hover:border-white/[0.14]'
+                : 'border-white/[0.15] hover:border-white/[0.25]'
             }
           `}
           style={{ color: 'var(--color-text)' }}
