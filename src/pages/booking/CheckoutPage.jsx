@@ -1,20 +1,23 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Clock, Ticket, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, CreditCard, Wallet } from 'lucide-react'
 import { bookingService } from '../../services/bookingService'
+import { paymentService } from '../../services/paymentService'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function CheckoutPage() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const bookingId = params.get('bookingId')
 
+  const { user } = useAuth()
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [timeLeft, setTimeLeft] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentSuccess, setPaymentSuccess] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('momo')
 
   // Fetch Booking Details
   useEffect(() => {
@@ -63,16 +66,21 @@ export default function CheckoutPage() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [timeLeft, paymentSuccess])
+  }, [timeLeft])
 
   const handlePayment = async () => {
     try {
       setIsProcessing(true)
-      await bookingService.confirmMock(bookingId)
-      setPaymentSuccess(true)
+      const res = await paymentService.createMomoPayment(bookingId)
+      const payUrl = res.data?.result?.payUrl || res.data?.payUrl
+      if (payUrl) {
+        window.location.href = payUrl
+      } else {
+        setError('Không nhận được đường dẫn thanh toán từ MoMo')
+        setIsProcessing(false)
+      }
     } catch (err) {
-      alert(err.response?.data?.message || 'Thanh toán thất bại')
-    } finally {
+      alert(err.response?.data?.message || 'Khởi tạo thanh toán thất bại')
       setIsProcessing(false)
     }
   }
@@ -107,20 +115,7 @@ export default function CheckoutPage() {
     )
   }
 
-  if (paymentSuccess) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#06080F] text-white px-4">
-        <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }}>
-          <CheckCircle2 size={80} className="text-emerald-500 mb-6 mx-auto" />
-        </motion.div>
-        <h2 className="text-3xl font-black mb-2 uppercase tracking-wide">Thanh Toán Thành Công</h2>
-        <p className="text-gray-400 mb-8">Cảm ơn bạn đã sử dụng dịch vụ của Cinemate</p>
-        <button onClick={() => navigate('/')} className="px-8 py-3 bg-emerald-600 rounded-xl font-bold hover:bg-emerald-700 transition shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-          Xem Vé Của Tôi
-        </button>
-      </div>
-    )
-  }
+
 
   const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
   const formatTime = (seconds) => {
@@ -181,6 +176,28 @@ export default function CheckoutPage() {
                 ))}
               </div>
             </div>
+
+            {/* Thông tin cá nhân (AC-01) */}
+            <div className="pt-6 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-4">
+                <User size={18} className="text-emerald-400" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-400">Thông Tin Khách Hàng</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl">
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Họ Tên</p>
+                  <p className="text-sm font-bold text-white mt-0.5">{user?.fullName || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Số Điện Thoại</p>
+                  <p className="text-sm font-medium text-white mt-0.5">{user?.phoneNumber || 'N/A'}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Email</p>
+                  <p className="text-sm font-medium text-white mt-0.5 truncate">{user?.email || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
           </div>
           
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-end">
@@ -189,19 +206,71 @@ export default function CheckoutPage() {
           </div>
         </motion.div>
 
-        {/* Payment Methods (MoMo Mockup) */}
+        {/* Payment Methods (AC-01 Use Case 3) */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="flex flex-col gap-6">
-          <div className="bg-[#121414] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl flex-grow flex flex-col items-center justify-center text-center">
-            <div className="w-24 h-24 bg-[#A50064] rounded-2xl flex items-center justify-center mb-6 shadow-[0_10px_30px_rgba(165,0,100,0.4)]">
-              <span className="text-white font-black text-2xl tracking-wider">MoMo</span>
+          <div className="bg-[#121414] border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl flex-grow flex flex-col justify-between">
+            <div>
+              <h2 className="text-xl font-bold uppercase tracking-wider mb-6 pb-6 border-b border-white/10 flex items-center gap-3">
+                <Wallet size={24} className="text-blue-400" />
+                Phương Thức Thanh Toán
+              </h2>
+              
+              <div className="space-y-4 mb-8">
+                {/* Option 1: MoMo */}
+                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'momo' ? 'border-[#A50064] bg-[#A50064]/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                  <input type="radio" name="payment" value="momo" checked={paymentMethod === 'momo'} onChange={() => setPaymentMethod('momo')} className="hidden" />
+                  <div className="w-10 h-10 bg-[#A50064] rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-white font-black text-[10px] tracking-wider">MoMo</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Ví Điện Tử MoMo</h4>
+                    <p className="text-xs text-gray-400">Thanh toán qua ứng dụng MoMo</p>
+                  </div>
+                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'momo' ? 'border-[#A50064]' : 'border-gray-500'}`}>
+                    {paymentMethod === 'momo' && <div className="w-2.5 h-2.5 rounded-full bg-[#A50064]" />}
+                  </div>
+                </label>
+
+                {/* Option 2: Credit Card */}
+                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'credit' ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                  <input type="radio" name="payment" value="credit" checked={paymentMethod === 'credit'} onChange={() => setPaymentMethod('credit')} className="hidden" />
+                  <div className="w-10 h-10 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center shrink-0 border border-blue-500/30">
+                    <CreditCard size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Thẻ Tín Dụng / Ghi Nợ</h4>
+                    <p className="text-xs text-gray-400">Visa, Mastercard, JCB, Amex</p>
+                  </div>
+                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'credit' ? 'border-blue-500' : 'border-gray-500'}`}>
+                    {paymentMethod === 'credit' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
+                  </div>
+                </label>
+
+                {/* Option 3: ATM */}
+                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'atm' ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                  <input type="radio" name="payment" value="atm" checked={paymentMethod === 'atm'} onChange={() => setPaymentMethod('atm')} className="hidden" />
+                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center justify-center shrink-0 border border-emerald-500/30">
+                    <span className="font-bold text-xs">ATM</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Thẻ ATM Nội Địa / Napas</h4>
+                    <p className="text-xs text-gray-400">Thẻ ngân hàng nội địa Việt Nam</p>
+                  </div>
+                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'atm' ? 'border-emerald-500' : 'border-gray-500'}`}>
+                    {paymentMethod === 'atm' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
+                  </div>
+                </label>
+              </div>
             </div>
-            <h3 className="text-xl font-bold mb-2">Thanh Toán Qua MoMo</h3>
-            <p className="text-sm text-gray-400 mb-8 max-w-xs">Sử dụng ứng dụng MoMo hoặc ứng dụng ngân hàng có hỗ trợ để thanh toán.</p>
             
             <button 
               onClick={handlePayment} 
               disabled={isProcessing || timeLeft <= 0}
-              className="w-full bg-[#A50064] text-white font-bold text-lg py-4 rounded-xl shadow-[0_5px_20px_rgba(165,0,100,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex justify-center items-center gap-2"
+              className={`w-full text-white font-bold text-lg py-4 rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none flex justify-center items-center gap-2 ${
+                paymentMethod === 'momo' ? 'bg-[#A50064] shadow-[0_5px_20px_rgba(165,0,100,0.3)] hover:bg-[#80004d]' :
+                paymentMethod === 'credit' ? 'bg-blue-600 shadow-[0_5px_20px_rgba(37,99,235,0.3)] hover:bg-blue-700' :
+                'bg-emerald-600 shadow-[0_5px_20px_rgba(5,150,105,0.3)] hover:bg-emerald-700'
+              }`}
             >
               {isProcessing ? <Loader2 className="animate-spin" /> : 'Xác Nhận Thanh Toán'}
             </button>
