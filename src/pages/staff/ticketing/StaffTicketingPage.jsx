@@ -9,6 +9,7 @@ import {
 import { movieService } from '../../../services/movieService'
 import { showtimeService } from '../../../services/showtimeService'
 import { concessionService, FALLBACK_COMBOS } from '../../../services/concessionService'
+import { bookingService } from '../../../services/bookingService'
 
 // Mock Members Database for checking (consistent with CounterCheckoutPage.jsx)
 const MOCK_MEMBERS = [
@@ -252,48 +253,58 @@ export default function StaffTicketingPage() {
     setError('')
     setIsSubmitting(true)
 
-    // Simulate print layout ticket payload
-    const bookingId = 'BK' + Math.floor(100000 + Math.random() * 900000)
-    const payload = {
-      id: bookingId,
-      movie: selectedMovie.titleVn || selectedMovie.title,
-      screen: selectedShowtime.room,
-      date: selectedShowtime.date === 'Hôm nay' ? new Date().toLocaleDateString('vi-VN') : selectedShowtime.date,
-      time: selectedShowtime.time,
-      seats: selectedSeats.join(', '),
-      price: singleTicketPrice,
-      total: finalPriceTotal,
-      convertTickets: convertCount,
-      scoreUsed: convertCount * 1000,
-      memberId: foundMember ? foundMember.memberId : 'GUEST',
-      customerName: foundMember ? foundMember.fullName : 'Khách vãng lai',
-      phone: foundMember ? foundMember.phone : 'N/A',
-      email: foundMember ? `${foundMember.memberId.toLowerCase()}@cinemate.vn` : 'counter@cinemate.vn',
-      idCard: foundMember ? foundMember.idCard : 'N/A',
-      status: 'Đã thanh toán',
-      checkedIn: false,
-      checkInTime: null,
-      paymentMethod: paymentMethod === 'cash' ? 'Tiền mặt' : paymentMethod === 'card' ? 'Thẻ ngân hàng' : 'Quét mã QR',
-      combosSummary: Object.entries(selectedCombos)
-        .filter(([_, qty]) => qty > 0)
-        .map(([id, qty]) => {
-          const c = combos.find(combo => String(combo.id) === String(id))
-          return c ? `${c.name} (x${qty})` : `(x${qty})`
-        }).join(', ')
-    }
-
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800))
+      // 1. Hold seats
+      const holdRes = await bookingService.holdSeats({
+        showtimeId: selectedShowtime.id,
+        seatIds: selectedSeats,
+        concessions: Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
+      })
+      const bookingData = holdRes.data?.result || holdRes.data
+      const backendBookingId = bookingData.bookingId
 
-      // Save directly into local database
+      // 2. Confirm booking immediately (POS flow)
+      await bookingService.confirmMock(backendBookingId)
+
+      // 3. Prepare payload for local display
+      const payload = {
+        id: backendBookingId,
+        movie: selectedMovie.titleVn || selectedMovie.title,
+        screen: selectedShowtime.room,
+        date: selectedShowtime.date === 'Hôm nay' ? new Date().toLocaleDateString('vi-VN') : selectedShowtime.date,
+        time: selectedShowtime.time,
+        seats: selectedSeats.join(', '),
+        price: singleTicketPrice,
+        total: finalPriceTotal,
+        convertTickets: convertCount,
+        scoreUsed: convertCount * 1000,
+        memberId: foundMember ? foundMember.memberId : 'GUEST',
+        customerName: foundMember ? foundMember.fullName : 'Khách vãng lai',
+        phone: foundMember ? foundMember.phone : 'N/A',
+        email: foundMember ? `${foundMember.memberId.toLowerCase()}@cinemate.vn` : 'counter@cinemate.vn',
+        idCard: foundMember ? foundMember.idCard : 'N/A',
+        status: 'Đã thanh toán',
+        checkedIn: false,
+        checkInTime: null,
+        paymentMethod: paymentMethod === 'cash' ? 'Tiền mặt' : paymentMethod === 'card' ? 'Thẻ ngân hàng' : 'Quét mã QR',
+        combosSummary: Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([id, qty]) => {
+            const c = combos.find(combo => String(combo.id) === String(id))
+            return c ? `${c.name} (x${qty})` : `(x${qty})`
+          }).join(', ')
+      }
+
       const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
       localStorage.setItem('staff_bookings_db', JSON.stringify([payload, ...localBookings]))
 
       // Trigger printed ticket modal view
       setPrintedTicket(payload)
     } catch (err) {
-      setError('Có lỗi xảy ra trong quá trình xuất vé.')
+      console.error(err)
+      setError(err.response?.data?.message || 'Ghế đã có người đặt hoặc có lỗi xảy ra trong quá trình xuất vé.')
     } finally {
       setIsSubmitting(false)
     }

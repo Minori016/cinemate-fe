@@ -9,11 +9,10 @@ import {
   applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../../../utils/seatValidation'
-import { useRecommendation } from '../../../../seatRecommendation/useRecommendation'
-import RecommendationOverlay from '../../../../seatRecommendation/RecommendationOverlay'
-import BestViewZoneFrame from '../../../../seatRecommendation/BestViewZoneFrame'
+// removed BestViewZoneFrame and RecommendationOverlay
 import { getSeatScore } from '../../../../utils/seatScoring'
 import websocketService from '../../../../services/websocketService'
+import { bookingService } from '../../../../services/bookingService'
 
 // Fallback occupied labels used when API layout is unavailable
 const FALLBACK_OCCUPIED = [
@@ -38,10 +37,11 @@ export default function SeatStep({
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
   const [seatError, setSeatError] = useState('')
-  const [tempHolds, setTempHolds] = useState(new Set())
+  const [tempHolds, setTempHolds] = useState(new Map())
   const seatRefs = useRef({})
   const [gridRoot, setGridRoot] = useState(null)
   const [timeLeft, setTimeLeft] = useState(300) // 5 minutes
+  const [realSeatMap, setRealSeatMap] = useState([])
 
   // Countdown timer
   useEffect(() => {
@@ -108,11 +108,20 @@ export default function SeatStep({
     if (opts.showLoading) setLoadingSeats(true)
     setSeatError('')
     try {
-      const data = await cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
-        roomName: selectedShowtime.roomName || selectedShowtime.room || '',
-      })
+      const [data, seatMapRes] = await Promise.all([
+        cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
+          roomName: selectedShowtime.roomName || selectedShowtime.room || '',
+        }),
+        bookingService.getSeatMap(selectedShowtime.id).catch(() => null)
+      ])
+      
       if (data?.seatMatrix?.length) setLayout(data)
       else setSeatError('Không thể tải sơ đồ ghế')
+
+      if (seatMapRes?.data?.result || seatMapRes?.data) {
+        const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
+        setRealSeatMap(seats)
+      }
     } catch {
       setSeatError('Không thể tải sơ đồ ghế')
     } finally {
@@ -139,8 +148,8 @@ export default function SeatStep({
         } else if (message && message.type === 'SEAT_TOGGLE_TEMP') {
           // Instantly lock/unlock the seat visually when someone else clicks it
           setTempHolds(prev => {
-            const next = new Set(prev)
-            if (message.isSelected) next.add(message.seatId)
+            const next = new Map(prev)
+            if (message.isSelected) next.set(message.seatId, Date.now())
             else next.delete(message.seatId)
             return next
           })
@@ -159,6 +168,16 @@ export default function SeatStep({
   // Build occupied seat set from layout (or fallback labels)
   const occupiedSet = useMemo(() => {
     const set = new Set()
+    
+    // Merge real-time booking statuses first
+    if (realSeatMap && realSeatMap.length > 0) {
+      realSeatMap.forEach(s => {
+        if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
+          set.add(s.seatId)
+        }
+      })
+    }
+
     if (!layout?.seatMatrix) {
       FALLBACK_OCCUPIED.forEach(id => set.add(id))
     } else {
@@ -178,26 +197,39 @@ export default function SeatStep({
     }
     
     // Add temp holds from other clients, excluding our own selections
-    tempHolds.forEach(id => {
+    tempHolds.forEach((timestamp, id) => {
       if (!selectedSeats.includes(id)) {
         set.add(id)
       }
     })
 
     return set
-  }, [layout, tempHolds, selectedSeats])
+  }, [layout, tempHolds, selectedSeats, realSeatMap])
 
-  // Clear stale temp holds every minute to prevent deadlocks if someone disconnects without releasing
+  // Clear stale temp holds (older than 5 mins) to prevent deadlocks if someone disconnects abruptly
   useEffect(() => {
-    const timer = setInterval(() => setTempHolds(new Set()), 60000)
+    const timer = setInterval(() => {
+      setTempHolds(prev => {
+        const next = new Map(prev)
+        let changed = false
+        const now = Date.now()
+        for (const [id, time] of next.entries()) {
+          if (now - time > 5 * 60 * 1000) {
+            next.delete(id)
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    }, 30000)
     return () => clearInterval(timer)
   }, [])
 
   // Rows used by gap validator (API layout preferred, fallback otherwise)
   const validationRows = useMemo(() => {
-    if (layout?.seatMatrix?.length) return getRowsFromLayout(layout)
-    return applyOccupiedToRows(buildFallbackRows(), FALLBACK_OCCUPIED)
-  }, [layout])
+    let baseRows = layout?.seatMatrix?.length ? getRowsFromLayout(layout) : buildFallbackRows()
+    return applyOccupiedToRows(baseRows, Array.from(occupiedSet))
+  }, [layout, occupiedSet])
 
   // Build dynamic SEAT_ROWS from layout
   const dynamicSeatRows = useMemo(() => {
@@ -209,48 +241,7 @@ export default function SeatStep({
     })
   }, [layout, SEAT_ROWS])
 
-  const { recommendation } = useRecommendation({
-    rows: validationRows,
-    ticketQuantity: 1,
-    selectedSeats,
-    enabled: !loadingSeats && !seatError,
-  })
 
-  const bestViewGeometry = useMemo(() => {
-    const scoringRows = layout?.seatMatrix?.length
-      ? layout.seatMatrix
-      : (SEAT_ROWS || []).map(({ row, type }) => ({
-        rowLabel: row,
-        seats: Array.from({ length: 12 }, (_, index) => ({
-          id: `${row}${index + 1}`,
-          number: index + 1,
-          type,
-        })),
-      }))
-
-    const regularRows = scoringRows.filter(row => !((row.seats || []).some(seat => (
-      String(seat.type || '').toUpperCase() === 'COUPLE'
-    ))))
-    const rowCount = regularRows.length
-    const columnCount = Math.max(0, ...regularRows.flatMap(row => (
-      (row.seats || []).map((seat, index) => Number(seat.number) || index + 1)
-    )))
-    if (!rowCount || !columnCount) return { seatIds: [], key: 'empty' }
-
-    const seatIds = regularRows.flatMap((row, rowIndex) => (
-      (row.seats || []).flatMap((seat, index) => {
-        const type = String(seat.type || '').toUpperCase()
-        const columnIndex = (Number(seat.number) || index + 1) - 1
-        if (type === 'AISLE' || type === 'COUPLE_EXTENSION') return []
-        return getSeatScore(rowIndex, columnIndex, rowCount, columnCount) > 0.80 ? [seat.id] : []
-      })
-    ))
-
-    return {
-      seatIds,
-      key: `${layout?.roomId || 'fallback'}:${rowCount}:${columnCount}:${regularRows.map(row => row.rowLabel).join(',')}`,
-    }
-  }, [layout, SEAT_ROWS])
 
   const roomName = selectedShowtime?.roomName || 'Phòng Chiếu'
 
@@ -267,6 +258,14 @@ export default function SeatStep({
    */
   const handleToggleSeat = useCallback((seatId, meta = {}) => {
     if (occupiedSet.has(seatId)) return
+
+    // Limit to maximum 8 seats per booking
+    if (!selectedSeats.includes(seatId) && selectedSeats.length >= 8) {
+      toast.error('Bạn chỉ có thể đặt tối đa 8 ghế trong một lần giao dịch!', {
+        duration: 3000,
+      })
+      return
+    }
 
     const result = validateSeatSelection({
       rows: validationRows,
@@ -312,16 +311,26 @@ export default function SeatStep({
     const isOccupied = occupiedSet.has(seat.id)
     const isSelected = selectedSeats.includes(seat.id)
     const displayLabel = resolveSeatLabel(seat)
+    let doubleLabel = displayLabel
+    if (displayLabel) {
+      const match = String(displayLabel).trim().match(/^([a-zA-Z\s]+)(\d+)$/)
+      if (match) {
+        const row = match[1].trim()
+        const num = parseInt(match[2], 10)
+        doubleLabel = `${row}${num} | ${row}${num + 1}`
+      }
+    }
+
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple w-[72px] h-8 rounded border flex items-center justify-center text-[11px] font-bold relative transition-all ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={doubleLabel}>
         <input
           type="checkbox"
           checked={isSelected}
           disabled={isOccupied}
-          onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: 'COUPLE' })}
+          onChange={() => handleToggleSeat(seat.id, { label: doubleLabel, type: 'COUPLE' })}
           className="sr-only"
         />
-        {isOccupied ? 'X' : displayLabel}
+        {isOccupied ? 'X' : doubleLabel}
       </label>
     )
   }
@@ -480,18 +489,7 @@ export default function SeatStep({
                   <span className="material-symbols-outlined text-sm">logout</span>Lối ra
                 </div>
               </div>
-              <RecommendationOverlay
-                recommendedSeats={recommendation?.seats}
-                seatRefs={seatRefs.current}
-                measureRoot={gridRoot}
-                isVisible={Boolean(recommendation)}
-              />
-              <BestViewZoneFrame
-                seatIds={bestViewGeometry.seatIds}
-                seatRefs={seatRefs.current}
-                measureRoot={gridRoot}
-                layoutKey={bestViewGeometry.key}
-              />
+
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ class WebSocketService {
   constructor() {
     this.client = null;
     this.subscriptions = new Map();
+    this.activeSubscriptions = new Map();
   }
 
   connect(onConnect, onError) {
@@ -54,7 +55,12 @@ class WebSocketService {
 
   _subscribeInternal(destination, callback) {
     if (this.client && this.client.connected) {
-      this.client.subscribe(destination, (message) => {
+      // Unsubscribe if already exists to prevent duplicate ghost listeners
+      if (this.activeSubscriptions.has(destination)) {
+        this.activeSubscriptions.get(destination).unsubscribe();
+      }
+      
+      const sub = this.client.subscribe(destination, (message) => {
         if (message.body) {
           try {
             const body = JSON.parse(message.body);
@@ -66,6 +72,8 @@ class WebSocketService {
           callback(null);
         }
       });
+      
+      this.activeSubscriptions.set(destination, sub);
     }
   }
 
@@ -78,8 +86,11 @@ class WebSocketService {
   unsubscribeFromSeatMap(showtimeId) {
     const destination = `/topic/showtimes/${showtimeId}/seats`;
     this.subscriptions.delete(destination);
-    // STOMPJS 5 tự động quản lý unsubscribe qua StompSubscription return từ subscribe. 
-    // Do cách implement hiện tại đơn giản, ta chỉ xóa khỏi danh sách.
+    
+    if (this.activeSubscriptions.has(destination)) {
+      this.activeSubscriptions.get(destination).unsubscribe();
+      this.activeSubscriptions.delete(destination);
+    }
   }
 
   sendSeatToggle(showtimeId, seatId, isSelected) {
