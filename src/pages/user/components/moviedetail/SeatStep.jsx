@@ -157,23 +157,29 @@ export default function SeatStep({
     }
   }, [selectedShowtime?.id, loadLayout])
 
-  // Build occupied seat set from layout (or fallback labels)
-  const occupiedSet = useMemo(() => {
-    const set = new Set()
+  // Build sold, held and combined occupied seat sets
+  const { soldSet, heldSet } = useMemo(() => {
+    const sold = new Set()
+    const held = new Set()
     
     // Merge real-time booking statuses first
     if (realSeatMap && realSeatMap.length > 0) {
       realSeatMap.forEach(s => {
-        if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
+        const sStatus = String(s.status || '').toUpperCase()
+        if (sStatus === 'HELD') {
           if (!selectedSeats.includes(s.seatId)) {
-            set.add(s.seatId)
+            held.add(s.seatId)
+          }
+        } else if (sStatus === 'CONFIRMED' || sStatus === 'CANCELLED_UNAVAILABLE' || sStatus === 'MAINTENANCE') {
+          if (!selectedSeats.includes(s.seatId)) {
+            sold.add(s.seatId)
           }
         }
       })
     }
 
     if (!layout?.seatMatrix) {
-      FALLBACK_OCCUPIED.forEach(id => set.add(id))
+      FALLBACK_OCCUPIED.forEach(id => sold.add(id))
     } else {
       layout.seatMatrix.forEach(row => {
         row.seats.forEach(seat => {
@@ -184,7 +190,7 @@ export default function SeatStep({
             status === 'DISABLED' || status === 'BROKEN' ||
             type === 'AISLE' || type === 'COUPLE_EXTENSION'
           ) {
-            set.add(seat.id)
+            sold.add(seat.id)
           }
         })
       })
@@ -193,12 +199,16 @@ export default function SeatStep({
     // Add temp holds from other clients, excluding our own selections
     tempHolds.forEach((timestamp, id) => {
       if (!selectedSeats.includes(id)) {
-        set.add(id)
+        held.add(id)
       }
     })
 
-    return set
+    return { soldSet: sold, heldSet: held }
   }, [layout, tempHolds, selectedSeats, realSeatMap])
+
+  const occupiedSet = useMemo(() => {
+    return new Set([...soldSet, ...heldSet])
+  }, [soldSet, heldSet])
 
   // Clear stale temp holds (older than 5 mins) to prevent deadlocks if someone disconnects abruptly
   useEffect(() => {
@@ -283,13 +293,33 @@ export default function SeatStep({
 
   // Seat button sub-components
   function SeatButton({ seat, type }) {
-    const isOccupied = occupiedSet.has(seat.id)
+    const isSold = soldSet.has(seat.id)
+    const isHeld = heldSet.has(seat.id)
+    const isOccupied = isSold || isHeld
     const isSelected = selectedSeats.includes(seat.id)
     const seatType = seat.type || type || 'STANDARD'
     const isVip = String(seatType).toUpperCase() === 'VIP'
     const displayLabel = resolveSeatLabel(seat)
+
+    let btnClasses = "seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative transition-all "
+    let content = displayLabel
+
+    if (isSold) {
+      btnClasses += "occupied cursor-not-allowed opacity-40 bg-[#1f2022] border-[#3a3a3a] text-transparent"
+      content = ""
+    } else if (isHeld) {
+      btnClasses += "held cursor-not-allowed bg-[#2d1b1e] border-[#ef4444]/40 text-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+      content = "X"
+    } else if (isSelected) {
+      btnClasses += "selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_0_10px_rgba(229,9,20,0.5)]"
+    } else if (isVip) {
+      btnClasses += "vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer"
+    } else {
+      btnClasses += "border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer"
+    }
+
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={displayLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={btnClasses} title={displayLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -297,13 +327,15 @@ export default function SeatStep({
           onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: String(seatType).toUpperCase() })}
           className="sr-only"
         />
-        {isOccupied ? 'X' : displayLabel}
+        {content}
       </label>
     )
   }
 
   function CoupleButton({ seat }) {
-    const isOccupied = occupiedSet.has(seat.id)
+    const isSold = soldSet.has(seat.id)
+    const isHeld = heldSet.has(seat.id)
+    const isOccupied = isSold || isHeld
     const isSelected = selectedSeats.includes(seat.id)
     const displayLabel = resolveSeatLabel(seat)
     let doubleLabel = displayLabel
@@ -316,8 +348,23 @@ export default function SeatStep({
       }
     }
 
+    let btnClasses = "seat-btn couple w-[72px] h-8 rounded border flex items-center justify-center text-[11px] font-bold relative transition-all "
+    let content = doubleLabel
+
+    if (isSold) {
+      btnClasses += "occupied cursor-not-allowed opacity-40 bg-[#1f2022] border-[#3a3a3a] text-transparent"
+      content = ""
+    } else if (isHeld) {
+      btnClasses += "held cursor-not-allowed bg-[#2d1b1e] border-[#ef4444]/40 text-[#ef4444] shadow-[0_0_8px_rgba(239,68,68,0.2)]"
+      content = "X"
+    } else if (isSelected) {
+      btnClasses += "selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_0_10px_rgba(229,9,20,0.5)]"
+    } else {
+      btnClasses += "border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer"
+    }
+
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple w-[72px] h-8 rounded border flex items-center justify-center text-[11px] font-bold relative transition-all ${isOccupied ? 'occupied cursor-not-allowed opacity-40 bg-[#282a2b] border-[#4e4353] text-gray-500' : isSelected ? 'selected cursor-pointer bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_0_10px_rgba(229,9,20,0.5)]' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={doubleLabel}>
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={btnClasses} title={doubleLabel}>
         <input
           type="checkbox"
           checked={isSelected}
@@ -325,7 +372,7 @@ export default function SeatStep({
           onChange={() => handleToggleSeat(seat.id, { label: doubleLabel, type: 'COUPLE' })}
           className="sr-only"
         />
-        {isOccupied ? 'X' : doubleLabel}
+        {content}
       </label>
     )
   }
@@ -439,6 +486,7 @@ export default function SeatStep({
             { color: 'border-[#f59e0b] bg-transparent text-[#f59e0b]', label: 'VIP', char: 'V' },
             { color: 'border-red-500 bg-transparent text-red-400', label: 'Đôi', wide: true },
             { color: 'bg-[var(--color-primary)] border-[var(--color-primary)]', label: 'Đang chọn' },
+            { color: 'border-[#ef4444]/40 bg-[#2d1b1e] text-[#ef4444]', label: 'Đang giữ', char: 'X' },
             { color: 'bg-[#1f2022] border-[#3a3a3a] opacity-40', label: 'Đã bán' },
           ].map(({ color, label, char, wide }) => (
             <div key={label} className="flex items-center gap-2">
