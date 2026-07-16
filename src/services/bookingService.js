@@ -6,7 +6,7 @@ export const bookingService = {
   create: (data) => api.post('/bookings', data),
   
   // Real-time Booking Endpoints
-  getSeatMap: (showtimeId) => api.get(`/showtimes/${showtimeId}/seats`),
+  getSeatMap: (showtimeId) => api.get(`/api/v1/showtimes/${showtimeId}/seat-map`),
   holdSeats: (data) => api.post('/bookings/hold', data),
   confirmMock: (id) => api.post(`/bookings/${id}/confirm`),
   cancelBooking: (id) => api.post(`/bookings/${id}/cancel`),
