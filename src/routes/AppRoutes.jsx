@@ -79,7 +79,15 @@ export default function AppRoutes() {
         <Route path="/" element={<RootRedirect />} />
 
         {/* Intro — không navbar/footer */}
-        <Route path="/intro" element={<VideoIntro onExplore={() => window.location.href = '/home'} />} />
+        <Route
+          path="/intro"
+          element={
+            <VideoIntro
+              onExplore={() => { window.location.href = '/home' }}
+              onBuyTicket={() => { window.location.href = '/home' }}
+            />
+          }
+        />
 
         {/* Auth */}
         <Route path="/login" element={<AuthPage />} />

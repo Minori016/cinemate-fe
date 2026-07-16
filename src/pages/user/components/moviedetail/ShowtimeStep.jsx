@@ -10,7 +10,7 @@ function GlassCard({ children, className = '' }) {
   )
 }
 
-export default function ShowtimeStep({ DAYS, selectedDate, setSelectedDate, selectedTime, setSelectedTime, setBookingStep, movie, movieId, onShowtimeSelect, onDateChange }) {
+export default function ShowtimeStep({ DAYS, selectedDate, setSelectedDate, selectedTime, setSelectedTime, movieId, onShowtimeSelect, onDateChange }) {
   const [showtimes, setShowtimes] = useState([])
   const [loading, setLoading] = useState(false)
   const [selectedFormat, setSelectedFormat] = useState(null)
@@ -119,9 +119,7 @@ export default function ShowtimeStep({ DAYS, selectedDate, setSelectedDate, sele
                   <button
                     key={st.id}
                     onClick={() => {
-                      setSelectedTime(time)
-                      if (onShowtimeSelect) onShowtimeSelect(st)
-                      setBookingStep(2)
+                      if (onShowtimeSelect) onShowtimeSelect(st, time)
                     }}
                     className={`time-slot-btn ${isActive ? 'active' : ''}`}
                   >

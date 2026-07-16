@@ -29,3 +29,4 @@ movie-theater-back-end/
 backend/
 .agents/
 .vite/
+.claude/

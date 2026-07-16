@@ -436,14 +436,25 @@ export default function HomePage() {
       .then(r => {
         console.log('✅ API Response:', r.data)
         const moviesData = r.data || []
-        console.log('🎬 Movies to set:', moviesData.map(m => ({
+        const sortedMovies = moviesData
+          .map((movie, index) => ({ movie, index, releaseTimestamp: Date.parse(movie.releaseDate) }))
+          .sort((a, b) => {
+            const aHasValidDate = Number.isFinite(a.releaseTimestamp)
+            const bHasValidDate = Number.isFinite(b.releaseTimestamp)
+            if (!aHasValidDate && !bHasValidDate) return a.index - b.index
+            if (!aHasValidDate) return 1
+            if (!bHasValidDate) return -1
+            return b.releaseTimestamp - a.releaseTimestamp || a.index - b.index
+          })
+          .map(({ movie }) => movie)
+        console.log('🎬 Movies to set:', sortedMovies.map(m => ({
           id: m.id,
           titleVn: m.titleVn,
           posterUrl: m.posterUrl,
           posterUrlType: typeof m.posterUrl,
           posterUrlLength: m.posterUrl?.length
         })))
-        setMovies(moviesData)
+        setMovies(sortedMovies)
       })
       .catch(err => {
         console.error('❌ Error fetching movies:', err)
@@ -748,66 +759,70 @@ export default function HomePage() {
 
                       </div>
 
-                      {/* Bottom horizontal selection strip (User's Idea style) */}
+                      {/* Bottom horizontal selection strip — giant outline rank behind poster */}
                       {bannerMovies.length > 1 && (
                         <div className="w-full max-w-7xl mx-auto px-6 md:px-14 mt-auto mb-2 select-none">
-                          <div className="flex items-center gap-2 mb-3">
-                            <span
-                              className="text-[9px] font-black uppercase text-white px-2 py-0.5 rounded shadow-[0_0_8px_rgba(229,9,20,0.6)]"
-                              style={{ backgroundColor: '#e50914' }}
-                            >
-                              HOT
-                            </span>
-                            <h3 className="text-white text-xs font-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                              PHIM HOT TRONG THÁNG
-                            </h3>
-                          </div>
+                          <h3 className="text-white text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <span className="text-base">🔥</span>
+                            <span>PHIM HOT TRONG THÁNG</span>
+                          </h3>
 
-                          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none justify-start">
-                            {bannerMovies.map((m, i) => (
-                              <button
-                                key={m.id}
-                                onClick={() => setCurrentBannerIndex(i)}
-                                className="flex-shrink-0 group/card text-left transition-all duration-300 focus:outline-none cursor-pointer"
-                                style={{ width: '92px' }}
-                              >
-                                <div
-                                  className="relative aspect-[2/3] w-full rounded-lg overflow-hidden border-2 transition-all duration-300 bg-gradient-to-br from-red-900/30 to-gray-900"
-                                  style={{
-                                    borderColor: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.12)',
-                                    boxShadow: i === currentBannerIndex ? '0 0 16px rgba(229,9,20,0.5)' : 'none',
-                                  }}
+                          {/* Netflix-style row: fixed cards scroll on small screens, then flex evenly across desktop */}
+                          <div className="flex min-w-max lg:min-w-0 gap-6 sm:gap-8 lg:gap-4 overflow-x-auto px-6 sm:px-8 lg:px-10 pb-2 scrollbar-none">
+                            {bannerMovies.map((m, i) => {
+                              const movieTitle = m.titleVn || m.titleEn || `Phim ${i + 1}`
+                              const isActive = i === currentBannerIndex
+                              return (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  onClick={() => setCurrentBannerIndex(i)}
+                                  aria-label={`Chọn phim ${movieTitle}`}
+                                  aria-pressed={isActive}
+                                  className="group relative flex-shrink-0 text-left focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded-lg transition-all duration-300 cursor-pointer w-[calc(100%/3_+_2px)] sm:w-[calc(100%/4_+_2px)] md:w-[calc(100%/5_+_2px)] lg:w-[calc(100%/${bannerMovies.length}_+_2px)]"
                                 >
-                                  <img
-                                    src={m.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=120&h=180&fit=crop'}
-                                    alt={m.titleVn}
-                                    className="w-full h-full object-cover transition-transform duration-500 group-hover/card:scale-105"
-                                    onError={handleImageError}
-                                  />
-                                  {/* Number Overlay in Gold Gradient style */}
-                                  <div
-                                    className="absolute top-1 left-2 font-black text-2xl select-none"
-                                    style={{
-                                      fontFamily: 'Montserrat, sans-serif',
-                                      color: '#d97706',
-                                      textShadow: '2px 2px 0px rgba(0,0,0,0.95), 0 0 8px rgba(217,119,6,0.6)',
-                                    }}
-                                  >
-                                    {i + 1}
+                                  {/* Fixed stage area for rank + poster composition */}
+                                  <div className="relative h-[175px] overflow-visible">
+                                    {/* Giant Outline Rank Number behind poster */}
+                                    <span
+                                      aria-hidden="true"
+                                      className={`absolute ${i >= 3 ? 'left-[-30px]' : 'left-[-20px]'} bottom-[2px] sm:bottom-[0px] lg:bottom-[-2px] z-0 select-none pointer-events-none font-black text-outline-number text-[150px] sm:text-[170px] lg:text-[185px]`}
+                                    >
+                                      {i + 1}
+                                    </span>
+
+                                    {/* Poster Card */}
+                                    <div
+                                      className="absolute left-[28px] sm:left-[34px] lg:left-[38px] bottom-5 z-10 w-[80px] sm:w-[90px] aspect-[2/3] rounded-[10px] overflow-hidden border-2 transition-all duration-300 bg-gradient-to-br from-red-900/30 to-gray-900"
+                                      style={{
+                                        borderColor: isActive ? '#e50914' : 'rgba(255,255,255,0.12)',
+                                        boxShadow: isActive ? '0 0 16px rgba(229,9,20,0.5)' : 'none',
+                                      }}
+                                    >
+                                      <img
+                                        src={m.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=120&h=180&fit=crop'}
+                                        alt=""
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        onError={handleImageError}
+                                      />
+                                      {/* Dark gradient overlay at bottom half of poster */}
+                                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                      {/* Movie Title over gradient */}
+                                      <p
+                                        className="absolute inset-x-0 bottom-0 px-2 pb-2 text-[9px] font-bold uppercase tracking-wide leading-3 line-clamp-2 z-10 transition-colors duration-200"
+                                        style={{
+                                          color: isActive ? '#e50914' : 'rgba(255,255,255,0.9)',
+                                          fontFamily: 'Montserrat, sans-serif',
+                                          textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                                        }}
+                                      >
+                                        {movieTitle}
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
-                                {/* Movie Title */}
-                                <p
-                                  className="mt-1.5 text-[9px] font-bold uppercase tracking-wide truncate transition-colors duration-200"
-                                  style={{
-                                    color: i === currentBannerIndex ? '#e50914' : 'rgba(255,255,255,0.6)',
-                                    fontFamily: 'Montserrat, sans-serif'
-                                  }}
-                                >
-                                  {m.titleVn || m.titleEn}
-                                </p>
-                              </button>
-                            ))}
+                                </button>
+                              )
+                            })}
                           </div>
                         </div>
                       )}

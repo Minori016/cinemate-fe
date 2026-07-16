@@ -222,7 +222,7 @@ export default function MovieDetailPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   // Back button config
   const [backInfo, setBackInfo] = useState({ label: 'Quay lại trang chủ', target: '/home' })
@@ -258,7 +258,8 @@ export default function MovieDetailPage() {
 
   // Booking states
   const [isBookingMode, setIsBookingMode] = useState(((queryDate && queryTime) || queryBook) ? true : false)
-  const [bookingStep, setBookingStep] = useState((queryDate && queryTime) ? 2 : 1)
+  // Query booking intents are advanced only after auth is known; do not mount SeatStep for a guest.
+  const [bookingStep, setBookingStep] = useState(1)
   const [selectedDate, setSelectedDate] = useState(queryDate || DAYS[0].date)
   const [selectedTime, setSelectedTime] = useState(queryTime || '')
   const [selectedShowtime, setSelectedShowtime] = useState(null)
@@ -270,17 +271,32 @@ export default function MovieDetailPage() {
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
 
-  // Sync state with query parameters
+  // Sync state with query parameters — nếu khách vãng lai từ /showtimes, chặn bước ghế và yêu cầu đăng nhập
+  const [handledGuestQuery, setHandledGuestQuery] = useState(false)
+  const [pendingLoginFromShowtime, setPendingLoginFromShowtime] = useState(false)
   useEffect(() => {
+    if (authLoading || handledGuestQuery) return
     const qDate = searchParams.get('date')
     const qTime = searchParams.get('time')
-    if (qDate && qTime) {
+    if (!qDate || !qTime) return
+    if (!user) {
+      // Khách chưa đăng nhập: lưu intent + redirect ngay về trang login
       setSelectedDate(qDate)
       setSelectedTime(qTime)
-      setBookingStep(2)
       setIsBookingMode(true)
+      setBookingStep(2)
+      savePendingAtSelection(null, qTime, 2)
+      setHandledGuestQuery(true)
+      setPendingLoginFromShowtime(true)
+      setShowAuthModal(true)
+      return
     }
-  }, [searchParams])
+    // Đã đăng nhập: cho phép chuyển sang bước ghế như bình thường
+    setSelectedDate(qDate)
+    setSelectedTime(qTime)
+    setBookingStep(2)
+    setIsBookingMode(true)
+  }, [authLoading, searchParams, user, handledGuestQuery])
 
   // Fetch showtimes if query parameters are present to set selectedShowtime
   useEffect(() => {
@@ -329,17 +345,19 @@ export default function MovieDetailPage() {
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('pending_booking_state')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed && String(parsed.movieId) === String(movieId) && user) {
-          if (parsed.selectedDate) setSelectedDate(parsed.selectedDate)
-          if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
-          if (Array.isArray(parsed.selectedSeats)) setSelectedSeats(parsed.selectedSeats)
-          if (parsed.seatMetaMap && typeof parsed.seatMetaMap === 'object') setSeatMetaMap(parsed.seatMetaMap)
-          if (parsed.selectedShowtime) setSelectedShowtime(parsed.selectedShowtime)
-          setIsBookingMode(true)
-          setBookingStep(parsed.bookingStep || 3)
-        }
+      if (!saved) return
+
+      const parsed = JSON.parse(saved)
+      if (parsed && String(parsed.movieId) === String(movieId) && user) {
+        if (parsed.selectedDate) setSelectedDate(parsed.selectedDate)
+        if (parsed.selectedTime) setSelectedTime(parsed.selectedTime)
+        if (Array.isArray(parsed.selectedSeats)) setSelectedSeats(parsed.selectedSeats)
+        if (parsed.seatMetaMap && typeof parsed.seatMetaMap === 'object') setSeatMetaMap(parsed.seatMetaMap)
+        if (parsed.selectedShowtime) setSelectedShowtime(parsed.selectedShowtime)
+        setIsBookingMode(true)
+        setBookingStep(parsed.bookingStep || 3)
+
+        // Chỉ xóa sau khi đã khôi phục thành công
         sessionStorage.removeItem('pending_booking_state')
       }
     } catch (e) {
@@ -596,8 +614,35 @@ export default function MovieDetailPage() {
     setSelectedTime('')
   }
 
-  const handleShowtimeSelect = (st) => {
+  /** Lưu intent đặt vé ngay tại thời điểm chọn suất chiếu để đảm bảo giá trị mới nhất */
+  const savePendingAtSelection = (st, time, step) => {
+    try {
+      sessionStorage.setItem('pending_booking_state', JSON.stringify({
+        movieId,
+        selectedDate,
+        selectedTime: time,
+        selectedSeats,
+        seatMetaMap,
+        selectedShowtime: st,
+        bookingStep: step,
+        isBookingMode: true,
+      }))
+    } catch (e) {
+      console.error('Lỗi khi lưu trạng thái đặt vé', e)
+    }
+  }
+
+  /** Auth gate cho việc chọn suất chiếu — bắt đăng nhập trước khi vào bước chọn ghế */
+  const handleShowtimeSelect = (st, time) => {
+    setSelectedTime(time)
+    if (!user) {
+      savePendingAtSelection(st, time, 2)
+      setPendingLoginFromShowtime(true)
+      setShowAuthModal(true)
+      return
+    }
     setSelectedShowtime(st)
+    setBookingStep(2)
   }
 
   // Guard: nếu chưa đăng nhập thì lưu trạng thái + hiện modal thay vì tiến trình đặt vé
@@ -1056,9 +1101,16 @@ export default function MovieDetailPage() {
         open={showAuthModal}
         onLogin={() => {
           setShowAuthModal(false)
+          setPendingLoginFromShowtime(false)
           navigate('/login', { state: { from: location } })
         }}
-        onCancel={() => setShowAuthModal(false)}
+        onCancel={() => {
+          setShowAuthModal(false)
+          if (pendingLoginFromShowtime) {
+            setPendingLoginFromShowtime(false)
+            setBookingStep(1)
+          }
+        }}
       />
 
       <style>{`
