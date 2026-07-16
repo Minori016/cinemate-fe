@@ -80,6 +80,18 @@ export const concessionService = {
   getActive: () => api.get('/api/v1/concessions/active'),
 
   /**
+   * Upload một file ảnh lên Cloudinary (qua BE) và trả về URL.
+   * Endpoint: POST /api/v1/admin/concessions/upload  (multipart, field "file")
+   */
+  uploadImage: (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post('/api/v1/admin/concessions/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+
+  /**
    * User booking: load active concessions, mapped for UI.
    * @param {{ fallback?: boolean, onlyCombo?: boolean }} opts
    */
