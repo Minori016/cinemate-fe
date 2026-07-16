@@ -8,10 +8,11 @@ export const bookingService = {
   // Real-time Booking Endpoints
   getSeatMap: (showtimeId) => api.get(`/api/v1/showtimes/${showtimeId}/seat-map`),
   holdSeats: (data) => api.post('/api/v1/bookings/hold', data),
-  confirmMock: (id) => api.post(`/api/v1/bookings/${id}/confirm`),
+  confirm: (id) => api.post(`/api/v1/bookings/${id}/confirm`),
   cancelBooking: (id) => api.post(`/api/v1/bookings/${id}/cancel`),
   lockSeats: (showtimeId, seatIds) => api.post(`/api/v1/showtimes/${showtimeId}/seats/lock`, { seatIds }),
   unlockSeat: (showtimeId, seatId) => api.post(`/api/v1/showtimes/${showtimeId}/seats/${seatId}/unlock`),
   
   getMyBookings: () => api.get('/api/v1/bookings/my'),
+  getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),
 }
