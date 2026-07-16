@@ -171,8 +171,11 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
   d.setDate(d.getDate() + i)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
   return {
-    date: d.toISOString().slice(0, 10),
+    date: `${yyyy}-${mm}-${dd}`,
     label: d.getDate(),
     day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()],
   }

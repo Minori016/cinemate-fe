@@ -2,74 +2,10 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { motion } from 'motion/react'
 import Table from '../../../components/common/Table'
-import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User } from 'lucide-react'
+import { X, CheckCircle, Ticket, Calendar, Clock, DollarSign, User, Loader2 } from 'lucide-react'
+import { bookingService } from '../../../services/bookingService'
 
-// Initial seeds fallback if localStorage is empty
-const INITIAL_BOOKINGS = [
-  {
-    id: 'CM-1718556391',
-    movie: 'Dune: Hành Tinh Cát - Phần 2',
-    screen: 'Phòng chiếu 3 (IMAX)',
-    date: '17/06/2026',
-    time: '18:30',
-    seats: 'D4, D5',
-    customerName: 'Nguyễn Văn Anh',
-    phone: '0912345678',
-    email: 'vananh@gmail.com',
-    price: 120000,
-    total: 240000,
-    convertTickets: 0,
-    scoreUsed: 0,
-    memberId: 'MEM-889922',
-    memberScore: 1500,
-    idCard: '012345678901',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-9988112233',
-    movie: 'Lật Mặt 7: Một Điều Ước',
-    screen: 'Phòng chiếu 1 (Standard)',
-    date: '17/06/2026',
-    time: '20:15',
-    seats: 'H12, H13, H14',
-    customerName: 'Trần Thị Bình',
-    phone: '0987654321',
-    email: 'thibinh@gmail.com',
-    price: 110000,
-    total: 330000,
-    convertTickets: 2,
-    scoreUsed: 2000,
-    memberId: 'MEM-445511',
-    memberScore: 3500,
-    idCard: '023456789012',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-5566778899',
-    movie: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc',
-    screen: 'Phòng chiếu 2 (3D)',
-    date: '17/06/2026',
-    time: '17:00',
-    seats: 'C1, C2',
-    customerName: 'Lê Văn Cường',
-    phone: '0933445566',
-    email: 'vancuong@gmail.com',
-    price: 90000,
-    total: 180000,
-    convertTickets: 1,
-    scoreUsed: 1000,
-    memberId: 'MEM-332211',
-    memberScore: 500,
-    idCard: '034567890123',
-    status: 'Đã thanh toán',
-    checkedIn: true,
-    checkInTime: '17/06/2026 - 16:48'
-  }
-]
+// Removed INITIAL_BOOKINGS mock data
 
 const getSeatCount = (seats) => {
   if (!seats) return 1
@@ -92,86 +28,47 @@ export default function TicketManagementPage() {
   const [convertOption, setConvertOption] = useState('no')
   const [convertTicketsCount, setConvertTicketsCount] = useState(0)
 
-  // Load from local storage dynamically (AC-05)
-  const loadBookings = () => {
-    const local = localStorage.getItem('staff_bookings_db')
-    if (local) {
-      const parsed = JSON.parse(local)
-      const updated = parsed.map(b => ({
-        ...b,
-        memberScore: b.memberScore !== undefined ? b.memberScore : (
-          b.memberId === 'MEM-889922' ? 1500 :
-          b.memberId === 'MEM-445511' ? 3500 :
-          b.memberId === 'MEM-332211' ? 500 : 0
-        )
-      }))
-      setBookings(updated)
-    } else {
-      const initial = INITIAL_BOOKINGS.map(b => ({
-        ...b,
-        memberScore: b.memberId === 'MEM-889922' ? 1500 :
-                     b.memberId === 'MEM-445511' ? 3500 :
-                     b.memberId === 'MEM-332211' ? 500 : 0
-      }))
-      setBookings(initial)
-      localStorage.setItem('staff_bookings_db', JSON.stringify(initial))
+  const [loading, setLoading] = useState(false)
+
+  // Fetch real data from API (AC-01)
+  const loadBookings = async () => {
+    try {
+      setLoading(true)
+      const res = await bookingService.getAllAdminBookings()
+      const data = res.data?.result || res.data
+      setBookings(data)
+    } catch (error) {
+      console.error('Failed to load bookings', error)
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleSelectBooking = (booking) => {
     setSelectedBooking(booking)
-    setConvertOption(booking.convertTickets > 0 ? 'yes' : 'no')
-    setConvertTicketsCount(booking.convertTickets || 0)
+    setConvertOption('no')
+    setConvertTicketsCount(0)
   }
 
-  const handleFinalizeBooking = () => {
+  const handleFinalizeBooking = async () => {
     if (!selectedBooking) return
 
-    const scoreUsed = convertOption === 'yes' ? convertTicketsCount * 1000 : 0
-    const convertTickets = convertOption === 'yes' ? convertTicketsCount : 0
-
-    if (convertOption === 'yes' && selectedBooking.memberScore < scoreUsed) {
-      return
+    try {
+      // Call confirm API
+      await bookingService.confirm(selectedBooking.id)
+      setSuccessBanner(`Đã xác nhận booking ${selectedBooking.id} thành công!`)
+      setSelectedBooking(null)
+      loadBookings() // refresh the list
+    } catch (err) {
+      alert(err.response?.data?.message || 'Không thể xác nhận booking. Vui lòng thử lại.')
     }
-
-    const local = localStorage.getItem('staff_bookings_db')
-    const currentList = local ? JSON.parse(local) : bookings
-    
-    const updatedBookings = currentList.map(b => {
-      if (b.id === selectedBooking.id) {
-        const updatedScore = b.memberScore - scoreUsed
-        const singlePrice = b.price || 0
-        const discountedTotal = Math.max(0, b.total - (convertTickets * singlePrice))
-        
-        return {
-          ...b,
-          status: 'Đã xác nhận',
-          convertTickets: convertTickets,
-          scoreUsed: scoreUsed,
-          memberScore: updatedScore,
-          total: discountedTotal
-        }
-      }
-      return b
-    })
-
-    setBookings(updatedBookings)
-    localStorage.setItem('staff_bookings_db', JSON.stringify(updatedBookings))
-    setSelectedBooking(null)
   }
 
   useEffect(() => {
     loadBookings()
   }, [])
 
-  // Listen to storage changes to ensure real-time dynamic updates (AC-05)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      loadBookings()
-    }
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [])
+  // (Storage listener removed since we use API)
 
   const filtered = bookings.filter(b =>
     b.id?.toLowerCase().includes(search.toLowerCase()) ||
@@ -180,13 +77,11 @@ export default function TicketManagementPage() {
     b.idCard?.includes(search)
   )
 
-  // Columns specification mapping exactly to AC-01
   const columns = [
     { key: 'id', label: 'Booking ID' },
-    { key: 'idCard', label: 'Identity Card Number (CCCD)' },
-    { key: 'phone', label: 'Phone Number' },
-    { key: 'movie', label: 'Movie Title' },
-    { key: 'showtime', label: 'Showtime', render: row => `${row.date} - ${row.time}` },
+    { key: 'phoneNumber', label: 'Phone Number' },
+    { key: 'movieName', label: 'Movie Title' },
+    { key: 'showtime', label: 'Showtime', render: row => `${row.date} - ${row.showtime}` },
   ]
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
@@ -304,25 +199,25 @@ export default function TicketManagementPage() {
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Suất Chiếu (Time)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.time}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.showtime}</span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Ghế Ngồi (Seat)</span>
-                    <span className="text-xs font-black text-[var(--color-primary-container)] mt-1 block">{selectedBooking.seats}</span>
+                    <span className="text-xs font-black text-[var(--color-primary-container)] mt-1 block">{selectedBooking.seatNames?.join(', ')}</span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Giá Vé (Price)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{formatVND(selectedBooking.price)}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block">{formatVND(selectedBooking.totalAmount / (selectedBooking.seatNames?.length || 1))}</span>
                   </div>
 
                   <div className="col-span-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-emerald-400 block">Tổng tiền (Total)</span>
                     <span className="text-sm font-black text-emerald-400 mt-1 block">
-                      {selectedBooking.status !== 'Đã xác nhận' && convertOption === 'yes'
-                        ? formatVND(Math.max(0, selectedBooking.total - (convertTicketsCount * (selectedBooking.price || 0))))
-                        : formatVND(selectedBooking.total)
+                      {selectedBooking.status !== 'CONFIRMED' && convertOption === 'yes'
+                        ? formatVND(Math.max(0, selectedBooking.totalAmount - (convertTicketsCount * (selectedBooking.totalAmount / (selectedBooking.seatNames?.length || 1)))))
+                        : formatVND(selectedBooking.totalAmount)
                       }
                     </span>
                   </div>
@@ -353,7 +248,7 @@ export default function TicketManagementPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Mã Thành Viên (Member ID)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedBooking.memberId}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">MEM-{selectedBooking.id?.substring(0,6).toUpperCase()}</span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
@@ -363,17 +258,12 @@ export default function TicketManagementPage() {
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Điểm tích lũy (Member Score)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedBooking.memberScore}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedBooking.memberScore || 0}</span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số Điện Thoại</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.phone}</span>
-                  </div>
-
-                  <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
-                    <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số CCCD (Identity Card)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.idCard}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.phoneNumber}</span>
                   </div>
 
                   <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
@@ -384,7 +274,7 @@ export default function TicketManagementPage() {
               </div>
 
               {/* Score Conversion Option (AC-02, AC-03) */}
-              {selectedBooking.status !== 'Đã xác nhận' && (
+              {selectedBooking.status !== 'CONFIRMED' && (
                 <div className="space-y-4 pt-4 border-t border-white/5">
                   <h5 className="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
                     <span>🪙</span> Quy đổi điểm thành viên (Member Score Conversion)
@@ -434,7 +324,7 @@ export default function TicketManagementPage() {
                             onChange={(e) => setConvertTicketsCount(parseInt(e.target.value, 10))}
                             className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer min-w-[100px]"
                           >
-                            {Array.from({ length: getSeatCount(selectedBooking.seats) }).map((_, i) => (
+                            {Array.from({ length: getSeatCount(selectedBooking.seatNames) }).map((_, i) => (
                               <option key={i + 1} value={i + 1}>{i + 1} vé</option>
                             ))}
                           </select>
@@ -461,10 +351,10 @@ export default function TicketManagementPage() {
               >
                 Đóng
               </button>
-              {selectedBooking.status !== 'Đã xác nhận' ? (
+              {selectedBooking.status !== 'CONFIRMED' ? (
                 <button
                   onClick={handleFinalizeBooking}
-                  disabled={convertOption === 'yes' && selectedBooking.memberScore < convertTicketsCount * 1000}
+                  disabled={convertOption === 'yes' && (selectedBooking.memberScore || 0) < convertTicketsCount * 1000}
                   className="px-5 py-3 text-xs bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all cursor-pointer"
                 >
                   Confirm Booking

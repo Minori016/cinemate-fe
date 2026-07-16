@@ -5,6 +5,7 @@ import { bookingService } from '../../services/bookingService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
 import websocketService from '../../services/websocketService'
+import { paymentService } from '../../services/paymentService'
 import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
 import { Ticket, CalendarDays, Armchair, CreditCard, Check, CloudOff, ArrowLeft, Play } from 'lucide-react'
@@ -33,16 +34,12 @@ const SEAT_ROWS = [
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
   d.setDate(d.getDate() + i)
-  return { date: d.toISOString().slice(0, 10), label: d.getDate(), day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()] }
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return { date: `${yyyy}-${mm}-${dd}`, label: d.getDate(), day: ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()] }
 })
 
-const SCHEDULE_TEMPLATES = [
-  ['08:30', '11:15', '14:00', '16:45', '19:30', '22:15'],
-  ['09:00', '11:30', '14:00', '16:30', '19:00', '21:30'],
-  ['10:00', '12:30', '15:00', '17:30', '20:00', '22:30'],
-  ['10:15', '13:00', '16:45', '19:30', '22:15'],
-  ['11:00', '14:30', '18:00', '20:30', '22:30'],
-]
 
 const getEmbedUrl = (url) => {
   if (!url) return ''
@@ -369,12 +366,7 @@ export default function MovieDetailPage() {
   }, [movieId, user])
 
   // Payment states
-  const [paymentMethod, setPaymentMethod] = useState('card')
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardHolder, setCardHolder] = useState('')
-  const [expiryDate, setExpiryDate] = useState('')
-  const [cvv, setCvv] = useState('')
-  const [valErrors, setValErrors] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('momo')
   const [submitting, setSubmitting] = useState(false)
   const [processingStep, setProcessingStep] = useState('')
   const [submitError, setSubmitError] = useState('')
@@ -430,11 +422,6 @@ export default function MovieDetailPage() {
       .catch(err => console.error('Lỗi tải bắp nước:', err))
     return () => { cancelled = true }
   }, [])
-
-  const getMovieSchedules = () => {
-    const idx = Number(movieId) || 0
-    return SCHEDULE_TEMPLATES[idx % SCHEDULE_TEMPLATES.length]
-  }
 
   const getSeatPrice = (seatId) => {
     const meta = seatMetaMap[seatId] || {}
@@ -560,43 +547,6 @@ export default function MovieDetailPage() {
     }))
   }
 
-  const handleCardNumberChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 16)
-    setCardNumber(value.replace(/(\d{4})(?=\d)/g, '$1 '))
-    if (valErrors.cardNumber) setValErrors(prev => ({ ...prev, cardNumber: '' }))
-  }
-  const handleExpiryChange = (e) => {
-    let value = e.target.value.replace(/\D/g, '').slice(0, 4)
-    if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2)
-    setExpiryDate(value)
-    if (valErrors.expiryDate) setValErrors(prev => ({ ...prev, expiryDate: '' }))
-  }
-  const handleCvvChange = (e) => {
-    setCvv(e.target.value.replace(/\D/g, '').slice(0, 3))
-    if (valErrors.cvv) setValErrors(prev => ({ ...prev, cvv: '' }))
-  }
-  const handleCardHolderChange = (e) => {
-    setCardHolder(e.target.value.toUpperCase())
-    if (valErrors.cardHolder) setValErrors(prev => ({ ...prev, cardHolder: '' }))
-  }
-
-  const validateCardDetails = () => {
-    const errors = {}
-    if (paymentMethod === 'card') {
-      if (cardNumber.replace(/\s/g, '').length !== 16) errors.cardNumber = 'Số thẻ không hợp lệ. Vui lòng nhập đủ 16 chữ số.'
-      if (!cardHolder.trim()) errors.cardHolder = 'Tên chủ thẻ không được để trống.'
-      else if (!/^[A-Z\s]+$/.test(cardHolder)) errors.cardHolder = 'Tên chủ thẻ viết hoa không dấu và chỉ chứa chữ cái.'
-      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiryDate)) errors.expiryDate = 'Ngay het han khong dung dinh dang MM/YY.'
-      else {
-        const [month, year] = expiryDate.split('/').map(Number)
-        if (year < 26 || (year === 26 && month < 6)) errors.expiryDate = 'The da het han su dung.'
-      }
-      if (cvv.length !== 3) errors.cvv = 'Ma bao mat CVV/CVC phai chua dung 3 chu so.'
-    }
-    setValErrors(errors)
-    return Object.keys(errors).length === 0
-  }
-
   const handleHoldSeatsBeforePayment = async () => {
     if (!requireAuth(4)) return
     if (selectedSeats.length === 0) return
@@ -627,28 +577,23 @@ export default function MovieDetailPage() {
   const handleSubmitPayment = async (e) => {
     if (e) e.preventDefault()
     setSubmitError('')
-    if (paymentMethod === 'card' && !validateCardDetails()) return
-    setSubmitting(true)
-    const steps = ['Đang mã hóa thông tin thẻ giao dịch...', 'Đang gửi yêu cầu xác thực bảo mật...', 'Đang xử lý kết quả giao dịch thanh toán...']
-    for (let i = 0; i < steps.length; i++) {
-      setProcessingStep(steps[i])
-      await new Promise(r => setTimeout(r, 600))
-    }
-    if (simulatedOutcome !== 'success') {
+    
+    // MoMo Real Payment Flow
+    try {
+      setSubmitting(true)
+      setProcessingStep('Đang khởi tạo thanh toán MoMo...')
+      const res = await paymentService.createMomoPayment(bookingId)
+      const payUrl = res.data?.result?.payUrl || res.data?.payUrl
+      if (payUrl) {
+        window.location.href = payUrl
+      } else {
+        setSubmitError('Không nhận được đường dẫn thanh toán từ MoMo')
+        setSubmitting(false)
+      }
+    } catch (err) {
+      console.error('MoMo error:', err)
+      setSubmitError(err.response?.data?.message || 'Khởi tạo thanh toán thất bại')
       setSubmitting(false)
-      setProcessingStep('')
-      const msgs = { fail_funds: 'Số dư tài khoản không đủ để thực hiện giao dịch.', fail_cvv: 'Mã bảo mật CVV/CVC không hợp lệ.', fail_expired: 'Thẻ đã hết hạn sử dụng hoặc bị khóa.', fail_timeout: 'Hết thời gian kết nối với cổng thanh toán ngân hàng.' }
-      setSubmitError('Thanh toán thất bại: ' + (msgs[simulatedOutcome] || 'Lỗi không xác định.'))
-      return
-    }
-    try { 
-      await bookingService.confirmMock(bookingId) 
-      setBookingSuccess(true)
-    } catch (err) { 
-      setSubmitError(err.response?.data?.message || 'Xác nhận vé thất bại')
-    } finally {
-      setSubmitting(false)
-      setProcessingStep('')
     }
   }
 
@@ -721,9 +666,6 @@ export default function MovieDetailPage() {
     setSelectedCombos(initQty)
     setSelectedShowtime(null)
     setBookingId('')
-    setCardNumber('')
-    setCardHolder('')
-    setExpiryDate('')
   }
 
   // ── Loading skeleton ──
@@ -943,7 +885,8 @@ export default function MovieDetailPage() {
                     setSelectedDate={setSelectedDate}
                     selectedTime={selectedTime}
                     setSelectedTime={setSelectedTime}
-                    schedules={getMovieSchedules()}
+                    setBookingStep={setBookingStep}
+                    movie={movie}
                     movieId={movieId}
                     onShowtimeSelect={handleShowtimeSelect}
                     onDateChange={handleDateChange}
@@ -1000,21 +943,10 @@ export default function MovieDetailPage() {
                     totalPrice={finalPrice}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
-                    cardNumber={cardNumber}
-                    handleCardNumberChange={handleCardNumberChange}
-                    cardHolder={cardHolder}
-                    handleCardHolderChange={handleCardHolderChange}
-                    expiryDate={expiryDate}
-                    handleExpiryChange={handleExpiryChange}
-                    cvv={cvv}
-                    handleCvvChange={handleCvvChange}
-                    valErrors={valErrors}
                     submitting={submitting}
                     processingStep={processingStep}
                     submitError={submitError}
                     setSubmitError={setSubmitError}
-                    simulatedOutcome={simulatedOutcome}
-                    setSimulatedOutcome={setSimulatedOutcome}
                     handleSubmitPayment={handleSubmitPayment}
                   />
                 )}

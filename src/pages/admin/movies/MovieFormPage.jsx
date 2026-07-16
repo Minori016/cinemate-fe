@@ -102,9 +102,9 @@ export default function MovieFormPage() {
           movieService.getCinemaRooms()
         ])
         
-        setGenres(genresRes.data?.result || [])
-        setCountries(countriesRes.data?.result || [])
-        setCinemaRooms(roomsRes.data?.result || [])
+        setGenres(genresRes.result || genresRes.data?.result || [])
+        setCountries(countriesRes.result || countriesRes.data?.result || [])
+        setCinemaRooms(roomsRes.result || roomsRes.data?.result || [])
 
         if (isEditMode) {
           const movieRes = await movieService.getById(id)
@@ -122,9 +122,9 @@ export default function MovieFormPage() {
             } else {
               setSelectedVersions(['2D'])
             }
-            setFromDate(movie.fromDate || '')
-            setOriginalFromDate(movie.fromDate || '')
-            setToDate(movie.toDate || '')
+            setFromDate(movie.releaseDate || '')
+            setOriginalFromDate(movie.releaseDate || '')
+            setToDate(movie.endDate || '')
             setLanguage(movie.language || 'Tiếng Việt - Phụ đề Tiếng Anh')
             setTrailerUrl(movie.trailerUrl || '')
             if (movie.posterUrl) setPosterPreview(movie.posterUrl)
@@ -468,11 +468,11 @@ export default function MovieFormPage() {
                           }}
                           className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer
                             ${isChecked 
-                              ? 'bg-red-600/10 border-red-500 text-red-400 shadow-sm' 
-                              : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                              ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
+                              : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'
                             }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-red-500' : 'bg-gray-600'}`}></span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-red-500' : 'bg-[var(--color-text-muted)]'}`}></span>
                           <span>{v}</span>
                         </button>
                       )
@@ -585,25 +585,46 @@ export default function MovieFormPage() {
                 </div>
               )}
 
+              {actors.length > 0 && (
+                <div className="flex gap-3 px-3 text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1 hidden md:flex">
+                  <span className="w-6 text-center">STT</span>
+                  <div className="flex-1 grid grid-cols-2 gap-3">
+                    <span>Tên diễn viên (FullName) *</span>
+                    <span>Vai diễn (CharacterName)</span>
+                  </div>
+                  {actors.length > 1 && <span className="w-8"></span>}
+                </div>
+              )}
+
               <div className="space-y-3">
                 {actors.map((actor, index) => (
-                  <div key={index} className="flex items-center gap-3 bg-black/20 p-3 rounded-xl border border-white/5">
-                    <span className="text-xs text-gray-500 font-bold w-6 text-center">{index + 1}</span>
+                  <div key={index} className="flex items-center gap-3 bg-[var(--color-surface-container)] p-3 rounded-xl border border-[var(--color-border)]">
+                    <span className="text-xs text-[var(--color-text-muted)] font-bold w-6 text-center">{index + 1}</span>
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        placeholder="Tên diễn viên (FullName) *"
-                        value={actor.fullName}
-                        onChange={(e) => handleActorChange(index, 'fullName', e.target.value)}
-                        className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Vai diễn (CharacterName)"
-                        value={actor.characterName}
-                        onChange={(e) => handleActorChange(index, 'characterName', e.target.value)}
-                        className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
-                      />
+                      <div className="flex flex-col gap-1 w-full text-left">
+                        <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase md:hidden">
+                          Tên diễn viên (FullName) *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Tên diễn viên (FullName) *"
+                          value={actor.fullName}
+                          onChange={(e) => handleActorChange(index, 'fullName', e.target.value)}
+                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 w-full text-left">
+                        <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase md:hidden">
+                          Vai diễn (CharacterName)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Vai diễn (CharacterName)"
+                          value={actor.characterName}
+                          onChange={(e) => handleActorChange(index, 'characterName', e.target.value)}
+                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
+                        />
+                      </div>
                     </div>
                     {actors.length > 1 && (
                       <button
@@ -689,11 +710,11 @@ export default function MovieFormPage() {
                       onClick={() => toggleGenre(genre.id)}
                       className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer
                         ${isChecked 
-                          ? 'bg-red-600/10 border-red-500 text-red-400 shadow-sm' 
-                          : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                          ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
+                          : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'
                         }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-red-500' : 'bg-gray-600'}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-red-500' : 'bg-[var(--color-text-muted)]'}`}></span>
                       <span className="truncate">{genre.name}</span>
                     </button>
                   )
@@ -718,11 +739,11 @@ export default function MovieFormPage() {
                       onClick={() => toggleCountry(country.id)}
                       className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer
                         ${isChecked 
-                          ? 'bg-red-600/10 border-red-500 text-red-400 shadow-sm' 
-                          : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                          ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
+                          : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'
                         }`}
                     >
-                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-red-500' : 'bg-gray-600'}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-red-500' : 'bg-[var(--color-text-muted)]'}`}></span>
                       <span className="truncate">{country.name} ({country.code})</span>
                     </button>
                   )
