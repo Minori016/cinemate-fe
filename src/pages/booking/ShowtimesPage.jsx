@@ -3,8 +3,10 @@ import { useNavigate, Link } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { cinemaService } from '../../services/cinemaService'
+import { useAuth } from '../../contexts/AuthContext'
 import { motion, AnimatePresence } from 'motion/react'
 import { Clock, Film, MapPin, Subtitles, Tv, Calendar } from 'lucide-react'
+import RequireAuthModal from '../user/components/common/RequireAuthModal'
 
 // Cấu hình danh sách 7 ngày tới với tiếng Việt đầy đủ dấu
 const DAYS = Array.from({ length: 7 }, (_, i) => {
@@ -79,7 +81,20 @@ export default function ShowtimesPage() {
   const [rooms, setRooms] = useState([])
   const [selectedCinemaName, setSelectedCinemaName] = useState('')
   const [selectedRoomId, setSelectedRoomId] = useState('')
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [pendingShowtimeUrl, setPendingShowtimeUrl] = useState('')
+  const { user } = useAuth()
   const navigate = useNavigate()
+
+  const handleShowtimeClick = (movieId, slot) => {
+    const bookingUrl = `/movies/${movieId}?date=${selectedDay}&time=${slot.time}&roomId=${slot.roomId}`
+    if (!user) {
+      setPendingShowtimeUrl(bookingUrl)
+      setShowAuthModal(true)
+      return
+    }
+    navigate(bookingUrl)
+  }
 
   // Lấy danh sách tên rạp duy nhất từ các phòng chiếu
   const cinemaNames = useMemo(() => {
@@ -456,7 +471,7 @@ export default function ShowtimesPage() {
                   {(movie.schedules || []).map(slot => (
                     <button
                       key={slot.time}
-                      onClick={() => navigate(`/movies/${movie.id}?date=${selectedDay}&time=${slot.time}&roomId=${slot.roomId}`)}
+                      onClick={() => handleShowtimeClick(movie.id, slot)}
                       className="px-5 py-2.5 text-xs font-black rounded-xl border transition-all duration-200 cursor-pointer uppercase tracking-wider"
                       style={{
                         fontFamily: 'Montserrat, sans-serif',
@@ -491,6 +506,20 @@ export default function ShowtimesPage() {
           ))}
         </motion.div>
       )}
+
+      <RequireAuthModal
+        open={showAuthModal}
+        onLogin={() => {
+          setShowAuthModal(false)
+          if (pendingShowtimeUrl) {
+            navigate('/login', { state: { from: { pathname: pendingShowtimeUrl.split('?')[0], search: `?${pendingShowtimeUrl.split('?')[1]}` } } })
+          }
+        }}
+        onCancel={() => {
+          setShowAuthModal(false)
+          setPendingShowtimeUrl('')
+        }}
+      />
     </motion.div>
   )
 }
