@@ -359,16 +359,12 @@ export default function SeatSelectionPage() {
 
     const isSelected = selected.includes(seatId)
     
-    if (isSelected) {
-      setSelected(prev => prev.filter(id => !targetIds.includes(id)))
-      return
-    }
-
-    // validate gap rule trước khi cập nhật state
+    // validate gap rule trước khi cập nhật state (cả khi chọn và bỏ chọn)
     const result = validateSeatSelection({
       rows: validationRows,
       currentSelected: selected,
       toggledSeatId: seatId,
+      isSelecting: !isSelected
     })
 
     if (!result.valid) {
@@ -378,6 +374,11 @@ export default function SeatSelectionPage() {
           : undefined,
         duration: 2800,
       })
+      return
+    }
+
+    if (isSelected) {
+      setSelected(prev => prev.filter(id => !targetIds.includes(id)))
       return
     }
     
