@@ -266,7 +266,7 @@ export default function StaffTicketingPage() {
       const backendBookingId = bookingData.bookingId
 
       // 2. Confirm booking immediately (POS flow)
-      await bookingService.confirmMock(backendBookingId)
+      await bookingService.confirm(backendBookingId)
 
       // 3. Prepare payload for local display
       const payload = {
