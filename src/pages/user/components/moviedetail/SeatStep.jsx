@@ -43,6 +43,28 @@ export default function SeatStep({
   const [gridRoot, setGridRoot] = useState(null)
   const [timeLeft, setTimeLeft] = useState(300) // 5 minutes
   const [realSeatMap, setRealSeatMap] = useState([])
+  const [justUnlockedSeats, setJustUnlockedSeats] = useState(new Set())
+
+  // Clear justUnlockedSeats if the server reports the seat as AVAILABLE
+  useEffect(() => {
+    if (realSeatMap && realSeatMap.length > 0) {
+      setJustUnlockedSeats(prev => {
+        if (prev.size === 0) return prev
+        const next = new Set(prev)
+        let changed = false
+        realSeatMap.forEach(s => {
+          if (next.has(s.seatId)) {
+            const sStatus = String(s.status || '').toUpperCase()
+            if (sStatus !== 'HELD') {
+              next.delete(s.seatId)
+              changed = true
+            }
+          }
+        })
+        return changed ? next : prev
+      })
+    }
+  }, [realSeatMap])
 
   // Countdown timer
   useEffect(() => {
@@ -168,7 +190,7 @@ export default function SeatStep({
       realSeatMap.forEach(s => {
         const sStatus = String(s.status || '').toUpperCase()
         if (sStatus === 'HELD') {
-          if (!selectedSeats.includes(s.seatId) && !processingSeats.includes(s.seatId)) {
+          if (!selectedSeats.includes(s.seatId) && !processingSeats.includes(s.seatId) && !justUnlockedSeats.has(s.seatId)) {
             held.add(s.seatId)
           }
         } else if (sStatus === 'CONFIRMED' || sStatus === 'CANCELLED_UNAVAILABLE' || sStatus === 'MAINTENANCE') {
@@ -199,13 +221,13 @@ export default function SeatStep({
     
     // Add temp holds from other clients, excluding our own selections
     tempHolds.forEach((timestamp, id) => {
-      if (!selectedSeats.includes(id) && !processingSeats.includes(id)) {
+      if (!selectedSeats.includes(id) && !processingSeats.includes(id) && !justUnlockedSeats.has(id)) {
         held.add(id)
       }
     })
 
     return { soldSet: sold, heldSet: held }
-  }, [layout, tempHolds, selectedSeats, realSeatMap, processingSeats])
+  }, [layout, tempHolds, selectedSeats, realSeatMap, processingSeats, justUnlockedSeats])
 
   const occupiedSet = useMemo(() => {
     return new Set([...soldSet, ...heldSet])
@@ -288,6 +310,28 @@ export default function SeatStep({
         duration: 2800,
       })
       return
+    }
+
+    if (isSelected) {
+      setJustUnlockedSeats(prev => {
+        const next = new Set(prev)
+        next.add(seatId)
+        return next
+      })
+      // Clear after 4 seconds to prevent blocking other clients indefinitely
+      setTimeout(() => {
+        setJustUnlockedSeats(prev => {
+          const next = new Set(prev)
+          next.delete(seatId)
+          return next
+        })
+      }, 4000)
+    } else {
+      setJustUnlockedSeats(prev => {
+        const next = new Set(prev)
+        next.delete(seatId)
+        return next
+      })
     }
 
     toggleSeat(seatId, meta)
