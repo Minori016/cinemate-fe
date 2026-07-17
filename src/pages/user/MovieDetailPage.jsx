@@ -266,6 +266,7 @@ export default function MovieDetailPage() {
   const [selectedSeats, setSelectedSeats] = useState([])
   // seatMetaMap: { [seatId]: { label, type } } — dùng để hiển thị tên ghế & tính giá đúng (kể cả khi id là UUID)
   const [seatMetaMap, setSeatMetaMap] = useState({})
+  const [processingSeats, setProcessingSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
   const [dbCombos, setDbCombos] = useState([])   // combos từ API, fallback FALLBACK_COMBOS nếu rỗng
   const [promoCode, setPromoCode] = useState('')
@@ -458,6 +459,9 @@ export default function MovieDetailPage() {
   const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
 
   const toggleSeat = async (seatId, meta = {}) => {
+    if (processingSeats.includes(seatId)) return;
+
+    setProcessingSeats(prev => [...prev, seatId]);
     const isCurrentlySelected = selectedSeats.includes(seatId);
 
     try {
@@ -494,6 +498,8 @@ export default function MovieDetailPage() {
     } catch (error) {
       console.error('Failed to toggle seat lock:', error);
       alert(error.response?.data?.message || 'Không thể chọn ghế này. Có thể người khác đang giữ.');
+    } finally {
+      setProcessingSeats(prev => prev.filter(id => id !== seatId));
     }
   }
 
@@ -914,6 +920,7 @@ export default function MovieDetailPage() {
                       savePendingBooking(3)
                       setShowAuthModal(true)
                     }}
+                    processingSeats={processingSeats}
                   />
                 )}
                 {bookingStep === 3 && (

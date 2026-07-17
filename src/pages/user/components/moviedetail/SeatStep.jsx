@@ -32,7 +32,7 @@ function GlassCard({ children, className = '' }) {
 
 export default function SeatStep({
   movie, selectedTime, selectedDate, totalPrice, selectedSeats, seatMetaMap, violations, toggleSeat,
-  setBookingStep, selectedShowtime, SEAT_ROWS
+  setBookingStep, selectedShowtime, SEAT_ROWS, processingSeats = []
 }) {
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
@@ -167,11 +167,11 @@ export default function SeatStep({
       realSeatMap.forEach(s => {
         const sStatus = String(s.status || '').toUpperCase()
         if (sStatus === 'HELD') {
-          if (!selectedSeats.includes(s.seatId)) {
+          if (!selectedSeats.includes(s.seatId) && !processingSeats.includes(s.seatId)) {
             held.add(s.seatId)
           }
         } else if (sStatus === 'CONFIRMED' || sStatus === 'CANCELLED_UNAVAILABLE' || sStatus === 'MAINTENANCE') {
-          if (!selectedSeats.includes(s.seatId)) {
+          if (!selectedSeats.includes(s.seatId) && !processingSeats.includes(s.seatId)) {
             sold.add(s.seatId)
           }
         }
@@ -198,13 +198,13 @@ export default function SeatStep({
     
     // Add temp holds from other clients, excluding our own selections
     tempHolds.forEach((timestamp, id) => {
-      if (!selectedSeats.includes(id)) {
+      if (!selectedSeats.includes(id) && !processingSeats.includes(id)) {
         held.add(id)
       }
     })
 
     return { soldSet: sold, heldSet: held }
-  }, [layout, tempHolds, selectedSeats, realSeatMap])
+  }, [layout, tempHolds, selectedSeats, realSeatMap, processingSeats])
 
   const occupiedSet = useMemo(() => {
     return new Set([...soldSet, ...heldSet])
@@ -261,6 +261,7 @@ export default function SeatStep({
    * Reject + toast if the action would create an orphan seat.
    */
   const handleToggleSeat = useCallback((seatId, meta = {}) => {
+    if (processingSeats.includes(seatId)) return
     const isSelected = selectedSeats.includes(seatId)
     if (!isSelected && occupiedSet.has(seatId)) return
 
@@ -289,7 +290,7 @@ export default function SeatStep({
     }
 
     toggleSeat(seatId, meta)
-  }, [occupiedSet, validationRows, selectedSeats, toggleSeat])
+  }, [occupiedSet, validationRows, selectedSeats, toggleSeat, processingSeats])
 
   // Seat button sub-components
   function SeatButton({ seat, type }) {
@@ -297,6 +298,7 @@ export default function SeatStep({
     const isHeld = heldSet.has(seat.id)
     const isOccupied = isSold || isHeld
     const isSelected = selectedSeats.includes(seat.id)
+    const isProcessing = processingSeats.includes(seat.id)
     const seatType = seat.type || type || 'STANDARD'
     const isVip = String(seatType).toUpperCase() === 'VIP'
     const displayLabel = resolveSeatLabel(seat)
@@ -304,7 +306,9 @@ export default function SeatStep({
     let btnClasses = "seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative transition-all "
     let content = displayLabel
 
-    if (isSold) {
+    if (isProcessing) {
+      btnClasses += "animate-pulse border-blue-500 text-blue-500 bg-blue-500/10 cursor-wait"
+    } else if (isSold) {
       btnClasses += "occupied cursor-not-allowed opacity-40 bg-[#1f2022] border-[#3a3a3a] text-transparent"
       content = ""
     } else if (isHeld) {
@@ -323,7 +327,7 @@ export default function SeatStep({
         <input
           type="checkbox"
           checked={isSelected}
-          disabled={isOccupied}
+          disabled={isOccupied || isProcessing}
           onChange={() => handleToggleSeat(seat.id, { label: displayLabel, type: String(seatType).toUpperCase() })}
           className="sr-only"
         />
@@ -337,6 +341,7 @@ export default function SeatStep({
     const isHeld = heldSet.has(seat.id)
     const isOccupied = isSold || isHeld
     const isSelected = selectedSeats.includes(seat.id)
+    const isProcessing = processingSeats.includes(seat.id)
     const displayLabel = resolveSeatLabel(seat)
     let doubleLabel = displayLabel
     if (displayLabel) {
@@ -351,7 +356,9 @@ export default function SeatStep({
     let btnClasses = "seat-btn couple w-[72px] h-8 rounded border flex items-center justify-center text-[11px] font-bold relative transition-all "
     let content = doubleLabel
 
-    if (isSold) {
+    if (isProcessing) {
+      btnClasses += "animate-pulse border-blue-500 text-blue-500 bg-blue-500/10 cursor-wait"
+    } else if (isSold) {
       btnClasses += "occupied cursor-not-allowed opacity-40 bg-[#1f2022] border-[#3a3a3a] text-transparent"
       content = ""
     } else if (isHeld) {
@@ -368,7 +375,7 @@ export default function SeatStep({
         <input
           type="checkbox"
           checked={isSelected}
-          disabled={isOccupied}
+          disabled={isOccupied || isProcessing}
           onChange={() => handleToggleSeat(seat.id, { label: doubleLabel, type: 'COUPLE' })}
           className="sr-only"
         />

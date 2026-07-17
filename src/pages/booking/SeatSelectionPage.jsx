@@ -92,6 +92,7 @@ export default function SeatSelectionPage() {
   const seatRefs = useRef({})
   const [gridRoot, setGridRoot] = useState(null)
   const [timeLeft, setTimeLeft] = useState(300) // 5 minutes in seconds
+  const [processingSeats, setProcessingSeats] = useState([])
 
   useEffect(() => {
     if (timeLeft <= 0) return
@@ -323,7 +324,7 @@ export default function SeatSelectionPage() {
       const set = new Set()
       realSeatMap.forEach(s => {
         if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
-          if (!selected.includes(s.seatId)) {
+          if (!selected.includes(s.seatId) && !processingSeats.includes(s.seatId)) {
             set.add(s.seatId)
           }
         }
@@ -341,7 +342,7 @@ export default function SeatSelectionPage() {
       return set
     }
     return dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
-  }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet])
+  }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet, processingSeats])
 
   // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
   const toggleSeat = useCallback(async (seatId, type) => {
@@ -362,6 +363,8 @@ export default function SeatSelectionPage() {
       }
     }
 
+    if (targetIds.some(id => processingSeats.includes(id))) return
+
     // validate gap rule trước khi cập nhật state (cả khi chọn và bỏ chọn)
     const result = validateSeatSelection({
       rows: validationRows,
@@ -380,18 +383,23 @@ export default function SeatSelectionPage() {
       return
     }
 
+    setProcessingSeats(prev => [...prev, ...targetIds])
+
     if (isSelected) {
       try {
         await bookingService.unlockSeat(matchedShowtime.id, seatId);
+        setSelected(prev => prev.filter(id => !targetIds.includes(id)))
       } catch (error) {
         console.error('Failed to unlock seat', error);
+      } finally {
+        setProcessingSeats(prev => prev.filter(id => !targetIds.includes(id)))
       }
-      setSelected(prev => prev.filter(id => !targetIds.includes(id)))
       return
     }
     
     if (selected.length + targetIds.length > 8) {
       alert('Chỉ được chọn tối đa 8 ghế!')
+      setProcessingSeats(prev => prev.filter(id => !targetIds.includes(id)))
       return
     }
 
@@ -401,8 +409,10 @@ export default function SeatSelectionPage() {
     } catch (error) {
       console.error('Failed to lock seats', error);
       alert(error.response?.data?.message || 'Không thể chọn ghế này. Có thể người khác đang giữ.');
+    } finally {
+      setProcessingSeats(prev => prev.filter(id => !targetIds.includes(id)))
     }
-  }, [currentOccupied, validationRows, selected, seatLayout, matchedShowtime])
+  }, [currentOccupied, validationRows, selected, seatLayout, matchedShowtime, processingSeats])
 
   // Giá của từng loại ghế (ưu tiên giá từ showtime nếu có)
   const getSeatPrice = useCallback((seatId) => {
@@ -463,10 +473,11 @@ export default function SeatSelectionPage() {
     const occupied = isSeatOccupied(seat.id)
     const isVip = type === 'vip'
     const isSelected = selected.includes(seat.id)
+    const isProcessing = processingSeats.includes(seat.id)
 
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
-        <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isProcessing ? 'animate-pulse border-blue-500 text-blue-500 bg-blue-500/10 cursor-wait' : occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : isVip ? 'vip border-[#f59e0b]/60 text-[#f59e0b] hover:bg-[#f59e0b]/10 cursor-pointer' : 'border-gray-600 text-gray-300 hover:bg-white/5 cursor-pointer'}`} title={seat.id}>
+        <input type="checkbox" checked={isSelected} disabled={occupied || isProcessing} onChange={() => toggleSeat(seat.id, type)} className="sr-only" />
         {seat.row ? `${seat.row}${seat.number}` : seat.id}
       </label>
     )
@@ -475,9 +486,10 @@ export default function SeatSelectionPage() {
   function renderCoupleButton(seat) {
     const occupied = isSeatOccupied(seat.id)
     const isSelected = selected.includes(seat.id)
+    const isProcessing = processingSeats.includes(seat.id)
     return (
-      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
-        <input type="checkbox" checked={isSelected} disabled={occupied} onChange={() => toggleSeat(seat.id)} className="sr-only" />
+      <label ref={(node) => { if (node) seatRefs.current[seat.id] = node; else delete seatRefs.current[seat.id] }} key={seat.id} className={`seat-btn couple h-8 rounded border flex items-center justify-center text-xs font-bold relative ${isProcessing ? 'animate-pulse border-blue-500 text-blue-500 bg-blue-500/10 cursor-wait' : occupied ? 'occupied cursor-not-allowed opacity-40' : isSelected ? 'selected cursor-pointer' : 'border-red-600/60 text-red-500 hover:bg-red-600/10 cursor-pointer'}`} title={seat.id}>
+        <input type="checkbox" checked={isSelected} disabled={occupied || isProcessing} onChange={() => toggleSeat(seat.id, 'couple')} className="sr-only" />
         {seat.number != null ? `${seat.row}${seat.number}` : seat.id}
       </label>
     )
