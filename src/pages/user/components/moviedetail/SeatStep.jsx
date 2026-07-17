@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
 import { cinemaRoomService } from '../../../../services/cinemaRoomService'
 import {
@@ -32,7 +32,8 @@ function GlassCard({ children, className = '' }) {
 
 export default function SeatStep({
   movie, selectedTime, selectedDate, totalPrice, selectedSeats, seatMetaMap, violations, toggleSeat,
-  setBookingStep, selectedShowtime, SEAT_ROWS, processingSeats = []
+  setBookingStep, selectedShowtime, SEAT_ROWS, processingSeats = [],
+  user, onRequireAuth
 }) {
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
@@ -292,6 +293,18 @@ export default function SeatStep({
     toggleSeat(seatId, meta)
   }, [occupiedSet, validationRows, selectedSeats, toggleSeat, processingSeats])
 
+  const handleContinue = useCallback(() => {
+    if (!user) {
+      if (onRequireAuth) {
+        onRequireAuth()
+      } else {
+        setBookingStep(3)
+      }
+    } else {
+      setBookingStep(3)
+    }
+  }, [user, onRequireAuth, setBookingStep])
+
   // Seat button sub-components
   function SeatButton({ seat, type }) {
     const isSold = soldSet.has(seat.id)
@@ -479,12 +492,6 @@ export default function SeatStep({
       </div>
 
       <div className="w-full flex flex-col justify-between p-1 sm:p-2">
-        {/* Seat selection status */}
-        {selectedSeats.length > 0 && (
-          <div className={`mb-6 text-xs font-bold px-4 py-2.5 rounded-xl border text-center transition-all ${violations.length > 0 ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-green-500/10 border-green-500/20 text-green-400'}`}>
-            {violations.length > 0 ? `⚠ Không thể để lại ghế trống đơn lẻ: ${violations.join(', ')}` : `✓ Đã chọn ${selectedSeats.length} ghế — nhấn "Tiếp tục" để thanh toán`}
-          </div>
-        )}
 
         {/* Legend */}
         <div className="flex flex-wrap gap-4 mb-6 justify-center">
@@ -562,6 +569,62 @@ export default function SeatStep({
           </div>
         </div>
       </div>
+
+      {/* Floating Popup for Seat Selection Status */}
+      <AnimatePresence>
+        {selectedSeats.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 30, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg"
+          >
+            <div
+              className={`p-4 rounded-2xl border backdrop-blur-md shadow-2xl flex items-center justify-between gap-4 text-sm font-semibold transition-all ${
+                violations.length > 0
+                  ? 'bg-red-950/90 border-red-500/30 text-red-200'
+                  : 'bg-[#121824]/90 border-green-500/30 text-green-400'
+              }`}
+              style={{
+                boxShadow: violations.length > 0 
+                  ? '0 10px 30px -5px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)' 
+                  : '0 10px 30px -5px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255,255,255,0.05)'
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                  violations.length > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                }`}>
+                  <span className="material-symbols-outlined text-lg">
+                    {violations.length > 0 ? 'warning' : 'check_circle'}
+                  </span>
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className="font-bold text-white text-sm">
+                    {violations.length > 0 ? 'Cảnh báo khoảng trống' : 'Đã chọn ghế'}
+                  </span>
+                  <span className="text-xs text-gray-300 leading-normal">
+                    {violations.length > 0 
+                      ? `Không thể để lại ghế trống đơn lẻ: ${violations.join(', ')}` 
+                      : `✓ Đã chọn ${selectedSeats.length} ghế — nhấn "Tiếp tục" để thanh toán`
+                    }
+                  </span>
+                </div>
+              </div>
+
+              {violations.length === 0 && (
+                <button
+                  onClick={handleContinue}
+                  className="bg-red-600 hover:bg-red-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs transition-all uppercase tracking-widest shadow-[0_4px_12px_rgba(229,9,20,0.3)] active:scale-95 cursor-pointer shrink-0 border-none"
+                >
+                  Tiếp tục
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }
