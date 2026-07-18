@@ -136,17 +136,41 @@ export const showtimeService = {
   },
 
   // POST /api/v1/admin/showtimes/auto-generate/preview
+  // Returns: { scheduled: [...], unscheduled: [...], estimatedMaxSlotsPerRoom, optimizationScore }
   autoGenerate: async (requestData) => {
     const res = await api.post('/api/v1/admin/showtimes/auto-generate/preview', requestData, {
-      timeout: 30000 // Increase timeout to 30s for heavy algorithm
+      timeout: 30000
     })
-    return res.data?.result || res.data
+    const data = res.data?.result || res.data
+    // Backwards compatibility: if response is an array (old format), wrap it
+    if (Array.isArray(data)) {
+      return { scheduled: data, unscheduled: [], estimatedMaxSlotsPerRoom: 0, optimizationScore: 0 }
+    }
+    return data
   },
 
   // POST /api/v1/admin/showtimes/auto-generate/save
   autoConfirm: async (confirmData) => {
     const res = await api.post('/api/v1/admin/showtimes/auto-generate/save', confirmData)
     return res.data
+  },
+
+  // PUT /api/v1/admin/showtimes/{id}/shift
+  shiftShowtime: async (id, newStartTime) => {
+    const res = await api.put(`/api/v1/admin/showtimes/${id}/shift`, { newStartTime })
+    return res.data?.result || res.data
+  },
+
+  // PUT /api/v1/admin/showtimes/{id}/swap-room
+  swapRoom: async (id, newRoomId) => {
+    const res = await api.put(`/api/v1/admin/showtimes/${id}/swap-room`, { newRoomId })
+    return res.data?.result || res.data
+  },
+
+  // POST /api/v1/admin/showtimes/enhance-by-ai
+  enhanceByAI: async (previewList, context = {}) => {
+    const res = await api.post('/api/v1/admin/showtimes/enhance-by-ai', { previewList, context }, { timeout: 300000 })
+    return res.data?.result || res.data
   },
 
   // POST /api/v1/admin/showtimes/batch

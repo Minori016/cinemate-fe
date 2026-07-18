@@ -144,19 +144,40 @@ export default function SeatStep({
       if (seatMapRes?.data?.result || seatMapRes?.data) {
         const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
         setRealSeatMap(seats)
+
+        // Restore own locked seats into selected state (fixes F5 self-lock bug)
+        const ownLockedSeats = seats
+          .filter(s => s.lockedByCurrentUser && String(s.status || '').toUpperCase() === 'HELD')
+          .map(s => s.seatId)
+        if (ownLockedSeats.length > 0) {
+          ownLockedSeats.forEach(seatId => {
+            if (!selectedSeats.includes(seatId)) {
+              toggleSeat(seatId, {})
+            }
+          })
+        }
       }
     } catch {
       setSeatError('Không thể tải sơ đồ ghế')
     } finally {
       if (opts.showLoading) setLoadingSeats(false)
     }
-  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
+  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room, selectedSeats, toggleSeat])
 
   useEffect(() => {
     loadLayout({ showLoading: true })
     const pollId = window.setInterval(() => loadLayout(), 10000)
     return () => window.clearInterval(pollId)
   }, [loadLayout])
+
+  // Cleanup Redis locks on unmount
+  useEffect(() => {
+    return () => {
+      if (selectedShowtime?.id) {
+        bookingService.clearMyLocks(selectedShowtime.id).catch(() => {})
+      }
+    }
+  }, [selectedShowtime?.id])
 
   // WebSocket Integration
   useEffect(() => {
@@ -190,6 +211,8 @@ export default function SeatStep({
       realSeatMap.forEach(s => {
         const sStatus = String(s.status || '').toUpperCase()
         if (sStatus === 'HELD') {
+          // Skip seats owned by current user — they should remain selectable
+          if (s.lockedByCurrentUser) return
           if (!selectedSeats.includes(s.seatId) && !processingSeats.includes(s.seatId) && !justUnlockedSeats.has(s.seatId)) {
             held.add(s.seatId)
           }

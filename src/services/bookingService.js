@@ -12,6 +12,7 @@ export const bookingService = {
   cancelBooking: (id) => api.post(`/api/v1/bookings/${id}/cancel`),
   lockSeats: (showtimeId, seatIds) => api.post(`/api/v1/showtimes/${showtimeId}/seats/lock`, { seatIds }),
   unlockSeat: (showtimeId, seatId) => api.post(`/api/v1/showtimes/${showtimeId}/seats/${seatId}/unlock`),
+  clearMyLocks: (showtimeId) => api.delete(`/api/v1/showtimes/${showtimeId}/seats/my-locks`),
   
   getMyBookings: () => api.get('/api/v1/bookings/my'),
   getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),

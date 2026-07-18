@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { ArrowLeft, Settings, Play, CheckCircle, Calendar as CalendarIcon, X, Trash2, Star, Clock } from 'lucide-react'
+import { ArrowLeft, Settings, Play, CheckCircle, Calendar as CalendarIcon, X, Trash2, Star, Clock, Sparkles } from 'lucide-react'
 import { showtimeService } from '../../../services/showtimeService'
 import { movieService } from '../../../services/movieService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
@@ -16,9 +16,9 @@ import { toast } from 'sonner'
 
 const getMovieSupportedFormats = (movieVersion, formatPrices = {}) => {
   if (!movieVersion) return ['2D'];
-  const v = movieVersion.toUpperCase();
+  const v = String(movieVersion.name || movieVersion.value || movieVersion).toUpperCase();
   const formats = [];
-  const systemFormats = Object.keys(formatPrices);
+  const systemFormats = Object.keys(formatPrices || {});
   if (systemFormats.length === 0) {
     if (v.includes('2D')) formats.push('2D');
     if (v.includes('3D')) formats.push('3D');
@@ -36,10 +36,10 @@ const getMovieSupportedFormats = (movieVersion, formatPrices = {}) => {
 
 const getMovieSupportedLanguages = (movieLanguage) => {
   if (!movieLanguage) return ['Phụ đề'];
-  const l = movieLanguage.toLowerCase();
+  const l = String(movieLanguage.name || movieLanguage.value || movieLanguage).toLowerCase();
   const langs = [];
-  if (l.includes('phụ đề') || l.includes('sub')) langs.push('Phụ đề');
-  if (l.includes('lồng tiếng') || l.includes('dub')) langs.push('Lồng tiếng');
+  if (l.includes('phụ đề') || l.includes('sub') || l.includes('vietsub')) langs.push('Phụ đề');
+  if (l.includes('lồng tiếng') || l.includes('dub') || l.includes('lồng')) langs.push('Lồng tiếng');
   return langs.length > 0 ? langs : ['Phụ đề'];
 }
 
@@ -145,6 +145,203 @@ export default function AutoGeneratePage() {
     return defaultVal;
   }, [systemConfigs]);
 
+  const getRoomCleaningBuffer = useCallback((room) => {
+    try {
+      if (!room) return 15;
+      const defaultVal = getConfigValue('CLEANING_BUFFER_DEFAULT', 15);
+      const imaxVal = getConfigValue('CLEANING_BUFFER_IMAX', 30);
+      const fourDxVal = getConfigValue('CLEANING_BUFFER_4DX', 20);
+      const threeDVal = getConfigValue('CLEANING_BUFFER_3D', 20);
+
+      let formatsList = [];
+      if (Array.isArray(room.supportedFormats)) {
+        formatsList = room.supportedFormats.map(f => String(f?.name || f?.value || f || '').replace(/_/g, '').toUpperCase());
+      } else if (typeof room.supportedFormats === 'string') {
+        formatsList = room.supportedFormats.split(',').map(s => String(s || '').trim().replace(/_/g, '').toUpperCase());
+      }
+
+      if (formatsList.includes('IMAX')) return imaxVal;
+      if (formatsList.includes('4DX')) return fourDxVal;
+      if (formatsList.includes('3D')) return threeDVal;
+
+      const roomName = String(room.name || '').toUpperCase();
+      if (roomName.includes('IMAX')) return imaxVal;
+      if (roomName.includes('4DX')) return fourDxVal;
+      if (roomName.includes('3D')) return threeDVal;
+
+      return defaultVal;
+    } catch (e) {
+      console.error('Error in getRoomCleaningBuffer:', e);
+      return 15;
+    }
+  }, [getConfigValue]);
+
+  const getExpectedSlotsAllocation = useCallback(() => {
+    try {
+      if (!form.openTime || !form.closeTime || !form.movies || form.movies.length === 0) {
+        return null;
+      }
+
+      const parseTimeToMins = (t) => {
+        if (!t) return 0;
+        const [h, m] = String(t).split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+      };
+      const openMins = parseTimeToMins(form.openTime);
+      const closeMins = parseTimeToMins(form.closeTime);
+      const operatingMins = closeMins - openMins;
+      if (isNaN(operatingMins) || operatingMins <= 0) return null;
+
+      let maxDuration = 0;
+      let minDuration = Infinity;
+      const selectedMovieDetails = [];
+      form.movies.forEach(fm => {
+        if (!fm) return;
+        const dbMovie = movies.find(m => m && m.id === fm.movieId);
+        if (dbMovie) {
+          const dur = Number(dbMovie.duration || dbMovie.durationMinutes);
+          const safeDur = (isNaN(dur) || dur <= 0) ? 0 : dur;
+          if (safeDur > 0) {
+            if (safeDur > maxDuration) maxDuration = safeDur;
+            if (safeDur < minDuration) minDuration = safeDur;
+          }
+          selectedMovieDetails.push({
+            ...fm,
+            titleVn: String(dbMovie.titleVn || dbMovie.title || ''),
+            durationMinutes: safeDur > 0 ? safeDur : 120
+          });
+        }
+      });
+
+      if (selectedMovieDetails.length === 0) return null;
+      if (maxDuration === 0) maxDuration = 120; // Fallback only if all selected movies have invalid duration
+      if (minDuration === Infinity) minDuration = maxDuration;
+
+      let minEstimatedSlots = 0;
+      let maxEstimatedSlots = 0;
+      if (Array.isArray(rooms)) {
+        rooms.forEach(room => {
+          if (!room) return;
+          const buffer = getRoomCleaningBuffer(room);
+          const maxSlotLength = maxDuration + buffer;
+          const minSlotLength = minDuration + buffer;
+          if (maxSlotLength > 0 && !isNaN(maxSlotLength)) {
+            minEstimatedSlots += Math.floor(operatingMins / maxSlotLength);
+          }
+          if (minSlotLength > 0 && !isNaN(minSlotLength)) {
+            maxEstimatedSlots += Math.floor(operatingMins / minSlotLength);
+          }
+        });
+      }
+      
+      if (isNaN(minEstimatedSlots) || minEstimatedSlots < 0) minEstimatedSlots = 0;
+      if (isNaN(maxEstimatedSlots) || maxEstimatedSlots < 0) maxEstimatedSlots = 0;
+
+      // LRM Movie allocation
+      const normalizedMovieRatios = {};
+      const movieCount = selectedMovieDetails.length;
+      if (movieCount > 0) {
+        selectedMovieDetails.forEach(m => {
+          normalizedMovieRatios[m.movieId] = 1.0 / movieCount;
+        });
+      }
+
+      const largestRemainderMethod = (total, normalizedMap) => {
+        const result = {};
+        const remainders = {};
+        let allocated = 0;
+        
+        Object.entries(normalizedMap).forEach(([key, ratio]) => {
+          const exact = (total || 0) * (ratio || 0);
+          const floor = Math.floor(exact);
+          result[key] = floor;
+          remainders[key] = exact - floor;
+          allocated += floor;
+        });
+
+        let remaining = (total || 0) - allocated;
+        const sortedKeys = Object.keys(remainders).sort((a, b) => (remainders[b] || 0) - (remainders[a] || 0));
+        for (let i = 0; i < remaining && i < sortedKeys.length; i++) {
+          result[sortedKeys[i]] = (result[sortedKeys[i]] || 0) + 1;
+        }
+        return result;
+      };
+
+      const minMovieSlots = largestRemainderMethod(minEstimatedSlots, normalizedMovieRatios);
+      const maxMovieSlots = largestRemainderMethod(maxEstimatedSlots, normalizedMovieRatios);
+
+      const allocationResult = [];
+      selectedMovieDetails.forEach(m => {
+        const slotsForMovieMin = minMovieSlots[m.movieId] || 0;
+        const slotsForMovieMax = maxMovieSlots[m.movieId] || 0;
+        const formats = Array.isArray(m.formats) ? m.formats : [];
+        
+        let formatAllocations = [];
+        if (formats.length === 1) {
+          formatAllocations.push({
+            format: formats[0] || '2D',
+            slotsMin: slotsForMovieMin,
+            slotsMax: slotsForMovieMax,
+            weight: m.ratios?.[formats[0]] ?? 1
+          });
+        } else if (formats.length > 1) {
+          const formatWeights = {};
+          let totalWeight = 0;
+          formats.forEach(f => {
+            if (!f) return;
+            const w = Number(m.ratios?.[f] ?? 1);
+            const safeW = isNaN(w) ? 1 : w;
+            formatWeights[f] = safeW;
+            totalWeight += safeW;
+          });
+
+          const normalizedFormatRatios = {};
+          if (totalWeight > 0) {
+            formats.forEach(f => {
+              if (f) normalizedFormatRatios[f] = formatWeights[f] / totalWeight;
+            });
+          } else {
+            formats.forEach(f => {
+              if (f) normalizedFormatRatios[f] = 1.0 / formats.length;
+            });
+          }
+
+          const formatSlotsMin = largestRemainderMethod(slotsForMovieMin, normalizedFormatRatios);
+          const formatSlotsMax = largestRemainderMethod(slotsForMovieMax, normalizedFormatRatios);
+          formats.forEach(f => {
+            if (!f) return;
+            formatAllocations.push({
+              format: f || '2D',
+              slotsMin: formatSlotsMin[f] || 0,
+              slotsMax: formatSlotsMax[f] || 0,
+              weight: formatWeights[f]
+            });
+          });
+        }
+
+        allocationResult.push({
+          movieId: m.movieId,
+          titleVn: m.titleVn,
+          totalSlotsMin: slotsForMovieMin,
+          totalSlotsMax: slotsForMovieMax,
+          formats: formatAllocations
+        });
+      });
+
+      return {
+        minEstimatedSlots,
+        maxEstimatedSlots,
+        operatingMins,
+        maxDuration,
+        minDuration,
+        allocationResult
+      };
+    } catch (err) {
+      console.error('Error in getExpectedSlotsAllocation:', err);
+      return null;
+    }
+  }, [form.openTime, form.closeTime, form.movies, movies, rooms, getRoomCleaningBuffer]);
+
   const handleMovieToggle = (id) => {
     setForm(prev => {
       const isSelected = prev.movies.some(m => m.movieId === id);
@@ -164,7 +361,14 @@ export default function AutoGeneratePage() {
         ...prev,
         movies: isSelected 
           ? prev.movies.filter(m => m.movieId !== id) 
-          : [...prev.movies, { movieId: id, formats: [defaultFormat], languages: [defaultLanguage], maxShowtimes: '', isPriority: false }]
+          : [...prev.movies, { 
+              movieId: id, 
+              formats: [defaultFormat], 
+              languages: [defaultLanguage], 
+              maxShowtimes: '', 
+              isPriority: false,
+              ratios: { [defaultFormat]: 1 }
+            }]
       };
     });
   }
@@ -175,7 +379,6 @@ export default function AutoGeneratePage() {
       movies: prev.movies.map(m => m.movieId === id ? { ...m, [field]: value } : m)
     }));
   }
-
 
   const handleFormatToggle = (id, format) => {
     setForm(prev => {
@@ -189,14 +392,37 @@ export default function AutoGeneratePage() {
             toast.error('Phải chọn ít nhất 1 định dạng cho phim!', { id: 'min-format-error' });
             return m;
           }
+          const nextRatios = { ...(m.ratios || {}) };
+          if (hasFormat) {
+            delete nextRatios[format];
+          } else {
+            nextRatios[format] = 1;
+          }
           return {
             ...m,
-            formats: hasFormat ? formats.filter(f => f !== format) : [...formats, format]
+            formats: hasFormat ? formats.filter(f => f !== format) : [...formats, format],
+            ratios: nextRatios
           };
         })
       };
     });
   }
+
+  const handleFormatRatioChange = (movieId, format, value) => {
+    setForm(prev => ({
+      ...prev,
+      movies: prev.movies.map(m => {
+        if (m.movieId !== movieId) return m;
+        return {
+          ...m,
+          ratios: {
+            ...(m.ratios || {}),
+            [format]: value === '' ? '' : Math.max(1, Math.min(5, parseInt(value) || 1))
+          }
+        };
+      })
+    }));
+  };
 
   const handleLanguageToggle = (id, lang) => {
     setForm(prev => {
@@ -287,6 +513,7 @@ export default function AutoGeneratePage() {
           const res = [];
           const formats = m.formats || (m.format ? [m.format] : []);
           for (const fmt of formats) {
+            const formatRatio = m.ratios?.[fmt] !== undefined ? parseInt(m.ratios[fmt]) : 50;
             if (m.languages && m.languages.length > 0) {
               for (const lang of m.languages) {
                 res.push({ 
@@ -294,7 +521,8 @@ export default function AutoGeneratePage() {
                   format: mapFormatToEnum(fmt), 
                   language: lang,
                   maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
-                  isPriority: m.isPriority || false
+                  isPriority: m.isPriority || false,
+                  targetRatio: formatRatio
                 });
               }
             } else {
@@ -302,7 +530,8 @@ export default function AutoGeneratePage() {
                 movieId: m.movieId, 
                 format: mapFormatToEnum(fmt),
                 maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
-                isPriority: m.isPriority || false
+                isPriority: m.isPriority || false,
+                targetRatio: formatRatio
               });
             }
           }
@@ -317,9 +546,26 @@ export default function AutoGeneratePage() {
 
       const res = await showtimeService.autoGenerate(requestPayload)
       
-      const listWithIds = (res || []).map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
+      const scheduledList = res.scheduled || res || [];
+      const unscheduledList = res.unscheduled || [];
+      const optimizationScore = res.optimizationScore || 0;
+      
+      const listWithIds = (scheduledList).map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
       setPreviewList(listWithIds);
       setOriginalPreviewList(JSON.parse(JSON.stringify(listWithIds)));
+      
+      // Show warnings for unscheduled requests
+      if (unscheduledList.length > 0) {
+        const movieNames = [...new Set(unscheduledList.map(u => `${u.movieTitle} (${u.version})`))];
+        toast.warning(
+          `${unscheduledList.length} suất chiếu bị hủy do VƯỢT QUÁ SỨC CHỨA: ${movieNames.join(', ')}. Nguyên nhân: Tỷ lệ/trọng số bạn cấu hình tạo ra quá nhiều suất chiếu so với tổng thời gian rảnh của các phòng hỗ trợ định dạng này. Hãy giảm trọng số của định dạng đặc biệt (3D/4DX/IMAX) hoặc nới lỏng giờ mở cửa!`,
+          { duration: 12000 }
+        );
+      }
+      
+      if (optimizationScore > 0) {
+        toast.success(`Tối ưu hóa: ${optimizationScore.toFixed(1)}% — ${listWithIds.length} suất chiếu đã xếp`, { duration: 5000 });
+      }
       
       try {
         const existingData = await showtimeService.getAll();
@@ -455,6 +701,65 @@ export default function AutoGeneratePage() {
                     </div>
                   </div>
                 </div>
+
+                {(() => {
+                  const expectedAllocation = getExpectedSlotsAllocation();
+                  if (!expectedAllocation) return null;
+                  return (
+                    <div className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl p-4 mt-6">
+                      <h5 className="text-[#b80035] font-bold mb-3 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={14} className="animate-pulse" />
+                        Ước tính số suất chiếu khả dụng
+                      </h5>
+                      <div className="space-y-3.5">
+                        <div className="flex justify-between items-center text-xs border-b border-[#e0e3e5] pb-2 text-[#5c647a]">
+                          <span>Tổng suất dự kiến toàn rạp:</span>
+                          <span className="font-extrabold text-[#191c1e] text-sm bg-white px-2 py-0.5 border border-[#e0e3e5] rounded-md">
+                            {expectedAllocation.minEstimatedSlots === expectedAllocation.maxEstimatedSlots 
+                              ? `${expectedAllocation.minEstimatedSlots}` 
+                              : `${expectedAllocation.minEstimatedSlots} ~ ${expectedAllocation.maxEstimatedSlots}`}
+                            {" suất/ngày"}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
+                          {expectedAllocation.allocationResult.map(res => (
+                            <div key={res.movieId} className="bg-white border border-[#e0e3e5] rounded-lg p-2.5 space-y-1">
+                              <div className="flex justify-between items-center text-[11px] font-bold text-[#191c1e] border-b border-dashed border-[#e0e3e5] pb-1">
+                                <span className="truncate max-w-[180px]">{res.titleVn}</span>
+                                <span className="text-[#b80035]">
+                                  {res.totalSlotsMin === res.totalSlotsMax 
+                                    ? res.totalSlotsMin 
+                                    : `${res.totalSlotsMin} ~ ${res.totalSlotsMax}`}
+                                  {" suất"}
+                                </span>
+                              </div>
+                              <div className="space-y-1 pt-1">
+                                {res.formats.map(f => (
+                                  <div key={f.format} className="flex justify-between items-center text-[10px] text-[#5c647a]">
+                                    <span className="flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#00836c]" />
+                                      {f.format} {"(Trọng số "}{f.weight}{")"}
+                                    </span>
+                                    <span className="font-semibold text-[#191c1e]">
+                                      {f.slotsMin === f.slotsMax 
+                                        ? f.slotsMin 
+                                        : `${f.slotsMin}~${f.slotsMax}`}
+                                      {" suất"}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-[10px] text-[#8c8c9a] italic leading-normal pt-1 border-t border-[#e0e3e5]">
+                          {`* Dựa trên khoảng thời lượng phim (${expectedAllocation.minDuration} phút ~ ${expectedAllocation.maxDuration} phút) và thời gian dọn dẹp riêng lẻ từng phòng.`}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Right: Movie Selection with Format */}
@@ -472,22 +777,59 @@ export default function AutoGeneratePage() {
                             <span className="text-sm text-[#191c1e] font-medium">{m.titleVn}</span>
                           </label>
                           {isSelected && (
-                            <div className="pl-7 flex flex-wrap gap-4 mt-1">
-                              {getMovieSupportedFormats(m.version, formatPrices).map(fmt => {
+                            <div className="pl-7 flex flex-col gap-2 mt-1">
+                              <span className="text-xs text-[#5c647a] font-bold">Định dạng & Trọng số tỷ lệ:</span>
+                              <div className="flex flex-wrap gap-x-6 gap-y-3">
+                                {getMovieSupportedFormats(m.version, formatPrices).map(fmt => {
+                                  const selectedMovie = form.movies.find(mv => mv.movieId === m.id);
+                                  const isFmtSelected = selectedMovie?.formats?.includes(fmt);
+                                  const ratio = selectedMovie?.ratios?.[fmt] ?? 1;
+                                  return (
+                                    <div key={fmt} className="flex items-center gap-2">
+                                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#5c647a]">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={isFmtSelected || false} 
+                                          onChange={() => handleFormatToggle(m.id, fmt)}
+                                          className="w-3.5 h-3.5 rounded accent-[#00836c]" 
+                                        />
+                                        {fmt}
+                                      </label>
+                                      {isFmtSelected && (
+                                        <div className="flex items-center gap-1">
+                                          <select
+                                            value={ratio}
+                                            onChange={(e) => handleFormatRatioChange(m.id, fmt, e.target.value)}
+                                            className="w-16 bg-white border border-[#e0e3e5] rounded py-0.5 px-1 text-[11px] text-[#191c1e] text-center outline-none focus:border-[#00836c] cursor-pointer"
+                                            title="Trọng số cho định dạng này"
+                                          >
+                                            <option value={1}>1 (Thấp)</option>
+                                            <option value={2}>2</option>
+                                            <option value={3}>3 (Vừa)</option>
+                                            <option value={4}>4</option>
+                                            <option value={5}>5 (Cao)</option>
+                                          </select>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                              {(() => {
                                 const selectedMovie = form.movies.find(mv => mv.movieId === m.id);
-                                const isFmtSelected = selectedMovie?.formats?.includes(fmt);
-                                return (
-                                  <label key={fmt} className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#5c647a]">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={isFmtSelected || false} 
-                                      onChange={() => handleFormatToggle(m.id, fmt)}
-                                      className="w-3.5 h-3.5 rounded accent-[#00836c]" 
-                                    />
-                                    {fmt}
-                                  </label>
-                                )
-                              })}
+                                const formats = selectedMovie?.formats || [];
+                                if (formats.length > 1) {
+                                  const ratiosList = formats.map(fmt => selectedMovie?.ratios?.[fmt] ?? 1);
+                                  return (
+                                    <div className="mt-1 text-xs font-bold text-[#b80035] bg-[#fff5f5] border border-[#ffdad6] rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 self-start">
+                                      <span>Tỷ lệ phân bổ:</span>
+                                      <span className="font-extrabold">{ratiosList.join(' : ')}</span>
+                                      <span className="text-gray-400 font-normal">({formats.join(' : ')})</span>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
                           )}
                           {isSelected && getMovieSupportedLanguages(m.language).length > 0 && (

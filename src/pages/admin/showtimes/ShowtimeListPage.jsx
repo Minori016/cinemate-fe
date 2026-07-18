@@ -716,18 +716,30 @@ export default function ShowtimeListPage() {
                 {/* Vertical Grid Lines Background */}
                 <div className="absolute inset-0 top-16 flex pointer-events-none z-0">
                   {datesToRender.map((date, index) => {
-                    const { businessHours, businessMinutes } = getBusinessHours();
+                    const { businessHours, businessMinutes, startHour } = getBusinessHours();
                     const numBlocks = Math.ceil(businessHours / 2);
+                    
+                    // Tính tọa độ cho Khung giờ vàng (18:00 - 21:00)
+                    const goldenStartLeft = (18 - startHour) * 60;
+                    const goldenWidth = (21 - 18) * 60;
+
                     return (
                       <div key={`bg-${date}`} 
-                        className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed ${index % 2 === 0 ? 'bg-white' : 'bg-[#f1f8f5]'}`}
+                        className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed relative ${index % 2 === 0 ? 'bg-white' : 'bg-[#f1f8f5]'}`}
                         style={{ width: `${businessMinutes}px` }}
                       >
+                        {/* Vẽ các ô 2 tiếng */}
                         {Array.from({ length: numBlocks }).map((_, i) => (
                           <div key={i} 
-                            className={`w-[120px] shrink-0 border-r border-[#e0e3e5] border-dashed opacity-50 h-full`}
+                            className={`w-[120px] shrink-0 border-r border-[#e0e3e5] border-dashed opacity-50 h-full relative z-10`}
                           />
                         ))}
+                        
+                        {/* Highlight Khung giờ vàng */}
+                        <div 
+                          className="absolute top-0 bottom-0 bg-[#fff8e1]/60 border-x border-[#ffe082]/50 z-0"
+                          style={{ left: `${goldenStartLeft}px`, width: `${goldenWidth}px` }}
+                        />
                       </div>
                     )
                   })}
@@ -760,14 +772,14 @@ export default function ShowtimeListPage() {
                           const nextActions = getNextStatusActions(st.status)
                           const isDraft = st.status === 'DRAFT'
 
-                          const barColor = isDraft ? 'bg-gray-400' : (isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]')
+                          const barColor = isDraft ? 'bg-gray-400' : 'bg-[#4caf50]'
                           const bgColor = isDraft
                             ? 'bg-[#f5f5f5]'
                             : (isDubbed
                               ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]'
-                              : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]'))
-                          const borderColor = isDraft ? 'border-gray-300' : (isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]')
-                          const textColor = isDraft ? 'text-gray-500' : (isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]')
+                              : 'bg-[#e8f5e9]')
+                          const borderColor = isDraft ? 'border-gray-300' : 'border-[#a5d6a7]'
+                          const textColor = isDraft ? 'text-gray-500' : 'text-[#2e7d32]'
                           return (
                             <div
                               key={st.id}
@@ -782,7 +794,7 @@ export default function ShowtimeListPage() {
                                   {st.movie}
                                 </h4>
                                 <div className="flex gap-1.5 items-center mb-0.5">
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold bg-[#c8e6c9] text-[#2e7d32]`}>
                                     {st.format || '2D'}
                                   </span>
                                   {st.status !== 'SCHEDULED' && (

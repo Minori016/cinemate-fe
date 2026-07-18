@@ -154,6 +154,62 @@ export default function ShowtimeTimelinePreview({
   const [activeId, setActiveId] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // AI optimization states
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
+  const [aiEnhancedResult, setAiEnhancedResult] = useState(null);
+  const [currentViewTab, setCurrentViewTab] = useState('algorithm'); // 'algorithm' | 'ai'
+  const [aiContext, setAiContext] = useState({
+    autoFillMovies: []
+  });
+
+  const updateList = useCallback((action) => {
+    if (aiEnhancedResult && currentViewTab === 'ai') {
+      setAiEnhancedResult(prev => ({
+        ...prev,
+        enhancedList: typeof action === 'function' ? action(prev.enhancedList) : action
+      }));
+    } else {
+      setPreviewList(action);
+    }
+  }, [aiEnhancedResult, currentViewTab, setPreviewList]);
+
+  const listToRender = (aiEnhancedResult && currentViewTab === 'ai') ? aiEnhancedResult.enhancedList : previewList;
+
+  const handleAIEnhance = async () => {
+    setAiLoading(true);
+    setShowAiModal(false);
+    try {
+      const response = await showtimeService.enhanceByAI(previewList, aiContext);
+      if (response && response.enhancedList) {
+        setAiEnhancedResult(response);
+        setCurrentViewTab('ai');
+        toast.success(`Tối ưu hóa AI thành công! Hiệu suất: ${response.originalScore.toFixed(1)}% ➔ ${response.enhancedScore.toFixed(1)}%`);
+      } else {
+        toast.error('AI không trả về kết quả tối ưu hợp lệ.');
+      }
+    } catch (err) {
+      toast.error('Lỗi tối ưu hóa AI: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleApplyAI = () => {
+    if (aiEnhancedResult && aiEnhancedResult.enhancedList) {
+      setPreviewList(aiEnhancedResult.enhancedList);
+      setAiEnhancedResult(null);
+      setCurrentViewTab('algorithm');
+      toast.success('Đã áp dụng các tối ưu đề xuất từ AI!');
+    }
+  };
+
+  const handleDiscardAI = () => {
+    setAiEnhancedResult(null);
+    setCurrentViewTab('algorithm');
+    toast.info('Đã hủy bỏ đề xuất tối ưu từ AI.');
+  };
+
   const safeExistingShowtimes = useMemo(() => Array.isArray(existingShowtimes) ? existingShowtimes : [], [existingShowtimes]);
 
   const safeGetConfigValue = useCallback((key, defaultValue) => {
@@ -303,7 +359,7 @@ export default function ShowtimeTimelinePreview({
   };
 
   const handleDeleteShowtime = useCallback((idToDelete) => {
-    setPreviewList(prev => {
+    updateList(prev => {
       const indexToDelete = prev.findIndex(st => st.tempId === idToDelete);
       if (indexToDelete === -1) return prev;
       const deletedSt = prev[indexToDelete];
@@ -343,10 +399,10 @@ export default function ShowtimeTimelinePreview({
         return st;
       });
     });
-  }, [setPreviewList]);
+  }, [setPreviewList, updateList]);
 
   const handleNudgeShowtime = useCallback((idx, shiftMinutes) => {
-    setPreviewList(prev => {
+    updateList(prev => {
       const newList = [...prev];
       const target = { ...newList[idx] };
 
@@ -450,10 +506,10 @@ export default function ShowtimeTimelinePreview({
       toast.success(`Đã nhích suất chiếu ${shiftMinutes > 0 ? 'tiến' : 'lùi'} ${Math.abs(shiftMinutes)} phút!`);
       return newList;
     });
-  }, [form.openTime, form.closeTime, rooms, getConfigValue, existingShowtimes, setPreviewList]);
+  }, [form.openTime, form.closeTime, rooms, getConfigValue, existingShowtimes, setPreviewList, updateList]);
 
   const handleMoveToRoom = useCallback((activeId, targetRoomId, shiftMinutes) => {
-    setPreviewList(prev => {
+    updateList(prev => {
       const newList = [...prev];
       const idx = newList.findIndex(st => st.tempId === activeId);
       if (idx === -1) return prev;
@@ -584,7 +640,7 @@ export default function ShowtimeTimelinePreview({
   }, [rooms, getConfigValue, existingShowtimes, form.openTime, form.closeTime, setPreviewList]);
 
   const handleSwapShowtimes = useCallback((idx1, idx2) => {
-    const newList = [...previewList];
+    const newList = [...listToRender];
     const st1 = { ...newList[idx1] };
     const st2 = { ...newList[idx2] };
 
@@ -773,9 +829,18 @@ export default function ShowtimeTimelinePreview({
       return;
     }
 
-    setPreviewList(newList);
+    updateList(newList);
     toast.success('✅ Đã hoán đổi suất chiếu thành công!');
-  }, [previewList, movies, formatPrices, rooms, getConfigValue, existingShowtimes, setPreviewList]);
+  }, [updateList, movies, formatPrices, rooms, getConfigValue, existingShowtimes, listToRender]);
+
+
+
+  const isShowtimeModified = (st) => {
+    if (!aiEnhancedResult) return false;
+    const orig = aiEnhancedResult.originalList.find(o => o.tempId === st.tempId);
+    if (!orig) return false;
+    return orig.startTime !== st.startTime || orig.room_id !== st.room_id;
+  };
 
   return (
     <div className="space-y-6 flex flex-col h-full overflow-hidden">
@@ -792,6 +857,20 @@ export default function ShowtimeTimelinePreview({
               Chỉnh sửa lại
             </button>
           )}
+          {!isImportMode && !aiEnhancedResult && (
+            <button 
+              onClick={() => setShowAiModal(true)} 
+              disabled={aiLoading} 
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-650 hover:opacity-95 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
+            >
+              {aiLoading ? (
+                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+              ) : (
+                <span className="material-symbols-outlined text-[18px]">psychology</span>
+              )}
+              Tối ưu hóa bằng AI
+            </button>
+          )}
           <button onClick={handleResetPreview} disabled={loading || originalPreviewList.length === 0} className="px-6 py-3 bg-[#fff3e0] border border-[#ffb74d] text-[#e65100] font-bold rounded-xl hover:bg-[#ffe0b2] transition-all flex items-center gap-2 disabled:opacity-50" title="Khôi phục trạng thái mới được tạo ra">
             <span className="material-symbols-outlined text-[18px]">undo</span>
             Hoàn tác gốc
@@ -803,6 +882,107 @@ export default function ShowtimeTimelinePreview({
         </div>
       </div>
 
+      {/* AI Comparison Banner */}
+      {aiEnhancedResult && (
+        <div className="p-4 bg-gradient-to-r from-purple-900 to-indigo-900 text-white rounded-xl flex justify-between items-center shadow-lg mb-4 shrink-0">
+          <div className="flex items-center gap-4">
+            <span className="material-symbols-outlined text-purple-300 text-2xl animate-bounce">
+              psychology
+            </span>
+            <div>
+              <h4 className="font-bold text-sm">Đề xuất tối ưu hóa bằng Trí Tuệ Nhân Tạo (AI)</h4>
+              <p className="text-xs text-purple-200 mt-0.5">
+                Hiệu suất: <span className="line-through opacity-65">{aiEnhancedResult.originalScore.toFixed(1)}%</span> ➔ <span className="font-bold text-green-300">{aiEnhancedResult.enhancedScore.toFixed(1)}%</span> 
+                {aiEnhancedResult.enhancedScore > aiEnhancedResult.originalScore && ` (+${(aiEnhancedResult.enhancedScore - aiEnhancedResult.originalScore).toFixed(1)}%)`}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setCurrentViewTab('algorithm')} 
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${currentViewTab === 'algorithm' ? 'bg-white text-purple-900 shadow' : 'bg-white/10 hover:bg-white/20'}`}
+            >
+              Bản Thuật Toán
+            </button>
+            <button 
+              onClick={() => setCurrentViewTab('ai')} 
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${currentViewTab === 'ai' ? 'bg-white text-purple-900 shadow' : 'bg-white/10 hover:bg-white/20'}`}
+            >
+              Đề xuất AI
+            </button>
+            <button 
+              onClick={handleApplyAI} 
+              className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition-all shadow"
+            >
+              Áp dụng AI
+            </button>
+            <button 
+              onClick={handleDiscardAI} 
+              className="px-4 py-1.5 bg-red-500 hover:bg-red-650 text-white rounded-lg text-xs font-bold transition-all shadow"
+            >
+              Hủy bỏ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* AI Context Configuration Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-purple-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-650 p-6 text-white">
+              <h3 className="text-lg font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined">psychology</span>
+                Bối cảnh Tối ưu hóa bằng AI
+              </h3>
+              <p className="text-xs text-purple-100 mt-1">Cung cấp bối cảnh thực tế để AI xếp lịch tối ưu doanh thu tốt nhất.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-gray-700">Chọn Phim ưu tiên lấp chỗ trống (Auto-Fill Priority)</label>
+                <p className="text-[10px] text-gray-500 mb-1">Thuật toán sẽ tự động nhồi các phim bạn chọn vào những khoảng thời gian còn trống cuối ngày sau khi tối ưu.</p>
+                <div className="max-h-48 overflow-y-auto border border-gray-150 rounded-xl p-2.5 bg-gray-50 space-y-2 custom-scrollbar">
+                  {movies.filter(m => [...new Set(previewList.map(p => p.movie_id))].includes(m.id)).map(movie => (
+                    <label key={movie.id} className="flex items-center gap-2 text-xs text-gray-700 font-semibold cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={aiContext.autoFillMovies.includes(movie.id)}
+                        onChange={(e) => {
+                          const isChecked = e.target.checked;
+                          setAiContext({
+                            ...aiContext,
+                            autoFillMovies: isChecked 
+                              ? [...aiContext.autoFillMovies, movie.id]
+                              : aiContext.autoFillMovies.filter(id => id !== movie.id)
+                          });
+                        }}
+                        className="w-4 h-4 rounded accent-purple-600"
+                      />
+                      {movie.titleVn}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-100">
+              <button 
+                onClick={() => setShowAiModal(false)}
+                className="px-4 py-2 border border-gray-250 text-gray-605 text-sm font-bold rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleAIEnhance}
+                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">bolt</span>
+                Bắt đầu Tối ưu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div
         ref={timelineContainerRef}
         className="flex-1 overflow-auto custom-scrollbar flex bg-[#f7f9fb] border border-[#e5bdbe] rounded-xl relative"
@@ -813,8 +993,8 @@ export default function ShowtimeTimelinePreview({
           <div className="w-48 shrink-0 sticky left-0 z-40 bg-[#f7f9fb] border-r border-[#e0e3e5] flex flex-col shadow-[2px_0_5px_rgba(0,0,0,0.05)] h-fit min-h-full">
             <div className="h-16 border-b border-[#e0e3e5] bg-white sticky top-0 z-50 shrink-0"></div>
             {rooms.filter(r => {
-              if (previewList.length === 0) return false;
-              const firstStRoom = rooms.find(room => room.id === previewList[0].room_id);
+              if (listToRender.length === 0) return false;
+              const firstStRoom = rooms.find(room => room.id === listToRender[0].room_id);
               const targetCinemaId = firstStRoom?.cinemaId || firstStRoom?.cinema?.id;
               if (targetCinemaId) {
                 return (r.cinemaId || r.cinema?.id) === targetCinemaId;
@@ -876,21 +1056,33 @@ export default function ShowtimeTimelinePreview({
             {/* Vertical Grid Lines Background */}
             <div className="absolute inset-0 top-16 flex pointer-events-none z-0">
               {datesToRender.map((date, index) => {
-                const { businessHours, businessMinutes } = getBusinessHours();
+                const { businessHours, businessMinutes, startHour } = getBusinessHours();
                 const numBlocks = Math.ceil(businessHours / 2);
+                
+                // Tính tọa độ cho Khung giờ vàng (18:00 - 21:00)
+                const goldenStartLeft = (18 - startHour) * 60 * PIXELS_PER_MINUTE;
+                const goldenWidth = (21 - 18) * 60 * PIXELS_PER_MINUTE;
+
                 return (
                   <div key={`bg-${date}`}
-                    className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed ${index % 2 === 0 ? 'bg-white' : 'bg-[#f7f9fb]'}`}
+                    className={`flex shrink-0 border-r border-[#e0e3e5] border-dashed relative ${index % 2 === 0 ? 'bg-white' : 'bg-[#f7f9fb]'}`}
                     style={{ width: `${businessMinutes * PIXELS_PER_MINUTE}px` }}
                   >
+                    {/* Vẽ grid lines */}
                     {Array.from({ length: numBlocks * 2 }).map((_, i) => (
                       <div key={i}
-                        className="w-[60px] shrink-0 border-r border-[#cbd1d6] h-full"
+                        className="w-[60px] shrink-0 border-r border-[#cbd1d6] h-full relative z-10"
                         style={{
                           backgroundImage: 'repeating-linear-gradient(to right, transparent, transparent 9px, rgba(0,0,0,0.1) 9px, rgba(0,0,0,0.1) 10px)'
                         }}
                       />
                     ))}
+                    
+                    {/* Highlight Khung giờ vàng */}
+                    <div 
+                      className="absolute top-0 bottom-0 bg-[#fff8e1]/60 border-x border-[#ffe082]/50 z-0"
+                      style={{ left: `${goldenStartLeft}px`, width: `${goldenWidth}px` }}
+                    />
                   </div>
                 );
               })}
@@ -912,13 +1104,13 @@ export default function ShowtimeTimelinePreview({
                     }
                     handleMoveToRoom(active.id, targetRoomId, shiftMinutes);
                   } else if (active.id !== over.id) {
-                    const idx1 = previewList.findIndex(st => String(st.tempId) === String(active.id));
-                    const idx2 = previewList.findIndex(st => String(st.tempId) === String(over.id));
+                    const idx1 = listToRender.findIndex(st => String(st.tempId) === String(active.id));
+                    const idx2 = listToRender.findIndex(st => String(st.tempId) === String(over.id));
                     if (idx1 !== -1 && idx2 !== -1) {
                       handleSwapShowtimes(idx1, idx2);
                     }
                   } else {
-                    const idx = previewList.findIndex(st => String(st.tempId) === String(active.id));
+                    const idx = listToRender.findIndex(st => String(st.tempId) === String(active.id));
                     if (idx !== -1 && Math.abs(delta.x) >= 10 * PIXELS_PER_MINUTE) {
                       const shiftMinutes = Math.round(delta.x / (10 * PIXELS_PER_MINUTE)) * 10;
                       if (shiftMinutes !== 0) {
@@ -927,7 +1119,7 @@ export default function ShowtimeTimelinePreview({
                     }
                   }
                 } else {
-                  const idx = previewList.findIndex(st => String(st.tempId) === String(active.id));
+                  const idx = listToRender.findIndex(st => String(st.tempId) === String(active.id));
                   if (idx !== -1 && Math.abs(delta.x) >= 5 * PIXELS_PER_MINUTE) {
                     const shiftMinutes = Math.round(delta.x / (5 * PIXELS_PER_MINUTE)) * 5;
                     if (shiftMinutes !== 0) {
@@ -941,15 +1133,15 @@ export default function ShowtimeTimelinePreview({
             >
               <div className="relative z-10">
                 {rooms.filter(r => {
-                  if (previewList.length === 0) return true;
-                  const firstStRoom = rooms.find(room => room.id === previewList[0].room_id);
+                  if (listToRender.length === 0) return true;
+                  const firstStRoom = rooms.find(room => room.id === listToRender[0].room_id);
                   const targetCinemaId = firstStRoom?.cinemaId || firstStRoom?.cinema?.id;
                   if (targetCinemaId) {
                     return (r.cinemaId || r.cinema?.id) === targetCinemaId;
                   }
                   return true;
                 }).map(room => {
-                  const roomShowtimes = previewList.filter(st => st.room_id === room.id);
+                  const roomShowtimes = listToRender.filter(st => st.room_id === room.id);
                   const manualShowtimes = safeExistingShowtimes.filter(st => st.room_id === room.id);
                   return (
                     <DroppableRoomRow key={room.id} room={room}>
@@ -958,12 +1150,10 @@ export default function ShowtimeTimelinePreview({
                         const stHour = new Date(st.startTime).getHours();
                         const isGolden = stHour >= 18 && stHour < 22;
 
-                        const barColor = isGolden ? 'bg-[#ffb300]' : 'bg-[#5c647a]';
-                        const textColor = isGolden ? 'text-[#ff6f00]' : 'text-[#5c647a]';
-                        const gradient = isGolden
-                          ? 'repeating-linear-gradient(45deg, #fff8e1, #fff8e1 10px, #ffecb3 10px, #ffecb3 20px)'
-                          : 'repeating-linear-gradient(45deg, #f1f3f5, #f1f3f5 10px, #e9ecef 10px, #e9ecef 20px)';
-                        const borderColor = isGolden ? 'border-[#ffe082]' : 'border-[#5c647a]/20';
+                        const barColor = 'bg-[#5c647a]';
+                        const textColor = 'text-[#5c647a]';
+                        const gradient = 'repeating-linear-gradient(45deg, #f1f3f5, #f1f3f5 10px, #e9ecef 10px, #e9ecef 20px)';
+                        const borderColor = 'border-[#5c647a]/20';
 
                         return (
                           <div
@@ -1006,6 +1196,8 @@ export default function ShowtimeTimelinePreview({
                             movieObj={movieObj}
                             isDragged={activeId === st.tempId}
                             handleDeleteShowtime={handleDeleteShowtime}
+                            isReadOnly={false}
+                            isModified={isShowtimeModified(st)}
                           />
                         );
                       })}
@@ -1018,7 +1210,7 @@ export default function ShowtimeTimelinePreview({
         </div>
       </div>
 
-      {previewList.length === 0 && (
+      {listToRender.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-50 pointer-events-none rounded-xl">
           <span className="material-symbols-outlined text-5xl text-[#565e74] mb-2">event_busy</span>
           <p className="text-[#565e74] font-semibold text-sm">Không tạo được suất chiếu nào phù hợp</p>
