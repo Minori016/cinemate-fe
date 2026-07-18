@@ -9,10 +9,10 @@ const DragOverlayShowtime = memo(function DragOverlayShowtime({ st, calculatePos
     : false;
   const isDubbed = isAnimation && st.language === 'Lồng tiếng'
   
-  const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
-  const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]')
-  const borderColor = isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]'
-  const textColor = isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]'
+  const barColor = 'bg-[#4caf50]'
+  const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : 'bg-[#e8f5e9]'
+  const borderColor = 'border-[#a5d6a7]'
+  const textColor = 'text-[#2e7d32]'
   
   return (
     <div
@@ -26,7 +26,7 @@ const DragOverlayShowtime = memo(function DragOverlayShowtime({ st, calculatePos
           {st.movieTitle}
         </h4>
         <div className="flex gap-1.5 items-center mb-0.5">
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold bg-[#c8e6c9] text-[#2e7d32]`}>
             {st.format}
           </span>
         </div>

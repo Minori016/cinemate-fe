@@ -9,22 +9,26 @@ const DraggableShowtime = memo(function DraggableShowtime({
   calculatePosition,
   movieObj,
   isDragged,
-  handleDeleteShowtime
+  handleDeleteShowtime,
+  isReadOnly = false,
+  isModified = false
 }) {
   const { attributes, listeners, setNodeRef: setDraggableRef, transform } = useDraggable({
     id: id?.toString() || crypto.randomUUID(),
-    data: { id, st, movieObj }
+    data: { id, st, movieObj },
+    disabled: isReadOnly
   });
 
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
     id: id?.toString() || crypto.randomUUID(),
-    data: { id }
+    data: { id },
+    disabled: isReadOnly
   });
 
   // Combine refs
   const setNodeRef = (node) => {
     setDraggableRef(node);
-    setDroppableRef(node);
+    if (!isReadOnly) setDroppableRef(node);
   };
 
   const safeFormatTime = (isoString) => {
@@ -51,11 +55,17 @@ const DraggableShowtime = memo(function DraggableShowtime({
     
   const isDubbed = isAnimation && st?.language === 'Lồng tiếng';
 
+  const isAutoFill = st?.tempId?.startsWith('autofill-');
+
   // Distinct Preview Colors
-  const barColor = isGoldenHour ? 'bg-[#ffb300]' : 'bg-[#4caf50]'
-  const bgColor = isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : (isGoldenHour ? 'bg-[#fff8e1]' : 'bg-[#e8f5e9]')
-  const borderColor = isGoldenHour ? 'border-[#ffe082]' : 'border-[#a5d6a7]'
-  const textColor = isGoldenHour ? 'text-[#ff6f00]' : 'text-[#2e7d32]'
+  const barColor = isAutoFill ? 'bg-amber-500' : (isModified ? 'bg-purple-600 animate-pulse' : 'bg-[#4caf50]');
+  const bgColor = isAutoFill 
+    ? 'bg-amber-50/95 ring-1 ring-amber-400' 
+    : (isModified 
+      ? 'bg-purple-50/95 ring-1 ring-purple-400' 
+      : (isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : 'bg-[#e8f5e9]'));
+  const borderColor = isAutoFill ? 'border-amber-300' : (isModified ? 'border-purple-300' : 'border-[#a5d6a7]');
+  const textColor = isAutoFill ? 'text-amber-700' : (isModified ? 'text-purple-700' : 'text-[#2e7d32]');
 
   // Apply transform if dragging
   const style = {
@@ -69,9 +79,9 @@ const DraggableShowtime = memo(function DraggableShowtime({
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`absolute top-4 h-[64px] ${bgColor} border ${isOver ? 'border-[#b80035] border-2 shadow-[0_0_0_4px_rgba(184,0,53,0.1)] scale-105' : borderColor} rounded flex items-center p-2 cursor-grab active:cursor-grabbing transition-colors transition-shadow group overflow-hidden ${isDragged ? 'shadow-2xl scale-105 ring-2 ring-[#b80035]/30 opacity-95' : 'shadow-sm hover:shadow-md'}`}
+      {...(isReadOnly ? {} : listeners)}
+      {...(isReadOnly ? {} : attributes)}
+      className={`absolute top-4 h-[64px] ${bgColor} border ${!isReadOnly && isOver ? 'border-[#b80035] border-2 shadow-[0_0_0_4px_rgba(184,0,53,0.1)] scale-105' : borderColor} rounded flex items-center p-2 transition-colors transition-shadow group overflow-hidden ${isDragged ? 'shadow-2xl scale-105 ring-2 ring-[#b80035]/30 opacity-95' : 'shadow-sm hover:shadow-md'} ${isReadOnly ? 'cursor-default select-none' : 'cursor-grab active:cursor-grabbing'}`}
       style={style}
     >
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
@@ -81,9 +91,24 @@ const DraggableShowtime = memo(function DraggableShowtime({
           {st.movieTitle}
         </h4>
         <div className="flex gap-1.5 items-center mb-0.5">
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${isGoldenHour ? 'bg-[#ffe082] text-[#ff6f00]' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1 ${isAutoFill ? 'bg-amber-200 text-amber-800' : (isModified ? 'bg-purple-200 text-purple-700' : 'bg-[#c8e6c9] text-[#2e7d32]')}`}>
             {st.format}
+            {isAutoFill && (
+              <span className="material-symbols-outlined text-[10px] text-amber-600" title="Tự động lấp chỗ trống" style={{ fontVariationSettings: "'FILL' 1" }}>
+                star
+              </span>
+            )}
           </span>
+          {isModified && !isAutoFill && (
+            <span className="text-[8px] bg-purple-600 text-white px-1 rounded font-bold uppercase tracking-wider scale-95">
+              AI
+            </span>
+          )}
+          {isAutoFill && (
+            <span className="text-[8px] bg-amber-500 text-white px-1 rounded font-bold uppercase tracking-wider scale-95">
+              AUTO-FILL
+            </span>
+          )}
         </div>
         <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
           <span>{safeFormatTime(st.startTime)}</span>
@@ -93,19 +118,21 @@ const DraggableShowtime = memo(function DraggableShowtime({
       </div>
 
       {/* Delete & Shift Up Button */}
-      <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteShowtime(id);
-          }}
-          onPointerDown={(e) => e.stopPropagation()} // Prevent drag start when clicking delete
-          title="Xóa & Lùi giờ"
-          className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors bg-white shadow-sm"
-        >
-          <Trash2 size={14} />
-        </button>
-      </div>
+      {!isReadOnly && (
+        <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteShowtime(id);
+            }}
+            onPointerDown={(e) => e.stopPropagation()} // Prevent drag start when clicking delete
+            title="Xóa & Lùi giờ"
+            className="p-1.5 text-[#ba1a1a] hover:bg-[#ffdad6] rounded-full transition-colors bg-white shadow-sm"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
     </div>
   )
 });

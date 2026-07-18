@@ -311,11 +311,36 @@ export default function SeatSelectionPage() {
     }
   }, [movieId, dateStr, time, roomIdParam])
 
+  // Cleanup Redis locks on page unload / navigate away
+  useEffect(() => {
+    const cleanup = () => {
+      if (seatLayout?.showtimeId) {
+        bookingService.clearMyLocks(seatLayout.showtimeId).catch(() => {})
+      }
+    }
+    window.addEventListener('beforeunload', cleanup)
+    return () => {
+      window.removeEventListener('beforeunload', cleanup)
+      cleanup()
+    }
+  }, [seatLayout?.showtimeId])
+
   const [realSeatMap, setRealSeatMap] = useState(null)
 
   const updateOccupiedFromSeatMap = useCallback((seatMapData) => {
     if (!seatMapData || !seatMapData.seats) return
     setRealSeatMap(seatMapData.seats)
+
+    // Restore own locked seats into selected state (fixes F5 self-lock bug)
+    const ownLockedSeats = seatMapData.seats
+      .filter(s => s.lockedByCurrentUser && s.status === 'HELD')
+      .map(s => s.seatId)
+    if (ownLockedSeats.length > 0) {
+      setSelected(prev => {
+        const combined = new Set([...prev, ...ownLockedSeats])
+        return [...combined]
+      })
+    }
   }, [])
 
   // Override currentOccupied from realSeatMap
@@ -324,6 +349,8 @@ export default function SeatSelectionPage() {
       const set = new Set()
       realSeatMap.forEach(s => {
         if (s.status === 'HELD' || s.status === 'CONFIRMED' || s.status === 'CANCELLED_UNAVAILABLE' || s.status === 'MAINTENANCE') {
+          // Skip seats owned by current user — they should remain selectable
+          if (s.lockedByCurrentUser) return
           if (!selected.includes(s.seatId) && !processingSeats.includes(s.seatId)) {
             set.add(s.seatId)
           }
