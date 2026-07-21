@@ -177,6 +177,21 @@ export default function CheckoutPage() {
               </div>
             </div>
 
+            {/* Bắp nước đã chọn */}
+            {booking.concessions && booking.concessions.length > 0 && (
+              <div className="pt-6 border-t border-white/10">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-3">Bắp Nước Đã Chọn ({booking.concessions.length})</p>
+                <div className="space-y-2 bg-white/5 border border-white/10 p-3.5 rounded-2xl">
+                  {booking.concessions.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-xs">
+                      <span className="text-white font-medium">{item.name} <span className="text-gray-400 font-bold">x{item.quantity}</span></span>
+                      <span className="text-red-400 font-mono font-bold">{formatCurrency(item.lineTotal || (item.unitPrice * item.quantity))}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Thông tin cá nhân (AC-01) */}
             <div className="pt-6 border-t border-white/10">
               <div className="flex items-center gap-2 mb-4">
@@ -201,7 +216,10 @@ export default function CheckoutPage() {
           </div>
           
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-end">
-            <span className="text-sm text-gray-400 font-medium">Tổng thanh toán</span>
+            <div>
+              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider block">Tổng Thanh Toán Vé & Bắp Nước</span>
+              <span className="text-[10px] text-emerald-400 font-semibold">Đã bao gồm VAT & Bắp nước</span>
+            </div>
             <span className="text-3xl font-black text-red-500">{formatCurrency(booking.totalAmount)}</span>
           </div>
         </motion.div>

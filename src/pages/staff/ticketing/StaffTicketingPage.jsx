@@ -227,8 +227,8 @@ export default function StaffTicketingPage() {
 
   const comboPriceTotal = useMemo(() => {
     return Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-      const combo = combos.find(c => String(c.id) === String(id))
-      return sum + (combo ? combo.price * qty : 0)
+      const combo = combos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+      return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
     }, 0)
   }, [selectedCombos, combos])
 
@@ -260,7 +260,7 @@ export default function StaffTicketingPage() {
         seatIds: selectedSeats,
         concessions: Object.entries(selectedCombos)
           .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
+          .map(([id, qty]) => ({ concessionId: id, quantity: qty }))
       })
       const bookingData = holdRes.data?.result || holdRes.data
       const backendBookingId = bookingData.bookingId

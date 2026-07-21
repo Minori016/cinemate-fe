@@ -527,8 +527,8 @@ export default function MovieDetailPage() {
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
   const activeCombos = dbCombos.length > 0 ? dbCombos : FALLBACK_COMBOS
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-    const combo = activeCombos.find(c => String(c.id) === String(id))
-    return sum + (combo ? combo.price * qty : 0)
+    const combo = activeCombos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+    return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
   }, 0)
 
   const discountAmount = useMemo(() => {
@@ -549,7 +549,7 @@ export default function MovieDetailPage() {
   const onChangeCombo = (id, change) => {
     setSelectedCombos(prev => ({
       ...prev,
-      [id]: Math.max(0, prev[id] + change)
+      [id]: Math.max(0, (prev[id] || 0) + change)
     }))
   }
 
@@ -567,7 +567,7 @@ export default function MovieDetailPage() {
         seatIds: selectedSeats,
         concessions: Object.entries(selectedCombos)
           .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
+          .map(([id, qty]) => ({ concessionId: id, quantity: qty }))
       })
       const bookingData = res.data?.result || res.data
       setBookingId(bookingData.bookingId)

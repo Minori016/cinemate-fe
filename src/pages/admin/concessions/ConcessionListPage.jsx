@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS } from '../../../services/concessionService'
+import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS, SIZE_DISPLAY, groupConcessionsByBaseName } from '../../../services/concessionService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
@@ -39,8 +39,16 @@ export default function ConcessionListPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
-      await concessionService.delete(deleteTarget.id)
-      setItems(prev => prev.filter(item => item.id !== deleteTarget.id))
+      const idsToDelete = (deleteTarget.sizes && deleteTarget.sizes.length > 0)
+        ? deleteTarget.sizes.map(s => s.variantId || s.rawItem?.id || s.rawItem?.uuid).filter(Boolean)
+        : [deleteTarget.id || deleteTarget.uuid].filter(Boolean)
+
+      await Promise.all(idsToDelete.map(vId => concessionService.delete(vId)))
+
+      setItems(prev => prev.filter(item => {
+        const itemId = item.id || item.uuid
+        return !idsToDelete.includes(itemId)
+      }))
     } catch (err) {
       console.error('Lỗi khi xóa bắp nước:', err)
       alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa sản phẩm.')
@@ -51,9 +59,21 @@ export default function ConcessionListPage() {
 
   const handleToggleActive = async (item) => {
     try {
-      const res = await concessionService.toggleActive(item.id)
-      const updated = res.data?.result || res.data
-      setItems(prev => prev.map(i => i.id === item.id ? { ...i, isActive: updated.isActive } : i))
+      const idsToToggle = (item.sizes && item.sizes.length > 0)
+        ? item.sizes.map(s => s.variantId || s.rawItem?.id || s.rawItem?.uuid).filter(Boolean)
+        : [item.id || item.uuid].filter(Boolean)
+
+      const nextActiveState = !item.isActive
+
+      await Promise.all(idsToToggle.map(vId => concessionService.toggleActive(vId)))
+
+      setItems(prev => prev.map(i => {
+        const iId = i.id || i.uuid
+        if (idsToToggle.includes(iId)) {
+          return { ...i, isActive: nextActiveState }
+        }
+        return i
+      }))
     } catch (err) {
       console.error('Lỗi khi đổi trạng thái sản phẩm:', err)
     }
@@ -63,8 +83,9 @@ export default function ConcessionListPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
   }
 
-  const filtered = useMemo(() => {
-    return items.filter(item => {
+  // Group multi-size items into 1 row per base product
+  const groupedList = useMemo(() => {
+    const rawFiltered = items.filter(item => {
       const matchSearch = item.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.description?.toLowerCase().includes(searchQuery.toLowerCase())
       
@@ -75,22 +96,28 @@ export default function ConcessionListPage() {
       
       return matchSearch && matchCategory && matchStatus
     })
+
+    const groups = groupConcessionsByBaseName(rawFiltered)
+    // Alphabetical sort (A-Z) by base product name
+    return groups.sort((a, b) => (a.baseName || a.name || '').localeCompare(b.baseName || b.name || '', 'vi', { sensitivity: 'base' }))
   }, [items, searchQuery, categoryFilter, statusFilter])
 
   const stats = useMemo(() => {
-    let foodCount = 0, drinkCount = 0, comboCount = 0
-    items.forEach(i => {
-      if (i.itemType === 'food') foodCount++
+    let popcornCount = 0, foodCount = 0, drinkCount = 0, comboCount = 0
+    groupedList.forEach(i => {
+      if (i.itemType === 'popcorn') popcornCount++
+      else if (i.itemType === 'food') foodCount++
       else if (i.itemType === 'drink') drinkCount++
       else if (i.itemType === 'combo') comboCount++
     })
     return {
-      total: items.length,
+      total: groupedList.length,
+      popcorn: popcornCount,
       food: foodCount,
       drink: drinkCount,
       combo: comboCount
     }
-  }, [items])
+  }, [groupedList])
 
   const columns = [
     {
@@ -100,7 +127,7 @@ export default function ConcessionListPage() {
         <span className="text-3xl select-none" role="img" aria-label={r.itemType}>
           {r.imageUrl && (r.imageUrl.startsWith('http') || r.imageUrl.startsWith('/') || r.imageUrl.startsWith('data:'))
             ? <img src={r.imageUrl} alt={r.name} className="w-10 h-10 rounded-lg object-cover" />
-            : (r.imageUrl || ITEM_TYPE_EMOJIS[r.itemType] || '🍿')
+            : (r.imageUrl || r.img || ITEM_TYPE_EMOJIS[r.itemType] || '🍿')
           }
         </span>
       )
@@ -110,9 +137,16 @@ export default function ConcessionListPage() {
       label: 'Tên sản phẩm',
       render: r => (
         <div className="font-bold text-[var(--color-on-surface)]">
-          <div>{r.name}</div>
-          <div className="text-xs text-[var(--color-text-muted)] font-normal mt-0.5 max-w-[200px] truncate" title={r.description}>
-            {r.description || 'Không có mô tả'}
+          <div className="flex items-center gap-2">
+            <span>{r.name}</span>
+            {r.sizes && r.sizes.length > 1 && (
+              <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
+                {r.sizes.length} Sizes
+              </span>
+            )}
+          </div>
+          <div className="text-xs text-[var(--color-text-muted)] font-normal mt-0.5 max-w-[200px] truncate" title={r.desc || r.description}>
+            {r.desc || r.description || 'Không có mô tả'}
           </div>
         </div>
       )
@@ -127,13 +161,50 @@ export default function ConcessionListPage() {
       )
     },
     {
+      key: 'size',
+      label: 'Kích thước & Giá',
+      render: r => {
+        if (r.itemType === 'combo') {
+          return <span className="text-gray-500 text-xs italic">Combo trọn gói</span>
+        }
+        if (!r.sizes || r.sizes.length === 0) {
+          return <span className="text-gray-400 text-xs font-bold">Tiêu chuẩn</span>
+        }
+        return (
+          <div className="flex flex-wrap gap-1.5">
+            {r.sizes.map(s => {
+              const sInfo = SIZE_DISPLAY[s.key]
+              const displayLabel = sInfo?.label || s.label
+              const bgStyle = sInfo?.bg || 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+              return (
+                <span key={s.key} className={`px-2 py-0.5 rounded border text-[11px] font-bold whitespace-nowrap ${bgStyle}`}>
+                  {displayLabel}: {formatVND(s.price)}
+                </span>
+              )
+            })}
+          </div>
+        )
+      }
+    },
+    {
       key: 'price',
-      label: 'Giá bán',
-      render: r => (
-        <span className="text-red-400 font-extrabold font-mono text-sm">
-          {formatVND(r.price)}
-        </span>
-      )
+      label: 'Khung giá bán',
+      render: r => {
+        if (r.sizes && r.sizes.length > 1) {
+          const minP = Math.min(...r.sizes.map(s => s.price))
+          const maxP = Math.max(...r.sizes.map(s => s.price))
+          return (
+            <span className="text-red-400 font-extrabold font-mono text-sm">
+              {formatVND(minP)} - {formatVND(maxP)}
+            </span>
+          )
+        }
+        return (
+          <span className="text-red-400 font-extrabold font-mono text-sm">
+            {formatVND(r.price)}
+          </span>
+        )
+      }
     },
     {
       key: 'status',
@@ -156,24 +227,27 @@ export default function ConcessionListPage() {
     {
       key: 'actions',
       label: 'Hành động',
-      render: r => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/admin/concessions/edit/${r.id}`)}
-            className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 hover:text-yellow-300 border border-yellow-500/20 rounded-xl transition-all cursor-pointer"
-            title="Sửa"
-          >
-            <Pencil size={14} />
-          </button>
-          <button
-            onClick={() => setDeleteTarget(r)}
-            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 rounded-xl transition-all cursor-pointer"
-            title="Xóa"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-      )
+      render: r => {
+        const targetEditId = r.id || r.uuid || (r.sizes && r.sizes[0] && (r.sizes[0].variantId || r.sizes[0].rawItem?.id || r.sizes[0].rawItem?.uuid))
+        return (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(`/admin/concessions/edit/${targetEditId}`)}
+              className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 hover:text-yellow-300 border border-yellow-500/20 rounded-xl transition-all cursor-pointer"
+              title="Sửa"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => setDeleteTarget(r)}
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 rounded-xl transition-all cursor-pointer"
+              title="Xóa"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
+        )
+      }
     }
   ]
 
@@ -207,14 +281,15 @@ export default function ConcessionListPage() {
 
       {/* Stats cards */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        className="grid grid-cols-2 md:grid-cols-5 gap-3"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.12 }}
       >
         {[
           { label: 'Tổng số sản phẩm', value: stats.total, color: 'text-[var(--color-on-surface)]' },
-          { label: 'Đồ ăn (Food)', value: stats.food, color: 'text-yellow-500' },
+          { label: 'Bắp rang (Popcorn)', value: stats.popcorn, color: 'text-amber-400' },
+          { label: 'Đồ ăn khác (Food)', value: stats.food, color: 'text-yellow-500' },
           { label: 'Đồ uống (Drink)', value: stats.drink, color: 'text-blue-500' },
           { label: 'Combo bắp nước', value: stats.combo, color: 'text-red-500' }
         ].map(s => (
@@ -256,7 +331,8 @@ export default function ConcessionListPage() {
               className="bg-[var(--color-surface-2)] border border-[var(--color-border)] text-white text-xs rounded-xl py-2 px-3 outline-none"
             >
               <option value="ALL">Tất cả danh mục</option>
-              <option value="food">Đồ ăn (Food)</option>
+              <option value="popcorn">Bắp rang (Popcorn)</option>
+              <option value="food">Đồ ăn khác (Food)</option>
               <option value="drink">Đồ uống (Drink)</option>
               <option value="combo">Combo bắp nước</option>
             </select>
@@ -291,7 +367,7 @@ export default function ConcessionListPage() {
         ) : (
           <Table
             columns={columns}
-            data={filtered}
+            data={groupedList}
             emptyMessage="Không tìm thấy món ăn/combo nào phù hợp."
           />
         )}
