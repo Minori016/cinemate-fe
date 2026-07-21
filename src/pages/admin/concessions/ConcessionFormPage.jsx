@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS } from '../../../services/concessionService'
+import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS, PRODUCT_SIZES, extractBaseName } from '../../../services/concessionService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, ChefHat, CheckCircle, AlertCircle, Sparkles, Smile, Upload, Loader2, X } from 'lucide-react'
+import { ArrowLeft, ChefHat, CheckCircle, AlertCircle, Sparkles, Smile, Upload, Loader2, X, Maximize2, Package, Plus } from 'lucide-react'
 
 export default function ConcessionFormPage() {
   const { id } = useParams()
@@ -14,9 +14,22 @@ export default function ConcessionFormPage() {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [price, setPrice] = useState('')
-  const [itemType, setItemType] = useState('combo')
+  const [itemType, setItemType] = useState('food')
   const [imageUrl, setImageUrl] = useState('') // uploaded URL or emoji
   const [isActive, setIsActive] = useState(true)
+
+  // Size states (multi-select for food & drink)
+  const [selectedSizes, setSelectedSizes] = useState(['STANDARD'])
+  const [sizePrices, setSizePrices] = useState({ STANDARD: '', L: '', XL: '' })
+
+  // Combo collection states (Category Scope / Specific Products)
+  const [availableProducts, setAvailableProducts] = useState([])
+  const [comboItems, setComboItems] = useState([]) // [{ productUuid, productName, productSize, quantity }]
+  const [selectedProductUuid, setSelectedProductUuid] = useState('')
+  const [addQuantity, setAddQuantity] = useState(1)
+  const [comboAddMode, setComboAddMode] = useState('category') // 'category' | 'specific'
+  const [selectedCategoryType, setSelectedCategoryType] = useState('popcorn')
+  const [selectedCategorySize, setSelectedCategorySize] = useState('L')
 
   // Upload states
   const [selectedFile, setSelectedFile] = useState(null)
@@ -36,37 +49,344 @@ export default function ConcessionFormPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  // Pre-fill if editing
+  // Map existing DB variant UUIDs per size key when editing: { STANDARD: 'uuid1', L: 'uuid2', XL: 'uuid3' }
+  const [existingVariantMap, setExistingVariantMap] = useState({})
+
+  // Load available food, popcorn & drink products for building combo collection (Only Active, Not Deleted & Deduplicated)
   useEffect(() => {
-    if (isEdit) {
-      concessionService.getById(id)
-        .then(res => {
-          const item = res.data?.result || res.data
-          if (item) {
-            setName(item.name || '')
-            setDescription(item.description || '')
-            setPrice(item.price ?? '')
-            setItemType(item.itemType || 'combo')
-            setImageUrl(item.imageUrl || '')
-            setIsActive(item.isActive !== false)
+    concessionService.getActive()
+      .then(res => {
+        const data = res.data?.result || res.data || []
+        if (Array.isArray(data)) {
+          const seenKeys = new Set()
+          const uniqueSingleProds = []
+
+          data.forEach(i => {
+            if (!i) return
+            const type = String(i.itemType || i.category || 'food').toLowerCase()
+            const isSingle = type === 'popcorn' || type === 'food' || type === 'drink' || type === 'beverage'
+            const isNotDeleted = i.isDeleted !== true
+            const isActiveForSale = i.isActive !== false && String(i.status || '').toUpperCase() !== 'INACTIVE'
+
+            if (isSingle && isNotDeleted && isActiveForSale) {
+              const pName = (i.name || '').trim().toLowerCase()
+              const pSize = (i.size || '').trim().toUpperCase()
+              const pKey = `${pName}_${pSize}`
+
+              if (!seenKeys.has(pKey)) {
+                seenKeys.add(pKey)
+                uniqueSingleProds.push(i)
+              }
+            }
+          })
+
+          // Sort available products: Alphabetical by base name A-Z, then smallest size to largest size (STANDARD -> L -> XL)
+          const sizeOrder = { STANDARD: 1, S: 1, M: 2, L: 2, XL: 3 }
+          uniqueSingleProds.sort((a, b) => {
+            const baseA = extractBaseName(a.name)
+            const baseB = extractBaseName(b.name)
+            const cmp = baseA.localeCompare(baseB, 'vi', { sensitivity: 'base' })
+            if (cmp !== 0) return cmp
+
+            let szA = (a.size || 'STANDARD').toUpperCase()
+            if (szA === 'S') szA = 'STANDARD'
+            if (szA === 'M') szA = 'L'
+
+            let szB = (b.size || 'STANDARD').toUpperCase()
+            if (szB === 'S') szB = 'STANDARD'
+            if (szB === 'M') szB = 'L'
+
+            return (sizeOrder[szA] || 9) - (sizeOrder[szB] || 9)
+          })
+
+          setAvailableProducts(uniqueSingleProds)
+          if (uniqueSingleProds.length > 0) {
+            setSelectedProductUuid(uniqueSingleProds[0].id || uniqueSingleProds[0].uuid || '')
+          } else {
+            setSelectedProductUuid('')
           }
-        })
-        .catch(err => {
-          console.error('Không tìm thấy sản phẩm:', err)
+        }
+      })
+      .catch(err => console.error('Lỗi tải danh sách món lẻ:', err))
+  }, [])
+
+  // Pre-fill if editing (Atomic multi-size loading: Direct ID lookup + All sister size variants)
+  useEffect(() => {
+    if (!isEdit || !id) return
+
+    let isMounted = true
+
+    async function loadProductData() {
+      try {
+        const targetId = String(id || '').trim()
+
+        // Fetch direct target item and full list in parallel
+        const [itemRes, allRes] = await Promise.all([
+          concessionService.getById(targetId).catch(e => {
+            console.warn('Lỗi khi getById:', e)
+            return null
+          }),
+          concessionService.getAll().catch(e => {
+            console.warn('Lỗi khi getAll:', e)
+            return null
+          })
+        ])
+
+        if (!isMounted) return
+
+        const targetItem = itemRes?.data?.result || itemRes?.data || null
+        const rawList = allRes?.data?.result?.content || allRes?.data?.result || allRes?.data || []
+        const allItems = Array.isArray(rawList) ? rawList : []
+
+        // Extract base name from targetItem or id
+        const rawTargetName = targetItem?.name || ''
+        const baseNameFromItem = extractBaseName(rawTargetName)
+
+        // Gather all sister items (variants) matching the base name or target ID
+        const sisterItems = []
+        if (targetItem) {
+          sisterItems.push(targetItem)
+        }
+
+        if (allItems.length > 0) {
+          allItems.forEach(item => {
+            if (!item) return
+            const itemId = String(item.id || item.uuid || '')
+            const itemBaseName = extractBaseName(item.name || '')
+
+            const isSameId = itemId && itemId === targetId
+            const isSameBaseName = baseNameFromItem && itemBaseName && itemBaseName.toLowerCase() === baseNameFromItem.toLowerCase()
+
+            if (isSameId || isSameBaseName) {
+              const alreadyAdded = sisterItems.some(ex => String(ex.id || ex.uuid || '') === itemId)
+              if (!alreadyAdded) {
+                sisterItems.push(item)
+              }
+            }
+          })
+        }
+
+        if (sisterItems.length === 0) {
+          showToast('Không tìm thấy thông tin sản phẩm.', 'danger')
+          return
+        }
+
+        // Primary reference item
+        const refItem = targetItem || sisterItems[0]
+
+        // 1. Name
+        const mainName = baseNameFromItem || extractBaseName(refItem.name) || refItem.name || ''
+        setName(mainName)
+
+        // 2. Description
+        const descVal = refItem.description || refItem.desc || sisterItems.find(i => i.description || i.desc)?.description || ''
+        setDescription(descVal)
+
+        // 3. Item Type
+        let type = String(refItem.itemType || refItem.category || 'food').toLowerCase()
+        if (type === 'beverage') type = 'drink'
+        setItemType(type)
+
+        // 4. Image & Status
+        setImageUrl(refItem.imageUrl || refItem.img || '')
+        setIsActive(refItem.isActive !== false)
+
+        if (type === 'combo') {
+          const itemPriceStr = refItem.price !== undefined && refItem.price !== null ? String(refItem.price) : ''
+          setPrice(itemPriceStr)
+          try {
+            const cRes = await concessionService.getComboItems(targetId)
+            const cItems = cRes.data?.result || cRes.data || []
+            if (Array.isArray(cItems) && isMounted) setComboItems(cItems)
+          } catch (err) {
+            console.error('Lỗi tải thành phần combo:', err)
+          }
+        } else {
+          // Food / Drink / Popcorn: Extract ALL sizes, prices, and variant UUIDs across sister items
+          const loadedSizes = []
+          const loadedPrices = { STANDARD: '', L: '', XL: '' }
+          const loadedMap = {}
+
+          sisterItems.forEach(item => {
+            let sz = (item.size || 'STANDARD').toUpperCase()
+            if (sz === 'S') sz = 'STANDARD'
+            if (sz === 'M') sz = 'L'
+            if (!['STANDARD', 'L', 'XL'].includes(sz)) sz = 'STANDARD'
+
+            if (!loadedSizes.includes(sz)) {
+              loadedSizes.push(sz)
+            }
+            const pVal = item.price !== undefined && item.price !== null ? String(item.price) : ''
+            loadedPrices[sz] = pVal
+            loadedMap[sz] = item.id || item.uuid || targetId
+          })
+
+          // Sort loadedSizes in order: STANDARD -> L -> XL
+          const sizeOrder = { STANDARD: 1, L: 2, XL: 3 }
+          loadedSizes.sort((a, b) => (sizeOrder[a] || 9) - (sizeOrder[b] || 9))
+
+          if (loadedSizes.length > 0) {
+            setSelectedSizes(loadedSizes)
+            setSizePrices(loadedPrices)
+            setExistingVariantMap(loadedMap)
+            if (loadedSizes.length === 1) {
+              setPrice(loadedPrices[loadedSizes[0]] || '')
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Lỗi tải dữ liệu sản phẩm:', err)
+        if (isMounted) {
           showToast('Không thể tải dữ liệu sản phẩm.', 'danger')
-        })
+        }
+      }
+    }
+
+    loadProductData()
+
+    return () => {
+      isMounted = false
     }
   }, [id, isEdit])
 
+  // Size Selection Toggle Handler (STANDARD, L, XL)
+  const handleSizeToggle = (sizeKey) => {
+    let nextSizes = [...selectedSizes]
+    if (nextSizes.includes(sizeKey)) {
+      nextSizes = nextSizes.filter(s => s !== sizeKey)
+    } else {
+      nextSizes.push(sizeKey)
+    }
+
+    // Đảm bảo luôn giữ ít nhất 1 size được tích chọn
+    if (nextSizes.length === 0) {
+      nextSizes = [sizeKey]
+    }
+
+    setSelectedSizes(nextSizes)
+  }
+
+  const handleSizePriceChange = (sizeKey, val) => {
+    setSizePrices(prev => ({ ...prev, [sizeKey]: val }))
+    if (selectedSizes.length === 1 && selectedSizes[0] === sizeKey) {
+      setPrice(val)
+    }
+  }
+
+  // Combo collection item handlers (Category Scope + Specific Items)
+  const handleAddComboCategory = () => {
+    // Find a representative product from availableProducts to meet DB foreign key constraints
+    const repProd = availableProducts.find(p => {
+      const type = String(p.itemType || p.category || '').toLowerCase()
+      const pSz = (p.size || 'STANDARD').toUpperCase()
+      return (type === selectedCategoryType || (selectedCategoryType === 'drink' && type === 'beverage')) &&
+             (pSz === selectedCategorySize || pSz === 'L' || pSz === 'STANDARD')
+    }) || availableProducts.find(p => {
+      const type = String(p.itemType || p.category || '').toLowerCase()
+      return type === selectedCategoryType || (selectedCategoryType === 'drink' && type === 'beverage')
+    }) || availableProducts[0]
+
+    if (!repProd) {
+      showToast('Cần có ít nhất 1 sản phẩm món lẻ trong hệ thống để tạo thành phần combo.', 'danger')
+      return
+    }
+
+    const categoryNames = {
+      popcorn: 'Bắp rang (Tùy chọn vị)',
+      drink: 'Nước ngọt / Đồ uống (Tùy chọn loại nước)',
+      food: 'Đồ ăn khác'
+    }
+
+    const nameToUse = categoryNames[selectedCategoryType] || 'Món lẻ tùy chọn'
+    const pUuid = repProd.id || repProd.uuid
+
+    setComboItems(prev => {
+      const existingIdx = prev.findIndex(ci => ci.productUuid === pUuid && ci.productSize === selectedCategorySize)
+      if (existingIdx >= 0) {
+        const updated = [...prev]
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: updated[existingIdx].quantity + addQuantity
+        }
+        return updated
+      } else {
+        return [...prev, {
+          productUuid: pUuid,
+          productName: nameToUse,
+          productSize: selectedCategorySize,
+          quantity: addQuantity
+        }]
+      }
+    })
+    showToast(`Đã thêm "${nameToUse} (${selectedCategorySize})" vào combo!`)
+  }
+
+  const handleAddComboItem = () => {
+    if (!selectedProductUuid) return
+    const prod = availableProducts.find(p => p.id === selectedProductUuid)
+    if (!prod) return
+
+    setComboItems(prev => {
+      const existingIdx = prev.findIndex(ci => ci.productUuid === selectedProductUuid)
+      if (existingIdx >= 0) {
+        const updated = [...prev]
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity: updated[existingIdx].quantity + addQuantity
+        }
+        return updated
+      } else {
+        return [...prev, {
+          productUuid: prod.id,
+          productName: prod.name,
+          productSize: prod.size,
+          quantity: addQuantity
+        }]
+      }
+    })
+    showToast(`Đã thêm "${prod.name}" vào combo!`)
+  }
+
+  const handleUpdateComboItemQuantity = (productUuid, delta) => {
+    setComboItems(prev => {
+      return prev.map(ci => {
+        if (ci.productUuid === productUuid) {
+          const newQty = ci.quantity + delta
+          return newQty > 0 ? { ...ci, quantity: newQty } : null
+        }
+        return ci
+      }).filter(Boolean)
+    })
+  }
+
+  const handleRemoveComboItem = (productUuid) => {
+    setComboItems(prev => prev.filter(ci => ci.productUuid !== productUuid))
+  }
+
   const validate = () => {
     const newErrors = {}
-    if (!name.trim()) newErrors.name = 'Tên sản phẩm không được bỏ trống.'
-    if (price === '') {
-      newErrors.price = 'Giá bán không được bỏ trống.'
-    } else if (isNaN(Number(price)) || Number(price) < 0) {
-      newErrors.price = 'Giá bán phải là số hợp lệ từ 0đ.'
-    }
+    if (!name.trim()) newErrors.name = 'Tên món ăn / combo không được bỏ trống.'
     if (!itemType) newErrors.itemType = 'Phải chọn phân loại sản phẩm.'
+
+    if (itemType !== 'combo') {
+      if (selectedSizes.length === 0) {
+        newErrors.size = 'Vui lòng chọn ít nhất một kích thước (Size).'
+      }
+      selectedSizes.forEach(sKey => {
+        const val = sizePrices[sKey]
+        if (val === '' || val === undefined || val === null) {
+          newErrors[`price_${sKey}`] = `Nhập giá cho ${sKey}`
+        } else if (isNaN(Number(val)) || Number(val) < 0) {
+          newErrors[`price_${sKey}`] = 'Giá phải >= 0đ'
+        }
+      })
+    } else {
+      if (price === '') {
+        newErrors.price = 'Giá bán không được bỏ trống.'
+      } else if (isNaN(Number(price)) || Number(price) < 0) {
+        newErrors.price = 'Giá bán phải là số hợp lệ từ 0đ.'
+      }
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -100,7 +420,6 @@ export default function ConcessionFormPage() {
     const file = e.target.files?.[0]
     if (file) {
       const f = validateAndSetFile(file)
-      // Tự động upload ngay khi chọn file
       if (f) autoUpload(f)
     }
   }
@@ -108,7 +427,6 @@ export default function ConcessionFormPage() {
   // Xử lý dán ảnh từ clipboard (Ctrl+V)
   useEffect(() => {
     const handlePaste = (e) => {
-      // Chỉ xử lý paste khi form đang hiển thị
       const items = e.clipboardData?.items
       if (!items) return
       for (const item of items) {
@@ -131,7 +449,6 @@ export default function ConcessionFormPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Xử lý kéo thả file
   const handleDragOver = (e) => {
     e.preventDefault()
     e.stopPropagation()
@@ -155,7 +472,6 @@ export default function ConcessionFormPage() {
     }
   }
 
-  // Upload tự động (không cần bấm nút)
   const autoUpload = async (file) => {
     setIsUploading(true)
     try {
@@ -175,22 +491,7 @@ export default function ConcessionFormPage() {
     }
   }
 
-  const handleUploadImage = async () => {
-    if (!selectedFile) {
-      showToast('Vui lòng chọn một file ảnh trước.', 'danger')
-      return
-    }
-    autoUpload(selectedFile)
-  }
-
   const handleRemoveSelectedFile = () => {
-    setSelectedFile(null)
-    setPreviewSrc('')
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleClearUploadedImage = () => {
-    setImageUrl('')
     setSelectedFile(null)
     setPreviewSrc('')
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -201,23 +502,98 @@ export default function ConcessionFormPage() {
     if (!validate()) return
 
     setIsSubmitting(true)
-    const payload = {
-      name: name.trim(),
-      description: description.trim(),
-      price: Number(price),
-      itemType,
-      imageUrl: imageUrl.trim() || ITEM_TYPE_EMOJIS[itemType],
-      isActive
-    }
 
     try {
-      if (isEdit) {
-        await concessionService.update(id, payload)
-        showToast('Cập nhật sản phẩm thành công!')
+      if (itemType === 'combo') {
+        const payload = {
+          name: name.trim(),
+          description: description.trim(),
+          price: Number(price),
+          itemType: 'combo',
+          imageUrl: imageUrl.trim() || ITEM_TYPE_EMOJIS['combo'],
+          size: null,
+          isActive
+        }
+        let comboId = id
+        if (isEdit) {
+          await concessionService.update(id, payload)
+        } else {
+          const res = await concessionService.create(payload)
+          const created = res.data?.result || res.data
+          comboId = created?.id || created?.uuid
+        }
+
+        // Cập nhật danh sách các món lẻ thành phần trong Combo nếu có
+        if (comboId && comboItems.length > 0) {
+          const reqList = comboItems.map(ci => ({
+            productUuid: ci.productUuid,
+            quantity: Number(ci.quantity) || 1
+          }))
+          await concessionService.updateComboItems(comboId, reqList)
+        }
+
+        showToast(isEdit ? 'Cập nhật combo thành công!' : 'Thêm combo mới thành công!')
       } else {
-        await concessionService.create(payload)
-        showToast('Thêm sản phẩm mới thành công!')
+        // Món lẻ (Đồ ăn / Đồ uống / Bắp rang)
+        if (isEdit) {
+          // Cập nhật hoặc tạo mới từng size variant được chọn
+          for (const sKey of selectedSizes) {
+            const itemPrice = Number(sizePrices[sKey] || price || 0)
+            const sizeTag = selectedSizes.length > 1
+              ? (sKey === 'STANDARD' ? ' (Tiêu chuẩn)' : sKey === 'L' ? ' (Lớn)' : ' (Siêu lớn)')
+              : ''
+            const payload = {
+              name: `${name.trim()}${sizeTag}`,
+              description: description.trim(),
+              price: itemPrice,
+              itemType,
+              imageUrl: imageUrl.trim() || ITEM_TYPE_EMOJIS[itemType],
+              size: sKey,
+              isActive
+            }
+
+            const existingUuid = existingVariantMap[sKey]
+            if (existingUuid) {
+              await concessionService.update(existingUuid, payload)
+            } else {
+              await concessionService.create(payload)
+            }
+          }
+
+          // Xóa biến thể bị bỏ tích chọn trong lúc Edit
+          const existingKeys = Object.keys(existingVariantMap)
+          for (const exKey of existingKeys) {
+            if (!selectedSizes.includes(exKey) && existingVariantMap[exKey]) {
+              try {
+                await concessionService.delete(existingVariantMap[exKey])
+              } catch (e) {
+                console.warn('Lỗi khi xóa biến thể size bỏ chọn:', e)
+              }
+            }
+          }
+
+          showToast('Cập nhật thông tin sản phẩm thành công!')
+        } else {
+          const payloads = selectedSizes.map(sKey => {
+            const itemPrice = Number(sizePrices[sKey] || price || 0)
+            const sizeTag = selectedSizes.length > 1
+              ? (sKey === 'STANDARD' ? ' (Tiêu chuẩn)' : sKey === 'L' ? ' (Lớn)' : ' (Siêu lớn)')
+              : ''
+            return {
+              name: `${name.trim()}${sizeTag}`,
+              description: description.trim(),
+              price: itemPrice,
+              itemType,
+              imageUrl: imageUrl.trim() || ITEM_TYPE_EMOJIS[itemType],
+              size: sKey,
+              isActive
+            }
+          })
+          await concessionService.createMultiSize(payloads)
+          showToast(`Đã thêm thành công ${payloads.length} sản phẩm theo các bậc size!`)
+        }
       }
+
       setTimeout(() => {
         navigate('/admin/concessions')
       }, 1000)
@@ -263,7 +639,7 @@ export default function ConcessionFormPage() {
               {isEdit ? 'Sửa thông tin sản phẩm' : 'Thêm món ăn/combo mới'}
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] mt-1">
-              {isEdit ? 'Cập nhật lại giá bán, hình ảnh hoặc trạng thái hoạt động.' : 'Thiết lập tên món, mô tả, phân loại danh mục và giá thành.'}
+              {isEdit ? 'Cập nhật lại giá bán, hình ảnh hoặc trạng thái hoạt động.' : 'Thiết lập tên món, mô tả, phân loại danh mục, kích thước và giá thành.'}
             </p>
           </div>
         </div>
@@ -280,7 +656,7 @@ export default function ConcessionFormPage() {
             <div>
               <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">Tên món ăn / Combo *</span>
               <Input
-                placeholder="VD: Combo Couple (1 Bắp lớn + 2 Nước ngọt)"
+                placeholder="VD: Combo Couple / Bắp Rang Bơ / Coca Cola"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 error={errors.name}
@@ -293,39 +669,313 @@ export default function ConcessionFormPage() {
                 placeholder="Mô tả thành phần, vị bắp hoặc dung tích cốc nước..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
+                rows={3}
                 className="w-full bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-gray-500 transition-all focus:border-red-500 focus:shadow-[0_0_10px_rgba(229,9,20,0.2)]"
                 style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">Phân loại danh mục *</span>
+              <select
+                value={itemType}
+                onChange={(e) => setItemType(e.target.value)}
+                className="w-full bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-gray-500 transition-all focus:border-red-500 focus:shadow-[0_0_10px_rgba(229,9,20,0.2)] h-[46px]"
+                style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
+              >
+                <option value="popcorn">Bắp rang (Popcorn)</option>
+                <option value="food">Đồ ăn khác (Food)</option>
+                <option value="drink">Đồ uống (Drink)</option>
+                <option value="combo">Combo bắp nước</option>
+              </select>
+              {errors.itemType && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.itemType}</span>}
+            </div>
+
+            {/* Size selection section for Food & Drink */}
+            {itemType !== 'combo' && (
+              <div className="space-y-3 pt-4 border-t border-[var(--color-border)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <span className="text-xs font-bold tracking-wider text-gray-500 uppercase flex items-center gap-2">
+                    <Maximize2 size={16} className="text-blue-500" /> Kích thước (Size) *
+                  </span>
+                </div>
+
+                {/* Size Selector Buttons */}
+                <div className="grid grid-cols-3 gap-3">
+                  {PRODUCT_SIZES.map((s) => {
+                    const isSelected = selectedSizes.includes(s.key)
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() => handleSizeToggle(s.key)}
+                        className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                          isSelected
+                            ? 'bg-red-500/10 border-red-500 text-white shadow-[0_0_12px_rgba(229,9,20,0.25)]'
+                            : 'bg-[var(--color-surface-2)] border-[var(--color-border)] text-gray-400 hover:border-gray-500 hover:text-white'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full mb-1">
+                          <span className={`font-extrabold text-sm ${isSelected ? 'text-red-400' : 'text-gray-300'}`}>
+                            {s.label}
+                          </span>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${
+                            isSelected ? 'border-red-500 bg-red-500 text-white' : 'border-gray-600'
+                          }`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-[var(--color-text-muted)] truncate">{s.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                {errors.size && <span className="text-[10px] text-red-500 font-semibold block">{errors.size}</span>}
+              </div>
+            )}
+
+            {/* Dynamic Price Inputs section per selected size */}
+            {itemType !== 'combo' ? (
+              <div className="space-y-4 pt-4 border-t border-[var(--color-border)]">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
+                  Giá bán cho từng bậc Size đã chọn *
+                </span>
+                <div className={`grid grid-cols-1 ${selectedSizes.length > 1 ? 'sm:grid-cols-3' : 'sm:grid-cols-1'} gap-4`}>
+                  {selectedSizes.map(sKey => {
+                    const sObj = PRODUCT_SIZES.find(s => s.key === sKey)
+                    const sizeTitle = sObj ? sObj.label : sKey
+                    return (
+                      <div key={sKey} className="bg-[var(--color-surface-2)] p-3.5 rounded-xl border border-[var(--color-border)]">
+                        <span className="text-xs font-bold text-red-400 uppercase block mb-2">
+                          Giá bán {sizeTitle} (VNĐ) *
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder={`Nhập giá cho ${sObj?.label || sKey}...`}
+                          value={sizePrices[sKey] ?? ''}
+                          onChange={(e) => handleSizePriceChange(sKey, e.target.value)}
+                          error={errors[`price_${sKey}`]}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
               <div>
-                <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">Giá bán (VNĐ) *</span>
+                <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">
+                  Giá bán Combo (VNĐ) *
+                </span>
                 <Input
                   type="number"
-                  placeholder="VD: 75000"
+                  placeholder="VD: 95000"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   error={errors.price}
                 />
               </div>
+            )}
 
-              <div>
-                <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">Phân loại danh mục *</span>
-                <select
-                  value={itemType}
-                  onChange={(e) => setItemType(e.target.value)}
-                  className="w-full bg-[var(--color-surface-2)] border rounded-xl py-3 px-4 outline-none text-sm text-gray-500 transition-all focus:border-red-500 focus:shadow-[0_0_10px_rgba(229,9,20,0.2)] h-[46px]"
-                  style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
-                >
-                  <option value="food">Đồ ăn (Food)</option>
-                  <option value="drink">Đồ uống (Drink)</option>
-                  <option value="combo">Combo bắp nước</option>
-                </select>
-                {errors.itemType && <span className="text-[10px] text-red-500 font-semibold mt-1 block">{errors.itemType}</span>}
+            {/* Combo Collection Section (Category Scope / Specific Item selection) */}
+            {itemType === 'combo' && (
+              <div className="space-y-4 pt-4 border-t border-[var(--color-border)]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <span className="text-xs font-bold tracking-wider text-gray-600 uppercase flex items-center gap-2">
+                    <Package size={16} className="text-red-500" /> Thành phần trong gói Combo *
+                  </span>
+                  <span className="text-[11px] text-gray-400 italic">
+                    (Thiết lập các thành phần danh mục hoặc món cụ thể cho combo)
+                  </span>
+                </div>
+
+                {/* Mode Selector Tabs */}
+                <div className="flex items-center gap-2 border-b border-[var(--color-border)] pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setComboAddMode('category')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      comboAddMode === 'category'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-[var(--color-surface-2)] text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    🎯 Theo Phân loại Danh mục (Khuyên dùng)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComboAddMode('specific')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      comboAddMode === 'specific'
+                        ? 'bg-red-600 text-white shadow-sm'
+                        : 'bg-[var(--color-surface-2)] text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    🍿 Theo Món cụ thể
+                  </button>
+                </div>
+
+                {/* Controls to add a Category Component or Specific Product */}
+                {comboAddMode === 'category' ? (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--color-surface-2)] p-3.5 rounded-xl border border-[var(--color-border)]">
+                    <div className="flex-1 grid grid-cols-2 gap-2 w-full">
+                      {/* Select Category */}
+                      <select
+                        value={selectedCategoryType}
+                        onChange={(e) => setSelectedCategoryType(e.target.value)}
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 outline-none text-xs font-semibold text-gray-700 focus:border-red-500"
+                      >
+                        <option value="popcorn">🍿 Bắp rang (Cho phép chọn vị)</option>
+                        <option value="drink">🥤 Đồ uống (Cho phép chọn loại nước)</option>
+                        <option value="food">🍔 Đồ ăn khác</option>
+                      </select>
+
+                      {/* Select Size */}
+                      <select
+                        value={selectedCategorySize}
+                        onChange={(e) => setSelectedCategorySize(e.target.value)}
+                        className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 outline-none text-xs font-semibold text-gray-700 focus:border-red-500"
+                      >
+                        <option value="STANDARD">Size Tiêu chuẩn (STANDARD)</option>
+                        <option value="L">Size Lớn (L)</option>
+                        <option value="XL">Size Siêu lớn (XL)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                      <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5">
+                        <span className="text-xs font-bold text-gray-500">SL:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={addQuantity}
+                          onChange={(e) => setAddQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-10 text-center bg-transparent text-xs text-gray-800 outline-none font-extrabold"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddComboCategory}
+                        className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                      >
+                        <Plus size={14} /> Thêm vào Combo
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-3 bg-[var(--color-surface-2)] p-3.5 rounded-xl border border-[var(--color-border)]">
+                    <div className="flex-1 w-full">
+                      <select
+                        value={selectedProductUuid}
+                        onChange={(e) => setSelectedProductUuid(e.target.value)}
+                        className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 outline-none text-xs font-semibold text-gray-700 focus:border-red-500"
+                      >
+                        {availableProducts.length === 0 && <option value="" className="text-gray-500">Không có món lẻ nào trong hệ thống</option>}
+                        {availableProducts.map(p => (
+                          <option key={p.id} value={p.id} className="text-gray-700 bg-white">
+                            {p.name} {p.size ? `(${p.size})` : ''} - {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(p.price)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                      <div className="flex items-center gap-1.5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg px-3 py-1.5">
+                        <span className="text-xs font-bold text-gray-500">SL:</span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={addQuantity}
+                          onChange={(e) => setAddQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-10 text-center bg-transparent text-xs text-gray-800 outline-none font-extrabold"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddComboItem}
+                        disabled={!selectedProductUuid}
+                        className="px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                      >
+                        <Plus size={14} /> Thêm món
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Display combo items collection */}
+                {comboItems.length > 0 ? (
+                  <div className="space-y-2.5">
+                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+                      Các món trong gói combo này ({comboItems.length} loại món):
+                    </span>
+                    <div className="space-y-2">
+                      {comboItems.map((ci) => {
+                        const itemTypeIcon = (ci.productName || '').toLowerCase().includes('bắp') || (ci.productName || '').toLowerCase().includes('popcorn')
+                          ? '🍿'
+                          : (ci.productName || '').toLowerCase().includes('nước') || (ci.productName || '').toLowerCase().includes('coca') || (ci.productName || '').toLowerCase().includes('pepsi')
+                          ? '🥤'
+                          : '🍔'
+
+                        return (
+                          <div
+                            key={ci.productUuid}
+                            className="flex items-center justify-between p-3.5 bg-[var(--color-surface-2)] rounded-xl border border-[var(--color-border)] hover:border-red-500/30 transition-all shadow-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-base p-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-2xs">{itemTypeIcon}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-gray-800">{ci.productName || 'Sản phẩm lẻ'}</span>
+                                {ci.productSize && (
+                                  <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 text-[10px] font-extrabold uppercase tracking-wider">
+                                    {ci.productSize}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              {/* Quantity Controls (- / number / +) */}
+                              <div className="flex items-center bg-[var(--color-surface)] rounded-lg border border-[var(--color-border)] p-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateComboItemQuantity(ci.productUuid, -1)}
+                                  className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:bg-gray-200 font-extrabold transition-colors cursor-pointer text-xs"
+                                >
+                                  -
+                                </button>
+                                <span className="font-bold text-gray-800 text-xs px-2.5 min-w-[24px] text-center">{ci.quantity}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateComboItemQuantity(ci.productUuid, 1)}
+                                  className="w-6 h-6 flex items-center justify-center rounded text-gray-600 hover:bg-gray-200 font-extrabold transition-colors cursor-pointer text-xs"
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              {/* Remove Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveComboItem(ci.productUuid)}
+                                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Xóa món khỏi combo"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] text-center bg-[var(--color-surface-2)]/50">
+                    <p className="text-xs text-gray-400">Chưa có món lẻ nào được thêm vào combo này. Vui lòng chọn món và bấm "Thêm món".</p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
