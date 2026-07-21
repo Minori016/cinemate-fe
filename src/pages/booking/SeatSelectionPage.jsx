@@ -187,12 +187,24 @@ export default function SeatSelectionPage() {
 
     try {
       setIsHolding(true)
+      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+      const concessionsPayload = Object.entries(selectedCombos)
+        .filter(([_, qty]) => qty > 0)
+        .map(([idStr, qty]) => {
+          const matchedItem = combos.find(c => String(c.id) === String(idStr))
+          const isCombo = matchedItem?.itemType === 'combo' || matchedItem?.category === 'combo'
+          if (isUuid(idStr)) {
+            return isCombo
+              ? { comboId: idStr, quantity: qty }
+              : { productId: idStr, quantity: qty }
+          }
+          return { concessionId: idStr, quantity: qty }
+        })
+
       const res = await bookingService.holdSeats({
         showtimeId: seatLayout.showtimeId,
         seatIds: selected,
-        concessions: Object.entries(selectedCombos)
-          .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
+        concessions: concessionsPayload
       })
       
       const bookingData = res.data?.result || res.data
