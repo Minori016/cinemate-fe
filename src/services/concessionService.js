@@ -96,18 +96,18 @@ export const concessionService = {
    * @param {{ fallback?: boolean, onlyCombo?: boolean }} opts
    */
   getActiveForUi: async (opts = {}) => {
-    const { fallback = true, onlyCombo = false } = opts
+    const { onlyCombo = false } = opts
     try {
-      const res = await api.get('/api/v1/concessions/active')
-      let list = unwrapList(res.data).map(mapConcessionForUi).filter(c => c.id && c.name)
+      let list = unwrapList((await api.get('/api/v1/concessions/active')).data)
+        .map(mapConcessionForUi)
+        .filter(concession => concession.id && concession.name)
       if (onlyCombo) {
-        list = list.filter(c => !c.category || c.category === 'combo')
+        list = list.filter(concession => !concession.category || concession.category === 'combo')
       }
-      if (list.length > 0) return list
-      return fallback ? FALLBACK_COMBOS : []
+      return list
     } catch (err) {
-      console.error('Failed to load concessions:', err)
-      return fallback ? FALLBACK_COMBOS : []
+      if (import.meta.env.DEV) console.error('Failed to load concessions:', err)
+      return []
     }
   },
 }

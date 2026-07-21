@@ -14,6 +14,7 @@ export default function CheckoutResultPage() {
   
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState(false)
+  const [verificationState, setVerificationState] = useState('pending')
   const [message, setMessage] = useState('')
   const [bookingDetails, setBookingDetails] = useState(null)
 
@@ -27,29 +28,44 @@ export default function CheckoutResultPage() {
 
     const checkStatus = async () => {
       try {
-        if (resultCode && resultCode !== '0') {
-            setSuccess(false)
-            setMessage('Giao dịch đã bị hủy hoặc thanh toán thất bại.')
-            setLoading(false)
-            await paymentService.checkMomoPaymentStatus(orderId)
-            return
-        }
+        const response = await paymentService.checkMomoPaymentStatus(orderId)
+        const status = response.data?.result ?? response.data ?? {}
+        const paymentStatus = String(status.paymentStatus || status.status || '').toUpperCase()
+        const bookingStatus = String(status.bookingStatus || status.booking?.status || '').toUpperCase()
+        const bookingId = status.bookingId || status.booking?.id || (orderId ? orderId.split('_')[1] : null)
+        const isConfirmed = ['SUCCESS', 'COMPLETED', 'PAID'].includes(paymentStatus)
+          || ['CONFIRMED', 'COMPLETED', 'PAID', 'HOLDING'].includes(bookingStatus)
+          || resultCode === '0'
 
-        await paymentService.checkMomoPaymentStatus(orderId)
-        setSuccess(true)
-        setMessage('Cảm ơn bạn đã sử dụng dịch vụ của Cinemate.')
-        
-        const bookingId = orderId.split('_')[1]
-        if (bookingId) {
-          const res = await bookingService.getById(bookingId)
-          if (res.data && res.data.result) {
-            setBookingDetails(res.data.result)
-          }
+        if (isConfirmed && bookingId) {
+          try {
+            const bookingResponse = await bookingService.getById(bookingId)
+            setBookingDetails(bookingResponse.data?.result || bookingResponse.data || null)
+          } catch (ignored) {}
+          setSuccess(true)
+          setVerificationState('confirmed')
+          setMessage('Thanh toán đã được hệ thống xác nhận.')
+        } else if (resultCode && resultCode !== '0') {
+          setVerificationState('failed')
+          setMessage('Giao dịch đã bị hủy hoặc thanh toán thất bại.')
+        } else {
+          setVerificationState('pending')
+          setMessage('Giao dịch đang được xác minh. Vui lòng kiểm tra lại vé của bạn sau ít phút.')
         }
-      } catch (err) {
-        console.error(err)
-        setSuccess(false)
-        setMessage('Có lỗi xảy ra khi xác thực giao dịch. Vui lòng liên hệ hỗ trợ.')
+      } catch {
+        const bookingId = orderId ? orderId.split('_')[1] : null
+        if (resultCode === '0' && bookingId) {
+          try {
+            const bookingResponse = await bookingService.getById(bookingId)
+            setBookingDetails(bookingResponse.data?.result || bookingResponse.data || null)
+          } catch (ignored) {}
+          setSuccess(true)
+          setVerificationState('confirmed')
+          setMessage('Thanh toán đã được hệ thống xác nhận.')
+        } else {
+          setVerificationState('pending')
+          setMessage('Chưa thể xác minh giao dịch. Vui lòng kiểm tra lại vé của bạn sau ít phút.')
+        }
       } finally {
         setLoading(false)
       }
@@ -278,26 +294,32 @@ export default function CheckoutResultPage() {
         <div className={`absolute inset-0 bg-gradient-to-b ${success ? 'from-emerald-900/20' : 'from-red-900/20'} to-transparent blur-3xl`} />
       </div>
 
-      <div className="w-full max-w-4xl mx-auto z-10 flex flex-col">
-        {!success && (
-          <motion.div 
-            initial={{ scale: 0.8, opacity: 0, y: 20 }} 
-            animate={{ scale: 1, opacity: 1, y: 0 }} 
-            className="flex flex-col items-center text-center mt-20"
-          >
-            <XCircle size={88} className="text-red-500 mb-6 drop-shadow-2xl" strokeWidth={1.5} />
-            <h2 className="text-4xl md:text-5xl font-black mb-3 tracking-tight text-white">
-              Giao Dịch Thất Bại
-            </h2>
-            <p className="text-gray-400 text-lg max-w-md mb-8">{message}</p>
-            <button 
-              onClick={() => navigate('/')} 
-              className="px-8 py-3.5 bg-transparent border border-white/20 rounded-xl font-bold text-white hover:bg-white/10 transition-all"
-            >
-              Về Trang Chủ
-            </button>
-          </motion.div>
-        )}
+      <div className="w-full max-w-3xl mx-auto z-10 flex flex-col items-center">
+        
+        {/* Status Header */}
+        <motion.div 
+          initial={{ scale: 0.8, opacity: 0, y: 20 }} 
+          animate={{ scale: 1, opacity: 1, y: 0 }} 
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="flex flex-col items-center text-center mb-10"
+        >
+          <div className="relative mb-6">
+            <div className={`absolute inset-0 blur-xl ${success ? 'bg-emerald-500/30' : 'bg-red-500/30'} rounded-full`} />
+            {success ? (
+              <CheckCircle2 size={88} className="text-emerald-500 relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
+            ) : verificationState === 'pending' ? (
+              <Loader2 size={88} className="text-amber-400 relative z-10 animate-spin" strokeWidth={1.5} />
+            ) : (
+              <XCircle size={88} className="text-red-500 relative z-10 drop-shadow-2xl" strokeWidth={1.5} />
+            )}
+          </div>
+          <h2 className="text-4xl md:text-5xl font-black mb-3 tracking-tight text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            {success ? 'Thanh Toán Thành Công' : verificationState === 'pending' ? 'Đang Xác Minh Giao Dịch' : 'Giao Dịch Thất Bại'}
+          </h2>
+          <p className="text-gray-400 text-lg max-w-md">
+            {message}
+          </p>
+        </motion.div>
 
         <AnimatePresence>
           {success && bookingDetails && (

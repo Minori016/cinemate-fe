@@ -1,7 +1,7 @@
 import api from './api'
 
 // Status user được xem/chọn ghế (DRAFT bị loại — chỉ SCHEDULED trở lên mới hiển thị)
-export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'SOLD_OUT']
+export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'OPEN_FOR_BOOKING', 'SOLD_OUT']
 
 export const isPublicShowtimeStatus = (status) => {
   if (!status) return true

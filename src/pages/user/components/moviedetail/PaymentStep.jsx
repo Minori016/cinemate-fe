@@ -94,8 +94,14 @@ export default function PaymentStep({
               <span>Thanh toán bằng Ví MoMo</span>
             </div>
 
-
-
+            <button
+              type="button"
+              onClick={handleSubmitPayment}
+              disabled={submitting || !bookingId}
+              className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? (processingStep || 'Đang chuyển đến MoMo...') : 'Thanh toán với MoMo'}
+            </button>
           </GlassCard>
         </div>
 

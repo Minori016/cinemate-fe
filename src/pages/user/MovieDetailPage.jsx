@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
-import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
+import { concessionService } from '../../services/concessionService'
 import websocketService from '../../services/websocketService'
 import { paymentService } from '../../services/paymentService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -20,16 +20,6 @@ import PaymentStep from './components/moviedetail/PaymentStep'
 import SuccessModal from './components/moviedetail/SuccessModal'
 import TrailerModal from './components/moviedetail/TrailerModal'
 import RequireAuthModal from './components/common/RequireAuthModal'
-
-// ── Seat layout config ──
-const SEAT_ROWS = [
-  { row: 'A', type: 'standard', price: 90000 },
-  { row: 'B', type: 'standard', price: 90000 },
-  { row: 'C', type: 'standard', price: 90000 },
-  { row: 'D', type: 'vip', price: 110000 },
-  { row: 'E', type: 'vip', price: 110000 },
-  { row: 'F', type: 'vip', price: 110000 },
-]
 
 const DAYS = Array.from({ length: 7 }, (_, i) => {
   const d = new Date()
@@ -268,7 +258,7 @@ export default function MovieDetailPage() {
   const [seatMetaMap, setSeatMetaMap] = useState({})
   const [processingSeats, setProcessingSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
-  const [dbCombos, setDbCombos] = useState([])   // combos từ API, fallback FALLBACK_COMBOS nếu rỗng
+  const [dbCombos, setDbCombos] = useState([])
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
 
@@ -411,10 +401,10 @@ export default function MovieDetailPage() {
   // Tải danh sách bắp nước từ server (public /concessions/active)
   useEffect(() => {
     let cancelled = false
-    concessionService.getActiveForUi({ fallback: true })
+    concessionService.getActiveForUi()
       .then(list => {
         if (cancelled) return
-        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        const mapped = Array.isArray(list) ? list : []
         setDbCombos(mapped)
         const initQty = {}
         mapped.forEach(c => { initQty[c.id] = 0 })
@@ -458,19 +448,29 @@ export default function MovieDetailPage() {
 
   const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
 
+  const IS_UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const isUuid = (id) => typeof id === 'string' && IS_UUID_REGEX.test(id);
+
+  const hydrateLockedSeats = useCallback((seatIds) => {
+    setSelectedSeats((previous) => [...new Set([...previous, ...seatIds])])
+  }, [])
+
   const toggleSeat = async (seatId, meta = {}) => {
     if (processingSeats.includes(seatId)) return;
 
     setProcessingSeats(prev => [...prev, seatId]);
     const isCurrentlySelected = selectedSeats.includes(seatId);
+    const validUuid = isUuid(seatId);
 
     try {
-      if (!isCurrentlySelected) {
-        // Optimistically try to lock the seat via API
-        await bookingService.lockSeats(selectedShowtime.id, [seatId]);
-      } else {
-        // Unlock seat via API
-        await bookingService.unlockSeat(selectedShowtime.id, seatId);
+      if (selectedShowtime?.id && validUuid) {
+        if (!isCurrentlySelected) {
+          // Optimistically try to lock the seat via API
+          await bookingService.lockSeats(selectedShowtime.id, [seatId]);
+        } else {
+          // Unlock seat via API
+          await bookingService.unlockSeat(selectedShowtime.id, seatId);
+        }
       }
       
       setSelectedSeats(prev => {
@@ -496,8 +496,27 @@ export default function MovieDetailPage() {
         return [...prev, seatId]
       })
     } catch (error) {
-      console.error('Failed to toggle seat lock:', error);
-      alert(error.response?.data?.message || 'Không thể chọn ghế này. Có thể người khác đang giữ.');
+      console.warn('Seat lock API warning:', error);
+      const msg = error.response?.data?.message;
+      if (msg && !msg.toLowerCase().includes('uuid')) {
+        alert(msg);
+      } else {
+        // Fallback: local toggle if seat is client-generated or lock API rejected format
+        setSelectedSeats(prev => {
+          const exists = prev.includes(seatId)
+          if (exists) {
+            setSeatMetaMap(m => { const next = { ...m }; delete next[seatId]; return next; })
+            return prev.filter(id => id !== seatId)
+          }
+          if (meta && (meta.label || meta.type)) {
+            setSeatMetaMap(m => ({
+              ...m,
+              [seatId]: { label: meta.label || seatId, type: meta.type || 'STANDARD' }
+            }))
+          }
+          return [...prev, seatId]
+        })
+      }
     } finally {
       setProcessingSeats(prev => prev.filter(id => id !== seatId));
     }
@@ -525,7 +544,7 @@ export default function MovieDetailPage() {
   const violations = []
 
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
-  const activeCombos = dbCombos.length > 0 ? dbCombos : FALLBACK_COMBOS
+  const activeCombos = dbCombos
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
     const combo = activeCombos.find(c => String(c.id) === String(id))
     return sum + (combo ? combo.price * qty : 0)
@@ -562,13 +581,52 @@ export default function MovieDetailPage() {
     setSubmitError('')
 
     try {
-      const res = await bookingService.holdSeats({
+      // 1. Resolve selectedSeats to valid UUIDs
+      const validSeatIds = selectedSeats.map(id => {
+        if (isUuid(id)) return id;
+        const realSeat = (realSeatMap || []).find(s =>
+          s.seatId && isUuid(s.seatId) && (`${s.rowLabel}${s.seatNumber}` === id || s.seatId === id)
+        );
+        if (realSeat?.seatId && isUuid(realSeat.seatId)) return realSeat.seatId;
+
+        if (layout?.seatMatrix) {
+          for (const row of layout.seatMatrix) {
+            for (const seat of (row.seats || [])) {
+              if (seat.id && isUuid(seat.id) && (`${seat.rowLabel || row.rowLabel}${seat.number}` === id || seat.id === id)) {
+                return seat.id;
+              }
+            }
+          }
+        }
+        return id;
+      }).filter(isUuid);
+
+      if (validSeatIds.length === 0) {
+        alert('Phòng chiếu của suất chiếu này chưa có danh sách ghế trong cơ sở dữ liệu. Vui lòng chọn suất chiếu khác!');
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Format concessions into valid comboId UUID objects
+      const validConcessions = Object.entries(selectedCombos)
+        .filter(([id, qty]) => qty > 0)
+        .map(([id, qty]) => {
+          if (isUuid(id)) {
+            return { comboId: id, quantity: Number(qty) };
+          }
+          return null;
+        })
+        .filter(Boolean);
+
+      const payload = {
         showtimeId: selectedShowtime.id,
-        seatIds: selectedSeats,
-        concessions: Object.entries(selectedCombos)
-          .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
-      })
+        seatIds: validSeatIds,
+      };
+      if (validConcessions.length > 0) {
+        payload.concessions = validConcessions;
+      }
+
+      const res = await bookingService.holdSeats(payload)
       const bookingData = res.data?.result || res.data
       setBookingId(bookingData.bookingId)
       setBookingStep(4)
@@ -911,7 +969,6 @@ export default function MovieDetailPage() {
                     toggleSeat={toggleSeat}
                     setBookingStep={setBookingStep}
                     selectedShowtime={selectedShowtime}
-                    SEAT_ROWS={SEAT_ROWS}
                     user={user}
                     navigate={navigate}
                     movieId={movieId}
@@ -921,6 +978,7 @@ export default function MovieDetailPage() {
                       setShowAuthModal(true)
                     }}
                     processingSeats={processingSeats}
+                    hydrateLockedSeats={hydrateLockedSeats}
                   />
                 )}
                 {bookingStep === 3 && (

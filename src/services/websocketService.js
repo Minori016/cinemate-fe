@@ -1,107 +1,101 @@
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import { Client } from '@stomp/stompjs'
+import SockJS from 'sockjs-client'
+import { API_BASE_URL } from './api'
 
-const SOCKET_URL = 'http://127.0.0.1:8080/ws/booking'; // Thay đổi domain tùy môi trường
+const SOCKET_URL = `${API_BASE_URL === '/' ? '' : API_BASE_URL}/ws/booking`
 
 class WebSocketService {
   constructor() {
-    this.client = null;
-    this.subscriptions = new Map();
-    this.activeSubscriptions = new Map();
+    this.client = null
+    this.subscriptions = new Map()
+    this.activeSubscriptions = new Map()
   }
 
   connect(onConnect, onError) {
-    if (this.client && this.client.connected) {
-      if (onConnect) onConnect();
-      return;
+    if (this.client?.connected) {
+      onConnect?.()
+      return
     }
 
     this.client = new Client({
-      // Dùng SockJS nếu cần fallback
       webSocketFactory: () => new SockJS(SOCKET_URL),
-      debug: function (str) {
-        console.log('STOMP: ' + str);
-      },
-      reconnectDelay: 5000, // Tự động reconnect sau 5s
+      debug: import.meta.env.DEV ? (message) => console.debug('STOMP:', message) : () => {},
+      reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-    });
+    })
 
-    this.client.onConnect = (frame) => {
-      console.log('Connected: ' + frame);
-      if (onConnect) onConnect();
-      
-      // Resubscribe lại các kênh cũ nếu bị đứt kết nối
+    this.client.onConnect = () => {
+      onConnect?.()
       this.subscriptions.forEach((callback, destination) => {
-        this._subscribeInternal(destination, callback);
-      });
-    };
+        this._subscribeInternal(destination, callback)
+      })
+    }
 
     this.client.onStompError = (frame) => {
-      console.error('Broker reported error: ' + frame.headers['message']);
-      console.error('Additional details: ' + frame.body);
-      if (onError) onError(frame);
-    };
+      if (import.meta.env.DEV) {
+        console.error('STOMP broker error:', frame.headers?.message)
+      }
+      onError?.(frame)
+    }
 
-    this.client.activate();
+    this.client.activate()
   }
 
   disconnect() {
     if (this.client) {
-      this.client.deactivate();
-      console.log('Disconnected');
+      this.client.deactivate()
     }
   }
 
   _subscribeInternal(destination, callback) {
-    if (this.client && this.client.connected) {
-      // Unsubscribe if already exists to prevent duplicate ghost listeners
-      if (this.activeSubscriptions.has(destination)) {
-        this.activeSubscriptions.get(destination).unsubscribe();
-      }
-      
-      const sub = this.client.subscribe(destination, (message) => {
-        if (message.body) {
-          try {
-            const body = JSON.parse(message.body);
-            callback(body);
-          } catch (e) {
-            callback(message.body);
-          }
-        } else {
-          callback(null);
-        }
-      });
-      
-      this.activeSubscriptions.set(destination, sub);
+    if (!this.client?.connected) return
+
+    if (this.activeSubscriptions.has(destination)) {
+      this.activeSubscriptions.get(destination).unsubscribe()
     }
+
+    const subscription = this.client.subscribe(destination, (message) => {
+      if (!message.body) {
+        callback(null)
+        return
+      }
+
+      try {
+        callback(JSON.parse(message.body))
+      } catch {
+        callback(message.body)
+      }
+    })
+
+    this.activeSubscriptions.set(destination, subscription)
   }
 
   subscribeToSeatMap(showtimeId, callback) {
-    const destination = `/topic/showtimes/${showtimeId}/seats`;
-    this.subscriptions.set(destination, callback);
-    this._subscribeInternal(destination, callback);
+    const destination = `/topic/showtimes/${showtimeId}/seats`
+    this.subscriptions.set(destination, callback)
+    this._subscribeInternal(destination, callback)
   }
 
   unsubscribeFromSeatMap(showtimeId) {
-    const destination = `/topic/showtimes/${showtimeId}/seats`;
-    this.subscriptions.delete(destination);
-    
+    const destination = `/topic/showtimes/${showtimeId}/seats`
+    this.subscriptions.delete(destination)
+
     if (this.activeSubscriptions.has(destination)) {
-      this.activeSubscriptions.get(destination).unsubscribe();
-      this.activeSubscriptions.delete(destination);
+      this.activeSubscriptions.get(destination).unsubscribe()
+      this.activeSubscriptions.delete(destination)
     }
   }
 
   sendSeatToggle(showtimeId, seatId, isSelected) {
-    if (this.client && this.client.connected) {
+    if (this.client?.connected) {
       this.client.publish({
         destination: `/app/showtimes/${showtimeId}/seats/toggle`,
-        body: JSON.stringify({ seatId, isSelected })
-      });
+        body: JSON.stringify({ seatId, isSelected }),
+      })
     }
   }
 }
 
-const websocketService = new WebSocketService();
-export default websocketService;
+const websocketService = new WebSocketService()
+export default websocketService

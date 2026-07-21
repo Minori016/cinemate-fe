@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, CreditCard, Wallet } from 'lucide-react'
+import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, Wallet } from 'lucide-react'
 import { bookingService } from '../../services/bookingService'
 import { paymentService } from '../../services/paymentService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -52,7 +52,7 @@ export default function CheckoutPage() {
 
   // Countdown Timer
   useEffect(() => {
-    if (timeLeft <= 0 || paymentSuccess) return
+    if (timeLeft <= 0) return
 
     const timer = setInterval(() => {
       setTimeLeft(prev => {
@@ -162,7 +162,7 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mb-1">Suất Chiếu</p>
-                <p className="text-sm font-medium">{booking.time} | {booking.date}</p>
+                <p className="text-sm font-medium">{booking.showtime} | {booking.date}</p>
               </div>
             </div>
 
@@ -228,36 +228,6 @@ export default function CheckoutPage() {
                   </div>
                   <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'momo' ? 'border-[#A50064]' : 'border-gray-500'}`}>
                     {paymentMethod === 'momo' && <div className="w-2.5 h-2.5 rounded-full bg-[#A50064]" />}
-                  </div>
-                </label>
-
-                {/* Option 2: Credit Card */}
-                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'credit' ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
-                  <input type="radio" name="payment" value="credit" checked={paymentMethod === 'credit'} onChange={() => setPaymentMethod('credit')} className="hidden" />
-                  <div className="w-10 h-10 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center shrink-0 border border-blue-500/30">
-                    <CreditCard size={20} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm">Thẻ Tín Dụng / Ghi Nợ</h4>
-                    <p className="text-xs text-gray-400">Visa, Mastercard, JCB, Amex</p>
-                  </div>
-                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'credit' ? 'border-blue-500' : 'border-gray-500'}`}>
-                    {paymentMethod === 'credit' && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
-                  </div>
-                </label>
-
-                {/* Option 3: ATM */}
-                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'atm' ? 'border-emerald-500 bg-emerald-500/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
-                  <input type="radio" name="payment" value="atm" checked={paymentMethod === 'atm'} onChange={() => setPaymentMethod('atm')} className="hidden" />
-                  <div className="w-10 h-10 bg-emerald-500/20 text-emerald-400 rounded-lg flex items-center justify-center shrink-0 border border-emerald-500/30">
-                    <span className="font-bold text-xs">ATM</span>
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm">Thẻ ATM Nội Địa / Napas</h4>
-                    <p className="text-xs text-gray-400">Thẻ ngân hàng nội địa Việt Nam</p>
-                  </div>
-                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'atm' ? 'border-emerald-500' : 'border-gray-500'}`}>
-                    {paymentMethod === 'atm' && <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />}
                   </div>
                 </label>
               </div>

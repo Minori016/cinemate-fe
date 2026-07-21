@@ -6,36 +6,17 @@ import { toast } from 'sonner'
 import { movieService } from '../../services/movieService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { cinemaRoomService } from '../../services/cinemaRoomService'
-import { concessionService, FALLBACK_COMBOS } from '../../services/concessionService'
+import { concessionService } from '../../services/concessionService'
 import { useAuth } from '../../contexts/AuthContext'
 import { bookingService } from '../../services/bookingService'
 import websocketService from '../../services/websocketService'
 import {
   validateSeatSelection,
   getRowsFromLayout,
-  buildFallbackRows,
-  applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../utils/seatValidation'
 // removed BestViewZoneFrame and RecommendationOverlay
 
-// Default seat layout (fallback when API unavailable)
-const SEAT_ROWS = [
-  { row: 'A', type: 'standard', price: 90000 },
-  { row: 'B', type: 'standard', price: 90000 },
-  { row: 'C', type: 'standard', price: 90000 },
-  { row: 'D', type: 'vip', price: 110000 },
-  { row: 'E', type: 'vip', price: 110000 },
-  { row: 'F', type: 'vip', price: 110000 },
-]
-
-// Fallback occupied seats when no API data
-const FALLBACK_OCCUPIED = [
-  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
-  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
-  'E4', 'E8', 'E9', 'F6', 'F7',
-  'G1', 'H3', 'H5'
-]
 
 /* ── Custom Select Component ── */
 function CustomSelect({ value, onChange, options, placeholder, disabled, error, label }) {
@@ -77,9 +58,9 @@ export default function SeatSelectionPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
 
-  const movieId = params.get('movie')
-  const time = params.get('time') || '19:30'
-  const dateStr = params.get('date') || 'Hôm nay'
+  const movieId = params.get('movieId') || params.get('movie')
+  const time = params.get('time')
+  const dateStr = params.get('date')
   const roomIdParam = params.get('roomId') || ''
 
   const [movie, setMovie] = useState(null)
@@ -122,13 +103,10 @@ export default function SeatSelectionPage() {
   }
 
 
-  // Build occupied set from real API seat data (or fallback labels)
+  // Build occupied set from canonical API seat data.
   const occupiedSet = useMemo(() => {
     const set = new Set()
-    if (!seatLayout?.seatMatrix) {
-      FALLBACK_OCCUPIED.forEach(id => set.add(id))
-      return set
-    }
+    if (!seatLayout?.seatMatrix) return set
     seatLayout.seatMatrix.forEach(row => {
       row.seats.forEach(seat => {
         const status = String(seat.status || '').toUpperCase()
@@ -160,7 +138,7 @@ export default function SeatSelectionPage() {
   // Rows used by gap validator
   const validationRows = useMemo(() => {
     if (seatLayout?.seatMatrix?.length) return getRowsFromLayout(seatLayout)
-    return applyOccupiedToRows(buildFallbackRows(), FALLBACK_OCCUPIED)
+    return []
   }, [seatLayout])
 
   // Gap validation rejects invalid selections immediately, so no residual violations.
@@ -169,7 +147,7 @@ export default function SeatSelectionPage() {
 
 
   // Combo selection states (from API)
-  const [combos, setCombos] = useState(FALLBACK_COMBOS)
+  const [combos, setCombos] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({})
 
   const handleUpdateComboQty = (id, delta) => {
@@ -178,8 +156,14 @@ export default function SeatSelectionPage() {
 
   const [isHolding, setIsHolding] = useState(false)
 
+  const IS_UUID_REGEX = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const isUuid = (id) => typeof id === 'string' && IS_UUID_REGEX.test(id);
+
   const handleHoldSeats = async () => {
-    if (selected.length === 0) return
+    if (!matchedShowtime?.id || !seatLayout?.seatMatrix?.length || selected.length === 0) {
+      setSeatError('Không có dữ liệu ghế hợp lệ để tiếp tục đặt vé.')
+      return
+    }
     if (violations.length > 0) {
       alert('Không được để trống 1 ghế đơn độc giữa các ghế đã chọn!')
       return
@@ -187,13 +171,40 @@ export default function SeatSelectionPage() {
 
     try {
       setIsHolding(true)
-      const res = await bookingService.holdSeats({
-        showtimeId: seatLayout.showtimeId,
-        seatIds: selected,
-        concessions: Object.entries(selectedCombos)
-          .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ comboId: Number(id), quantity: qty }))
-      })
+
+      const validSeatIds = selected.map(id => {
+        if (isUuid(id)) return id;
+        if (seatLayout?.seatMatrix) {
+          for (const row of seatLayout.seatMatrix) {
+            for (const seat of (row.seats || [])) {
+              if (seat.id && isUuid(seat.id) && (`${seat.rowLabel || row.rowLabel}${seat.number}` === id || seat.id === id)) {
+                return seat.id;
+              }
+            }
+          }
+        }
+        return id;
+      }).filter(isUuid);
+
+      if (validSeatIds.length === 0) {
+        alert('Phòng chiếu của suất chiếu này chưa được khởi tạo ghế trong cơ sở dữ liệu. Vui lòng chọn suất chiếu khác.');
+        setIsHolding(false);
+        return;
+      }
+
+      const validConcessions = Object.entries(selectedCombos)
+        .filter(([id, qty]) => qty > 0 && isUuid(id))
+        .map(([id, qty]) => ({ comboId: id, quantity: Number(qty) }));
+
+      const payload = {
+        showtimeId: matchedShowtime.id,
+        seatIds: validSeatIds,
+      };
+      if (validConcessions.length > 0) {
+        payload.concessions = validConcessions;
+      }
+
+      const res = await bookingService.holdSeats(payload)
       
       const bookingData = res.data?.result || res.data
       navigate(`/checkout?bookingId=${bookingData.bookingId}`)
@@ -221,10 +232,10 @@ export default function SeatSelectionPage() {
   // Fetch combos/bắp nước from public API
   useEffect(() => {
     let cancelled = false
-    concessionService.getActiveForUi({ fallback: true })
+    concessionService.getActiveForUi()
       .then(list => {
         if (cancelled) return
-        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        const mapped = Array.isArray(list) ? list : []
         setCombos(mapped)
         const initQty = {}
         mapped.forEach(c => { initQty[c.id] = 0 })
@@ -244,14 +255,8 @@ export default function SeatSelectionPage() {
         const matched = (showtimes || []).find(st => {
           if (!st.startTime) return false
           const stTime = st.startTime.split('T')[1]?.substring(0, 5)
-          const matchesTime = stTime === time
           const matchesRoom = roomIdParam ? String(st.roomId) === String(roomIdParam) : true
-          return matchesTime && matchesRoom && isPublicShowtimeStatus(st.status)
-        }) || (showtimes || []).find(st => {
-          // fallback: time only if roomId query mismatched
-          if (!st.startTime) return false
-          const stTime = st.startTime.split('T')[1]?.substring(0, 5)
-          return stTime === time && isPublicShowtimeStatus(st.status)
+          return stTime === time && matchesRoom && isPublicShowtimeStatus(st.status)
         })
 
         if (cancelled) return
@@ -327,21 +332,17 @@ export default function SeatSelectionPage() {
 
   const [realSeatMap, setRealSeatMap] = useState(null)
 
-  const updateOccupiedFromSeatMap = useCallback((seatMapData) => {
-    if (!seatMapData || !seatMapData.seats) return
+  function updateOccupiedFromSeatMap(seatMapData) {
+    if (!seatMapData?.seats) return
     setRealSeatMap(seatMapData.seats)
 
-    // Restore own locked seats into selected state (fixes F5 self-lock bug)
     const ownLockedSeats = seatMapData.seats
-      .filter(s => s.lockedByCurrentUser && s.status === 'HELD')
-      .map(s => s.seatId)
+      .filter((seat) => seat.lockedByCurrentUser && seat.status === 'HELD')
+      .map((seat) => seat.seatId)
     if (ownLockedSeats.length > 0) {
-      setSelected(prev => {
-        const combined = new Set([...prev, ...ownLockedSeats])
-        return [...combined]
-      })
+      setSelected((previous) => [...new Set([...previous, ...ownLockedSeats])])
     }
-  }, [])
+  }
 
   // Override currentOccupied from realSeatMap
   const currentOccupied = useMemo(() => {
@@ -368,7 +369,7 @@ export default function SeatSelectionPage() {
       }
       return set
     }
-    return dynamicSeatRows ? occupiedSet : new Set(FALLBACK_OCCUPIED)
+    return occupiedSet
   }, [realSeatMap, seatLayout, dynamicSeatRows, occupiedSet, processingSeats])
 
   // Chọn/bỏ chọn ghế — validate gap rule trước khi cập nhật state
@@ -522,47 +523,6 @@ export default function SeatSelectionPage() {
     )
   }
 
-  function renderRow(rowLabel, type) {
-    const leftSeats = [{ id: `${rowLabel}1`, number: 1 }, { id: `${rowLabel}2`, number: 2 }, { id: `${rowLabel}3`, number: 3 }]
-    const centerSeats = [{ id: `${rowLabel}4`, number: 4 }, { id: `${rowLabel}5`, number: 5 }, { id: `${rowLabel}6`, number: 6 }, { id: `${rowLabel}7`, number: 7 }, { id: `${rowLabel}8`, number: 8 }, { id: `${rowLabel}9`, number: 9 }]
-    const rightSeats = [{ id: `${rowLabel}10`, number: 10 }, { id: `${rowLabel}11`, number: 11 }, { id: `${rowLabel}12`, number: 12 }]
-
-    return (
-      <div key={rowLabel} className="flex items-center justify-center gap-3.5 w-full">
-        <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{rowLabel}</span>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">{leftSeats.map(seat => renderSeatButton(seat, type))}</div>
-          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className="flex gap-2 p-1 rounded-xl border border-transparent">
-            {centerSeats.map(seat => renderSeatButton(seat, type))}
-          </div>
-          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className="flex gap-2">{rightSeats.map(seat => renderSeatButton(seat, type))}</div>
-        </div>
-        <span className="w-6 text-center font-bold text-gray-500 text-sm tracking-wide">{rowLabel}</span>
-      </div>
-    )
-  }
-
-  function renderCoupleRow(rowLabel) {
-    const leftCouple = [{ id: `${rowLabel}1`, row: rowLabel, number: 1 }]
-    const centerCouples = [{ id: `${rowLabel}2`, row: rowLabel, number: 2 }, { id: `${rowLabel}3`, row: rowLabel, number: 3 }, { id: `${rowLabel}4`, row: rowLabel, number: 4 }]
-    const rightCouple = [{ id: `${rowLabel}5`, row: rowLabel, number: 5 }]
-    return (
-      <div key={rowLabel} className="flex items-center justify-center gap-3.5 w-full">
-        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">{rowLabel}</span>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2 w-[112px] justify-end">{leftCouple.map(seat => renderCoupleButton(seat))}</div>
-          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className="flex gap-2 p-1 rounded-xl border border-dashed border-red-500/20 bg-red-950/5">{centerCouples.map(seat => renderCoupleButton(seat))}</div>
-          <div className="w-6 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-40">│</div>
-          <div className="flex gap-2 w-[112px] justify-start">{rightCouple.map(seat => renderCoupleButton(seat))}</div>
-        </div>
-        <span className="w-6 text-center font-bold text-red-500 text-sm tracking-wide">{rowLabel}</span>
-      </div>
-    )
-  }
-
   function renderDynamicRow(row) {
     return (
       <div key={row.rowLabel} className="flex items-center justify-center gap-3.5 w-full">
@@ -639,7 +599,7 @@ export default function SeatSelectionPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
             <span className="flex items-center gap-1"><DoorOpen size={14} />{seatLayout?.roomName || matchedShowtime?.roomName || matchedShowtime?.room || 'Phòng chiếu'}</span>
           </p>
-          {seatError && <p className="text-xs text-yellow-500 mt-2">{seatError} — Đang dùng sơ đồ mặc định</p>}
+          {seatError && <p className="text-xs text-red-400 mt-2">{seatError}</p>}
         </div>
 
         {/* Legend */}
@@ -662,16 +622,12 @@ export default function SeatSelectionPage() {
           {/* Seat Rows Grid Container */}
           <div className="w-full overflow-x-auto pb-8 custom-scrollbar">
             <div ref={setGridRoot} className="relative min-w-max mx-auto px-4 flex flex-col gap-3.5 items-center">
-              {/* Render Rows Dynamically from API or fallback */}
               {seatLayout?.seatMatrix
                 ? seatLayout.seatMatrix.map(row => renderDynamicRow(row))
                 : (
-                  <>
-                    {SEAT_ROWS.map(r => renderRow(r.row, r.type))}
-                    <div className="h-4" />
-                    {renderCoupleRow('G')}
-                    {renderCoupleRow('H')}
-                  </>
+                  <p className="py-10 text-sm font-medium text-gray-400">
+                    Chưa có sơ đồ ghế hợp lệ cho suất chiếu này.
+                  </p>
                 )}
 
               {/* Entrance / Exit Indicators */}

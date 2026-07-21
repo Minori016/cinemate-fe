@@ -22,6 +22,7 @@ export default function AuthPage() {
   // Determine mode from pathname
   const getModeFromPath = () => {
     const path = location.pathname
+    if (path === '/register') return 'register'
     if (path === '/forgot-password') return 'forgot'
     return 'login' // default
   }
@@ -63,7 +64,7 @@ export default function AuthPage() {
     setLoginError('')
     setLoginLoading(true)
     try {
-      const user = await login(loginForm.email, loginForm.password)
+      const user = await login(loginForm.email, loginForm.password, remember)
       if (user.isFirstLogin) {
         navigate('/first-login', { replace: true })
         return
@@ -112,7 +113,9 @@ export default function AuthPage() {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault()
-    if (registerForm.password.length < 8) return setRegisterError('Mật khẩu phải có ít nhất 8 ký tự!')
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(registerForm.password)) {
+      return setRegisterError('Mật khẩu cần ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt (@$!%*?&).')
+    }
     if (registerForm.password !== registerForm.confirmPassword) return setRegisterError('Mật khẩu xác nhận không khớp!')
     setRegisterError('')
     setRegisterLoading(true)
@@ -144,7 +147,7 @@ export default function AuthPage() {
   useEffect(() => {
     if (!showSuccess) return
     if (countdown <= 0) {
-      setMode('login')
+      navigate('/login', { replace: true })
       setShowSuccess(false)
       setCountdown(3)
       return
@@ -314,7 +317,7 @@ export default function AuthPage() {
                         </div>
                         <span style={{ fontFamily: 'Inter', fontSize: '13px', color: 'var(--color-on-surface-variant)' }}>Ghi nhớ đăng nhập</span>
                       </label>
-                      <button type="button" onClick={() => setMode('forgot')} className="text-sm font-medium hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)', fontFamily: 'Inter, sans-serif' }}>Quên mật khẩu?</button>
+                      <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm font-medium hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)', fontFamily: 'Inter, sans-serif' }}>Quên mật khẩu?</button>
                     </div>
                     {/* Submit */}
                     <button type="submit" disabled={loginLoading} className="w-full py-[14px] px-6 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] disabled:cursor-not-allowed" style={{ background: loginLoading ? 'rgba(229,9,20,0.35)' : 'linear-gradient(160deg, #e50914 0%, #b3070f 60%, #7a0409 100%)', color: '#fff', fontFamily: 'Montserrat, sans-serif', fontSize: '16px', fontWeight: 700, letterSpacing: '0.04em', border: '1px solid rgba(255,255,255,0.12)', boxShadow: loginLoading ? 'none' : '0 4px 20px rgba(229,9,20,0.45), 0 1px 0 rgba(255,255,255,0.12) inset', cursor: loginLoading ? 'not-allowed' : 'pointer', transition: 'box-shadow 0.2s ease, transform 0.1s ease' }} onMouseEnter={e => { if (!loginLoading) e.currentTarget.style.boxShadow = '0 6px 28px rgba(229,9,20,0.65), 0 1px 0 rgba(255,255,255,0.12) inset' }} onMouseLeave={e => { if (!loginLoading) e.currentTarget.style.boxShadow = '0 4px 20px rgba(229,9,20,0.45), 0 1px 0 rgba(255,255,255,0.12) inset' }}>
@@ -432,7 +435,7 @@ export default function AuthPage() {
                           Không nhận được email? <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Gửi lại</span>
                         </button>
 
-                        <button type="button" onClick={() => { setMode('login'); setForgotSent(false); setForgotEmail(''); setForgotError(''); }} className="text-sm hover:underline underline-offset-4 transition-colors" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--color-primary)' }}>
+                        <button type="button" onClick={() => { navigate('/login'); setForgotSent(false); setForgotEmail(''); setForgotError(''); }} className="text-sm hover:underline underline-offset-4 transition-colors" style={{ fontFamily: 'Inter, sans-serif', color: 'var(--color-primary)' }}>
                           ← Quay lại đăng nhập
                         </button>
                       </div>
@@ -446,7 +449,7 @@ export default function AuthPage() {
                     <p style={{ fontFamily: 'Inter', fontSize: '14px', color: 'var(--color-on-surface-variant)' }}>
                       {showLoginForm ? 'Chưa có tài khoản?' : 'Đã có tài khoản?'}
                       {' '}
-                      <button type="button" onClick={() => { setMode(showLoginForm ? 'register' : 'login'); setLoginError(''); setRegisterError(''); }} className="font-bold ml-1 hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)' }}>
+                      <button type="button" onClick={() => { navigate(showLoginForm ? '/register' : '/login'); setLoginError(''); setRegisterError(''); }} className="font-bold ml-1 hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)' }}>
                         {showLoginForm ? 'Đăng ký ngay' : 'Đăng nhập tại đây'}
                       </button>
                     </p>
@@ -458,7 +461,7 @@ export default function AuthPage() {
                   <div className="mt-7 text-center w-full pt-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                     <p style={{ fontFamily: 'Inter', fontSize: '14px', color: 'var(--color-on-surface-variant)' }}>
                       Nhớ mật khẩu rồi?{' '}
-                      <button type="button" onClick={() => { setMode('login'); setForgotError(''); }} className="font-bold ml-1 hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)' }}>
+                      <button type="button" onClick={() => { navigate('/login'); setForgotError(''); }} className="font-bold ml-1 hover:opacity-75 transition-opacity" style={{ color: 'var(--color-primary)' }}>
                         Đăng nhập tại đây
                       </button>
                     </p>

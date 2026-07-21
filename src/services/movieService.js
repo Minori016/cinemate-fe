@@ -1,11 +1,28 @@
 import api from './api'
 
+const getDerivedStatus = (data) => {
+  if (data?.status && data.status !== 'null' && data.status !== 'undefined') {
+    return data.status
+  }
+  const todayStr = new Date().toISOString().split('T')[0]
+  const fromDate = data?.fromDate || ''
+  const toDate = data?.toDate || ''
+
+  if (fromDate && fromDate > todayStr) {
+    return 'COMING_SOON'
+  }
+  if (toDate && toDate < todayStr) {
+    return 'ENDED'
+  }
+  return 'NOW_SHOWING'
+}
+
 const mapMovieFromBackend = (data) => {
   if (!data) return null
   // Find poster from media
   const poster = data.media?.find(m => m.mediaType === 'POSTER')?.url || data.posterUrl || ''
   // Find trailer from media
-  const trailer = data.media?.find(m => m.mediaType === 'TRAILER')?.url || data.trailerUrl || ''
+  const trailer = data.trailerUrl || data.media?.find(m => m.mediaType === 'TRAILER')?.url || ''
   // Map genres
   const genreList = data.genres?.map(g => g.name) || []
   const genre = genreList.join(', ') || data.version || ''
@@ -18,7 +35,8 @@ const mapMovieFromBackend = (data) => {
     description: data.description || '',
     director: data.director || 'Chưa rõ',
     duration: data.durationMinutes || 120,
-    rating: data.rating || 'T13',
+    durationMinutes: data.durationMinutes || 120,
+    rating: data.rating || 'K',
     format: data.version || '2D',
     version: data.version || '',
     language: data.language || 'Phụ đề tiếng Việt',
@@ -33,7 +51,7 @@ const mapMovieFromBackend = (data) => {
     showtimes: data.showtimes || [],
     countries: data.countries || [],
     media: data.media || [],
-    status: data.status || null,
+    status: getDerivedStatus(data),
   }
 }
 
@@ -73,18 +91,32 @@ export const movieService = {
 
   // GET /api/v1/movies?page=0&size=10&search=&genreId=&status=
   getAll: async (params = {}) => {
-    const res = await api.get('/api/v1/movies', { params })
+    const { status, ...apiParams } = params
+    const res = await api.get('/api/v1/movies', { params: apiParams })
     const page = res.data?.result
+    let list = []
+    if (page?.content) {
+      list = page.content.map(mapMovieFromBackend)
+    } else {
+      const rawList = Array.isArray(res.data?.result) ? res.data.result : []
+      list = rawList.map(mapMovieFromBackend)
+    }
+
+    // Filter by status on FE side using derived status from dates
+    if (status && status !== 'all' && status !== 'ACTIVE') {
+      const targetStatus = status === 'now-showing' ? 'NOW_SHOWING' : status === 'coming-soon' ? 'COMING_SOON' : status.toUpperCase()
+      list = list.filter(m => m.status === targetStatus || m.status === status || m.status?.toLowerCase() === status.toLowerCase())
+    }
+
     if (page?.content) {
       return {
-        data: page.content.map(mapMovieFromBackend),
-        total: page.totalElements,
-        totalPages: page.totalPages,
+        data: list,
+        total: list.length,
+        totalPages: Math.ceil(list.length / (params.size || 10)) || 1,
         currentPage: page.number,
       }
     }
-    const list = Array.isArray(res.data?.result) ? res.data.result : []
-    return { data: list.map(mapMovieFromBackend) }
+    return { data: list }
   },
 
   // GET /api/v1/movies/{id}

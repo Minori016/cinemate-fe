@@ -5,22 +5,12 @@ import { cinemaRoomService } from '../../../../services/cinemaRoomService'
 import {
   validateSeatSelection,
   getRowsFromLayout,
-  buildFallbackRows,
-  applyOccupiedToRows,
   SEAT_GAP_ERROR_MESSAGE,
 } from '../../../../utils/seatValidation'
 // removed BestViewZoneFrame and RecommendationOverlay
 import { getSeatScore } from '../../../../utils/seatScoring'
 import websocketService from '../../../../services/websocketService'
 import { bookingService } from '../../../../services/bookingService'
-
-// Fallback occupied labels used when API layout is unavailable
-const FALLBACK_OCCUPIED = [
-  'A3', 'A4', 'A8', 'B1', 'B2', 'B11', 'B12',
-  'C5', 'C6', 'C7', 'D5', 'D6', 'D7',
-  'E4', 'E8', 'E9', 'F6', 'F7',
-  'G1', 'H3', 'H5',
-]
 
 function GlassCard({ children, className = '' }) {
   return (
@@ -32,8 +22,8 @@ function GlassCard({ children, className = '' }) {
 
 export default function SeatStep({
   movie, selectedTime, selectedDate, totalPrice, selectedSeats, seatMetaMap, violations, toggleSeat,
-  setBookingStep, selectedShowtime, SEAT_ROWS, processingSeats = [],
-  user, onRequireAuth
+  setBookingStep, selectedShowtime, processingSeats = [],
+  user, onRequireAuth, hydrateLockedSeats
 }) {
   const [layout, setLayout] = useState(null)
   const [loadingSeats, setLoadingSeats] = useState(false)
@@ -135,49 +125,34 @@ export default function SeatStep({
         cinemaRoomService.getLayoutNormalized(selectedShowtime.roomId, {
           roomName: selectedShowtime.roomName || selectedShowtime.room || '',
         }),
-        bookingService.getSeatMap(selectedShowtime.id).catch(() => null)
+        bookingService.getSeatMap(selectedShowtime.id),
       ])
-      
-      if (data?.seatMatrix?.length) setLayout(data)
-      else setSeatError('Không thể tải sơ đồ ghế')
 
-      if (seatMapRes?.data?.result || seatMapRes?.data) {
-        const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
-        setRealSeatMap(seats)
-
-        // Restore own locked seats into selected state (fixes F5 self-lock bug)
-        const ownLockedSeats = seats
-          .filter(s => s.lockedByCurrentUser && String(s.status || '').toUpperCase() === 'HELD')
-          .map(s => s.seatId)
-        if (ownLockedSeats.length > 0) {
-          ownLockedSeats.forEach(seatId => {
-            if (!selectedSeats.includes(seatId)) {
-              toggleSeat(seatId, {})
-            }
-          })
-        }
+      const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
+      if (!data?.seatMatrix?.length || !Array.isArray(seats)) {
+        throw new Error('Missing canonical seat data')
       }
+
+      setLayout(data)
+      setRealSeatMap(seats)
+      const ownLockedSeats = seats
+        .filter((seat) => seat.lockedByCurrentUser && String(seat.status || '').toUpperCase() === 'HELD')
+        .map((seat) => seat.seatId)
+      if (ownLockedSeats.length > 0) hydrateLockedSeats?.(ownLockedSeats)
     } catch {
-      setSeatError('Không thể tải sơ đồ ghế')
+      setLayout(null)
+      setRealSeatMap([])
+      setSeatError('Không thể tải sơ đồ ghế. Vui lòng thử lại sau.')
     } finally {
       if (opts.showLoading) setLoadingSeats(false)
     }
-  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room, selectedSeats, toggleSeat])
+  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room, hydrateLockedSeats])
 
   useEffect(() => {
     loadLayout({ showLoading: true })
     const pollId = window.setInterval(() => loadLayout(), 10000)
     return () => window.clearInterval(pollId)
   }, [loadLayout])
-
-  // Cleanup Redis locks on unmount
-  useEffect(() => {
-    return () => {
-      if (selectedShowtime?.id) {
-        bookingService.clearMyLocks(selectedShowtime.id).catch(() => {})
-      }
-    }
-  }, [selectedShowtime?.id])
 
   // WebSocket Integration
   useEffect(() => {
@@ -224,9 +199,7 @@ export default function SeatStep({
       })
     }
 
-    if (!layout?.seatMatrix) {
-      FALLBACK_OCCUPIED.forEach(id => sold.add(id))
-    } else {
+    if (layout?.seatMatrix) {
       layout.seatMatrix.forEach(row => {
         row.seats.forEach(seat => {
           const status = String(seat.status || '').toUpperCase()
@@ -277,20 +250,8 @@ export default function SeatStep({
 
   // Rows used by gap validator (API layout preferred, fallback otherwise)
   const validationRows = useMemo(() => {
-    let baseRows = layout?.seatMatrix?.length ? getRowsFromLayout(layout) : buildFallbackRows()
-    return applyOccupiedToRows(baseRows, Array.from(occupiedSet))
-  }, [layout, occupiedSet])
-
-  // Build dynamic SEAT_ROWS from layout
-  const dynamicSeatRows = useMemo(() => {
-    if (!layout?.seatMatrix) return SEAT_ROWS || []
-    return layout.seatMatrix.map(row => {
-      const firstActive = row.seats.find(s => s.type !== 'AISLE' && s.type !== 'COUPLE_EXTENSION')
-      const type = firstActive?.type === 'VIP' ? 'vip' : firstActive?.type === 'COUPLE' ? 'couple' : 'standard'
-      return { row: row.rowLabel, type, price: getSeatPrice(firstActive?.type) }
-    })
-  }, [layout, SEAT_ROWS])
-
+    return layout?.seatMatrix?.length ? getRowsFromLayout(layout) : []
+  }, [layout])
 
 
   const roomName = selectedShowtime?.roomName || 'Phòng Chiếu'
@@ -464,59 +425,6 @@ export default function SeatStep({
     )
   }
 
-  function SeatRow({ rowLabel, type }) {
-    const leftSeats = [
-      { id: `${rowLabel}1`, label: '1' },
-      { id: `${rowLabel}2`, label: '2' },
-      { id: `${rowLabel}3`, label: '3' },
-    ]
-    const centerSeats = [
-      { id: `${rowLabel}4`, label: '4' }, { id: `${rowLabel}5`, label: '5' },
-      { id: `${rowLabel}6`, label: '6' }, { id: `${rowLabel}7`, label: '7' },
-      { id: `${rowLabel}8`, label: '8' }, { id: `${rowLabel}9`, label: '9' },
-    ]
-    const rightSeats = [
-      { id: `${rowLabel}10`, label: '10' }, { id: `${rowLabel}11`, label: '11' }, { id: `${rowLabel}12`, label: '12' },
-    ]
-    return (
-      <div key={rowLabel} className="flex items-center justify-center gap-3 w-full">
-        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{rowLabel}</span>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">{leftSeats.map(seat => <SeatButton key={seat.id} seat={seat} type={type} />)}</div>
-          <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
-          <div className="flex gap-2 p-0.5 rounded-lg border border-transparent">
-            {centerSeats.map(seat => <SeatButton key={seat.id} seat={seat} type={type} />)}
-          </div>
-          <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
-          <div className="flex gap-2">{rightSeats.map(seat => <SeatButton key={seat.id} seat={seat} type={type} />)}</div>
-        </div>
-        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{rowLabel}</span>
-      </div>
-    )
-  }
-
-  function CoupleRow({ rowLabel }) {
-    const leftCouple = [{ id: `${rowLabel}1`, label: `${rowLabel}1` }]
-    const centerCouples = [
-      { id: `${rowLabel}2`, label: `${rowLabel}2` }, { id: `${rowLabel}3`, label: `${rowLabel}3` },
-      { id: `${rowLabel}4`, label: `${rowLabel}4` },
-    ]
-    const rightCouple = [{ id: `${rowLabel}5`, label: `${rowLabel}5` }]
-    return (
-      <div key={rowLabel} className="flex items-center justify-center gap-3 w-full">
-        <span className="w-6 text-center font-bold text-red-500 text-xs tracking-wide">{rowLabel}</span>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2 w-[112px] justify-end">{leftCouple.map(seat => <CoupleButton key={seat.id} seat={seat} />)}</div>
-          <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
-          <div className="flex gap-2 p-0.5 rounded-lg border border-dashed border-red-500/20 bg-red-950/5">{centerCouples.map(seat => <CoupleButton key={seat.id} seat={seat} />)}</div>
-          <div className="w-5 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">│</div>
-          <div className="flex gap-2 w-[112px] justify-start">{rightCouple.map(seat => <CoupleButton key={seat.id} seat={seat} />)}</div>
-        </div>
-        <span className="w-6 text-center font-bold text-red-500 text-xs tracking-wide">{rowLabel}</span>
-      </div>
-    )
-  }
-
   function renderDynamicRow(row) {
     return (
       <div key={row.rowLabel} className="flex items-center justify-center gap-3 w-full">
@@ -597,12 +505,9 @@ export default function SeatStep({
               ) : layout?.seatMatrix ? (
                 layout.seatMatrix.map(row => renderDynamicRow(row))
               ) : (
-                <>
-                  {SEAT_ROWS?.map(r => <SeatRow key={r.row} rowLabel={r.row} type={r.type} />)}
-                  <div className="h-3" />
-                  <CoupleRow rowLabel="G" />
-                  <CoupleRow rowLabel="H" />
-                </>
+                <p className="text-sm text-gray-400 italic py-4 text-center">
+                  Chưa có sơ đồ ghế hợp lệ cho suất chiếu này.
+                </p>
               )}
              {/* Entrance/Exit */}
               <div className="w-full max-w-[580px] flex justify-between mt-5">

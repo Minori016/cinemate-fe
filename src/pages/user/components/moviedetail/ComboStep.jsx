@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { Plus, Minus, Ticket, Check } from 'lucide-react'
-import { FALLBACK_COMBOS } from '../../../../services/concessionService'
 import { promotionService, getQuickDiscountText } from '../../../../services/promotionService'
 
 export default function ComboStep({
-  combos = FALLBACK_COMBOS,
+  combos = [],
   selectedCombos = {},
   onChangeCombo,
   promoCode,

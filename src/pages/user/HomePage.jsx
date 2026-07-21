@@ -19,8 +19,6 @@ import MovieCard from '../../components/common/MovieCard'
 import Badge from '../../components/common/Badge'
 import TrailerModal from './components/moviedetail/TrailerModal'
 import MovieArcCarousel3D from '../../components/common/MovieArcCarousel3D'
-import LiteYouTubeEmbed from 'react-lite-youtube-embed'
-import 'react-lite-youtube-embed/dist/LiteYouTubeEmbed.css'
 
 // ── Constants ──────────────────────────────────────────────────
 const DEFAULT_POSTER = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
@@ -62,19 +60,6 @@ const getEmbedUrl = (url) => {
   return url
 }
 
-const getYoutubeVideoId = (url) => {
-  if (!url) return ''
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-  const match = url.match(regExp)
-  if (match && match[2].length === 11) return match[2]
-  if (url.includes('embed/')) {
-    const parts = url.split('embed/')
-    const id = parts[parts.length - 1]?.split('?')[0]
-    if (id && id.length === 11) return id
-  }
-  return ''
-}
-
 const getRatingColor = (rating) => {
   if (rating === 'T18') return '#dc2626'
   if (rating === 'T16') return '#ef4444'
@@ -88,47 +73,8 @@ const handleImageError = (e, fallback = DEFAULT_POSTER_SMALL) => {
   }
 }
 
-const BannerMedia = ({ movie, shouldPlayVideo }) => {
-  const videoId = getYoutubeVideoId(movie.trailerUrl)
-  const defaultPoster = movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200&h=800&fit=crop'
-
-  const [thumbUrl, setThumbUrl] = useState(() => {
-    if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-    return defaultPoster
-  })
-
-  const [isVideoReady, setIsVideoReady] = useState(false)
-
-  // Reset states when movie changes
-  useEffect(() => {
-    setIsVideoReady(false)
-    if (videoId) {
-      setThumbUrl(`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`)
-    } else {
-      setThumbUrl(defaultPoster)
-    }
-  }, [movie.id, videoId])
-
-  // Delay crossfade of static overlay by 2 seconds after video mounts to avoid flash of loading screens
-  useEffect(() => {
-    if (shouldPlayVideo && videoId) {
-      setIsVideoReady(false)
-      const timer = setTimeout(() => {
-        setIsVideoReady(true)
-      }, 2000)
-      return () => clearTimeout(timer)
-    } else {
-      setIsVideoReady(false)
-    }
-  }, [shouldPlayVideo, videoId])
-
-  const handleThumbError = () => {
-    if (videoId && thumbUrl.includes('maxresdefault')) {
-      setThumbUrl(`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`)
-    } else {
-      setThumbUrl(defaultPoster)
-    }
-  }
+const BannerMedia = ({ movie }) => {
+  const defaultPoster = movie.poster || movie.posterUrl || DEFAULT_POSTER
 
   return (
     <motion.div
@@ -138,30 +84,14 @@ const BannerMedia = ({ movie, shouldPlayVideo }) => {
       transition={{ duration: 10, ease: 'linear' }}
       style={{ pointerEvents: 'none' }}
     >
-      {shouldPlayVideo && videoId && (
-        <LiteYouTubeEmbed
-          id={videoId}
-          title={movie.titleVn || movie.titleEn || ''}
-          autoplay={true}
-          noCookie={true}
-          params={`autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&loop=1&playlist=${videoId}&playsinline=1`}
-          wrapperClass="homepage-banner-video-wrapper"
-          iframeClass="homepage-banner-video-iframe"
-          poster="maxresdefault"
-        />
-      )}
-
       <img
-        src={thumbUrl}
+        src={defaultPoster}
         alt=""
         fetchPriority="high"
         decoding="async"
-        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1] transition-opacity duration-1000 ease-out"
-        style={{
-          opacity: isVideoReady ? 0 : 1,
-          pointerEvents: 'none',
-        }}
-        onError={handleThumbError}
+        className="absolute inset-0 w-full h-full object-cover filter brightness-[0.6] saturate-[1.1] contrast-[1.1]"
+        style={{ pointerEvents: 'none' }}
+        onError={(event) => handleImageError(event, DEFAULT_POSTER)}
       />
     </motion.div>
   )
@@ -265,24 +195,11 @@ export default function HomePage() {
 
   const [currentIndex, setCurrentIndex] = useState(0)
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0)
-  const [shouldPlayVideo, setShouldPlayVideo] = useState(false)
-
-  useEffect(() => {
-    setShouldPlayVideo(false)
-    const timer = setTimeout(() => {
-      setShouldPlayVideo(true)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [currentBannerIndex])
-
   const [isHoveringBanner, setIsHoveringBanner] = useState(false)
   const [isTrailerOpen, setIsTrailerOpen] = useState(false)
   const [selectedTrailerMovie, setSelectedTrailerMovie] = useState(null)
   const navigate = useNavigate()
   const { user, isAdmin } = useAuth()
-
-  // State to track if we should scroll from intro
-  const [shouldScrollFromIntro, setShouldScrollFromIntro] = useState(false)
 
   // Debug: Log component mount and location
   console.log('🏠 HomePage rendering. Path:', location.pathname, 'Movies count:', movies.length)
@@ -461,25 +378,7 @@ export default function HomePage() {
         setMovies([])
       })
 
-    // Check if we need to scroll from intro
-    const shouldScroll = sessionStorage.getItem('intro_scroll_to_booking')
-    if (shouldScroll === 'true') {
-      // Clear the flag
-      sessionStorage.removeItem('intro_scroll_to_booking')
-      setShouldScrollFromIntro(true)
-    }
   }, [])
-
-  // Handle scroll after movies loaded and component rendered
-  useEffect(() => {
-    if (shouldScrollFromIntro) {
-      setShouldScrollFromIntro(false)
-      // Small delay to ensure DOM is ready
-      setTimeout(() => {
-        scrollToQuickBooking()
-      }, 300)
-    }
-  }, [shouldScrollFromIntro])
 
   const getRatingColor = (rating) => {
     if (rating === 'T18') return '#dc2626'
@@ -499,7 +398,7 @@ export default function HomePage() {
       setBookingErrors({ movie: '', date: '', time: '' })
     }
 
-    // Delay scroll để đảm bảo trang đã render xong sau khi intro đóng
+    // Delay scroll để đảm bảo trang đã render xong
     setTimeout(() => {
       const element = document.getElementById('quick-booking')
       if (element) {
@@ -550,8 +449,8 @@ export default function HomePage() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.8, ease: 'easeInOut' }}
                   >
-                    {/* Backdrop with cinematic zoom - Dynamic thumbnail/YouTube trailer player */}
-                    <BannerMedia movie={movie} shouldPlayVideo={shouldPlayVideo} />
+                    {/* Backdrop with cinematic zoom - Static movie poster */}
+                    <BannerMedia movie={movie} />
 
                     {/* Dark Vignette / Recessed Gradients */}
                     <div
