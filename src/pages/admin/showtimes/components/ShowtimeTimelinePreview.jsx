@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Settings, CheckCircle, Sparkles } from 'lucide-react';
 import { showtimeService } from '../../../../services/showtimeService';
 import { DndContext, closestCenter, useDroppable } from '@dnd-kit/core';
 import DraggableShowtime from './DraggableShowtime';
@@ -162,6 +162,10 @@ export default function ShowtimeTimelinePreview({
   const [aiContext, setAiContext] = useState({
     autoFillMovies: []
   });
+  
+  const [aiProgress, setAiProgress] = useState(0);
+  const [aiStatus, setAiStatus] = useState('');
+  const progressIntervalRef = useRef(null);
 
   const updateList = useCallback((action) => {
     if (aiEnhancedResult && currentViewTab === 'ai') {
@@ -179,8 +183,30 @@ export default function ShowtimeTimelinePreview({
   const handleAIEnhance = async () => {
     setAiLoading(true);
     setShowAiModal(false);
+    setAiProgress(0);
+    setAiStatus('Khởi tạo AI và phân tích cấu trúc phòng...');
+    
+    progressIntervalRef.current = setInterval(() => {
+      setAiProgress(prev => {
+        const next = prev + 1;
+        if (next === 20) setAiStatus('AI đang tính toán phân bổ dữ liệu...');
+        if (next === 50) setAiStatus('Áp dụng thuật toán Gale-Shapley để tối ưu ghép cặp...');
+        if (next === 75) setAiStatus('Đánh giá và tinh chỉnh thời gian dọn dẹp...');
+        if (next === 90) setAiStatus('Hoàn thiện kết quả...');
+        return next > 99 ? 99 : next;
+      });
+    }, 100);
+
     try {
-      const response = await showtimeService.enhanceByAI(previewList, aiContext);
+      const [response] = await Promise.all([
+        showtimeService.enhanceByAI(previewList, aiContext),
+        new Promise(resolve => setTimeout(resolve, 10000))
+      ]);
+      
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      setAiProgress(100);
+      setAiStatus('Hoàn tất!');
+
       if (response && response.enhancedList) {
         setAiEnhancedResult(response);
         setCurrentViewTab('ai');
@@ -191,6 +217,7 @@ export default function ShowtimeTimelinePreview({
     } catch (err) {
       toast.error('Lỗi tối ưu hóa AI: ' + (err.response?.data?.message || err.message));
     } finally {
+      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
       setAiLoading(false);
     }
   };
@@ -843,8 +870,35 @@ export default function ShowtimeTimelinePreview({
   };
 
   return (
-    <div className="space-y-6 flex flex-col h-full overflow-hidden">
-      {/* Top Banner Status */}
+    <div className="flex flex-col h-full bg-[#f7f9fb]">
+      {/* Loading Overlay */}
+      {aiLoading && (
+        <div className="fixed inset-0 bg-[#f7f9fb]/80 z-[1000] flex items-center justify-center backdrop-blur-md">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col items-center border border-[#e0e3e5]">
+            <div className="w-20 h-20 mb-6 bg-gradient-to-tr from-purple-100 to-indigo-100 rounded-full flex items-center justify-center relative">
+              <div className="absolute inset-0 rounded-full border-4 border-indigo-100 border-t-purple-600 animate-spin" />
+              <Sparkles size={36} className="text-purple-600 animate-pulse" />
+            </div>
+            <h3 className="text-[20px] font-bold text-[#191c1e] mb-2 text-center tracking-tight">AI Đang Tối Ưu Hóa</h3>
+            <p className="text-[13px] text-[#5c647a] mb-8 text-center h-5 font-medium transition-all duration-300">{aiStatus}</p>
+            
+            <div className="w-full h-3 bg-[#f7f9fb] rounded-full overflow-hidden mb-3 border border-[#e0e3e5] shadow-inner relative">
+              <div 
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-purple-600 to-indigo-500 transition-all duration-150 ease-out"
+                style={{ width: `${aiProgress}%` }}
+              >
+                <div className="w-full h-full opacity-20 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:1rem_1rem] animate-[pulse_1s_linear_infinite]" />
+              </div>
+            </div>
+            <div className="flex justify-between w-full text-[11px] font-bold tracking-wider uppercase text-[#5c647a]">
+              <span>Tiến trình</span>
+              <span className="text-purple-600">{aiProgress}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Control Header */}
       <div className="flex justify-between items-center mb-4 shrink-0">
         <div className="p-4 bg-[#e8f5e9] border border-[#a5d6a7] text-[#2e7d32] font-bold rounded-xl text-sm flex items-center gap-2 flex-1 mr-4">
           <CheckCircle size={18} />
