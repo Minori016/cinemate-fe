@@ -6,13 +6,14 @@ import api from './api'
  * Auth POST: /api/v1/promotions/validate
  */
 export const promotionService = {
-  getAll: (params) => api.get('/api/v1/promotions', { params }),
+  getAll: (params = {}) => api.get('/api/v1/admin/promotions', { params: { page: 0, size: 100, sortBy: 'createdAt', ...params } }),
   getById: (id) => api.get(`/api/v1/promotions/${id}`),
   getByCode: (code) => api.get(`/api/v1/promotions/code/${encodeURIComponent(code)}`),
   getActive: () => api.get('/api/v1/promotions/active'),
   validate: (data) => api.post('/api/v1/promotions/validate', data),
   create: (data) => api.post('/api/v1/admin/promotions', data),
   update: (id, data) => api.put(`/api/v1/admin/promotions/${id}`, data),
+  toggleStatus: (id) => api.patch(`/api/v1/admin/promotions/${id}/toggle`),
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
 
   /**
@@ -75,7 +76,7 @@ export const promotionService = {
   },
 }
 
-const unwrapList = (payload) => {
+export const unwrapList = (payload) => {
   const data = payload?.result ?? payload?.data ?? payload
   if (Array.isArray(data)) return data
   if (Array.isArray(data?.content)) return data.content
@@ -119,21 +120,15 @@ export const mapPromotionForUi = (p = {}) => {
  * Các hằng số dùng chung cho UI
  */
 export const PROMOTION_TYPES = {
-  VOUCHER: 'VOUCHER',
-  FLASH_SALE: 'FLASH_SALE',
-  COMBO: 'COMBO',
-  MOVIE_SPECIFIC: 'MOVIE_SPECIFIC',
-  BIRTHDAY: 'BIRTHDAY',
-  MEMBER_ONLY: 'MEMBER_ONLY',
+  COUPON: 'COUPON',
+  CAMPAIGN: 'CAMPAIGN',
+  POINTS: 'POINTS',
 }
 
 export const PROMOTION_TYPE_LABELS = {
-  VOUCHER: 'Voucher',
-  FLASH_SALE: 'Flash Sale',
-  COMBO: 'Combo bắp nước',
-  MOVIE_SPECIFIC: 'Theo phim',
-  BIRTHDAY: 'Sinh nhật',
-  MEMBER_ONLY: 'Hội viên',
+  COUPON: 'Voucher (nhập mã)',
+  CAMPAIGN: 'Tự động áp dụng (Campaign)',
+  POINTS: 'Đổi điểm lấy voucher',
 }
 
 export const DISCOUNT_TYPES = {
@@ -160,9 +155,9 @@ export const PROMOTION_STATUS_LABELS = {
 }
 
 export const PROMOTION_STATUS_COLORS = {
-  ACTIVE: 'bg-green-500/20 text-green-300 border-green-500/30',
-  EXPIRED: 'bg-red-500/20 text-red-300 border-red-500/30',
-  DISABLED: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30',
+  ACTIVE: 'bg-emerald-500 text-white border-emerald-300 shadow-sm shadow-emerald-500/30',
+  EXPIRED: 'bg-red-500 text-white border-red-300 shadow-sm shadow-red-500/30',
+  DISABLED: 'bg-amber-500 text-white border-amber-300 shadow-sm shadow-amber-500/30',
 }
 
 /**

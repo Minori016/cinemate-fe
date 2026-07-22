@@ -13,11 +13,11 @@ const variantClasses = {
   ghost:
     'bg-transparent text-[var(--color-text-muted)] hover:text-white hover:bg-white/5',
   danger:
-    'bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600/50 hover:text-red-200 hover:border-red-400/60',
+    'bg-red-600 text-white border border-red-300/70 hover:bg-red-500 hover:border-red-200 shadow-md shadow-red-500/40',
   success:
-    'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 hover:bg-emerald-500/25',
+    'bg-emerald-500 text-white border border-emerald-300/70 hover:bg-emerald-400 hover:border-emerald-200 shadow-md shadow-emerald-500/40',
   info:
-    'bg-blue-500/20 text-blue-300 border border-blue-400/30 hover:bg-blue-600/50 hover:text-blue-100 hover:border-blue-400/60',
+    'bg-blue-600 text-white border border-blue-300/70 hover:bg-blue-500 hover:border-blue-200 shadow-md shadow-blue-500/40',
 }
 
 const sizeClasses = {
