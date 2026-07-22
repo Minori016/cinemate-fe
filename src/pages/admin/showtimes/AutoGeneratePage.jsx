@@ -345,8 +345,8 @@ export default function AutoGeneratePage() {
   const handleMovieToggle = (id) => {
     setForm(prev => {
       const isSelected = prev.movies.some(m => m.movieId === id);
-      if (!isSelected && prev.movies.length >= 3) {
-        toast.error('Chỉ được tạo tự động tối đa 3 phim 1 lần!', { id: 'max-movies-error' });
+      if (!isSelected && prev.movies.length >= 5) {
+        toast.error('Chỉ được tạo tự động tối đa 5 phim 1 lần!', { id: 'max-movies-error' });
         return prev;
       }
       
@@ -417,7 +417,7 @@ export default function AutoGeneratePage() {
           ...m,
           ratios: {
             ...(m.ratios || {}),
-            [format]: value === '' ? '' : Math.max(1, Math.min(5, parseInt(value) || 1))
+            [format]: value === '' ? '' : Math.max(1, Math.min(3, parseInt(value) || 1))
           }
         };
       })
@@ -451,8 +451,8 @@ export default function AutoGeneratePage() {
       return
     }
 
-    if (form.movies.length > 3) {
-      setError('Chỉ được tạo tự động tối đa 3 phim 1 lần!')
+    if (form.movies.length > 5) {
+      setError('Chỉ được tạo tự động tối đa 5 phim 1 lần!')
       return
     }
     
@@ -489,6 +489,7 @@ export default function AutoGeneratePage() {
     
     setLoading(true)
     setError(null)
+
     try {
       // Find the first room that has a valid cinema ID
       const validRoom = rooms.find(r => r.cinemaId || r.cinema?.id);
@@ -597,6 +598,17 @@ export default function AutoGeneratePage() {
   return (
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 min-h-[calc(100vh-80px)] overflow-y-auto">
       
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-[#f7f9fb]/80 z-[1000] flex items-center justify-center backdrop-blur-md">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex flex-col items-center border border-[#e0e3e5]">
+            <div className="w-16 h-16 mb-4 rounded-full border-4 border-[#ffdad6] border-t-[#b80035] animate-spin"></div>
+            <h3 className="text-[18px] font-bold text-[#191c1e] mb-2 text-center">Đang xử lý</h3>
+            <p className="text-[13px] text-[#5c647a] text-center">Vui lòng chờ trong khi hệ thống đang phân bổ suất chiếu...</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-8 shrink-0">
         <div>
@@ -804,10 +816,8 @@ export default function AutoGeneratePage() {
                                             title="Trọng số cho định dạng này"
                                           >
                                             <option value={1}>1 (Thấp)</option>
-                                            <option value={2}>2</option>
-                                            <option value={3}>3 (Vừa)</option>
-                                            <option value={4}>4</option>
-                                            <option value={5}>5 (Cao)</option>
+                                            <option value={2}>2 (Vừa)</option>
+                                            <option value={3}>3 (Cao)</option>
                                           </select>
                                         </div>
                                       )}
