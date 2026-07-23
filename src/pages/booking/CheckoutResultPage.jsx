@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { paymentService } from '../../services/paymentService'
 import { bookingService } from '../../services/bookingService'
+import { QRCodeSVG } from 'qrcode.react'
 
 export default function CheckoutResultPage() {
   const [params] = useSearchParams()
@@ -319,9 +320,12 @@ export default function CheckoutResultPage() {
                     </div>
 
                     <div className="flex flex-col items-center shrink-0 bg-white p-2 rounded-xl border-2 border-red-600 shadow-md">
-                      <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${bookingDetails.id}&bgcolor=ffffff&color=000000`} 
-                        alt="Mã QR Soát Vé" 
+                      <QRCodeSVG 
+                        value={bookingDetails.id} 
+                        size={96}
+                        bgColor="#ffffff"
+                        fgColor="#000000"
+                        level="M"
                         className="w-24 h-24 block" 
                       />
                       <span className="text-[9px] text-gray-800 font-mono font-bold mt-1 tracking-tighter">

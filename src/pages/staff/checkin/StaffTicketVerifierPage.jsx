@@ -5,150 +5,119 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  Ticket as TicketIcon
+  Ticket as TicketIcon,
+  QrCode
 } from 'lucide-react'
-
-// Fallback initial bookings
-const INITIAL_BOOKINGS = [
-  {
-    id: 'CM-1718556391',
-    movie: 'Dune: Hành Tinh Cát - Phần 2',
-    screen: 'Phòng chiếu 3 (IMAX)',
-    date: '17/06/2026',
-    time: '18:30',
-    seats: 'D4, D5',
-    customerName: 'Nguyễn Văn Anh',
-    phone: '0912345678',
-    email: 'vananh@gmail.com',
-    price: 120000,
-    total: 240000,
-    convertTickets: 0,
-    scoreUsed: 0,
-    memberId: 'MEM-889922',
-    idCard: '012345678901',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-9988112233',
-    movie: 'Lật Mặt 7: Một Điều Ước',
-    screen: 'Phòng chiếu 1 (Standard)',
-    date: '17/06/2026',
-    time: '20:15',
-    seats: 'H12, H13, H14',
-    customerName: 'Trần Thị Bình',
-    phone: '0987654321',
-    email: 'thibinh@gmail.com',
-    price: 110000,
-    total: 330000,
-    convertTickets: 2,
-    scoreUsed: 2000,
-    memberId: 'MEM-445511',
-    idCard: '023456789012',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-5566778899',
-    movie: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc',
-    screen: 'Phòng chiếu 2 (3D)',
-    date: '17/06/2026',
-    time: '17:00',
-    seats: 'C1, C2',
-    customerName: 'Lê Văn Cường',
-    phone: '0933445566',
-    email: 'vancuong@gmail.com',
-    price: 90000,
-    total: 180000,
-    convertTickets: 1,
-    scoreUsed: 1000,
-    memberId: 'MEM-332211',
-    idCard: '034567890123',
-    status: 'Đã thanh toán',
-    checkedIn: true,
-    checkInTime: '17/06/2026 - 16:48'
-  }
-]
+import { Html5QrcodeScanner } from 'html5-qrcode'
+import { bookingService } from '../../../services/bookingService'
 
 export default function StaffTicketVerifierPage() {
-  const [scannedCount, setScannedCount] = useState(0)
-  const [bookings, setBookings] = useState([])
   const [query, setQuery] = useState('')
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [toast, setToast] = useState(null)
-
-  // Load state from localStorage on mount
-  useEffect(() => {
-    const savedScanned = localStorage.getItem('staff_scanned_count')
-    setScannedCount(savedScanned ? parseInt(savedScanned, 10) : 128)
-
-    const savedBookings = localStorage.getItem('staff_bookings_db')
-    setBookings(savedBookings ? JSON.parse(savedBookings) : INITIAL_BOOKINGS)
-  }, [])
-
-  // Sync back to localStorage
-  const syncBookings = (newBookings) => {
-    setBookings(newBookings)
-    localStorage.setItem('staff_bookings_db', JSON.stringify(newBookings))
-  }
-
-  const syncScannedCount = (newCount) => {
-    setScannedCount(newCount)
-    localStorage.setItem('staff_scanned_count', newCount.toString())
-  }
+  const [isScanning, setIsScanning] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const triggerToast = (msg, type = 'success') => {
     setToast({ text: msg, type })
     setTimeout(() => setToast(null), 3500)
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (!query.trim()) return
-
-    const trimmed = query.trim().toUpperCase()
-    const match = bookings.find(
-      (b) =>
-        b.id.toUpperCase() === trimmed ||
-        b.phone === trimmed ||
-        b.customerName.toUpperCase().includes(trimmed)
+  useEffect(() => {
+    if (!isScanning) return
+    
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
     )
 
-    if (match) {
-      setSelectedTicket(match)
-    } else {
+    scanner.render(
+      (decodedText) => {
+        setQuery(decodedText)
+        scanner.clear()
+        setIsScanning(false)
+        fetchTicket(decodedText)
+      },
+      (error) => {
+        // scan errors can be ignored
+      }
+    )
+
+    return () => {
+      scanner.clear().catch(console.error)
+    }
+  }, [isScanning])
+
+  const fetchTicket = async (ticketId) => {
+    try {
+      setLoading(true)
+      const res = await bookingService.getById(ticketId)
+      if (res.data.result) {
+        const b = res.data.result
+        setSelectedTicket({
+          id: b.id,
+          movie: b.movieName,
+          screen: b.roomName,
+          date: b.date,
+          time: b.showtime,
+          seats: (b.seatNames || []).join(', '),
+          customerName: 'Khách hàng',
+          phone: 'N/A',
+          email: 'N/A',
+          idCard: 'N/A',
+          memberId: 'N/A',
+          price: (b.totalAmount || 0) / Math.max(1, (b.seatNames || []).length),
+          total: b.totalAmount || 0,
+          convertTickets: 0,
+          scoreUsed: 0,
+          status: b.status,
+          checkedIn: b.status === 'CHECKED_IN',
+          checkInTime: null
+        })
+        if (b.status === 'CHECKED_IN') {
+           triggerToast('Vé này đã được check-in trước đó!', 'error')
+        } else {
+           triggerToast('Tìm thấy vé hợp lệ!', 'success')
+        }
+      } else {
+        setSelectedTicket(null)
+        triggerToast('Không tìm thấy vé khớp với thông tin!', 'error')
+      }
+    } catch (error) {
       setSelectedTicket(null)
-      triggerToast('Không tìm thấy vé khớp với thông tin tìm kiếm!', 'error')
+      triggerToast(error.response?.data?.message || 'Lỗi khi tìm vé!', 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleCheckIn = () => {
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (!query.trim()) return
+    fetchTicket(query.trim())
+  }
+
+  const handleCheckIn = async () => {
     if (!selectedTicket) return
-
-    const updated = bookings.map((b) => {
-      if (b.id === selectedTicket.id) {
-        const timeNow = new Date()
-        const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
-        return {
-          ...b,
-          checkedIn: true,
-          checkInTime: formattedTime
-        }
-      }
-      return b
-    })
-
-    syncBookings(updated)
-    
-    // Update active view
-    const match = updated.find((b) => b.id === selectedTicket.id)
-    setSelectedTicket(match)
-
-    // Increment scanned counter
-    syncScannedCount(scannedCount + 1)
-    triggerToast(`Đã xác nhận check-in thành công cho vé ${selectedTicket.id}!`)
+    try {
+      setLoading(true)
+      await bookingService.checkIn(selectedTicket.id)
+      
+      const timeNow = new Date()
+      const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
+      
+      setSelectedTicket({
+        ...selectedTicket,
+        checkedIn: true,
+        checkInTime: formattedTime
+      })
+      triggerToast(`Đã xác nhận check-in thành công cho vé ${selectedTicket.id}!`, 'success')
+    } catch (error) {
+      triggerToast(error.response?.data?.message || 'Có lỗi xảy ra khi check-in!', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
@@ -189,12 +158,12 @@ export default function StaffTicketVerifierPage() {
       </div>
 
       {/* Search Input Box */}
-      <form onSubmit={handleSearch} className="flex gap-3">
+      <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" size={20} />
           <input
             type="text"
-            placeholder="Ví dụ: CM-1718556391 hoặc 0912345678"
+            placeholder="Nhập mã đặt vé (Booking ID) thủ công..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl py-4 pl-12 pr-4 outline-none text-white text-base focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all placeholder:text-gray-600"
@@ -202,12 +171,31 @@ export default function StaffTicketVerifierPage() {
         </div>
         <button
           type="submit"
-          className="bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold px-8 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-[rgba(229,9,20,0.25)]"
+          disabled={loading}
+          className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-8 py-4 md:py-0 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg"
         >
-          <Search size={18} />
+          {loading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <Search size={18} />}
           Tìm kiếm
         </button>
+        <button
+          type="button"
+          onClick={() => setIsScanning(!isScanning)}
+          className="bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold px-8 py-4 md:py-0 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[rgba(229,9,20,0.25)]"
+        >
+          <QrCode size={18} />
+          {isScanning ? 'Đóng Camera' : 'Quét QR'}
+        </button>
       </form>
+
+      {/* QR Scanner */}
+      {isScanning && (
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 flex flex-col items-center">
+          <div id="qr-reader" className="w-full max-w-sm rounded-2xl overflow-hidden bg-black text-black"></div>
+          <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+            Đưa mã QR vé của khách vào giữa khung hình để quét.
+          </p>
+        </div>
+      )}
 
       {/* Ticket Details Panel */}
       {selectedTicket ? (
@@ -366,16 +354,18 @@ export default function StaffTicketVerifierPage() {
                 {/* Confirm Action Button */}
                 {selectedTicket.checkedIn ? (
                   <button
-                    disabled
-                    className="w-full bg-slate-800 text-gray-500 font-bold py-3.5 rounded-2xl text-sm border border-white/5 cursor-not-allowed"
+                    disabled={loading || selectedTicket.checkedIn}
+                    className="w-full bg-slate-800 text-gray-500 font-bold py-3.5 rounded-2xl text-sm border border-white/5 cursor-not-allowed flex justify-center items-center gap-2"
                   >
                     Đã kiểm tra vé
                   </button>
                 ) : (
                   <button
                     onClick={handleCheckIn}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg shadow-emerald-500/20 border border-emerald-500/10 active:scale-[0.98] transition-all"
+                    disabled={loading}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg shadow-emerald-500/20 border border-emerald-500/10 active:scale-[0.98] transition-all flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
                     Xác nhận vào phòng
                   </button>
                 )}
@@ -397,7 +387,7 @@ export default function StaffTicketVerifierPage() {
             Đang đợi thông tin quét vé...
           </h4>
           <p className="text-sm text-[var(--color-text-muted)] max-w-sm mx-auto mt-2">
-            Nhập Booking ID hợp lệ (ví dụ: <strong className="text-gray-400">CM-1718556391</strong> hoặc <strong className="text-gray-400">CM-9988112233</strong>) ở thanh tìm kiếm để tra cứu thông tin vé.
+            Quét mã QR trên vé của khách hoặc nhập ID thủ công ở thanh tìm kiếm để tra cứu thông tin vé.
           </p>
         </div>
       )}
