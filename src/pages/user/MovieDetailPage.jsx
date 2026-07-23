@@ -458,19 +458,27 @@ export default function MovieDetailPage() {
 
   const getSeatLabel = (seatId) => seatMetaMap[seatId]?.label || seatId
 
-  const toggleSeat = async (seatId, meta = {}) => {
-    if (processingSeats.includes(seatId)) return;
+  const processingSeatsRef = useRef(processingSeats)
+  const selectedSeatsRef = useRef(selectedSeats)
+  
+  useEffect(() => {
+    processingSeatsRef.current = processingSeats
+    selectedSeatsRef.current = selectedSeats
+  }, [processingSeats, selectedSeats])
+
+  const toggleSeat = useCallback(async (seatId, meta = {}) => {
+    if (processingSeatsRef.current.includes(seatId)) return;
 
     setProcessingSeats(prev => [...prev, seatId]);
-    const isCurrentlySelected = selectedSeats.includes(seatId);
+    const isCurrentlySelected = selectedSeatsRef.current.includes(seatId);
 
     try {
       if (!isCurrentlySelected) {
         // Optimistically try to lock the seat via API
-        await bookingService.lockSeats(selectedShowtime.id, [seatId]);
+        await bookingService.lockSeats(selectedShowtime?.id, [seatId]);
       } else {
         // Unlock seat via API
-        await bookingService.unlockSeat(selectedShowtime.id, seatId);
+        await bookingService.unlockSeat(selectedShowtime?.id, seatId);
       }
       
       setSelectedSeats(prev => {
@@ -501,7 +509,18 @@ export default function MovieDetailPage() {
     } finally {
       setProcessingSeats(prev => prev.filter(id => id !== seatId));
     }
-  }
+  }, [selectedShowtime?.id]);
+
+  // Method to restore seats without calling lock API
+  useEffect(() => {
+    toggleSeat.restore = (seatsToRestore) => {
+      setSelectedSeats(prev => {
+        const missing = seatsToRestore.filter(id => !prev.includes(id));
+        if (missing.length > 0) return [...prev, ...missing];
+        return prev;
+      });
+    };
+  }, [toggleSeat]);
 
   // Lưu trạng thái đặt vé trước khi bắt đăng nhập (để restore sau login)
   const savePendingBooking = (nextStep) => {

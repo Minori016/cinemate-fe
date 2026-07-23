@@ -145,16 +145,16 @@ export default function SeatStep({
         const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
         setRealSeatMap(seats)
 
-        // Restore own locked seats into selected state (fixes F5 self-lock bug)
+        // Do NOT call toggleSeat here as it calls the lock API again,
+        // which fails and causes an infinite loop!
+        // We will expose a new prop onRestoreSeats to just update the local selected seats.
         const ownLockedSeats = seats
           .filter(s => s.lockedByCurrentUser && String(s.status || '').toUpperCase() === 'HELD')
           .map(s => s.seatId)
-        if (ownLockedSeats.length > 0) {
-          ownLockedSeats.forEach(seatId => {
-            if (!selectedSeats.includes(seatId)) {
-              toggleSeat(seatId, {})
-            }
-          })
+        
+        if (ownLockedSeats.length > 0 && typeof opts.onRestoreSeats === 'function') {
+          // toggleSeat.restore will handle filtering out already selected seats via React state setter
+          opts.onRestoreSeats(ownLockedSeats)
         }
       }
     } catch {
@@ -162,13 +162,19 @@ export default function SeatStep({
     } finally {
       if (opts.showLoading) setLoadingSeats(false)
     }
-  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room, selectedSeats, toggleSeat])
+  }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room])
 
   useEffect(() => {
-    loadLayout({ showLoading: true })
-    const pollId = window.setInterval(() => loadLayout(), 10000)
+    // Pass a callback to restore seats locally
+    const handleRestore = (seats) => {
+      if (typeof toggleSeat === 'function' && toggleSeat.restore) {
+        toggleSeat.restore(seats)
+      }
+    }
+    loadLayout({ showLoading: true, onRestoreSeats: handleRestore })
+    const pollId = window.setInterval(() => loadLayout({ onRestoreSeats: handleRestore }), 10000)
     return () => window.clearInterval(pollId)
-  }, [loadLayout])
+  }, [loadLayout, toggleSeat])
 
   // Cleanup Redis locks on unmount
   useEffect(() => {
