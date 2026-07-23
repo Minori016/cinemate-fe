@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, AnimatePresence } from 'motion/react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../../components/layout/Navbar'
 import Footer from '../../components/layout/Footer'
@@ -190,12 +190,6 @@ export default function AuthPage() {
   const showRegisterForm = mode === 'register' && !showSuccess
   const showForgotForm = mode === 'forgot'
 
-  // Calculate orders and initial x offsets for swap animation
-  const brandingOrder = mode === 'login' ? 1 : 2
-  const formOrder = mode === 'login' ? 2 : 1
-  const initialXBranding = mode === 'login' ? -50 : 50
-  const initialXForm = mode === 'login' ? 50 : -50
-
   return (
     <>
       <Navbar />
@@ -208,13 +202,11 @@ export default function AuthPage() {
         </div>
 
         <div className="relative z-10 grid min-h-[calc(100vh-4rem)] lg:grid-cols-[1.05fr_1fr] max-w-6xl mx-auto w-full px-4 md:px-12 gap-8 lg:gap-16">
-          {/* Branding panel */}
+          {/* Branding panel - Always on the Left */}
           <motion.aside
-            layout
-            initial={{ x: initialXBranding }}
-            animate={{ x: 0 }}
-            style={{ order: brandingOrder }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="relative hidden lg:flex flex-col justify-between overflow-hidden"
           >
             <div className="relative z-10 flex flex-col justify-between h-full py-12 lg:py-16">
@@ -239,13 +231,11 @@ export default function AuthPage() {
             </div>
           </motion.aside>
 
-          {/* Form panel */}
+          {/* Form panel - Always on the Right */}
           <motion.section
-            layout
-            initial={{ x: initialXForm }}
-            animate={{ x: 0 }}
-            style={{ order: formOrder, backgroundColor: 'transparent' }}
-            transition={{ duration: 0.6, ease: 'easeInOut' }}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
             className="relative flex items-center justify-center py-12 lg:py-16"
           >
             <div className="relative z-10 w-full flex flex-col" style={{ maxWidth: '460px' }}>
@@ -255,6 +245,14 @@ export default function AuthPage() {
               </div>
 
               <div className="w-full rounded-2xl" style={{ backgroundColor: 'rgba(30,30,45,0.35)', border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 2px 0 rgba(255,255,255,0.06) inset, 0 16px 48px rgba(0,0,0,0.35), 0 0 0 1px rgba(229,9,20,0.10)', backdropFilter: 'blur(28px)', padding: '40px 36px 32px' }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={showSuccess ? 'success' : mode}
+                    initial={{ opacity: 0, y: 12, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  >
 
                 {/* Header */}
                 <div className="mb-7">
@@ -467,6 +465,8 @@ export default function AuthPage() {
                     </p>
                   </div>
                 )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
           </motion.section>

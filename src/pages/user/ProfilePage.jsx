@@ -181,10 +181,23 @@ export default function ProfilePage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const resolveTab = (tab) => {
+    if (tab === 'tickets' || tab === 'booked') return 'booked'
+    return tab || 'info'
+  }
+
   const [profile, setProfile] = useState(null)
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
+  const [activeTab, setActiveTab] = useState(resolveTab(location.state?.activeTab))
   const [bookings, setBookings] = useState([])
   const [moviePosters, setMoviePosters] = useState({})
+
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      const targetTab = resolveTab(location.state.activeTab)
+      setActiveTab(targetTab)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [location.state])
 
   // Fetch movie posters map
   useEffect(() => {
