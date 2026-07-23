@@ -295,7 +295,7 @@ export default function SeatSelectionPage() {
         websocketService.connect(() => {
           if (cancelled) return;
           websocketService.subscribeToSeatMap(matched.id, (message) => {
-            if (message && message.type === 'SEAT_MAP_UPDATED') {
+            if (message && message.type === 'SEAT_MAP_UPDATED' && message.eventType !== 'HEARTBEAT') {
               // Nhận tín hiệu -> Gọi API lấy seat map mới
               bookingService.getSeatMap(matched.id).then(res => {
                 if (!cancelled) {

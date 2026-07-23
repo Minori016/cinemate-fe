@@ -172,8 +172,6 @@ export default function SeatStep({
       }
     }
     loadLayout({ showLoading: true, onRestoreSeats: handleRestore })
-    const pollId = window.setInterval(() => loadLayout({ onRestoreSeats: handleRestore }), 10000)
-    return () => window.clearInterval(pollId)
   }, [loadLayout, toggleSeat])
 
   // Cleanup Redis locks on unmount
@@ -192,7 +190,7 @@ export default function SeatStep({
     let isSubscribed = false
     websocketService.connect(() => {
       websocketService.subscribeToSeatMap(selectedShowtime.id, (message) => {
-        if (message && message.type === 'SEAT_MAP_UPDATED') {
+        if (message && message.type === 'SEAT_MAP_UPDATED' && message.eventType !== 'HEARTBEAT') {
           // Fetch the layout again instantly without showing full loading
           loadLayout({ showLoading: false })
         }
