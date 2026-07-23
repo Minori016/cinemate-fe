@@ -17,6 +17,14 @@ const PUBLIC_URLS = [
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
 
+  // Gắn Guest ID duy nhất cho người dùng vãng lai chưa đăng nhập
+  let guestId = localStorage.getItem('guest_id')
+  if (!guestId) {
+    guestId = 'guest_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
+    localStorage.setItem('guest_id', guestId)
+  }
+  config.headers['X-Guest-ID'] = guestId
+
   // Chỉ gắn token nếu không phải là các URL public
   const isPublic = PUBLIC_URLS.some(url => config.url.includes(url));
 
