@@ -171,6 +171,7 @@ export default function SeatSelectionPage() {
 
     try {
       setIsHolding(true)
+      const isUuid = (str) => typeof str === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
       const validSeatIds = selected.map(id => {
         if (isUuid(id)) return id;
@@ -186,22 +187,31 @@ export default function SeatSelectionPage() {
         return id;
       }).filter(isUuid);
 
-      if (validSeatIds.length === 0) {
+      if (validSeatIds.length === 0 && selected.length > 0) {
         alert('Phòng chiếu của suất chiếu này chưa được khởi tạo ghế trong cơ sở dữ liệu. Vui lòng chọn suất chiếu khác.');
         setIsHolding(false);
         return;
       }
 
-      const validConcessions = Object.entries(selectedCombos)
-        .filter(([id, qty]) => qty > 0 && isUuid(id))
-        .map(([id, qty]) => ({ comboId: id, quantity: Number(qty) }));
+      const concessionsPayload = Object.entries(selectedCombos)
+        .filter(([_, qty]) => qty > 0)
+        .map(([idStr, qty]) => {
+          const matchedItem = combos.find(c => String(c.id) === String(idStr))
+          const isCombo = matchedItem?.itemType === 'combo' || matchedItem?.category === 'combo'
+          if (isUuid(idStr)) {
+            return isCombo
+              ? { comboId: idStr, quantity: qty }
+              : { productId: idStr, quantity: qty }
+          }
+          return { concessionId: idStr, quantity: qty }
+        })
 
       const payload = {
-        showtimeId: matchedShowtime.id,
-        seatIds: validSeatIds,
-      };
-      if (validConcessions.length > 0) {
-        payload.concessions = validConcessions;
+        showtimeId: matchedShowtime?.id || seatLayout?.showtimeId,
+        seatIds: validSeatIds.length > 0 ? validSeatIds : selected,
+      }
+      if (concessionsPayload.length > 0) {
+        payload.concessions = concessionsPayload
       }
 
       const res = await bookingService.holdSeats(payload)

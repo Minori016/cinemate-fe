@@ -9,6 +9,7 @@ import {
   computePromotionStatus,
   formatDiscountValue,
   getDaysRemaining,
+  unwrapList,
 } from '../../../services/promotionService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
@@ -33,8 +34,8 @@ export default function PromotionListPage() {
     setLoading(true)
     promotionService.getAll(search ? { search } : {})
       .then(res => {
-        const data = res.data?.result || res.data || []
-        setPromotions(Array.isArray(data) ? data : [])
+        const data = unwrapList(res.data)
+        setPromotions(data)
       })
       .catch(err => {
         console.error('Lỗi tải danh sách khuyến mãi:', err)
@@ -84,7 +85,7 @@ export default function PromotionListPage() {
     return promotions.filter(p => {
       const status = computePromotionStatus(p)
       if (statusFilter !== 'ALL' && status !== statusFilter) return false
-      if (typeFilter !== 'ALL' && p.type !== typeFilter) return false
+      if (typeFilter !== 'ALL' && p.promotionType !== typeFilter) return false
       return true
     })
   }, [promotions, typeFilter, statusFilter])
@@ -114,12 +115,12 @@ export default function PromotionListPage() {
       key: 'title',
       label: 'Tiêu đề',
       render: r => (
-        <div className="font-bold text-[var(--color-on-surface)] max-w-[240px]">
+        <div className="font-extrabold text-[15px] !text-slate-900 max-w-[260px] leading-tight">
           <div className="truncate" title={r.title}>{r.title}</div>
           {r.code && (
-            <div className="flex items-center gap-1 mt-1">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-[10px] font-mono font-bold uppercase tracking-wider">
-                <Tag size={10} />
+            <div className="flex items-center gap-1 mt-1.5">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-amber-400 text-black border-2 border-amber-200 text-[11px] font-mono font-extrabold uppercase tracking-wider shadow-md shadow-amber-500/40">
+                <Tag size={11} strokeWidth={2.5} className="text-black" />
                 {r.code}
               </span>
             </div>
@@ -131,8 +132,8 @@ export default function PromotionListPage() {
       key: 'type',
       label: 'Loại KM',
       render: r => (
-        <span className="px-2 py-1 rounded-md bg-white/5 border border-white/10 text-[var(--color-text-muted)] text-xs font-semibold whitespace-nowrap">
-          {PROMOTION_TYPE_LABELS[r.type] || 'Voucher'}
+        <span className="px-2.5 py-1 rounded-md bg-slate-200 text-slate-900 text-xs font-extrabold whitespace-nowrap shadow-sm">
+          {PROMOTION_TYPE_LABELS[r.promotionType] || PROMOTION_TYPE_LABELS[r.type] || 'Voucher'}
         </span>
       )
     },

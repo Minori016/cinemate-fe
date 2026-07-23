@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react'
-import { motion } from 'motion/react'
-import { Plus, Minus, Ticket, Check } from 'lucide-react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import { Plus, Minus, Ticket, Check, ChevronDown, ChevronUp, Sparkles, Coffee } from 'lucide-react'
+import { FALLBACK_COMBOS, groupConcessionsByBaseName, DEFAULT_COMBO_OPTIONS } from '../../../../services/concessionService'
 import { promotionService, getQuickDiscountText } from '../../../../services/promotionService'
 
 export default function ComboStep({
@@ -19,6 +20,15 @@ export default function ComboStep({
   const [promoSuccess, setPromoSuccess] = useState(discount > 0 ? 'Đã áp dụng thành công!' : '')
   const [applying, setApplying] = useState(false)
   const [activePromos, setActivePromos] = useState([])
+  
+  // Track selected size variant per product family: { [groupBaseId]: sizeKey }
+  const [selectedSizesMap, setSelectedSizesMap] = useState({})
+  
+  // Track expanded accordion state for combo details: { [comboId]: boolean }
+  const [expandedCombos, setExpandedCombos] = useState({})
+  
+  // Track customizable options for sub-items in combo: { [comboId]: { [subItemId]: { flavor, size } } }
+  const [comboCustomizations, setComboCustomizations] = useState({})
 
   useEffect(() => {
     let cancelled = false
@@ -29,6 +39,28 @@ export default function ComboStep({
       .catch(() => { if (!cancelled) setActivePromos([]) })
     return () => { cancelled = true }
   }, [])
+
+  // Group raw combos/products so multi-size items occupy only 1 single card
+  const groupedProducts = useMemo(() => {
+    return groupConcessionsByBaseName(combos)
+  }, [combos])
+
+  const toggleExpandCombo = (comboId) => {
+    setExpandedCombos(prev => ({ ...prev, [comboId]: !prev[comboId] }))
+  }
+
+  const handleSubItemOptionChange = (comboId, subItemId, key, value) => {
+    setComboCustomizations(prev => ({
+      ...prev,
+      [comboId]: {
+        ...(prev[comboId] || {}),
+        [subItemId]: {
+          ...(prev[comboId]?.[subItemId] || {}),
+          [key]: value
+        }
+      }
+    }))
+  }
 
   const handleApply = async () => {
     setPromoError('')
@@ -46,7 +78,6 @@ export default function ComboStep({
         return
       }
 
-      // Parent onApplyPromo(code, val): val < 1 = percent ratio, val >= 1 = fixed VND
       let applyVal = 0
       if (result.discountPercent != null && Number(result.discountPercent) > 0) {
         applyVal = Number(result.discountPercent) / 100
@@ -91,61 +122,185 @@ export default function ComboStep({
             <div className="flex justify-center py-8">
               <span className="material-symbols-outlined animate-spin text-3xl text-red-500">progress_activity</span>
             </div>
-          ) : combos.length === 0 ? (
-            <p className="text-sm text-gray-500 italic py-4 text-center">Hiện chưa có combo bắp nước.</p>
-          ) : combos.map(combo => {
-            const qty = selectedCombos[combo.id] || 0
-            const hasImg = combo.img && (String(combo.img).startsWith('http') || String(combo.img).startsWith('/') || String(combo.img).startsWith('data:'))
+          ) : groupedProducts.length === 0 ? (
+            <p className="text-sm text-gray-500 italic py-4 text-center">Hiện chưa có bắp nước.</p>
+          ) : groupedProducts.map(prod => {
+            const isCombo = prod.itemType === 'combo'
+            const currentSizeKey = selectedSizesMap[prod.id] || prod.sizes?.[0]?.key || 'STANDARD'
+            const currentSizeObj = prod.sizes?.find(s => s.key === currentSizeKey) || prod.sizes?.[0]
+            const activeVariantId = currentSizeObj?.variantId || prod.id
+            const activePrice = currentSizeObj?.price || prod.price
+            const qty = selectedCombos[activeVariantId] || 0
+            const isExpanded = !!expandedCombos[prod.id]
+            const hasImg = prod.img && (String(prod.img).startsWith('http') || String(prod.img).startsWith('/') || String(prod.img).startsWith('data:'))
+
             return (
               <div
-                key={combo.id}
-                className="flex items-center gap-4 bg-white/5 border border-white/10 rounded-2xl p-4 transition-all duration-300 hover:border-white/20"
+                key={prod.id}
+                className="bg-white/5 border border-white/10 rounded-2xl p-4 transition-all duration-300 hover:border-white/20 flex flex-col gap-3"
               >
-                {hasImg ? (
-                  <img
-                    src={combo.img}
-                    alt={combo.name}
-                    className="w-20 h-20 rounded-xl object-cover border border-white/5 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-4xl flex-shrink-0 select-none">
-                    {combo.img || '🍿'}
-                  </div>
-                )}
-                <div className="flex-grow">
-                  <h4 className="text-white font-bold text-base mb-1">{combo.name}</h4>
-                  <p className="text-xs text-gray-400 mb-2 leading-relaxed">{combo.desc}</p>
-                  {combo.category && (
-                    <span className="inline-block text-[10px] uppercase tracking-wider text-gray-500 mb-1 mr-2">
-                      {combo.category}
-                    </span>
+                <div className="flex items-center gap-4">
+                  {hasImg ? (
+                    <img
+                      src={prod.img}
+                      alt={prod.name}
+                      className="w-20 h-20 rounded-xl object-cover border border-white/5 flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center text-4xl flex-shrink-0 select-none">
+                      {prod.img || (isCombo ? '🎒' : '🍿')}
+                    </div>
                   )}
-                  <span className="text-red-500 font-extrabold text-sm">
-                    {Number(combo.price).toLocaleString('vi-VN')} đ
-                  </span>
+
+                  <div className="flex-grow min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-white font-bold text-base">{prod.name}</h4>
+                      {isCombo && (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                          Combo Gói
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-gray-400 mb-2 leading-relaxed line-clamp-2">{prod.desc}</p>
+
+                    {/* Size selector pills if multi-size product */}
+                    {!isCombo && prod.sizes && prod.sizes.length > 1 && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] text-gray-400 font-bold uppercase">Size:</span>
+                        <div className="flex gap-1.5">
+                          {prod.sizes.map(s => {
+                            const isSelected = s.key === currentSizeKey
+                            return (
+                              <button
+                                key={s.key}
+                                type="button"
+                                onClick={() => setSelectedSizesMap(prev => ({ ...prev, [prod.id]: s.key }))}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                                }`}
+                              >
+                                {s.label} ({Number(s.price).toLocaleString('vi-VN')}đ)
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-red-500 font-extrabold text-sm">
+                        {Number(activePrice).toLocaleString('vi-VN')} đ
+                      </span>
+
+                      {/* Accordion toggle button for Combos */}
+                      {isCombo && (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpandCombo(prod.id)}
+                          className="flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:text-yellow-300 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-lg transition-all cursor-pointer shadow-xs"
+                        >
+                          <Sparkles size={13} className="text-yellow-400 animate-pulse" />
+                          <span>{isExpanded ? 'Thu gọn chi tiết' : 'Chọn vị bắp & loại nước'}</span>
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Quantity Counter */}
+                  <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-xl p-1 shrink-0">
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => onChangeCombo(activeVariantId, -1)}
+                      disabled={qty === 0}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed border-none cursor-pointer"
+                    >
+                      <Minus size={14} />
+                    </motion.button>
+                    <span className="w-6 text-center text-white font-extrabold text-sm select-none">
+                      {qty}
+                    </span>
+                    <motion.button
+                      whileTap={{ scale: 0.85 }}
+                      onClick={() => {
+                        onChangeCombo(activeVariantId, 1)
+                        setExpandedCombos(prev => ({ ...prev, [prod.id]: true }))
+                      }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white bg-white/5 hover:bg-white/10 border-none cursor-pointer"
+                    >
+                      <Plus size={14} />
+                    </motion.button>
+                  </div>
                 </div>
 
-                {/* Quantity counters */}
-                <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-xl p-1 shrink-0">
-                  <motion.button
-                    whileTap={{ scale: 0.85 }}
-                    onClick={() => onChangeCombo(combo.id, -1)}
-                    disabled={qty === 0}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed border-none cursor-pointer"
+                {/* Expandable Combo Sub-Items Detail Section */}
+                {isCombo && (isExpanded || qty > 0) && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="border-t border-white/10 pt-3 mt-1 space-y-3 bg-black/40 p-3.5 rounded-xl"
                   >
-                    <Minus size={14} />
-                  </motion.button>
-                  <span className="w-6 text-center text-white font-extrabold text-sm select-none">
-                    {qty}
-                  </span>
-                  <motion.button
-                    whileTap={{ scale: 0.85 }}
-                    onClick={() => onChangeCombo(combo.id, 1)}
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white bg-white/5 hover:bg-white/10 border-none cursor-pointer"
-                  >
-                    <Plus size={14} />
-                  </motion.button>
-                </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-extrabold uppercase text-yellow-400 tracking-wider flex items-center gap-1.5">
+                        <Coffee size={15} className="text-yellow-400" /> Tùy chọn khẩu phần & vị từng món trong Combo:
+                      </p>
+                      <span className="text-[10px] text-gray-400 font-medium italic">
+                        (Khách hàng tùy chọn vị bắp & loại nước ngọt theo ý thích)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {((prod.subItems && prod.subItems.length > 0) ? prod.subItems : [
+                        { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'sweet', defaultSize: 'L' },
+                        { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'coca', defaultSize: 'L' }
+                      ]).map((subItem) => {
+                        const customState = comboCustomizations[prod.id]?.[subItem.id] || {}
+                        const selectedFlavor = customState.flavor || subItem.defaultFlavor || 'sweet'
+                        const selectedSize = customState.size || subItem.defaultSize || 'L'
+
+                        const isPopcorn = subItem.type === 'popcorn' || (subItem.name || '').toLowerCase().includes('bắp')
+                        const flavorsList = subItem.flavors && subItem.flavors.length > 0
+                          ? subItem.flavors
+                          : (isPopcorn ? DEFAULT_COMBO_OPTIONS.popcornFlavors : DEFAULT_COMBO_OPTIONS.drinkTypes)
+
+                        return (
+                          <div key={subItem.id} className="bg-white/5 p-3 rounded-xl border border-white/10 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                                {isPopcorn ? '🍿' : '🥤'} {subItem.name}
+                              </span>
+                              <span className="text-[10px] bg-red-500/20 text-red-300 font-bold px-2 py-0.5 rounded border border-red-500/30 uppercase">
+                                Size {selectedSize}
+                              </span>
+                            </div>
+
+                            {/* Flavor Options Dropdown */}
+                            <div>
+                              <span className="text-[10px] text-gray-400 block mb-1 font-bold">
+                                {isPopcorn ? 'Chọn vị bắp rang:' : 'Chọn loại nước ngọt / đồ uống:'}
+                              </span>
+                              <select
+                                value={selectedFlavor}
+                                onChange={(e) => handleSubItemOptionChange(prod.id, subItem.id, 'flavor', e.target.value)}
+                                className="w-full bg-slate-900 border border-white/20 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-white outline-none focus:border-red-500 transition-colors shadow-sm"
+                              >
+                                {flavorsList.map(f => (
+                                  <option key={f.id} value={f.id} className="bg-slate-900 text-white py-1">
+                                    {f.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </motion.div>
+                )}
               </div>
             )
           })}
