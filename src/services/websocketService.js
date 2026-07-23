@@ -1,7 +1,8 @@
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
-const SOCKET_URL = 'http://127.0.0.1:8080/ws/booking'; // Thay đổi domain tùy môi trường
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8080';
+const SOCKET_URL = `${API_URL}/ws/booking`;
 
 class WebSocketService {
   constructor() {
