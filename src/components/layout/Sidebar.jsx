@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { Menu, X } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import logoImg from '../../assets/Cinematelogo.png'
 
@@ -19,18 +21,62 @@ const ROLE_BADGE_CLASSES = {
 
 export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Workspace' }) {
   const { user, logout } = useAuth()
+  const [isMobileOpen, setIsMobileOpen] = useState(false)
 
   return (
-    <aside
-      className="w-[260px] min-h-screen flex flex-col fixed left-0 top-0 z-40"
-      style={{
-        background: 'var(--color-sidebar)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        borderRight: '1px solid var(--color-sidebar-border)',
-        paddingTop: '40px',
-      }}
-    >
+    <>
+      {/* Mobile Top Navigation Bar (< lg screens) */}
+      <header
+        className="lg:hidden fixed top-0 left-0 right-0 h-16 z-30 flex items-center justify-between px-4"
+        style={{
+          background: 'var(--color-sidebar)',
+          borderBottom: '1px solid var(--color-sidebar-border)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <img src={logoImg} alt="Logo" className="w-8 h-8 object-contain" />
+          <div>
+            <h1 className="text-base font-black tracking-wider leading-none" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <span className="text-[var(--color-sidebar-foreground)]">CINE</span>
+              <span className="text-[#e50914]">MATE</span>
+            </h1>
+            <p className="text-[8px] uppercase tracking-[0.2em] font-bold text-[var(--color-text-muted)]">
+              {workspaceLabel}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="p-2 rounded-xl border border-[var(--color-sidebar-border)] text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)] transition-colors cursor-pointer"
+          aria-label="Toggle Navigation Menu"
+        >
+          {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </header>
+
+      {/* Backdrop overlay for mobile drawer */}
+      {isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden"
+        />
+      )}
+
+      {/* Sidebar Drawer Container */}
+      <aside
+        className={`w-[260px] min-h-screen flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+        style={{
+          background: 'var(--color-sidebar)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRight: '1px solid var(--color-sidebar-border)',
+          paddingTop: '20px',
+        }}
+      >
       {/* Brand Header */}
       <div className="px-6 pb-5 mb-2" style={{ borderBottom: '1px solid var(--color-sidebar-border)' }}>
         <div className="flex items-center gap-2.5">
@@ -65,6 +111,7 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
             <NavLink
               key={to}
               to={to}
+              onClick={() => setIsMobileOpen(false)}
               className={() =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative group ${
                   isCustomActive ? 'text-[var(--color-sidebar-foreground)] font-semibold' : 'text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)]'
@@ -116,6 +163,7 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
         {/* Home Link */}
         <Link
           to={homeLink}
+          onClick={() => setIsMobileOpen(false)}
           className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-[var(--color-sidebar-foreground)]/60 hover:text-[var(--color-sidebar-foreground)] hover:bg-[var(--color-sidebar-accent)] transition-all duration-200"
           style={{ fontFamily: 'Inter, sans-serif' }}
         >
@@ -184,5 +232,6 @@ export default function Sidebar({ navItems, homeLink = '/', workspaceLabel = 'Wo
         </button>
       </div>
     </aside>
-  )
+  </>
+)
 }

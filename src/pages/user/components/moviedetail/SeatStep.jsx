@@ -157,7 +157,7 @@ export default function SeatStep({
   // WebSocket Integration
   useEffect(() => {
     if (!selectedShowtime?.id) return
-    
+
     let isSubscribed = false
     websocketService.connect(() => {
       websocketService.subscribeToSeatMap(selectedShowtime.id, (message) => {
@@ -180,7 +180,7 @@ export default function SeatStep({
   const { soldSet, heldSet } = useMemo(() => {
     const sold = new Set()
     const held = new Set()
-    
+
     // Merge real-time booking statuses first
     if (realSeatMap && realSeatMap.length > 0) {
       realSeatMap.forEach(s => {
@@ -214,7 +214,7 @@ export default function SeatStep({
         })
       })
     }
-    
+
     // Add temp holds from other clients, excluding our own selections
     tempHolds.forEach((timestamp, id) => {
       if (!selectedSeats.includes(id) && !processingSeats.includes(id) && !justUnlockedSeats.has(id)) {
@@ -509,7 +509,7 @@ export default function SeatStep({
                   Chưa có sơ đồ ghế hợp lệ cho suất chiếu này.
                 </p>
               )}
-             {/* Entrance/Exit */}
+              {/* Entrance/Exit */}
               <div className="w-full max-w-[580px] flex justify-between mt-5">
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest" style={{ background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', color: '#10b981' }}>
                   <span className="material-symbols-outlined text-sm">login</span>Lối vào
@@ -553,21 +553,19 @@ export default function SeatStep({
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-lg"
           >
             <div
-              className={`p-4 rounded-2xl border backdrop-blur-md shadow-2xl flex items-center justify-between gap-4 text-sm font-semibold transition-all ${
-                violations.length > 0
+              className={`p-4 rounded-2xl border backdrop-blur-md shadow-2xl flex items-center justify-between gap-4 text-sm font-semibold transition-all ${violations.length > 0
                   ? 'bg-red-950/90 border-red-500/30 text-red-200'
                   : 'bg-[#121824]/90 border-green-500/30 text-green-400'
-              }`}
+                }`}
               style={{
-                boxShadow: violations.length > 0 
-                  ? '0 10px 30px -5px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)' 
+                boxShadow: violations.length > 0
+                  ? '0 10px 30px -5px rgba(239, 68, 68, 0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
                   : '0 10px 30px -5px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255,255,255,0.05)'
               }}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                  violations.length > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
-                }`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${violations.length > 0 ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                  }`}>
                   <span className="material-symbols-outlined text-lg">
                     {violations.length > 0 ? 'warning' : 'check_circle'}
                   </span>
@@ -577,8 +575,8 @@ export default function SeatStep({
                     {violations.length > 0 ? 'Cảnh báo khoảng trống' : 'Đã chọn ghế'}
                   </span>
                   <span className="text-xs text-gray-300 leading-normal">
-                    {violations.length > 0 
-                      ? `Không thể để lại ghế trống đơn lẻ: ${violations.join(', ')}` 
+                    {violations.length > 0
+                      ? `Không thể để lại ghế trống đơn lẻ: ${violations.join(', ')}`
                       : `✓ Đã chọn ${selectedSeats.length} ghế — nhấn "Tiếp tục" để thanh toán`
                     }
                   </span>

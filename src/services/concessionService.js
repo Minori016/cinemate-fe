@@ -22,24 +22,24 @@ export const PRODUCT_SIZES = [
 ]
 
 export const SIZE_DISPLAY = {
-  STANDARD: { label: 'Tiêu chuẩn', bg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  L: { label: 'Lớn', bg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  XL: { label: 'Siêu lớn', bg: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  STANDARD: { label: 'Tiêu chuẩn', bg: 'bg-blue-100 text-blue-800 border-blue-300' },
+  L: { label: 'Lớn', bg: 'bg-amber-100 text-amber-800 border-amber-300' },
+  XL: { label: 'Siêu lớn', bg: 'bg-rose-100 text-rose-800 border-rose-300' },
 }
 
 /** Default flavor & beverage options for customizable items inside combos */
 export const DEFAULT_COMBO_OPTIONS = {
   popcornFlavors: [
-    { id: 'sweet', label: 'Vị Ngọt (Truyền Thống)' },
-    { id: 'cheese', label: 'Vị Phô Mai (+10.000đ)' },
-    { id: 'caramel', label: 'Vị Caramel (+10.000đ)' },
-    { id: 'salty', label: 'Vị Mặn / Bơ' },
+    { id: 'sweet', label: 'Vị Ngọt (Truyền Thống)', extraFee: 0 },
+    { id: 'cheese', label: 'Vị Phô Mai (+10.000đ)', extraFee: 10000 },
+    { id: 'caramel', label: 'Vị Caramel (+10.000đ)', extraFee: 10000 },
+    { id: 'salty', label: 'Vị Mặn / Bơ', extraFee: 0 },
   ],
   drinkTypes: [
-    { id: 'coca', label: 'Coca-Cola (Ly lớn)' },
-    { id: 'sprite', label: 'Sprite (Ly lớn)' },
-    { id: 'fanta', label: 'Fanta Cam (Ly lớn)' },
-    { id: 'water', label: 'Nước Suối Dasani' },
+    { id: 'coca', label: 'Coca-Cola (Ly lớn)', extraFee: 0 },
+    { id: 'sprite', label: 'Sprite (Ly lớn)', extraFee: 0 },
+    { id: 'fanta', label: 'Fanta Cam (Ly lớn)', extraFee: 0 },
+    { id: 'water', label: 'Nước Suối Dasani', extraFee: 0 },
   ],
 }
 

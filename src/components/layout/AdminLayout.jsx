@@ -11,7 +11,7 @@ const navItems = [
   { to: '/admin/members', icon: User, label: 'Thành viên' },
   { to: '/admin/tickets', icon: Ticket, label: 'Quản lý vé' },
   { to: '/admin/promotions', icon: Tag, label: 'Khuyến mãi' },
-  { to: '/admin/concessions', icon: ChefHat, label: 'Bắp nước & Đồ ăn' },
+  { to: '/admin/concessions', icon: ChefHat, label: 'Quản lý đồ ăn' },
   { to: '/admin/system-configs', icon: Settings, label: 'Cấu hình Hệ thống' },
 ]
 
@@ -19,8 +19,8 @@ export default function AdminLayout() {
   return (
     <div className="theme-light flex min-h-screen" style={{ background: 'var(--color-background)' }}>
       <Sidebar navItems={navItems} workspaceLabel="Admin Workspace" />
-      <main className="flex-1 min-w-0 overflow-y-auto" style={{ marginLeft: '260px' }}>
-        <div className="p-8 lg:p-10 max-w-[1400px]">
+      <main className="flex-1 min-w-0 overflow-y-auto lg:ml-[260px] pt-16 lg:pt-0">
+        <div className="p-4 sm:p-6 lg:p-10 max-w-[1400px] w-full mx-auto">
           <Outlet />
         </div>
       </main>

@@ -258,6 +258,7 @@ export default function MovieDetailPage() {
   const [seatMetaMap, setSeatMetaMap] = useState({})
   const [processingSeats, setProcessingSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({ 1: 0, 2: 0, 3: 0 })
+  const [comboCustomizations, setComboCustomizations] = useState({})
   const [dbCombos, setDbCombos] = useState([])
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
@@ -472,7 +473,7 @@ export default function MovieDetailPage() {
           await bookingService.unlockSeat(selectedShowtime.id, seatId);
         }
       }
-      
+
       setSelectedSeats(prev => {
         const exists = prev.includes(seatId)
 
@@ -546,8 +547,17 @@ export default function MovieDetailPage() {
   const ticketPrice = selectedSeats.reduce((sum, id) => sum + getSeatPrice(id), 0)
   const activeCombos = dbCombos
   const comboPrice = Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
+    if (qty <= 0) return sum
     const combo = activeCombos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
-    return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
+    const basePrice = combo ? (Number(combo.price) || 0) : 0
+    let subItemsExtra = 0
+    const customObj = comboCustomizations[id] || {}
+    Object.values(customObj).forEach(sub => {
+      if (sub && sub.extraFee) {
+        subItemsExtra += Number(sub.extraFee) || 0
+      }
+    })
+    return sum + (basePrice + subItemsExtra) * qty
   }, 0)
 
   const discountAmount = useMemo(() => {
@@ -575,7 +585,7 @@ export default function MovieDetailPage() {
   const handleHoldSeatsBeforePayment = async () => {
     if (!requireAuth(4)) return
     if (selectedSeats.length === 0) return
-    
+
     // Set processing state so user knows it's working
     setSubmitting(true)
     setSubmitError('')
@@ -646,7 +656,7 @@ export default function MovieDetailPage() {
   const handleSubmitPayment = async (e) => {
     if (e) e.preventDefault()
     setSubmitError('')
-    
+
     // MoMo Real Payment Flow
     try {
       setSubmitting(true)
@@ -991,6 +1001,8 @@ export default function MovieDetailPage() {
                     key="step-3"
                     combos={activeCombos}
                     selectedCombos={selectedCombos}
+                    comboCustomizations={comboCustomizations}
+                    setComboCustomizations={setComboCustomizations}
                     onChangeCombo={onChangeCombo}
                     promoCode={promoCode}
                     setPromoCode={setPromoCode}
@@ -1040,10 +1052,10 @@ export default function MovieDetailPage() {
               <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
                 <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Ghế Ngồi</span>
                 {selectedSeats.length > 0 ? (
-                  <>
-                    <span className="text-sm font-bold text-white">{selectedSeats.map(getSeatLabel).join(', ')}</span>
-                    <span className="text-xs text-gray-400 font-semibold">Tạm tính: {ticketPrice.toLocaleString('vi-VN')} đ</span>
-                  </>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-white truncate max-w-[150px]">{selectedSeats.map(getSeatLabel).join(', ')}</span>
+                    <span className="text-xs text-gray-400 font-semibold shrink-0 ml-2">{ticketPrice.toLocaleString('vi-VN')} đ</span>
+                  </div>
                 ) : (
                   <span className="text-xs text-gray-400 font-medium italic">Chưa chọn ghế</span>
                 )}
@@ -1064,7 +1076,6 @@ export default function MovieDetailPage() {
                         </div>
                       )
                     })}
-                    <span className="text-xs text-gray-400 font-semibold mt-1">Tạm tính: {comboPrice.toLocaleString('vi-VN')} đ</span>
                   </div>
                 ) : (
                   <span className="text-xs text-gray-400 font-medium italic">Chưa chọn bắp nước</span>

@@ -98,8 +98,8 @@ export default function ManagerShiftsPage() {
       </div>
 
       {/* Shifts Table */}
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden shadow-lg">
-        <table className="w-full text-left border-collapse">
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-x-auto shadow-lg">
+        <table className="w-full text-left border-collapse min-w-[650px]">
           <thead>
             <tr className="border-b border-[var(--color-border)] bg-white/5 text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
               <th className="px-6 py-4">Nhân viên / Employee</th>
