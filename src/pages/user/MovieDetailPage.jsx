@@ -567,10 +567,13 @@ export default function MovieDetailPage() {
         seatIds: selectedSeats,
         concessions: Object.entries(selectedCombos)
           .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ concessionId: id, quantity: qty }))
+          .map(([id, qty]) => ({ concessionId: id, quantity: qty })),
+        promotionCode: promoCode || undefined,
       })
       const bookingData = res.data?.result || res.data
       setBookingId(bookingData.bookingId)
+      // bookingData.discountAmount is computed server-side from coupon;
+      // displayed via local `discount` state which is kept in sync by ComboStep's onApplyPromo.
       setBookingStep(4)
     } catch (err) {
       console.error(err)
