@@ -2,7 +2,8 @@ import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 import { API_BASE_URL } from './api'
 
-const SOCKET_URL = `${API_BASE_URL === '/' ? '' : API_BASE_URL}/ws/booking`
+const API_URL = import.meta.env.VITE_API_URL || (API_BASE_URL !== '/' ? API_BASE_URL : '') || 'http://127.0.0.1:8080';
+const SOCKET_URL = `${API_URL.replace(/\/+$/, '')}/ws/booking`;
 
 class WebSocketService {
   constructor() {

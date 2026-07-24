@@ -128,17 +128,24 @@ export default function SeatStep({
         bookingService.getSeatMap(selectedShowtime.id),
       ])
 
-      const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
-      if (!data?.seatMatrix?.length || !Array.isArray(seats)) {
-        throw new Error('Missing canonical seat data')
+      if (seatMapRes?.data?.result || seatMapRes?.data) {
+        const seats = seatMapRes.data?.result?.seats || seatMapRes.data?.seats || []
+        setRealSeatMap(seats)
+
+        const ownLockedSeats = seats
+          .filter(s => s.lockedByCurrentUser && String(s.status || '').toUpperCase() === 'HELD')
+          .map(s => s.seatId)
+        
+        if (ownLockedSeats.length > 0) {
+          if (typeof opts.onRestoreSeats === 'function') {
+            opts.onRestoreSeats(ownLockedSeats)
+          } else if (hydrateLockedSeats) {
+            hydrateLockedSeats(ownLockedSeats)
+          }
+        }
       }
 
       setLayout(data)
-      setRealSeatMap(seats)
-      const ownLockedSeats = seats
-        .filter((seat) => seat.lockedByCurrentUser && String(seat.status || '').toUpperCase() === 'HELD')
-        .map((seat) => seat.seatId)
-      if (ownLockedSeats.length > 0) hydrateLockedSeats?.(ownLockedSeats)
     } catch {
       setLayout(null)
       setRealSeatMap([])
@@ -149,10 +156,14 @@ export default function SeatStep({
   }, [selectedShowtime?.id, selectedShowtime?.roomId, selectedShowtime?.roomName, selectedShowtime?.room, hydrateLockedSeats])
 
   useEffect(() => {
-    loadLayout({ showLoading: true })
-    const pollId = window.setInterval(() => loadLayout(), 10000)
-    return () => window.clearInterval(pollId)
-  }, [loadLayout])
+    // Pass a callback to restore seats locally
+    const handleRestore = (seats) => {
+      if (typeof toggleSeat === 'function' && toggleSeat.restore) {
+        toggleSeat.restore(seats)
+      }
+    }
+    loadLayout({ showLoading: true, onRestoreSeats: handleRestore })
+  }, [loadLayout, toggleSeat])
 
   // WebSocket Integration
   useEffect(() => {
@@ -161,7 +172,7 @@ export default function SeatStep({
     let isSubscribed = false
     websocketService.connect(() => {
       websocketService.subscribeToSeatMap(selectedShowtime.id, (message) => {
-        if (message && message.type === 'SEAT_MAP_UPDATED') {
+        if (message && message.type === 'SEAT_MAP_UPDATED' && message.eventType !== 'HEARTBEAT') {
           // Fetch the layout again instantly without showing full loading
           loadLayout({ showLoading: false })
         }

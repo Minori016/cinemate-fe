@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { Download, Share2 } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 
 export default function SuccessModal({
   bookingSuccess,
@@ -297,67 +298,14 @@ export default function SuccessModal({
                     </div>
                   </div>
                 )}
-                <div className="success-ticket-physical-barcode-box">
-                  <svg width="100%" height="44" viewBox="0 0 240 44" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="0" y="0" width="2" height="44" fill="#111" />
-                    <rect x="4" y="0" width="1" height="44" fill="#111" />
-                    <rect x="7" y="0" width="3" height="44" fill="#111" />
-                    <rect x="12" y="0" width="1" height="44" fill="#111" />
-                    <rect x="15" y="0" width="2" height="44" fill="#111" />
-                    <rect x="19" y="0" width="4" height="44" fill="#111" />
-                    <rect x="25" y="0" width="1" height="44" fill="#111" />
-                    <rect x="28" y="0" width="3" height="44" fill="#111" />
-                    <rect x="33" y="0" width="2" height="44" fill="#111" />
-                    <rect x="37" y="0" width="1" height="44" fill="#111" />
-                    <rect x="40" y="0" width="3" height="44" fill="#111" />
-                    <rect x="45" y="0" width="1" height="44" fill="#111" />
-                    <rect x="48" y="0" width="2" height="44" fill="#111" />
-                    <rect x="52" y="0" width="4" height="44" fill="#111" />
-                    <rect x="58" y="0" width="1" height="44" fill="#111" />
-                    <rect x="61" y="0" width="3" height="44" fill="#111" />
-                    <rect x="66" y="0" width="2" height="44" fill="#111" />
-                    <rect x="70" y="0" width="1" height="44" fill="#111" />
-                    <rect x="73" y="0" width="3" height="44" fill="#111" />
-                    <rect x="78" y="0" width="2" height="44" fill="#111" />
-                    <rect x="82" y="0" width="1" height="44" fill="#111" />
-                    <rect x="85" y="0" width="4" height="44" fill="#111" />
-                    <rect x="91" y="0" width="1" height="44" fill="#111" />
-                    <rect x="94" y="0" width="3" height="44" fill="#111" />
-                    <rect x="99" y="0" width="2" height="44" fill="#111" />
-                    <rect x="103" y="0" width="1" height="44" fill="#111" />
-                    <rect x="106" y="0" width="3" height="44" fill="#111" />
-                    <rect x="111" y="0" width="1" height="44" fill="#111" />
-                    <rect x="114" y="0" width="2" height="44" fill="#111" />
-                    <rect x="118" y="0" width="4" height="44" fill="#111" />
-                    <rect x="124" y="0" width="1" height="44" fill="#111" />
-                    <rect x="127" y="0" width="3" height="44" fill="#111" />
-                    <rect x="132" y="0" width="2" height="44" fill="#111" />
-                    <rect x="136" y="0" width="1" height="44" fill="#111" />
-                    <rect x="139" y="0" width="3" height="44" fill="#111" />
-                    <rect x="144" y="0" width="2" height="44" fill="#111" />
-                    <rect x="148" y="0" width="4" height="44" fill="#111" />
-                    <rect x="154" y="0" width="1" height="44" fill="#111" />
-                    <rect x="157" y="0" width="3" height="44" fill="#111" />
-                    <rect x="162" y="0" width="2" height="44" fill="#111" />
-                    <rect x="166" y="0" width="1" height="44" fill="#111" />
-                    <rect x="169" y="0" width="3" height="44" fill="#111" />
-                    <rect x="174" y="0" width="1" height="44" fill="#111" />
-                    <rect x="177" y="0" width="2" height="44" fill="#111" />
-                    <rect x="181" y="0" width="4" height="44" fill="#111" />
-                    <rect x="187" y="0" width="1" height="44" fill="#111" />
-                    <rect x="190" y="0" width="3" height="44" fill="#111" />
-                    <rect x="195" y="0" width="2" height="44" fill="#111" />
-                    <rect x="199" y="0" width="1" height="44" fill="#111" />
-                    <rect x="202" y="0" width="3" height="44" fill="#111" />
-                    <rect x="207" y="0" width="2" height="44" fill="#111" />
-                    <rect x="211" y="0" width="4" height="44" fill="#111" />
-                    <rect x="217" y="0" width="1" height="44" fill="#111" />
-                    <rect x="220" y="0" width="3" height="44" fill="#111" />
-                    <rect x="225" y="0" width="2" height="44" fill="#111" />
-                    <rect x="229" y="0" width="1" height="44" fill="#111" />
-                    <rect x="232" y="0" width="3" height="44" fill="#111" />
-                    <rect x="237" y="0" width="2" height="44" fill="#111" />
-                  </svg>
+                <div className="success-ticket-physical-barcode-box" style={{ display: 'flex', justifyContent: 'center', padding: '10px 0' }}>
+                  <QRCodeSVG 
+                    value={bookingId || "cinemate-booking"} 
+                    size={80}
+                    bgColor="#ffffff"
+                    fgColor="#000000"
+                    level="Q"
+                  />
                 </div>
               </div>
             </div>

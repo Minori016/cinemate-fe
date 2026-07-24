@@ -151,7 +151,9 @@ export const showtimeService = {
 
   // POST /api/v1/admin/showtimes/auto-generate/save
   autoConfirm: async (confirmData) => {
-    const res = await api.post('/api/v1/admin/showtimes/auto-generate/save', confirmData)
+    const res = await api.post('/api/v1/admin/showtimes/auto-generate/save', confirmData, {
+      timeout: 120000
+    })
     return res.data
   },
 

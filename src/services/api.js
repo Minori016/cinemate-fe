@@ -38,6 +38,14 @@ api.interceptors.request.use((config) => {
   const isAuthPublic = PUBLIC_URLS.some((publicUrl) => url.includes(publicUrl))
   const isGetPublic = config.method?.toLowerCase() === 'get' && PUBLIC_GET_PREFIXES.some((prefix) => url.includes(prefix))
 
+  // Gắn Guest ID duy nhất cho người dùng vãng lai chưa đăng nhập
+  let guestId = localStorage.getItem('guest_id')
+  if (!guestId) {
+    guestId = 'guest_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36)
+    localStorage.setItem('guest_id', guestId)
+  }
+  config.headers['X-Guest-ID'] = guestId
+
   if (token && !isAuthPublic && !isGetPublic) {
     config.headers.Authorization = `Bearer ${token}`
   }
