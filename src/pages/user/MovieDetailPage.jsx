@@ -625,10 +625,15 @@ export default function MovieDetailPage() {
       if (validConcessions.length > 0) {
         payload.concessions = validConcessions;
       }
+      if (promoCode) {
+        payload.promotionCode = promoCode;
+      }
 
       const res = await bookingService.holdSeats(payload)
       const bookingData = res.data?.result || res.data
       setBookingId(bookingData.bookingId)
+      // bookingData.discountAmount is computed server-side from coupon;
+      // displayed via local `discount` state which is kept in sync by ComboStep's onApplyPromo.
       setBookingStep(4)
     } catch (err) {
       console.error(err)
