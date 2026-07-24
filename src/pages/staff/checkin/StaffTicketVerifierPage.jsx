@@ -190,7 +190,77 @@ export default function StaffTicketVerifierPage() {
       {/* QR Scanner */}
       {isScanning && (
         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 flex flex-col items-center">
-          <div id="qr-reader" className="w-full max-w-sm rounded-2xl overflow-hidden bg-black text-black"></div>
+          <style>{`
+            #qr-reader {
+              border: 1px solid rgba(255, 255, 255, 0.15) !important;
+              color: #ffffff !important;
+              background-color: #09090b !important;
+            }
+            #qr-reader * {
+              color: #ffffff !important;
+            }
+            #qr-reader__header_message {
+              color: #fca5a5 !important;
+              background: rgba(239, 68, 68, 0.2) !important;
+              border: 1px solid rgba(239, 68, 68, 0.4) !important;
+              padding: 10px 14px !important;
+              border-radius: 12px !important;
+              font-weight: 700 !important;
+              margin-bottom: 12px !important;
+              font-size: 13px !important;
+              word-break: break-word !important;
+            }
+            #qr-reader__status_span {
+              color: #38bdf8 !important;
+              font-weight: 600 !important;
+            }
+            #qr-reader__scan_region {
+              background-color: #000000 !important;
+              border-radius: 12px !important;
+              overflow: hidden !important;
+            }
+            #qr-reader__dashboard {
+              padding: 12px 0 !important;
+            }
+            #html5-qrcode-anchor-scan-type-change {
+              color: #f87171 !important;
+              font-weight: 700 !important;
+              text-decoration: underline !important;
+              margin-top: 10px !important;
+              display: inline-block !important;
+              cursor: pointer !important;
+              font-size: 13px !important;
+            }
+            #qr-reader button,
+            .html5-qrcode-element {
+              background-color: #e50914 !important;
+              color: #ffffff !important;
+              font-weight: 700 !important;
+              border-radius: 12px !important;
+              border: none !important;
+              padding: 10px 20px !important;
+              margin: 8px 4px !important;
+              cursor: pointer !important;
+              font-size: 13px !important;
+              transition: all 0.2s ease !important;
+              box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3) !important;
+            }
+            #qr-reader button:hover,
+            .html5-qrcode-element:hover {
+              background-color: #b91c1c !important;
+              transform: translateY(-1px) !important;
+            }
+            #qr-reader select {
+              background-color: #18181b !important;
+              color: #ffffff !important;
+              border: 1px solid #3f3f46 !important;
+              border-radius: 10px !important;
+              padding: 8px 14px !important;
+              margin: 6px 0 !important;
+              font-size: 13px !important;
+            }
+          `}</style>
+          <div id="qr-reader" className="w-full max-w-md rounded-2xl overflow-hidden bg-black text-white p-4"></div>
           <p className="mt-4 text-sm text-[var(--color-text-muted)]">
             Đưa mã QR vé của khách vào giữa khung hình để quét.
           </p>
