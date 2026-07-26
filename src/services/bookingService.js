@@ -14,6 +14,10 @@ export const bookingService = {
   unlockSeat: (showtimeId, seatId) => api.post(`/api/v1/showtimes/${showtimeId}/seats/${seatId}/unlock`),
   clearMyLocks: (showtimeId) => api.delete(`/api/v1/showtimes/${showtimeId}/seats/my-locks`),
   
+  // Tra cứu thông tin hội viên / khách hàng
+  // Sửa customer -> customers cho trùng với BookingController.java
+lookupCustomer: (query) => api.get('/api/v1/bookings/customers/lookup', { params: { query } }),
+
   getMyBookings: () => api.get('/api/v1/bookings/my'),
   getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),
 }
