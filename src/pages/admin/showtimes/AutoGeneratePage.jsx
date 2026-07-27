@@ -109,7 +109,7 @@ export default function AutoGeneratePage() {
     const fetchData = async () => {
       try {
         const [mRes, rRes, pRes, sRes] = await Promise.all([
-          movieService.getAll(),
+          movieService.getAll({ size: 1000 }),
           cinemaRoomService.getAll(),
           priceConfigService.getAll(),
           systemConfigService.getAll()

@@ -122,7 +122,8 @@ export default function CinemaRoomListPage() {
     if (newStatus === 'MAINTENANCE') {
       setLoading(true)
       try {
-        const showtimes = await showtimeService.getAll()
+        const todayStr = new Date().toISOString().split('T')[0]
+        const showtimes = await showtimeService.getAll({ startDate: todayStr })
         const affectedShowtimes = showtimes.filter(st => 
           String(st.roomId) === String(roomObj.id) && 
           st.startTime && 

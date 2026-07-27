@@ -16,6 +16,8 @@ const getSeatCount = (seats) => {
 export default function TicketManagementPage() {
   const location = useLocation()
   const [bookings, setBookings] = useState([])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
   const [search, setSearch] = useState('')
   const [successBanner, setSuccessBanner] = useState(location.state?.successMessage || '')
 
@@ -34,9 +36,10 @@ export default function TicketManagementPage() {
   const loadBookings = async () => {
     try {
       setLoading(true)
-      const res = await bookingService.getAllAdminBookings()
-      const data = res.data?.result || res.data
-      setBookings(data)
+      const res = await bookingService.getAllAdminBookings({ page: currentPage, size: 10 })
+      const data = res.data?.result || res.data || {}
+      setBookings(data.content || [])
+      setTotalPages(data.totalPages || 0)
     } catch (error) {
       console.error('Failed to load bookings', error)
     } finally {
@@ -66,7 +69,7 @@ export default function TicketManagementPage() {
 
   useEffect(() => {
     loadBookings()
-  }, [])
+  }, [currentPage])
 
   // (Storage listener removed since we use API)
 
@@ -128,21 +131,76 @@ export default function TicketManagementPage() {
       </div>
 
       {/* Bookings Table List */}
-      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xl p-4">
+      <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xl flex flex-col">
         {filtered.length > 0 ? (
-          <Table
-            columns={columns}
-            data={filtered}
-            actions={row => (
-              <button
-                onClick={() => handleSelectBooking(row)}
-                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center gap-1.5 ml-auto"
-              >
-                <CheckCircle size={13} />
-                Successful Booking
-              </button>
+          <>
+            <div className="p-4">
+              <Table
+                columns={columns}
+                data={filtered}
+                actions={row => (
+                  <button
+                    onClick={() => handleSelectBooking(row)}
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center gap-1.5 ml-auto"
+                  >
+                    <CheckCircle size={13} />
+                    Successful Booking
+                  </button>
+                )}
+              />
+            </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-between items-center px-6 py-4 bg-white/5 border-t border-[var(--color-border)]">
+                <span className="text-xs text-[var(--color-text-muted)] font-medium">
+                  Page <strong className="text-white">{currentPage + 1}</strong> of <strong className="text-white">{totalPages}</strong>
+                </span>
+                
+                <div className="flex gap-1 bg-[#1a1d2d] p-1.5 rounded-xl border border-[var(--color-border)] shadow-inner">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                  </button>
+                  
+                  {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                    let pageNum = currentPage;
+                    if (totalPages <= 5) pageNum = i;
+                    else if (currentPage < 2) pageNum = i;
+                    else if (currentPage > totalPages - 3) pageNum = totalPages - 5 + i;
+                    else pageNum = currentPage - 2 + i;
+                    
+                    if (pageNum < 0 || pageNum >= totalPages) return null;
+
+                    return (
+                      <motion.button
+                        key={pageNum}
+                        whileTap={{ scale: 0.92 }}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`min-w-[32px] h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer outline-none px-2
+                          ${currentPage === pageNum 
+                            ? 'bg-emerald-500/20 text-emerald-400 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.4)]' 
+                            : 'text-[var(--color-text-muted)] hover:text-white hover:bg-white/5'
+                          }`}
+                      >
+                        {pageNum + 1}
+                      </motion.button>
+                    )
+                  })}
+
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage === totalPages - 1}
+                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
             )}
-          />
+          </>
         ) : (
           <div className="text-center py-12 text-[var(--color-text-muted)] font-semibold flex flex-col items-center justify-center gap-2">
             <span className="material-symbols-outlined text-4xl text-gray-600">search_off</span>

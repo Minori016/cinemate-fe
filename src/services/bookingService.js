@@ -16,5 +16,5 @@ export const bookingService = {
   clearMyLocks: (showtimeId) => api.delete(`/api/v1/showtimes/${showtimeId}/seats/my-locks`),
   
   getMyBookings: () => api.get('/api/v1/bookings/my'),
-  getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),
+  getAllAdminBookings: (params) => api.get('/api/v1/admin/bookings', { params }),
 }

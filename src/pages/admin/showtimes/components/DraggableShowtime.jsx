@@ -59,11 +59,20 @@ const DraggableShowtime = memo(function DraggableShowtime({
 
   // Distinct Preview Colors
   const barColor = isAutoFill ? 'bg-amber-500' : (isModified ? 'bg-purple-600 animate-pulse' : 'bg-[#4caf50]');
-  const bgColor = isAutoFill 
-    ? 'bg-amber-50/95 ring-1 ring-amber-400' 
-    : (isModified 
-      ? 'bg-purple-50/95 ring-1 ring-purple-400' 
-      : (isDubbed ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' : 'bg-[#e8f5e9]'));
+  
+  let bgColor = 'bg-[#e8f5e9]';
+  if (isAutoFill) {
+    bgColor = 'bg-amber-50/95 ring-1 ring-amber-400';
+  } else if (isModified) {
+    bgColor = isDubbed 
+      ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#f3e8ff_6px,#f3e8ff_12px)] ring-1 ring-purple-400' 
+      : 'bg-purple-50/95 ring-1 ring-purple-400';
+  } else {
+    bgColor = isDubbed 
+      ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]' 
+      : 'bg-[#e8f5e9]';
+  }
+
   const borderColor = isAutoFill ? 'border-amber-300' : (isModified ? 'border-purple-300' : 'border-[#a5d6a7]');
   const textColor = isAutoFill ? 'text-amber-700' : (isModified ? 'text-purple-700' : 'text-[#2e7d32]');
 
