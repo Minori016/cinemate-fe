@@ -363,6 +363,63 @@ export default function ConcessionFormPage() {
     setComboItems(prev => prev.filter(ci => ci.productUuid !== productUuid))
   }
 
+  // Helper: calculate unit retail price for a combo item based on available products or category
+  const getItemUnitPrice = (ci) => {
+    if (!ci) return 0
+
+    // 1. Direct UUID match
+    if (ci.productUuid) {
+      const directMatch = availableProducts.find(
+        p => String(p.id || p.uuid) === String(ci.productUuid)
+      )
+      if (directMatch && Number(directMatch.price) > 0) {
+        return Number(directMatch.price)
+      }
+    }
+
+    // 2. Match by category type & size
+    const normName = (ci.productName || '').toLowerCase()
+    const normSize = (ci.productSize || 'STANDARD').toUpperCase()
+
+    let targetType = ''
+    if (normName.includes('bắp') || normName.includes('popcorn')) targetType = 'popcorn'
+    else if (normName.includes('nước') || normName.includes('drink') || normName.includes('coca') || normName.includes('pepsi') || normName.includes('đồ uống')) targetType = 'drink'
+    else targetType = 'food'
+
+    const matchingProds = availableProducts.filter(p => {
+      const pType = String(p.itemType || p.category || '').toLowerCase()
+      const pSz = (p.size || 'STANDARD').toUpperCase()
+      const typeMatches = targetType === 'drink'
+        ? (pType === 'drink' || pType === 'beverage')
+        : pType === targetType
+      return typeMatches && (pSz === normSize || (normSize === 'STANDARD' && (pSz === 'S' || pSz === 'STANDARD')))
+    })
+
+    if (matchingProds.length > 0) {
+      const sum = matchingProds.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0)
+      return Math.round(sum / matchingProds.length)
+    }
+
+    // 3. Fallback: match any product in category
+    const fallbackTypeProds = availableProducts.filter(p => {
+      const pType = String(p.itemType || p.category || '').toLowerCase()
+      return targetType === 'drink' ? (pType === 'drink' || pType === 'beverage') : pType === targetType
+    })
+
+    if (fallbackTypeProds.length > 0) {
+      const sum = fallbackTypeProds.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0)
+      return Math.round(sum / fallbackTypeProds.length)
+    }
+
+    return 0
+  }
+
+  // Total retail price of all combo items combined
+  const totalRetailPrice = comboItems.reduce((sum, ci) => {
+    const unitPrice = getItemUnitPrice(ci)
+    return sum + (unitPrice * (ci.quantity || 1))
+  }, 0)
+
   const validate = () => {
     const newErrors = {}
     if (!name.trim()) newErrors.name = 'Tên món ăn / combo không được bỏ trống.'
@@ -740,18 +797,18 @@ export default function ConcessionFormPage() {
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">
                   Giá bán cho từng bậc Size đã chọn *
                 </span>
-                <div className={`grid grid-cols-1 ${selectedSizes.length > 1 ? 'sm:grid-cols-3' : 'sm:grid-cols-1'} gap-4`}>
+                <div className={`grid grid-cols-1 ${selectedSizes.length > 1 ? 'sm:grid-cols-3' : 'sm:grid-cols-1'} gap-4 items-stretch`}>
                   {selectedSizes.map(sKey => {
                     const sObj = PRODUCT_SIZES.find(s => s.key === sKey)
                     const sizeTitle = sObj ? sObj.label : sKey
                     return (
-                      <div key={sKey} className="bg-[var(--color-surface-2)] p-3.5 rounded-xl border border-[var(--color-border)]">
-                        <span className="text-xs font-bold text-red-400 uppercase block mb-2">
+                      <div key={sKey} className="bg-[var(--color-surface-2)] p-3.5 rounded-xl border border-[var(--color-border)] flex flex-col justify-between">
+                        <span className="text-xs font-bold text-red-400 uppercase mb-2 min-h-[36px] flex items-center">
                           Giá bán {sizeTitle} (VNĐ) *
                         </span>
                         <Input
                           type="number"
-                          placeholder={`Nhập giá cho ${sObj?.label || sKey}...`}
+                          placeholder="Nhập giá..."
                           value={sizePrices[sKey] ?? ''}
                           onChange={(e) => handleSizePriceChange(sKey, e.target.value)}
                           error={errors[`price_${sKey}`]}
@@ -762,17 +819,102 @@ export default function ConcessionFormPage() {
                 </div>
               </div>
             ) : (
-              <div>
-                <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">
-                  Giá bán Combo (VNĐ) *
-                </span>
-                <Input
-                  type="number"
-                  placeholder="VD: 95000"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  error={errors.price}
-                />
+              <div className="space-y-4">
+                {/* Reference Retail Price Card & Smart Suggestion for Admin */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-500/30 text-gray-800 dark:text-gray-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-500/20 pb-3 mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🛒</span>
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                          Giá bán lẻ tham khảo (Tổng các món cộng lại)
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        Được tự động tính từ giá bán lẻ của các món thành phần được thêm ở bên dưới.
+                      </p>
+                    </div>
+
+                    <div className="text-right sm:text-right">
+                      <span className="text-xl font-black text-amber-700 dark:text-amber-400 tracking-tight block">
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRetailPrice)}
+                      </span>
+                      {comboItems.length === 0 && (
+                        <span className="text-[10px] text-gray-400 italic">Chưa chọn món nào vào combo</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Smart Price Suggestions & Comparisons */}
+                  {totalRetailPrice > 0 && (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="font-bold text-gray-700 dark:text-gray-300">Gợi ý giá combo (ưu đãi hơn mua lẻ):</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {[10, 15, 20, 25].map(discountPercent => {
+                            const suggestedPrice = Math.round((totalRetailPrice * (1 - discountPercent / 100)) / 1000) * 1000
+                            const isCurrent = String(price) === String(suggestedPrice)
+                            return (
+                              <button
+                                key={discountPercent}
+                                type="button"
+                                onClick={() => setPrice(String(suggestedPrice))}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
+                                  isCurrent
+                                    ? 'bg-amber-600 text-white border-amber-600 shadow-xs scale-105'
+                                    : 'bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-gray-700'
+                                }`}
+                                title={`Áp dụng giảm ${discountPercent}% so với mua lẻ`}
+                              >
+                                -{discountPercent}% ({new Intl.NumberFormat('vi-VN').format(suggestedPrice)}đ)
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Dynamic comparison feedback on current price */}
+                      {price && !isNaN(Number(price)) && Number(price) > 0 && (
+                        <div className="pt-2 border-t border-amber-500/20">
+                          {Number(price) < totalRetailPrice ? (
+                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20">
+                              <span>🎉</span>
+                              <span>
+                                Giá combo giúp khách hàng tiết kiệm được <strong>{new Intl.NumberFormat('vi-VN').format(totalRetailPrice - Number(price))} VNĐ</strong> ({((1 - Number(price) / totalRetailPrice) * 100).toFixed(1)}% hời hơn mua lẻ)
+                              </span>
+                            </div>
+                          ) : Number(price) === totalRetailPrice ? (
+                            <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20">
+                              <span>ℹ️</span>
+                              <span>Giá combo bằng đúng tổng giá mua lẻ. Bạn nên hạ giá một chút để combo có ưu đãi thu hút hơn.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-xs font-bold text-red-600 dark:text-red-400 bg-red-500/10 p-2.5 rounded-lg border border-red-500/20">
+                              <span>⚠️</span>
+                              <span>
+                                Chú ý: Giá combo đang ĐẮT HƠN tổng giá mua lẻ ({new Intl.NumberFormat('vi-VN').format(Number(price) - totalRetailPrice)} VNĐ). Khách hàng sẽ ưu tiên chọn mua lẻ từng món.
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Combo Price Input */}
+                <div>
+                  <span className="text-xs font-bold tracking-wider text-gray-500 uppercase block mb-2">
+                    Giá bán Combo chính thức (VNĐ) *
+                  </span>
+                  <Input
+                    type="number"
+                    placeholder="VD: 95000"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    error={errors.price}
+                  />
+                </div>
               </div>
             )}
 
@@ -917,6 +1059,9 @@ export default function ConcessionFormPage() {
                           ? '🥤'
                           : '🍔'
 
+                        const unitPrice = getItemUnitPrice(ci)
+                        const lineTotal = unitPrice * (ci.quantity || 1)
+
                         return (
                           <div
                             key={ci.productUuid}
@@ -924,12 +1069,24 @@ export default function ConcessionFormPage() {
                           >
                             <div className="flex items-center gap-3">
                               <span className="text-base p-2 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-2xs">{itemTypeIcon}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-gray-800">{ci.productName || 'Sản phẩm lẻ'}</span>
-                                {ci.productSize && (
-                                  <span className="px-2 py-0.5 rounded-md bg-red-50 text-red-600 border border-red-200 text-[10px] font-extrabold uppercase tracking-wider">
-                                    {ci.productSize}
-                                  </span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-sm text-gray-800 dark:text-gray-200">{ci.productName || 'Sản phẩm lẻ'}</span>
+                                  {ci.productSize && (
+                                    <span className="px-2 py-0.5 rounded-md bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 text-[10px] font-extrabold uppercase tracking-wider">
+                                      {ci.productSize}
+                                    </span>
+                                  )}
+                                </div>
+                                {unitPrice > 0 && (
+                                  <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                                    Đơn giá mua lẻ: {new Intl.NumberFormat('vi-VN').format(unitPrice)}đ
+                                    {ci.quantity > 1 && (
+                                      <span className="text-amber-700 dark:text-amber-400 font-bold ml-1">
+                                        ➔ Tổng: {new Intl.NumberFormat('vi-VN').format(lineTotal)}đ
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -944,7 +1101,7 @@ export default function ConcessionFormPage() {
                                 >
                                   -
                                 </button>
-                                <span className="font-bold text-gray-800 text-xs px-2.5 min-w-[24px] text-center">{ci.quantity}</span>
+                                <span className="font-bold text-gray-800 dark:text-gray-200 text-xs px-2.5 min-w-[24px] text-center">{ci.quantity}</span>
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateComboItemQuantity(ci.productUuid, 1)}
@@ -968,6 +1125,16 @@ export default function ConcessionFormPage() {
                         )
                       })}
                     </div>
+
+                    {/* Summary row for combo items total retail price */}
+                    {totalRetailPrice > 0 && (
+                      <div className="flex items-center justify-between p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs font-extrabold text-amber-800 dark:text-amber-300 mt-3">
+                        <span>TỔNG GIÁ MUA LẺ CÁC MÓN TRONG COMBO:</span>
+                        <span className="text-sm font-black text-amber-700 dark:text-amber-400">
+                          {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalRetailPrice)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-4 rounded-xl border border-dashed border-[var(--color-border)] text-center bg-[var(--color-surface-2)]/50">
@@ -1075,21 +1242,21 @@ export default function ConcessionFormPage() {
             </div>
           </div>
 
-          <div className="flex gap-4 pt-2">
+          <div className="flex flex-col gap-3 pt-2 w-full">
             <Button
-              variant="secondary"
-              onClick={() => navigate('/admin/concessions')}
-              className="flex-1 py-3"
-              type="button"
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              className="flex-1 py-3"
+              className="w-full py-3.5 text-sm font-bold shadow-lg uppercase tracking-wider"
               disabled={isSubmitting}
               type="submit"
             >
-              {isSubmitting ? 'Đang lưu...' : isEdit ? 'Cập nhật' : 'Thêm mới'}
+              {isSubmitting ? 'Đang lưu...' : isEdit ? 'Cập nhật sản phẩm' : 'Thêm mới sản phẩm'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/admin/concessions')}
+              className="w-full py-3 text-sm font-semibold text-[var(--color-on-surface)]"
+              type="button"
+            >
+              Hủy bỏ
             </Button>
           </div>
         </div>

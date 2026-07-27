@@ -27,6 +27,7 @@ export default function PromotionFormPage() {
 
   const [type, setType] = useState(PROMOTION_TYPES.COUPON)
   const [code, setCode] = useState('')
+  const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false)
   const [discountType, setDiscountType] = useState(DISCOUNT_TYPES.PERCENT)
   const [discountValue, setDiscountValue] = useState('')
   const [maxTotalUsage, setMaxTotalUsage] = useState('')
@@ -47,8 +48,59 @@ export default function PromotionFormPage() {
   const isCoupon = type === PROMOTION_TYPES.COUPON
   const isTypeUnsupported = type !== PROMOTION_TYPES.COUPON
 
+  // Auto generate voucher code from promotion title
+  const generateVoucherCodeFromTitle = (titleStr, dVal = discountValue, dType = discountType) => {
+    if (!titleStr) return ''
+
+    let str = titleStr
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+
+    const stopWords = ['CHUONG', 'TRINH', 'KHUYEN', 'MAI', 'UU', 'DAI', 'GIAM', 'GIA', 'VE', 'RAP', 'CHO', 'VOUCHER', 'TANG', 'DUOC', 'VOI', 'AP', 'DUNG']
+    
+    str = str.replace(/[^a-zA-Z0-9\s]/g, ' ')
+    let words = str.split(/\s+/).filter(Boolean)
+    
+    const meaningfulWords = words.filter(w => !stopWords.includes(w.toUpperCase()))
+    if (meaningfulWords.length > 0) {
+      words = meaningfulWords
+    }
+
+    let codeBase = words.join('').toUpperCase()
+
+    if (dVal && !codeBase.includes(String(dVal))) {
+      if (dType === DISCOUNT_TYPES.PERCENT) {
+        codeBase += `${dVal}`
+      } else if (dType === DISCOUNT_TYPES.FIXED_AMOUNT && Number(dVal) >= 1000) {
+        codeBase += `${Math.round(Number(dVal) / 1000)}K`
+      }
+    }
+
+    return codeBase.replace(/[^A-Z0-9_-]/g, '').slice(0, 32)
+  }
+
+  const handleTitleChange = (newTitle) => {
+    setTitle(newTitle)
+    if (!isCodeManuallyEdited && isCoupon && !isEdit) {
+      const autoCode = generateVoucherCodeFromTitle(newTitle, discountValue, discountType)
+      setCode(autoCode)
+    }
+  }
+
+  const handleAutoGenerateCode = () => {
+    const autoCode = generateVoucherCodeFromTitle(title, discountValue, discountType)
+    if (autoCode) {
+      setCode(autoCode)
+      setIsCodeManuallyEdited(false)
+      showToast('Đã tự động tạo mã voucher từ tiêu đề!')
+    }
+  }
+
   useEffect(() => {
     if (isEdit) {
+      setIsCodeManuallyEdited(true)
       promotionService.getById(id)
         .then(res => {
           const promo = res.data?.result || res.data
@@ -287,7 +339,7 @@ export default function PromotionFormPage() {
               label="Tiêu đề khuyến mãi"
               placeholder="Nhập tiêu đề khuyến mãi..."
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleTitleChange(e.target.value)}
               error={errors.title}
             />
 
@@ -351,13 +403,28 @@ export default function PromotionFormPage() {
               </div>
 
               <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
-                  <Hash size={14} className="text-red-500" /> Mã voucher
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+                    <Hash size={14} className="text-red-500" /> Mã voucher
+                  </label>
+                  {isCoupon && title && (
+                    <button
+                      type="button"
+                      onClick={handleAutoGenerateCode}
+                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+                      title="Tự động sinh mã từ tên chương trình"
+                    >
+                      <Sparkles size={12} /> Tự động tạo mã
+                    </button>
+                  )}
+                </div>
                 <input
                   type="text"
                   value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setCode(e.target.value.toUpperCase())
+                    setIsCodeManuallyEdited(true)
+                  }}
                   placeholder="VD: SUMMER2026"
                   disabled={!isCoupon}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full uppercase tracking-wider font-mono disabled:opacity-50

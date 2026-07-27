@@ -65,16 +65,57 @@ export const cinemaRoomService = {
         }
       }
     } catch (err) {
-      // fall through to /seats
       console.warn('getLayout failed, fallback to /seats', err?.response?.status || err?.message)
     }
 
-    const seatsRes = await api.get(`/api/v1/cinema-rooms/${roomId}/seats`)
-    const seats = seatsRes.data?.result || seatsRes.data || []
-    return buildSeatMatrixFromFlat(Array.isArray(seats) ? seats : [], {
+    try {
+      const seatsRes = await api.get(`/api/v1/cinema-rooms/${roomId}/seats`)
+      const seats = seatsRes.data?.result || seatsRes.data || []
+      if (Array.isArray(seats) && seats.length > 0) {
+        return buildSeatMatrixFromFlat(seats, {
+          roomId,
+          roomName: roomMeta.roomName || '',
+        })
+      }
+    } catch (err) {
+      console.warn('getSeats failed, fallback to default matrix', err?.response?.status || err?.message)
+    }
+
+    // Default fallback seat matrix for empty/unconfigured rooms (A-H, 12 seats per row)
+    const generateFallbackUuid = (rowLabel, number) => {
+      const r = String((rowLabel || 'A').charCodeAt(0) - 64).padStart(4, '0')
+      const n = String(number || 1).padStart(8, '0')
+      return `00000000-0000-4000-8000-${r}${n}`
+    }
+
+    const fallbackRows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    const seatMatrix = fallbackRows.map(rowLabel => {
+      const isVip = ['D', 'E', 'F'].includes(rowLabel)
+      const isCouple = ['G', 'H'].includes(rowLabel)
+      const seatCount = isCouple ? 6 : 12
+      const seats = []
+      for (let i = 1; i <= seatCount; i++) {
+        seats.push({
+          id: generateFallbackUuid(rowLabel, i),
+          rowLabel,
+          row: rowLabel,
+          number: i,
+          type: isCouple ? 'COUPLE' : isVip ? 'VIP' : 'STANDARD',
+          colspan: isCouple ? 2 : 1,
+          status: 'ACTIVE',
+        })
+      }
+      return { rowLabel, seats }
+    })
+
+    return {
       roomId,
       roomName: roomMeta.roomName || '',
-    })
+      rowCount: fallbackRows.length,
+      columnCount: 12,
+      totalSeats: 96,
+      seatMatrix,
+    }
   },
 
   create: (payload) => api.post('/api/v1/admin/cinema-rooms', payload),

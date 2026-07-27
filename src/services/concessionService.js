@@ -22,24 +22,24 @@ export const PRODUCT_SIZES = [
 ]
 
 export const SIZE_DISPLAY = {
-  STANDARD: { label: 'Tiêu chuẩn', bg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-  L: { label: 'Lớn', bg: 'bg-amber-500/20 text-amber-300 border-amber-500/30' },
-  XL: { label: 'Siêu lớn', bg: 'bg-red-500/20 text-red-300 border-red-500/30' },
+  STANDARD: { label: 'Tiêu chuẩn', bg: 'bg-blue-100 text-blue-800 border-blue-300' },
+  L: { label: 'Lớn', bg: 'bg-amber-100 text-amber-800 border-amber-300' },
+  XL: { label: 'Siêu lớn', bg: 'bg-rose-100 text-rose-800 border-rose-300' },
 }
 
 /** Default flavor & beverage options for customizable items inside combos */
 export const DEFAULT_COMBO_OPTIONS = {
   popcornFlavors: [
-    { id: 'sweet', label: 'Vị Ngọt (Truyền Thống)' },
-    { id: 'cheese', label: 'Vị Phô Mai (+10.000đ)' },
-    { id: 'caramel', label: 'Vị Caramel (+10.000đ)' },
-    { id: 'salty', label: 'Vị Mặn / Bơ' },
+    { id: 'sweet', label: 'Vị Ngọt (Truyền Thống)', extraFee: 0 },
+    { id: 'cheese', label: 'Vị Phô Mai (+10.000đ)', extraFee: 10000 },
+    { id: 'caramel', label: 'Vị Caramel (+10.000đ)', extraFee: 10000 },
+    { id: 'salty', label: 'Vị Mặn / Bơ', extraFee: 0 },
   ],
   drinkTypes: [
-    { id: 'coca', label: 'Coca-Cola (Ly lớn)' },
-    { id: 'sprite', label: 'Sprite (Ly lớn)' },
-    { id: 'fanta', label: 'Fanta Cam (Ly lớn)' },
-    { id: 'water', label: 'Nước Suối Dasani' },
+    { id: 'coca', label: 'Coca-Cola (Ly lớn)', extraFee: 0 },
+    { id: 'sprite', label: 'Sprite (Ly lớn)', extraFee: 0 },
+    { id: 'fanta', label: 'Fanta Cam (Ly lớn)', extraFee: 0 },
+    { id: 'water', label: 'Nước Suối Dasani', extraFee: 0 },
   ],
 }
 
@@ -295,20 +295,18 @@ export const concessionService = {
    * @param {{ fallback?: boolean, onlyCombo?: boolean }} opts
    */
   getActiveForUi: async (opts = {}) => {
-    const { fallback = true, onlyCombo = false } = opts
+    const { onlyCombo = false } = opts
     try {
-      const res = await api.get('/api/v1/concessions/active')
-      const rawData = res.data?.result || res.data || []
-      const rawList = Array.isArray(rawData) ? rawData : (Array.isArray(res.data?.result?.content) ? res.data.result.content : [])
-      let list = rawList.map(mapConcessionForUi).filter(c => c.id && c.name)
+      let list = unwrapList((await api.get('/api/v1/concessions/active')).data)
+        .map(mapConcessionForUi)
+        .filter(concession => concession.id && concession.name)
       if (onlyCombo) {
-        list = list.filter(c => !c.category || c.category === 'combo')
+        list = list.filter(concession => !concession.category || concession.category === 'combo')
       }
-      if (list.length > 0) return list
-      return fallback ? FALLBACK_COMBOS : []
+      return list
     } catch (err) {
-      console.error('Failed to load concessions:', err)
-      return fallback ? FALLBACK_COMBOS : []
+      if (import.meta.env.DEV) console.error('Failed to load concessions:', err)
+      return []
     }
   },
 }

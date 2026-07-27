@@ -932,7 +932,7 @@ export default function ManagerAnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight uppercase text-red-500" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase text-red-500" style={{ fontFamily: 'Montserrat, sans-serif' }}>
             Báo cáo doanh thu & Thống kê
           </h2>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">

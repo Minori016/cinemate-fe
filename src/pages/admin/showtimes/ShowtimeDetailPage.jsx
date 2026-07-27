@@ -66,12 +66,22 @@ export default function ShowtimeDetailPage() {
       const st = await showtimeService.getById(id)
       setShowtime(st)
 
-      // Load all showtimes for sidebar list
+      // Load showtimes for sidebar list (7 days back to 14 days ahead of current showtime)
       try {
-        const list = await showtimeService.getAll()
+        const stDate = st?.date || (st?.startTime ? st.startTime.split('T')[0] : new Date().toISOString().split('T')[0])
+        const d = new Date(stDate)
+        const startObj = new Date(d)
+        startObj.setDate(startObj.getDate() - 7)
+        const endObj = new Date(d)
+        endObj.setDate(endObj.getDate() + 14)
+
+        const list = await showtimeService.getAll({
+          startDate: startObj.toISOString().split('T')[0],
+          endDate: endObj.toISOString().split('T')[0]
+        }, 0, 500)
         setAllShowtimes(list || [])
       } catch (err) {
-        console.error('Failed to load showtimes list:', err)
+        console.error('Failed to load showtimes list for sidebar:', err)
       }
 
       // 2. Fetch movie details

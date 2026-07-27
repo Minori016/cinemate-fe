@@ -54,9 +54,10 @@ export default function StaffTicketingPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
+        const todayStr = new Date().toISOString().split('T')[0]
         const [moviesRes, showtimesRes] = await Promise.all([
-          movieService.getAll({ page: 0, size: 100 }),
-          showtimeService.getPublicShowtimes()
+          movieService.getAll({ status: 'now-showing', page: 0, size: 50 }),
+          showtimeService.getAll({ startDate: todayStr })
         ])
 
         let showtimesList = showtimesRes

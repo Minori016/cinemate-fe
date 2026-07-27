@@ -106,6 +106,30 @@ export default function ShowtimeListPage() {
     return (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
   })
 
+  // Table pagination state
+  const [tablePage, setTablePage] = useState(0)
+  const [tablePageSize, setTablePageSize] = useState(10)
+  const [tableShowtimes, setTableShowtimes] = useState([])
+  const [tableTotalElements, setTableTotalElements] = useState(0)
+  const [tableTotalPages, setTableTotalPages] = useState(0)
+  const [tableLoading, setTableLoading] = useState(false)
+
+  // Timeline range & lazy load state
+  const [loadedDateRange, setLoadedDateRange] = useState({ start: '', end: '' })
+  const [isLazyLoading, setIsLazyLoading] = useState(false)
+
+  const getTimelineInitialRange = (baseDateStr) => {
+    const base = new Date(baseDateStr || Date.now());
+    const startObj = new Date(base);
+    startObj.setDate(startObj.getDate() - 7);
+    const endObj = new Date(base);
+    endObj.setDate(endObj.getDate() + 14);
+    return {
+      startDate: startObj.toISOString().split('T')[0],
+      endDate: endObj.toISOString().split('T')[0]
+    };
+  }
+
   // Current time state for the timeline indicator
   const [now, setNow] = useState(new Date())
   useEffect(() => {
@@ -209,126 +233,124 @@ export default function ShowtimeListPage() {
     }
   }
 
-  // Load Data
-  const loadData = async () => {
-    setLoading(true)
+  // Load Metadata (Movies, Rooms, System Configs)
+  const loadMetadata = async () => {
     try {
-      const stList = await showtimeService.getAll()
-      setShowtimes(stList)
+      const mRes = await movieService.getAll()
+      setMovies(mRes.data || [])
+    } catch { setMovies([]) }
+    try {
+      const rRes = await cinemaRoomService.getAll()
+      const rList = rRes.data?.result || rRes.data || []
+      const sortedList = (rList.length > 0 ? rList : []).sort((a, b) => 
+        String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
+      );
+      setRooms(sortedList)
+    } catch { setRooms([]) }
+    try {
+      const sRes = await systemConfigService.getAll()
+      const sData = sRes?.data?.result || sRes?.data || sRes || [];
+      setSystemConfigs(Array.isArray(sData) ? sData : []);
+    } catch { setSystemConfigs([]) }
+  }
 
-      try {
-        const mRes = await movieService.getAll()
-        setMovies(mRes.data || [])
-      } catch { setMovies([]) }
-      try {
-        const rRes = await cinemaRoomService.getAll()
-        const rList = rRes.data?.result || rRes.data || []
-        const sortedList = (rList.length > 0 ? rList : []).sort((a, b) => 
-          String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
-        );
-        setRooms(sortedList)
-      } catch { setRooms([]) }
-      try {
-        const sRes = await systemConfigService.getAll()
-        // Bọc thép: Xuyên qua các lớp object (data, result) để tìm đúng Array
-        const sData = sRes?.data?.result || sRes?.data || sRes || [];
-        setSystemConfigs(Array.isArray(sData) ? sData : []);
-      } catch { setSystemConfigs([]) }
+  // Fetch Timeline showtimes (7 days back to 14 days ahead, with lazy append)
+  const fetchTimelineShowtimes = async (baseDateStr, isAppend = false) => {
+    if (isAppend) {
+      setIsLazyLoading(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      let startDate, endDate;
+      if (isAppend && loadedDateRange.end) {
+        const nextStartObj = new Date(loadedDateRange.end);
+        nextStartObj.setDate(nextStartObj.getDate() + 1);
+        startDate = nextStartObj.toISOString().split('T')[0];
+
+        const nextEndObj = new Date(nextStartObj);
+        nextEndObj.setDate(nextEndObj.getDate() + 14);
+        endDate = nextEndObj.toISOString().split('T')[0];
+      } else {
+        const range = getTimelineInitialRange(baseDateStr);
+        startDate = range.startDate;
+        endDate = range.endDate;
+      }
+
+      const list = await showtimeService.getAll({
+        startDate,
+        endDate,
+        movieId: filterMovie,
+        roomId: filterRoom
+      }, 0, 1000)
+
+      if (isAppend) {
+        setShowtimes(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = list.filter(item => !existingIds.has(item.id));
+          return [...prev, ...newItems];
+        });
+        setLoadedDateRange(prev => ({ ...prev, end: endDate }));
+      } else {
+        setShowtimes(list);
+        setLoadedDateRange({ start: startDate, end: endDate });
+      }
     } catch (err) {
-      console.error('Error loading showtimes data:', err)
-      triggerToast('Không thể tải danh sách dữ liệu!', 'error')
+      console.error('Error fetching timeline showtimes:', err);
+      triggerToast('Không thể tải lịch chiếu dòng thời gian!', 'error');
     } finally {
-      setLoading(false)
+      setLoading(false);
+      setIsLazyLoading(false);
+    }
+  }
+
+  // Fetch Table showtimes (paginated)
+  const fetchTableShowtimes = async () => {
+    setTableLoading(true);
+    try {
+      const res = await showtimeService.getAll({
+        startDate: filterDate,
+        endDate: filterDate,
+        movieId: filterMovie,
+        roomId: filterRoom
+      }, tablePage, tablePageSize);
+
+      setTableShowtimes(res);
+      setTableTotalElements(res.totalElements ?? res.length);
+      setTableTotalPages(res.totalPages ?? 1);
+    } catch (err) {
+      console.error('Error fetching table showtimes:', err);
+      triggerToast('Không thể tải danh sách dạng bảng!', 'error');
+    } finally {
+      setTableLoading(false);
     }
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
-    if (isAuthorized) loadData()
+    if (isAuthorized) {
+      loadMetadata();
+    }
   }, [isAuthorized])
 
-  const getEndTimeForShowtime = (st) => {
-    if (st.endTime) {
-      const d = new Date(st.endTime)
-      if (!isNaN(d.getTime())) {
-        return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-      }
+  useEffect(() => {
+    if (isAuthorized && viewMode === 'grid') {
+      fetchTimelineShowtimes(filterDate, false);
     }
-    // Fallback if endTime is missing
-    const mObj = movies.find(m => m.titleVn === st.movie || m.id === st.movieId)
-    const dMin = mObj ? (mObj.durationMinutes || 120) : 120
-    try {
-      const startT = new Date(`${st.date}T${st.time}:00`)
-      if (!isNaN(startT.getTime())) {
-        const endT = new Date(startT.getTime() + (dMin + 10) * 60 * 1000)
-        return endT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
-      }
-    } catch (e) {
-      console.error(e)
-    }
-    return '--:--'
-  }
+  }, [isAuthorized, viewMode, filterDate, filterMovie, filterRoom])
 
-  const getConfigValue = (key, defaultValue) => {
-    // Bọc thép: Nếu API trả về Object thay vì Array, chặn ngay để không bị sập hàm .find()
-    if (!Array.isArray(systemConfigs)) return defaultValue;
-    
-    const conf = systemConfigs.find(c => c.configKey === key);
-    if (conf && conf.configValue != null) {
-       const parsed = parseInt(conf.configValue, 10);
-       return isNaN(parsed) ? defaultValue : parsed;
+  useEffect(() => {
+    if (isAuthorized && viewMode === 'list') {
+      fetchTableShowtimes();
     }
-    return defaultValue;
-  };
-
-  const getCleaningEndTime = (st) => {
-    const endStr = getEndTimeForShowtime(st);
-    if (endStr === '--:--') return '--:--';
-    
-    const roomObj = rooms.find(r => r.name === st.room || String(r.id) === String(st.roomId));
-    let buffer = getConfigValue('CLEANING_BUFFER_DEFAULT', 15);
-    
-    if (roomObj) {
-      // 1. FIXED: Đảm bảo formats luôn là array
-      const rawFormats = roomObj.supportedFormats;
-      const formats = Array.isArray(rawFormats) ? rawFormats : (typeof rawFormats === 'string' ? rawFormats.split(',') : []);
-      
-      // 2. FIXED: Ép kiểu String trước khi toUpperCase()
-      const name = String(roomObj.name || '').toUpperCase();
-      
-      if (formats.includes('IMAX') || formats.includes('_IMAX') || name.includes('IMAX')) {
-        buffer = getConfigValue('CLEANING_BUFFER_IMAX', 30);
-      } else if (formats.includes('4DX') || formats.includes('_4DX') || name.includes('4DX')) {
-        buffer = getConfigValue('CLEANING_BUFFER_4DX', 20);
-      } else if (formats.includes('3D') || formats.includes('_3D') || name.includes('3D')) {
-        buffer = getConfigValue('CLEANING_BUFFER_3D', 20);
-      }
-    } else {
-      // 3. FIXED: Ép kiểu String trước khi toLowerCase()
-      const roomName = String(st.room || '').toLowerCase();
-      if (roomName.includes('imax')) buffer = getConfigValue('CLEANING_BUFFER_IMAX', 30);
-      else if (roomName.includes('4dx') || roomName.includes('4d')) buffer = getConfigValue('CLEANING_BUFFER_4DX', 20);
-      else if (roomName.includes('3d')) buffer = getConfigValue('CLEANING_BUFFER_3D', 20);
-    }
-
-    try {
-      const endT = new Date(`${st.date}T${endStr}:00`);
-      if (!isNaN(endT.getTime())) {
-        const cleanEndT = new Date(endT.getTime() + buffer * 60 * 1000);
-        return cleanEndT.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    return '--:--';
-  }
-
+  }, [isAuthorized, viewMode, filterDate, filterMovie, filterRoom, tablePage, tablePageSize])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
     try {
       await showtimeService.delete(deleteTarget.id)
       setShowtimes(prev => prev.filter(st => st.id !== deleteTarget.id))
+      setTableShowtimes(prev => prev.filter(st => st.id !== deleteTarget.id))
       triggerToast(`Đã xóa suất chiếu của phim "${deleteTarget.movie}"`, 'success')
     } catch (err) {
       const status = err?.response?.status
@@ -345,8 +367,6 @@ export default function ShowtimeListPage() {
     }
   }
 
-  // Publish flow: DRAFT → SCHEDULED → SOLD_OUT
-  // Chỉ suất SCHEDULED / SOLD_OUT mới hiện trên API user.
   const handleUpdateStatus = async (st, nextStatus) => {
     if (!st?.id || !nextStatus) return
     setStatusUpdatingId(st.id)
@@ -354,6 +374,9 @@ export default function ShowtimeListPage() {
     try {
       const updated = await showtimeService.updateStatus(st.id, nextStatus)
       setShowtimes(prev => prev.map(item => (
+        item.id === st.id ? { ...item, ...updated, status: updated.status || nextStatus } : item
+      )))
+      setTableShowtimes(prev => prev.map(item => (
         item.id === st.id ? { ...item, ...updated, status: updated.status || nextStatus } : item
       )))
       toast.success(
@@ -371,41 +394,67 @@ export default function ShowtimeListPage() {
     }
   }
 
-  const [timelineDaysCount, setTimelineDaysCount] = useState(7)
+  const getEndTimeForShowtime = (st) => {
+    if (!st) return ''
+    if (st.endTime) {
+      try {
+        const d = new Date(st.endTime)
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
+        }
+      } catch { /* ignore */ }
+    }
+    if (st.time) {
+      try {
+        const [h, m] = st.time.split(':').map(Number)
+        const mObj = movies.find(movie => movie.id === st.movieId || movie.titleVn === st.movie)
+        const dur = mObj ? (mObj.durationMinutes || 120) : 120
+        const totalMinutes = h * 60 + m + dur
+        const endH = Math.floor(totalMinutes / 60) % 24
+        const endM = String(totalMinutes % 60).padStart(2, '0')
+        return `${String(endH).padStart(2, '0')}:${endM}`
+      } catch { /* ignore */ }
+    }
+    return ''
+  }
 
-  // Find the latest date among all showtimes
-  const latestShowtimeDateStr = showtimes.reduce((latest, st) => {
-    if (!st.date) return latest;
-    if (!latest) return st.date;
-    return new Date(st.date) > new Date(latest) ? st.date : latest;
-  }, filterDate);
-
-  // Calculate the max allowed days count (2 days after the latest showtime)
-  const filterDateObj = new Date(filterDate);
-  const latestDateObj = new Date(latestShowtimeDateStr);
-  const diffTimeMs = latestDateObj.getTime() - filterDateObj.getTime();
-  const diffDaysToLatest = Math.max(0, Math.ceil(diffTimeMs / (1000 * 60 * 60 * 24)));
-  
-  // At least 7 days, max is diff + 2 to avoid huge empty horizontal scrolling
-  const MAX_DAYS_COUNT = Math.max(7, diffDaysToLatest + 2);
+  const [timelineDaysCount, setTimelineDaysCount] = useState(14)
 
   useEffect(() => {
-    setTimelineDaysCount(7)
+    setTimelineDaysCount(14)
   }, [filterDate])
 
-  // Get N days starting from filterDate
-  const datesToRender = Array.from({ length: Math.min(timelineDaysCount, MAX_DAYS_COUNT) }).map((_, i) => {
-    const d = new Date(filterDate)
-    d.setDate(d.getDate() + i)
-    return d.toISOString().split('T')[0]
-  })
+  // Build datesToRender from loadedDateRange (covers full loaded window)
+  const datesToRender = (() => {
+    try {
+      const startStr = loadedDateRange.start || filterDate
+      const endStr = loadedDateRange.end || filterDate
+      if (!startStr || !endStr) return [filterDate || new Date().toISOString().split('T')[0]]
 
-  // Filter Showtimes
+      const start = new Date(startStr)
+      const end = new Date(endStr)
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        return [filterDate || new Date().toISOString().split('T')[0]]
+      }
+
+      const days = []
+      const cur = new Date(start)
+      let count = 0
+      while (cur <= end && count < 120) {
+        days.push(cur.toISOString().split('T')[0])
+        cur.setDate(cur.getDate() + 1)
+        count++
+      }
+      return days.length > 0 ? days : [filterDate]
+    } catch {
+      return [filterDate || new Date().toISOString().split('T')[0]]
+    }
+  })()
+
   const filteredShowtimes = showtimes.filter(st => {
-    const matchMovie = filterMovie === 'all' || st.movie === filterMovie || st.movieId === filterMovie
-    const matchRoom = filterRoom === 'all' || st.room === filterRoom || st.roomId === filterRoom
-    const matchDate = !filterDate || datesToRender.includes(st.date)
-    return matchMovie && matchRoom && matchDate
+    const matchMovie = filterMovie === 'all' || st.movieId === filterMovie
+    const matchRoom = filterRoom === 'all' || st.roomId === filterRoom
+    return matchMovie && matchRoom
   })
 
   // Access Denied Screen
@@ -444,51 +493,72 @@ export default function ShowtimeListPage() {
   };
   
   const calculatePosition = (timeStr, movieId, stDate) => {
-    if (!timeStr || !stDate) return { left: '0px', width: '0px' }
-    const mObj = movies.find(m => m.id === movieId || m.titleVn === movieId)
-    const durationMins = mObj ? (mObj.durationMinutes || 120) : 120
-    const { startHour, businessMinutes } = getBusinessHours();
-    
-    // Parse dates to local timezone at midnight to calculate exact days diff
-    const [by, bm, bd] = filterDate.split('-');
-    const baseDateObj = new Date(by, bm - 1, bd);
-    baseDateObj.setHours(startHour, 0, 0, 0);
+    try {
+      if (!timeStr || !stDate || typeof stDate !== 'string' || typeof timeStr !== 'string') {
+        return { left: '0px', width: '120px' }
+      }
+      const mObj = movies.find(m => m.id === movieId || m.titleVn === movieId)
+      const durationMins = mObj ? (mObj.durationMinutes || 120) : 120
+      const { startHour, businessMinutes } = getBusinessHours();
 
-    const [sy, sm, sd] = stDate.split('-');
-    const stDateObj = new Date(sy, sm - 1, sd);
-    let [h, m] = timeStr.split(':').map(Number);
-    stDateObj.setHours(h, m, 0, 0);
-    
-    const diffTimeMs = stDateObj.getTime() - baseDateObj.getTime();
-    
-    const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000));
-    const remainderMs = diffTimeMs % (24 * 3600 * 1000);
-    const minutesIntoDay = Math.floor(remainderMs / 60000);
-    
-    const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay;
-    
-    return {
-      left: `${totalMinutes}px`,
-      width: `${durationMins + 10}px`,
+      // IMPORTANT: Base date is the START date of the rendered timeline grid (datesToRender[0])
+      const timelineStartStr = datesToRender[0] || filterDate
+      const bParts = (timelineStartStr || '').split('-')
+      if (bParts.length < 3) return { left: '0px', width: `${durationMins}px` }
+      
+      const baseDateObj = new Date(Number(bParts[0]), Number(bParts[1]) - 1, Number(bParts[2]))
+      baseDateObj.setHours(startHour, 0, 0, 0)
+
+      const stParts = stDate.split('-')
+      if (stParts.length < 3) return { left: '0px', width: `${durationMins}px` }
+      
+      const stDateObj = new Date(Number(stParts[0]), Number(stParts[1]) - 1, Number(stParts[2]))
+      const timeParts = timeStr.split(':').map(Number)
+      let h = timeParts[0] || 0
+      let m = timeParts[1] || 0
+      stDateObj.setHours(h, m, 0, 0)
+
+      const diffTimeMs = stDateObj.getTime() - baseDateObj.getTime()
+      if (isNaN(diffTimeMs)) return { left: '0px', width: `${durationMins}px` }
+
+      // Total calendar days between timelineStartStr and stDate
+      const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000))
+      const remainderMs = diffTimeMs % (24 * 3600 * 1000)
+      const minutesIntoDay = Math.floor(remainderMs / 60000)
+
+      const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay
+
+      return {
+        left: `${totalMinutes}px`,
+        width: `${durationMins}px`,
+      }
+    } catch {
+      return { left: '0px', width: '120px' }
     }
   }
 
   const getTodayLinePosition = () => {
-    const { startHour, businessMinutes } = getBusinessHours();
-    const [y, m, d] = filterDate.split('-');
-    const baseDateObj = new Date(y, m - 1, d);
-    baseDateObj.setHours(startHour, 0, 0, 0);
+    try {
+      const { startHour, businessMinutes } = getBusinessHours();
+      const timelineStartStr = datesToRender[0] || filterDate
+      if (!timelineStartStr || typeof timelineStartStr !== 'string') return '-10px';
+      const parts = timelineStartStr.split('-');
+      if (parts.length < 3) return '-10px';
+      const [y, m, d] = parts.map(Number);
+      const baseDateObj = new Date(y, m - 1, d);
+      baseDateObj.setHours(startHour, 0, 0, 0);
 
-    const diffTimeMs = now.getTime() - baseDateObj.getTime();
-    const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000));
-    const remainderMs = diffTimeMs % (24 * 3600 * 1000);
-    
-    // If we are before startHour, remainderMs could be negative if we didn't floor properly? 
-    // Math.floor works fine, it just wraps to previous day.
-    const minutesIntoDay = Math.floor(remainderMs / (1000 * 60));
-    const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay;
+      const diffTimeMs = now.getTime() - baseDateObj.getTime();
+      if (isNaN(diffTimeMs)) return '-10px';
+      const realDaysPassed = Math.floor(diffTimeMs / (24 * 3600 * 1000));
+      const remainderMs = diffTimeMs % (24 * 3600 * 1000);
+      const minutesIntoDay = Math.floor(remainderMs / (1000 * 60));
+      const totalMinutes = (realDaysPassed * businessMinutes) + minutesIntoDay;
 
-    return totalMinutes > 0 ? `${totalMinutes}px` : '-10px';
+      return totalMinutes > 0 ? `${totalMinutes}px` : '-10px';
+    } catch {
+      return '-10px';
+    }
   }
 
   // Hatch Pattern SVG cho giờ đóng cửa
@@ -496,37 +566,36 @@ export default function ShowtimeListPage() {
 
   const handleTimelineScroll = (e) => {
     const target = e.target
-    if (target.scrollLeft + target.clientWidth >= target.scrollWidth - 1000) {
-      setTimelineDaysCount(prev => Math.min(prev + 7, MAX_DAYS_COUNT))
+    if (!isLazyLoading && target.scrollLeft + target.clientWidth >= target.scrollWidth - 600) {
+      setTimelineDaysCount(prev => Math.min(prev + 14, 90))
+      fetchTimelineShowtimes(filterDate, true)
     }
   }
 
-  // Auto scroll to nearest showtime
+  // Auto scroll timeline container to 08:00 AM of the selected filterDate
   const timelineContainerRef = useRef(null)
   useEffect(() => {
-    if (timelineContainerRef.current) {
-      if (filteredShowtimes.length > 0) {
-        const nowMs = now.getTime();
-        let closest = filteredShowtimes[0];
-        let minDiff = Infinity;
-        filteredShowtimes.forEach(st => {
-          const stTime = new Date(`${st.date}T${st.time}:00`).getTime();
-          const diff = Math.abs(stTime - nowMs);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closest = st;
-          }
-        });
-        const { left } = calculatePosition(closest.time, closest.movieId, closest.date);
-        let px = parseInt(left.replace('px', '')) - 300; // offset so it's centered
-        if (px < 0) px = 0;
-        timelineContainerRef.current.scrollTo({ left: px, behavior: 'smooth' });
-      } else {
-        const px = parseInt(getTodayLinePosition().replace('px', '')) - 400;
-        timelineContainerRef.current.scrollTo({ left: Math.max(0, px), behavior: 'smooth' });
+    if (!timelineContainerRef.current || viewMode !== 'grid') return
+
+    try {
+      const timelineStartStr = datesToRender[0] || filterDate
+      const bParts = (timelineStartStr || '').split('-').map(Number)
+      const dParts = (filterDate || '').split('-').map(Number)
+
+      if (bParts.length >= 3 && dParts.length >= 3) {
+        const baseDateObj = new Date(bParts[0], bParts[1] - 1, bParts[2])
+        const targetDateObj = new Date(dParts[0], dParts[1] - 1, dParts[2])
+        const diffDays = Math.round((targetDateObj.getTime() - baseDateObj.getTime()) / (24 * 3600 * 1000))
+
+        const { businessMinutes } = getBusinessHours()
+        let px = diffDays * businessMinutes
+        if (px < 0) px = 0
+        timelineContainerRef.current.scrollTo({ left: px, behavior: 'smooth' })
       }
+    } catch (err) {
+      console.error('Error auto scrolling timeline:', err)
     }
-  }, [filterDate, viewMode, filteredShowtimes.length]) // trigger when length changes
+  }, [filterDate, viewMode, loadedDateRange.start])
 
   return (
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans h-full min-h-[calc(100vh-80px)] overflow-hidden">
@@ -585,12 +654,15 @@ export default function ShowtimeListPage() {
           <div className="relative">
             <select
               value={filterMovie}
-              onChange={(e) => setFilterMovie(e.target.value)}
+              onChange={(e) => {
+                setFilterMovie(e.target.value)
+                setTablePage(0)
+              }}
               className="appearance-none bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg px-4 py-2 pr-10 text-sm font-semibold text-[#191c1e] focus:outline-none focus:border-[#b80035] transition-colors cursor-pointer w-56"
             >
               <option value="all">Tất cả phim</option>
               {movies.map(m => (
-                <option key={m.id} value={m.titleVn}>{m.titleVn}</option>
+                <option key={m.id} value={m.id}>{m.titleVn}</option>
               ))}
             </select>
             <span className="material-symbols-outlined absolute right-3 top-2 text-[#5c3f40] pointer-events-none">expand_more</span>
@@ -599,12 +671,15 @@ export default function ShowtimeListPage() {
           <div className="relative">
             <select
               value={filterRoom}
-              onChange={(e) => setFilterRoom(e.target.value)}
+              onChange={(e) => {
+                setFilterRoom(e.target.value)
+                setTablePage(0)
+              }}
               className="appearance-none bg-[#f7f9fb] border border-[#e0e3e5] rounded-lg px-4 py-2 pr-10 text-sm font-semibold text-[#191c1e] focus:outline-none focus:border-[#b80035] transition-colors cursor-pointer w-48"
             >
               <option value="all">Tất cả phòng chiếu</option>
               {rooms.map(r => (
-                <option key={r.id} value={r.name}>{r.name}</option>
+                <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
             <span className="material-symbols-outlined absolute right-3 top-2 text-[#5c3f40] pointer-events-none">expand_more</span>
@@ -615,7 +690,10 @@ export default function ShowtimeListPage() {
             <input
               type="date"
               value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
+              onChange={(e) => {
+                setFilterDate(e.target.value)
+                setTablePage(0)
+              }}
               className="bg-transparent border-none outline-none text-sm font-bold text-[#191c1e] p-0 cursor-pointer focus:ring-0"
             />
           </div>
@@ -653,6 +731,12 @@ export default function ShowtimeListPage() {
             className="flex-1 overflow-auto custom-scrollbar flex bg-white border border-[#e5bdbe] rounded-2xl shadow-sm min-h-0 relative"
             onScroll={handleTimelineScroll}
           >
+            {isLazyLoading && (
+              <div className="sticky right-4 top-3 z-50 ml-auto bg-[#b80035] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-lg flex items-center gap-1.5 animate-pulse w-fit pointer-events-none">
+                <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                Đang tải thêm suất chiếu (Lazy loading)...
+              </div>
+            )}
             <div className="flex h-full min-h-full" style={{ width: `calc(192px + ${datesToRender.length * getBusinessHours().businessMinutes}px)` }}>
               
               {/* Sidebar (Rooms) */}
@@ -660,7 +744,7 @@ export default function ShowtimeListPage() {
                 <div className="h-[60px] border-b border-[#e5bdbe] bg-[#f7f9fb] sticky top-0 z-50 shrink-0 flex items-center justify-center">
                    <span className="text-xs font-black tracking-widest text-[#5c647a] uppercase">PHÒNG CHIẾU</span>
                 </div>
-                {rooms.filter(r => filterRoom === 'all' || r.name === filterRoom || r.id === filterRoom).map(room => {
+                {rooms.filter(r => filterRoom === 'all' || r.id === filterRoom).map(room => {
                   const roomInfo = getRoomDetails(room)
                   return (
                     <div key={room.id} className="h-24 border-b border-[#e0e3e5] flex items-center px-4 gap-3 bg-white hover:bg-gray-50 transition-colors shrink-0">
@@ -755,8 +839,8 @@ export default function ShowtimeListPage() {
 
                 {/* Grid Content (Room Rows & Showtimes) */}
                 <div className="relative z-10">
-                  {rooms.filter(r => filterRoom === 'all' || r.name === filterRoom || r.id === filterRoom).map(room => {
-                    const roomShowtimes = filteredShowtimes.filter(st => st.roomId === room.id || st.room === room.name)
+                  {rooms.filter(r => filterRoom === 'all' || r.id === filterRoom).map(room => {
+                    const roomShowtimes = filteredShowtimes.filter(st => st.roomId === room.id)
                     return (
                       <div key={room.id} className="h-24 border-b border-[#e0e3e5] border-dashed relative">
                         {roomShowtimes.map(st => {
@@ -772,46 +856,46 @@ export default function ShowtimeListPage() {
                           const nextActions = getNextStatusActions(st.status)
                           const isDraft = st.status === 'DRAFT'
 
-                          const barColor = isDraft ? 'bg-gray-400' : 'bg-[#4caf50]'
+                          const barColor = isDraft ? 'bg-purple-600' : (st.status === 'SOLD_OUT' ? 'bg-amber-500' : 'bg-[#4caf50]')
                           const bgColor = isDraft
-                            ? 'bg-[#f5f5f5]'
+                            ? (isDubbed
+                              ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#f3e8ff_6px,#f3e8ff_12px)]'
+                              : 'bg-purple-50/90')
                             : (isDubbed
                               ? 'bg-[repeating-linear-gradient(-45deg,#fff,#fff_6px,#fff0f2_6px,#fff0f2_12px)]'
                               : 'bg-[#e8f5e9]')
-                          const borderColor = isDraft ? 'border-gray-300' : 'border-[#a5d6a7]'
-                          const textColor = isDraft ? 'text-gray-500' : 'text-[#2e7d32]'
+                          const borderColor = isDraft ? 'border-purple-200' : (st.status === 'SOLD_OUT' ? 'border-amber-300' : 'border-[#a5d6a7]')
+                          const textColor = isDraft ? 'text-purple-700' : (st.status === 'SOLD_OUT' ? 'text-amber-700' : 'text-[#2e7d32]')
                           return (
                             <div
                               key={st.id}
-                              className={`absolute top-4 h-[64px] ${bgColor} border ${borderColor} rounded flex items-center p-2 cursor-pointer hover:shadow-md transition-shadow group overflow-hidden shadow-sm ${isDraft ? 'opacity-80' : ''}`}
+                              className={`absolute top-2 h-[76px] ${bgColor} border ${borderColor} rounded-xl flex flex-col justify-between pl-3.5 pr-2 py-2 cursor-pointer hover:shadow-md transition-all group overflow-hidden shadow-sm ${isDraft ? 'opacity-90' : ''}`}
                               style={{ left, width }}
                               onClick={() => navigate(`${basePath}/showtimes/${st.id}`)}
                             >
-                              <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
+                              <div className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-xl ${barColor}`} />
 
-                              <div className="flex-1 min-w-0 ml-2 flex flex-col justify-center relative z-10 pointer-events-none">
-                                <h4 className={`font-semibold text-[12px] text-[#191c1e] line-clamp-1 leading-tight mb-1`} title={st.movie}>
+                              <div className="flex-1 min-w-0 flex flex-col justify-between relative z-10 pointer-events-none">
+                                <h4 className="font-bold text-[12px] text-[#191c1e] truncate leading-tight uppercase" title={st.movie}>
                                   {st.movie}
                                 </h4>
-                                <div className="flex gap-1.5 items-center mb-0.5">
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold bg-[#c8e6c9] text-[#2e7d32]`}>
+                                <div className="flex gap-1.5 items-center my-0.5">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-tight ${isDraft ? 'bg-purple-100 text-purple-700' : 'bg-[#c8e6c9] text-[#2e7d32]'}`}>
                                     {st.format || '2D'}
                                   </span>
                                   {st.status !== 'SCHEDULED' && (
-                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${statusMeta.className}`}>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border uppercase tracking-tight ${statusMeta.className}`}>
                                       {statusMeta.label}
                                     </span>
                                   )}
                                 </div>
-                                <p className={`text-[10px] ${textColor} font-mono font-bold flex gap-1 items-center`}>
-                                  <span>{st.time}</span>
-                                  <span>-</span>
-                                  <span>{getEndTimeForShowtime(st)}</span>
-                                </p>
+                                <div className={`text-[11px] ${textColor} font-mono font-semibold flex items-center gap-1 leading-none`}>
+                                  <span>{st.time} - {getEndTimeForShowtime(st)}</span>
+                                </div>
                               </div>
 
                               {/* Hover Actions */}
-                              <div className="absolute right-0 top-0 bottom-0 bg-white/80 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto">
+                              <div className="absolute right-0 top-0 bottom-0 bg-white/95 px-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm pointer-events-auto shadow-sm rounded-r-xl">
                                 {nextActions.filter(action => action.status !== 'SOLD_OUT').map(action => (
                                   <button
                                     key={action.status}
@@ -858,79 +942,164 @@ export default function ShowtimeListPage() {
         </>
       ) : (
         // LIST VIEW (Table)
-        <div className="flex-1 bg-white border border-[#e5bdbe] rounded-2xl overflow-hidden shadow-sm p-5 overflow-y-auto">
-          {filteredShowtimes.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-[#e0e3e5]">
-              <table className="w-full text-sm">
-                <thead className="bg-[#f7f9fb]">
-                  <tr className="text-[10px] uppercase font-bold text-[#5c647a] tracking-wider border-b border-[#e0e3e5]">
-                    <th className="px-6 py-4 text-left">Phim / Movie</th>
-                    <th className="px-6 py-4 text-left">Phòng chiếu</th>
-                    <th className="px-6 py-4 text-left">Ngày chiếu</th>
-                    <th className="px-6 py-4 text-left">Giờ chiếu</th>
-                    <th className="px-6 py-4 text-left">Trạng thái</th>
-                    <th className="px-6 py-4 text-left">Ngôn ngữ</th>
-                    <th className="px-6 py-4 text-left">Giá vé</th>
-                    <th className="px-6 py-4 text-right">Hành động</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#e0e3e5] text-xs">
-                  {filteredShowtimes.map((st) => {
-                    const statusMeta = getStatusMeta(st.status)
-                    const nextActions = getNextStatusActions(st.status)
-                    return (
-                    <tr 
-                      key={st.id} 
-                      className="hover:bg-[#f7f9fb] transition-colors cursor-pointer"
-                      onClick={() => navigate(`${basePath}/showtimes/${st.id}`)}
-                    >
-                      <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
-                      <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
-                      <td className="px-6 py-4 font-medium text-[#5c3f40]">{st.date}</td>
-                      <td className="px-6 py-4 font-bold text-[#b80035]">
-                        <div className="flex items-center gap-1">
-                          <Clock size={12} /> {st.time} - {getEndTimeForShowtime(st)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {st.status !== 'SCHEDULED' ? (
-                          <span className={`px-2 py-0.5 border rounded text-[10px] font-bold uppercase ${statusMeta.className}`}>
-                            {statusMeta.label}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 font-bold">
-                        <span className={`px-2 py-0.5 border rounded text-[10px] uppercase ${st.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#f7f9fb] text-[#5c647a] border-[#e0e3e5]'}`}>
-                          {st.language || 'Phụ đề'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-extrabold font-mono text-[#00836c]">{formatVND(st.price)}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {nextActions.filter(action => action.status !== 'SOLD_OUT').map(action => (
-                            <button
-                              key={action.status}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleUpdateStatus(st, action.status);
-                              }}
-                              disabled={statusUpdatingId === st.id}
-                              className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer disabled:opacity-50"
-                              title={action.label}
-                            >
-                              <span className="material-symbols-outlined text-[16px]">{action.icon}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </td>
+        <div className="flex-1 bg-white border border-[#e5bdbe] rounded-2xl overflow-hidden shadow-sm p-5 flex flex-col min-h-0">
+          {tableLoading ? (
+            <div className="py-24 flex justify-center items-center flex-1">
+              <span className="material-symbols-outlined animate-spin text-5xl text-[#b80035]">progress_activity</span>
+            </div>
+          ) : tableShowtimes.length > 0 ? (
+            <>
+              <div className="overflow-x-auto rounded-lg border border-[#e0e3e5] flex-1">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#f7f9fb]">
+                    <tr className="text-[10px] uppercase font-bold text-[#5c647a] tracking-wider border-b border-[#e0e3e5]">
+                      <th className="px-6 py-4 text-left">Phim / Movie</th>
+                      <th className="px-6 py-4 text-left">Phòng chiếu</th>
+                      <th className="px-6 py-4 text-left">Ngày chiếu</th>
+                      <th className="px-6 py-4 text-left">Giờ chiếu</th>
+                      <th className="px-6 py-4 text-left">Trạng thái</th>
+                      <th className="px-6 py-4 text-left">Ngôn ngữ</th>
+                      <th className="px-6 py-4 text-left">Giá vé</th>
+                      <th className="px-6 py-4 text-right">Hành động</th>
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#e0e3e5] text-xs">
+                    {tableShowtimes.map((st) => {
+                      const statusMeta = getStatusMeta(st.status)
+                      const nextActions = getNextStatusActions(st.status)
+                      return (
+                      <tr 
+                        key={st.id} 
+                        className="hover:bg-[#f7f9fb] transition-colors cursor-pointer"
+                        onClick={() => navigate(`${basePath}/showtimes/${st.id}`)}
+                      >
+                        <td className="px-6 py-4 font-bold text-[#191c1e] max-w-xs break-words">{st.movie}</td>
+                        <td className="px-6 py-4 text-[#5c647a] font-semibold">{st.room}</td>
+                        <td className="px-6 py-4 font-medium text-[#5c3f40]">{st.date}</td>
+                        <td className="px-6 py-4 font-bold text-[#b80035]">
+                          <div className="flex items-center gap-1">
+                            <Clock size={12} /> {st.time} - {getEndTimeForShowtime(st)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {st.status !== 'SCHEDULED' ? (
+                            <span className={`px-2 py-0.5 border rounded text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                              {statusMeta.label}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 font-bold">
+                          <span className={`px-2 py-0.5 border rounded text-[10px] uppercase ${st.language === 'Lồng tiếng' ? 'bg-[#fff0f2] text-[#b80035] border-[#ffdad6]' : 'bg-[#f7f9fb] text-[#5c647a] border-[#e0e3e5]'}`}>
+                            {st.language || 'Phụ đề'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 font-extrabold font-mono text-[#00836c]">{formatVND(st.price)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {nextActions.filter(action => action.status !== 'SOLD_OUT').map(action => (
+                              <button
+                                key={action.status}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateStatus(st, action.status);
+                                }}
+                                disabled={statusUpdatingId === st.id}
+                                className="p-2 hover:bg-[#e3f2fd] text-[#1565c0] rounded transition-all cursor-pointer disabled:opacity-50"
+                                title={action.label}
+                              >
+                                <span className="material-symbols-outlined text-[16px]">{action.icon}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Table Pagination Bar */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4 pt-3 border-t border-[#e0e3e5] text-xs font-semibold text-[#5c647a] shrink-0">
+                <div className="flex items-center gap-4">
+                  <span>
+                    Hiển thị {tableTotalElements > 0 ? tablePage * tablePageSize + 1 : 0} - {Math.min((tablePage + 1) * tablePageSize, tableTotalElements)} trên tổng số <strong className="text-[#191c1e]">{tableTotalElements}</strong> suất chiếu
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span>Hiển thị</span>
+                    <select
+                      value={tablePageSize}
+                      onChange={(e) => {
+                        setTablePageSize(Number(e.target.value))
+                        setTablePage(0)
+                      }}
+                      className="bg-[#f7f9fb] border border-[#e0e3e5] rounded px-2 py-1 text-xs font-bold text-[#191c1e] focus:outline-none focus:border-[#b80035]"
+                    >
+                      <option value={10}>10 / trang</option>
+                      <option value={20}>20 / trang</option>
+                      <option value={50}>50 / trang</option>
+                      <option value={100}>100 / trang</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setTablePage(0)}
+                    disabled={tablePage === 0 || tableLoading}
+                    className="px-2.5 py-1 rounded bg-[#f7f9fb] border border-[#e0e3e5] hover:bg-[#eceef0] disabled:opacity-40 font-bold transition-colors cursor-pointer"
+                    title="Trang đầu"
+                  >
+                    «
+                  </button>
+                  <button
+                    onClick={() => setTablePage(p => Math.max(0, p - 1))}
+                    disabled={tablePage === 0 || tableLoading}
+                    className="px-3 py-1 rounded bg-[#f7f9fb] border border-[#e0e3e5] hover:bg-[#eceef0] disabled:opacity-40 font-bold transition-colors cursor-pointer"
+                  >
+                    Trước
+                  </button>
+
+                  {Array.from({ length: Math.min(5, tableTotalPages) }).map((_, idx) => {
+                    let pNum = tablePage - 2 + idx;
+                    if (tablePage < 2) pNum = idx;
+                    else if (tablePage > tableTotalPages - 3) pNum = tableTotalPages - 5 + idx;
+                    if (pNum < 0 || pNum >= tableTotalPages) return null;
+                    return (
+                      <button
+                        key={pNum}
+                        onClick={() => setTablePage(pNum)}
+                        className={`px-3 py-1 rounded border font-bold transition-colors cursor-pointer ${
+                          pNum === tablePage
+                            ? 'bg-[#b80035] text-white border-[#b80035]'
+                            : 'bg-white text-[#191c1e] border-[#e0e3e5] hover:bg-[#f7f9fb]'
+                        }`}
+                      >
+                        {pNum + 1}
+                      </button>
                     )
                   })}
-                </tbody>
-              </table>
-            </div>
+
+                  <button
+                    onClick={() => setTablePage(p => Math.min(tableTotalPages - 1, p + 1))}
+                    disabled={tablePage >= tableTotalPages - 1 || tableLoading}
+                    className="px-3 py-1 rounded bg-[#f7f9fb] border border-[#e0e3e5] hover:bg-[#eceef0] disabled:opacity-40 font-bold transition-colors cursor-pointer"
+                  >
+                    Sau
+                  </button>
+                  <button
+                    onClick={() => setTablePage(tableTotalPages - 1)}
+                    disabled={tablePage >= tableTotalPages - 1 || tableLoading}
+                    className="px-2.5 py-1 rounded bg-[#f7f9fb] border border-[#e0e3e5] hover:bg-[#eceef0] disabled:opacity-40 font-bold transition-colors cursor-pointer"
+                    title="Trang cuối"
+                  >
+                    »
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
             <div className="p-12 text-center text-[#5c647a]">Không có lịch chiếu nào.</div>
           )}

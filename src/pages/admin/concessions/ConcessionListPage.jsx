@@ -140,8 +140,8 @@ export default function ConcessionListPage() {
           <div className="flex items-center gap-2">
             <span>{r.name}</span>
             {r.sizes && r.sizes.length > 1 && (
-              <span className="text-[10px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded font-mono font-bold">
-                {r.sizes.length} Sizes
+              <span className="text-[10px] bg-blue-100 text-blue-800 border border-blue-300 px-1.5 py-0.5 rounded font-mono font-bold">
+                {r.sizes.length} sizes
               </span>
             )}
           </div>
@@ -155,7 +155,7 @@ export default function ConcessionListPage() {
       key: 'itemType',
       label: 'Phân loại',
       render: r => (
-        <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[var(--color-text-muted)] text-xs font-semibold whitespace-nowrap">
+        <span className="px-2.5 py-1 rounded-full bg-gray-100 border border-gray-200 text-gray-700 text-xs font-semibold whitespace-nowrap">
           {CONCESSION_ITEM_TYPES[r.itemType] || r.itemType}
         </span>
       )
@@ -175,7 +175,7 @@ export default function ConcessionListPage() {
             {r.sizes.map(s => {
               const sInfo = SIZE_DISPLAY[s.key]
               const displayLabel = sInfo?.label || s.label
-              const bgStyle = sInfo?.bg || 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+              const bgStyle = sInfo?.bg || 'bg-gray-100 text-gray-800 border-gray-300'
               return (
                 <span key={s.key} className={`px-2 py-0.5 rounded border text-[11px] font-bold whitespace-nowrap ${bgStyle}`}>
                   {displayLabel}: {formatVND(s.price)}
@@ -194,13 +194,13 @@ export default function ConcessionListPage() {
           const minP = Math.min(...r.sizes.map(s => s.price))
           const maxP = Math.max(...r.sizes.map(s => s.price))
           return (
-            <span className="text-red-400 font-extrabold font-mono text-sm">
+            <span className="text-red-600 font-extrabold font-mono text-sm">
               {formatVND(minP)} - {formatVND(maxP)}
             </span>
           )
         }
         return (
-          <span className="text-red-400 font-extrabold font-mono text-sm">
+          <span className="text-red-600 font-extrabold font-mono text-sm">
             {formatVND(r.price)}
           </span>
         )
@@ -211,12 +211,12 @@ export default function ConcessionListPage() {
       label: 'Trạng thái',
       render: r => (
         <div className="flex items-center gap-2">
-          <span className={`px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider ${r.isActive ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'}`}>
+          <span className={`px-2.5 py-0.5 rounded border text-[10px] font-extrabold uppercase tracking-wider ${r.isActive ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300'}`}>
             {r.isActive ? 'Đang bán' : 'Ngưng bán'}
           </span>
           <button
             onClick={() => handleToggleActive(r)}
-            className="p-1 hover:bg-white/5 rounded-md text-gray-400 hover:text-white transition-colors cursor-pointer"
+            className="p-1 hover:bg-gray-100 rounded-md text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
             title={r.isActive ? 'Tạm ngưng bán' : 'Kích hoạt bán lại'}
           >
             {r.isActive ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -233,14 +233,14 @@ export default function ConcessionListPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate(`/admin/concessions/edit/${targetEditId}`)}
-              className="p-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 hover:text-yellow-300 border border-yellow-500/20 rounded-xl transition-all cursor-pointer"
+              className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-xl transition-all cursor-pointer"
               title="Sửa"
             >
               <Pencil size={14} />
             </button>
             <button
               onClick={() => setDeleteTarget(r)}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 border border-red-500/20 rounded-xl transition-all cursor-pointer"
+              className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl transition-all cursor-pointer"
               title="Xóa"
             >
               <Trash2 size={14} />
@@ -268,10 +268,10 @@ export default function ConcessionListPage() {
         <div>
           <h1 className="text-4xl text-[var(--color-on-surface)] font-bold tracking-wider uppercase flex items-center gap-3" style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}>
             <ChefHat className="text-red-500" size={32} />
-            Quản lý Bắp nước & Đồ ăn
+            Quản lý đồ ăn
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Quản lý danh sách các món ăn, thức uống và gói combo bắp nước phục vụ khách hàng.
+            Quản lý danh sách các món ăn, thức uống và gói combo phục vụ khách hàng.
           </p>
         </div>
         <Button onClick={() => navigate('/admin/concessions/add')}>
@@ -291,7 +291,7 @@ export default function ConcessionListPage() {
           { label: 'Bắp rang (Popcorn)', value: stats.popcorn, color: 'text-amber-400' },
           { label: 'Đồ ăn khác (Food)', value: stats.food, color: 'text-yellow-500' },
           { label: 'Đồ uống (Drink)', value: stats.drink, color: 'text-blue-500' },
-          { label: 'Combo bắp nước', value: stats.combo, color: 'text-red-500' }
+          { label: 'Gói Combo', value: stats.combo, color: 'text-red-500' }
         ].map(s => (
           <div key={s.label} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3.5">
             <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">{s.label}</p>

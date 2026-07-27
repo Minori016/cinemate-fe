@@ -5,8 +5,10 @@ import { FALLBACK_COMBOS, groupConcessionsByBaseName, DEFAULT_COMBO_OPTIONS } fr
 import { promotionService, getQuickDiscountText } from '../../../../services/promotionService'
 
 export default function ComboStep({
-  combos = FALLBACK_COMBOS,
+  combos = [],
   selectedCombos = {},
+  comboCustomizations: parentComboCustomizations,
+  setComboCustomizations: parentSetComboCustomizations,
   onChangeCombo,
   promoCode,
   setPromoCode,
@@ -27,8 +29,10 @@ export default function ComboStep({
   // Track expanded accordion state for combo details: { [comboId]: boolean }
   const [expandedCombos, setExpandedCombos] = useState({})
   
-  // Track customizable options for sub-items in combo: { [comboId]: { [subItemId]: { flavor, size } } }
-  const [comboCustomizations, setComboCustomizations] = useState({})
+  // Track customizable options for sub-items in combo: { [comboId]: { [subItemId]: { flavor, extraFee, label } } }
+  const [internalComboCustomizations, setInternalComboCustomizations] = useState({})
+  const comboCustomizations = parentComboCustomizations || internalComboCustomizations
+  const setComboCustomizations = parentSetComboCustomizations || setInternalComboCustomizations
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +44,63 @@ export default function ComboStep({
     return () => { cancelled = true }
   }, [])
 
+  // Build dynamic popcorn/beverage options from active single concessions in Admin DB
+  const dynamicComboOptions = useMemo(() => {
+    const popcornItems = (combos || []).filter(i => {
+      if (!i) return false
+      const type = String(i.itemType || i.category || '').toLowerCase()
+      const name = String(i.name || i.baseName || '').toLowerCase()
+      return (type === 'popcorn' || name.includes('bắp') || name.includes('popcorn')) && type !== 'combo'
+    })
+
+    const drinkItems = (combos || []).filter(i => {
+      if (!i) return false
+      const type = String(i.itemType || i.category || '').toLowerCase()
+      const name = String(i.name || i.baseName || '').toLowerCase()
+      return (type === 'drink' || type === 'beverage' || name.includes('nước') || name.includes('coca') || name.includes('sprite') || name.includes('fanta')) && type !== 'combo'
+    })
+
+    let popcornFlavors = DEFAULT_COMBO_OPTIONS.popcornFlavors
+    if (popcornItems.length > 0) {
+      const minPrice = Math.min(...popcornItems.map(p => Number(p.price) || 0))
+      popcornFlavors = popcornItems.map(p => {
+        const price = Number(p.price) || 0
+        const extraFee = Math.max(0, price - minPrice)
+        const label = extraFee > 0
+          ? `${p.name} (+${extraFee.toLocaleString('vi-VN')}đ)`
+          : p.name
+        return {
+          id: p.id || p.uuid || p.name,
+          label,
+          extraFee,
+          rawPrice: price,
+          name: p.name
+        }
+      })
+    }
+
+    let drinkTypes = DEFAULT_COMBO_OPTIONS.drinkTypes
+    if (drinkItems.length > 0) {
+      const minPrice = Math.min(...drinkItems.map(d => Number(d.price) || 0))
+      drinkTypes = drinkItems.map(d => {
+        const price = Number(d.price) || 0
+        const extraFee = Math.max(0, price - minPrice)
+        const label = extraFee > 0
+          ? `${d.name} (+${extraFee.toLocaleString('vi-VN')}đ)`
+          : d.name
+        return {
+          id: d.id || d.uuid || d.name,
+          label,
+          extraFee,
+          rawPrice: price,
+          name: d.name
+        }
+      })
+    }
+
+    return { popcornFlavors, drinkTypes }
+  }, [combos])
+
   // Group raw combos/products so multi-size items occupy only 1 single card
   const groupedProducts = useMemo(() => {
     return groupConcessionsByBaseName(combos)
@@ -49,17 +110,50 @@ export default function ComboStep({
     setExpandedCombos(prev => ({ ...prev, [comboId]: !prev[comboId] }))
   }
 
-  const handleSubItemOptionChange = (comboId, subItemId, key, value) => {
+  const handleSubItemOptionChange = (comboId, subItemId, key, value, flavorsList = []) => {
+    const chosenOption = (flavorsList || []).find(f => String(f.id) === String(value))
+    const extraFee = chosenOption?.extraFee || 0
+
     setComboCustomizations(prev => ({
       ...prev,
       [comboId]: {
         ...(prev[comboId] || {}),
         [subItemId]: {
           ...(prev[comboId]?.[subItemId] || {}),
-          [key]: value
+          [key]: value,
+          extraFee: extraFee,
+          label: chosenOption?.label || value
         }
       }
     }))
+  }
+
+  const getComboExtraFee = (comboId, subItemsList = []) => {
+    const customState = comboCustomizations[comboId] || {}
+    let totalExtra = 0
+    const itemsToEvaluate = subItemsList.length > 0 ? subItemsList : [
+      { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', defaultFlavor: 'sweet' },
+      { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', defaultFlavor: 'coca' }
+    ]
+
+    itemsToEvaluate.forEach(subItem => {
+      const custom = customState[subItem.id]
+      if (custom && custom.extraFee !== undefined) {
+        totalExtra += Number(custom.extraFee) || 0
+      } else {
+        const isPopcorn = subItem.type === 'popcorn' || (subItem.name || '').toLowerCase().includes('bắp')
+        const flavorsList = subItem.flavors && subItem.flavors.length > 0
+          ? subItem.flavors
+          : (isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes)
+        const defaultId = subItem.defaultFlavor || (isPopcorn ? 'sweet' : 'coca')
+        const defaultOpt = flavorsList.find(f => String(f.id) === String(defaultId))
+        if (defaultOpt && defaultOpt.extraFee) {
+          totalExtra += Number(defaultOpt.extraFee) || 0
+        }
+      }
+    })
+
+    return totalExtra
   }
 
   const handleApply = async () => {
@@ -130,6 +224,15 @@ export default function ComboStep({
             const currentSizeObj = prod.sizes?.find(s => s.key === currentSizeKey) || prod.sizes?.[0]
             const activeVariantId = currentSizeObj?.variantId || prod.id
             const activePrice = currentSizeObj?.price || prod.price
+
+            const subItemsList = (prod.subItems && prod.subItems.length > 0) ? prod.subItems : [
+              { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', sizes: ['L'], defaultFlavor: 'sweet', defaultSize: 'L' },
+              { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', sizes: ['L'], defaultFlavor: 'coca', defaultSize: 'L' }
+            ]
+
+            const extraFeePerUnit = isCombo ? getComboExtraFee(prod.id, subItemsList) : 0
+            const unitTotalPrice = activePrice + extraFeePerUnit
+
             const qty = selectedCombos[activeVariantId] || 0
             const isExpanded = !!expandedCombos[prod.id]
             const hasImg = prod.img && (String(prod.img).startsWith('http') || String(prod.img).startsWith('/') || String(prod.img).startsWith('data:'))
@@ -192,8 +295,13 @@ export default function ComboStep({
 
                     <div className="flex items-center gap-3">
                       <span className="text-red-500 font-extrabold text-sm">
-                        {Number(activePrice).toLocaleString('vi-VN')} đ
+                        {Number(unitTotalPrice).toLocaleString('vi-VN')} đ
                       </span>
+                      {extraFeePerUnit > 0 && (
+                        <span className="text-[10px] font-bold text-yellow-400 bg-yellow-500/10 border border-yellow-500/30 px-2 py-0.5 rounded-full">
+                          (+{Number(extraFeePerUnit).toLocaleString('vi-VN')}đ phụ thu vị)
+                        </span>
+                      )}
 
                       {/* Accordion toggle button for Combos */}
                       {isCombo && (
@@ -254,18 +362,15 @@ export default function ComboStep({
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {((prod.subItems && prod.subItems.length > 0) ? prod.subItems : [
-                        { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'sweet', defaultSize: 'L' },
-                        { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'coca', defaultSize: 'L' }
-                      ]).map((subItem) => {
-                        const customState = comboCustomizations[prod.id]?.[subItem.id] || {}
-                        const selectedFlavor = customState.flavor || subItem.defaultFlavor || 'sweet'
-                        const selectedSize = customState.size || subItem.defaultSize || 'L'
-
+                      {subItemsList.map((subItem) => {
                         const isPopcorn = subItem.type === 'popcorn' || (subItem.name || '').toLowerCase().includes('bắp')
-                        const flavorsList = subItem.flavors && subItem.flavors.length > 0
+                        const flavorsList = (subItem.flavors && subItem.flavors.length > 0)
                           ? subItem.flavors
-                          : (isPopcorn ? DEFAULT_COMBO_OPTIONS.popcornFlavors : DEFAULT_COMBO_OPTIONS.drinkTypes)
+                          : (isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes)
+
+                        const customState = comboCustomizations[prod.id]?.[subItem.id] || {}
+                        const selectedFlavor = customState.flavor || subItem.defaultFlavor || (flavorsList[0]?.id || 'sweet')
+                        const selectedSize = customState.size || subItem.defaultSize || 'L'
 
                         return (
                           <div key={subItem.id} className="bg-white/5 p-3 rounded-xl border border-white/10 space-y-2">
@@ -285,7 +390,7 @@ export default function ComboStep({
                               </span>
                               <select
                                 value={selectedFlavor}
-                                onChange={(e) => handleSubItemOptionChange(prod.id, subItem.id, 'flavor', e.target.value)}
+                                onChange={(e) => handleSubItemOptionChange(prod.id, subItem.id, 'flavor', e.target.value, flavorsList)}
                                 className="w-full bg-slate-900 border border-white/20 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-white outline-none focus:border-red-500 transition-colors shadow-sm"
                               >
                                 {flavorsList.map(f => (

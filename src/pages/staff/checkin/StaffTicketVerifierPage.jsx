@@ -5,150 +5,135 @@ import {
   CheckCircle,
   AlertCircle,
   X,
-  Ticket as TicketIcon
+  Ticket as TicketIcon,
+  QrCode,
+  Sparkles,
+  MapPin,
+  Calendar,
+  Clock,
+  Tag,
+  User,
+  Coffee,
+  CheckCircle2
 } from 'lucide-react'
+import { Html5QrcodeScanner } from 'html5-qrcode'
+import { bookingService } from '../../../services/bookingService'
 
-// Fallback initial bookings
-const INITIAL_BOOKINGS = [
-  {
-    id: 'CM-1718556391',
-    movie: 'Dune: Hành Tinh Cát - Phần 2',
-    screen: 'Phòng chiếu 3 (IMAX)',
-    date: '17/06/2026',
-    time: '18:30',
-    seats: 'D4, D5',
-    customerName: 'Nguyễn Văn Anh',
-    phone: '0912345678',
-    email: 'vananh@gmail.com',
-    price: 120000,
-    total: 240000,
-    convertTickets: 0,
-    scoreUsed: 0,
-    memberId: 'MEM-889922',
-    idCard: '012345678901',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-9988112233',
-    movie: 'Lật Mặt 7: Một Điều Ước',
-    screen: 'Phòng chiếu 1 (Standard)',
-    date: '17/06/2026',
-    time: '20:15',
-    seats: 'H12, H13, H14',
-    customerName: 'Trần Thị Bình',
-    phone: '0987654321',
-    email: 'thibinh@gmail.com',
-    price: 110000,
-    total: 330000,
-    convertTickets: 2,
-    scoreUsed: 2000,
-    memberId: 'MEM-445511',
-    idCard: '023456789012',
-    status: 'Đã thanh toán',
-    checkedIn: false,
-    checkInTime: null
-  },
-  {
-    id: 'CM-5566778899',
-    movie: 'Inside Out 2: Những Mảnh Ghép Cảm Xúc',
-    screen: 'Phòng chiếu 2 (3D)',
-    date: '17/06/2026',
-    time: '17:00',
-    seats: 'C1, C2',
-    customerName: 'Lê Văn Cường',
-    phone: '0933445566',
-    email: 'vancuong@gmail.com',
-    price: 90000,
-    total: 180000,
-    convertTickets: 1,
-    scoreUsed: 1000,
-    memberId: 'MEM-332211',
-    idCard: '034567890123',
-    status: 'Đã thanh toán',
-    checkedIn: true,
-    checkInTime: '17/06/2026 - 16:48'
-  }
-]
+const formatPrice = (price) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+  }).format(price);
+};
 
 export default function StaffTicketVerifierPage() {
-  const [scannedCount, setScannedCount] = useState(0)
-  const [bookings, setBookings] = useState([])
   const [query, setQuery] = useState('')
   const [selectedTicket, setSelectedTicket] = useState(null)
   const [toast, setToast] = useState(null)
-
-  // Load state from localStorage on mount
-  useEffect(() => {
-    const savedScanned = localStorage.getItem('staff_scanned_count')
-    setScannedCount(savedScanned ? parseInt(savedScanned, 10) : 128)
-
-    const savedBookings = localStorage.getItem('staff_bookings_db')
-    setBookings(savedBookings ? JSON.parse(savedBookings) : INITIAL_BOOKINGS)
-  }, [])
-
-  // Sync back to localStorage
-  const syncBookings = (newBookings) => {
-    setBookings(newBookings)
-    localStorage.setItem('staff_bookings_db', JSON.stringify(newBookings))
-  }
-
-  const syncScannedCount = (newCount) => {
-    setScannedCount(newCount)
-    localStorage.setItem('staff_scanned_count', newCount.toString())
-  }
+  const [isScanning, setIsScanning] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const triggerToast = (msg, type = 'success') => {
     setToast({ text: msg, type })
     setTimeout(() => setToast(null), 3500)
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (!query.trim()) return
+  useEffect(() => {
+    if (!isScanning) return
 
-    const trimmed = query.trim().toUpperCase()
-    const match = bookings.find(
-      (b) =>
-        b.id.toUpperCase() === trimmed ||
-        b.phone === trimmed ||
-        b.customerName.toUpperCase().includes(trimmed)
+    const scanner = new Html5QrcodeScanner(
+      "qr-reader",
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      false
     )
 
-    if (match) {
-      setSelectedTicket(match)
-    } else {
+    scanner.render(
+      (decodedText) => {
+        setQuery(decodedText)
+        scanner.clear()
+        setIsScanning(false)
+        fetchTicket(decodedText)
+      },
+      (error) => {
+        // scan errors can be ignored
+      }
+    )
+
+    return () => {
+      scanner.clear().catch(console.error)
+    }
+  }, [isScanning])
+
+  const fetchTicket = async (ticketId) => {
+    try {
+      setLoading(true)
+      const res = await bookingService.getById(ticketId)
+      if (res.data.result) {
+        const b = res.data.result
+        setSelectedTicket({
+          id: b.id,
+          movie: b.movieName,
+          posterUrl: b.posterUrl,
+          screen: b.roomName,
+          date: b.date,
+          time: b.showtime,
+          seats: (b.seatNames || []).join(', '),
+          customerName: b.customerName || 'Khách vãng lai',
+          phone: b.phone || 'N/A',
+          email: b.email || 'N/A',
+          memberId: b.memberId || 'N/A',
+          concessions: b.concessions || [],
+          price: (b.totalAmount || 0) / Math.max(1, (b.seatNames || []).length),
+          total: b.totalAmount || 0,
+          convertTickets: 0,
+          scoreUsed: 0,
+          status: b.status,
+          checkedIn: b.status === 'CHECKED_IN',
+          checkInTime: null
+        })
+        if (b.status === 'CHECKED_IN') {
+          triggerToast('Vé này đã được check-in trước đó!', 'error')
+        } else {
+          triggerToast('Tìm thấy vé hợp lệ!', 'success')
+        }
+      } else {
+        setSelectedTicket(null)
+        triggerToast('Không tìm thấy vé khớp với thông tin!', 'error')
+      }
+    } catch (error) {
       setSelectedTicket(null)
-      triggerToast('Không tìm thấy vé khớp với thông tin tìm kiếm!', 'error')
+      triggerToast(error.response?.data?.message || 'Lỗi khi tìm vé!', 'error')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleCheckIn = () => {
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (!query.trim()) return
+    fetchTicket(query.trim())
+  }
+
+  const handleCheckIn = async () => {
     if (!selectedTicket) return
+    try {
+      setLoading(true)
+      await bookingService.checkIn(selectedTicket.id)
 
-    const updated = bookings.map((b) => {
-      if (b.id === selectedTicket.id) {
-        const timeNow = new Date()
-        const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
-        return {
-          ...b,
-          checkedIn: true,
-          checkInTime: formattedTime
-        }
-      }
-      return b
-    })
+      const timeNow = new Date()
+      const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
 
-    syncBookings(updated)
-    
-    // Update active view
-    const match = updated.find((b) => b.id === selectedTicket.id)
-    setSelectedTicket(match)
-
-    // Increment scanned counter
-    syncScannedCount(scannedCount + 1)
-    triggerToast(`Đã xác nhận check-in thành công cho vé ${selectedTicket.id}!`)
+      setSelectedTicket({
+        ...selectedTicket,
+        checkedIn: true,
+        checkInTime: formattedTime
+      })
+      triggerToast(`Đã xác nhận check-in thành công cho vé ${selectedTicket.id}!`, 'success')
+    } catch (error) {
+      triggerToast(error.response?.data?.message || 'Có lỗi xảy ra khi check-in!', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
@@ -189,12 +174,12 @@ export default function StaffTicketVerifierPage() {
       </div>
 
       {/* Search Input Box */}
-      <form onSubmit={handleSearch} className="flex gap-3">
+      <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" size={20} />
           <input
             type="text"
-            placeholder="Ví dụ: CM-1718556391 hoặc 0912345678"
+            placeholder="Nhập mã đặt vé (Booking ID) thủ công..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl py-4 pl-12 pr-4 outline-none text-white text-base focus:border-[var(--color-primary)] focus:ring-1 focus:ring-[var(--color-primary)] transition-all placeholder:text-gray-600"
@@ -202,189 +187,301 @@ export default function StaffTicketVerifierPage() {
         </div>
         <button
           type="submit"
-          className="bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold px-8 rounded-2xl flex items-center gap-2 transition-all shadow-lg shadow-[rgba(229,9,20,0.25)]"
+          disabled={loading}
+          className="bg-zinc-800 hover:bg-zinc-700 text-white font-bold px-8 py-4 md:py-0 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg"
         >
-          <Search size={18} />
+          {loading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <Search size={18} />}
           Tìm kiếm
         </button>
+        <button
+          type="button"
+          onClick={() => setIsScanning(!isScanning)}
+          className="bg-[var(--color-primary)] hover:bg-red-700 text-white font-bold px-8 py-4 md:py-0 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-[rgba(229,9,20,0.25)]"
+        >
+          <QrCode size={18} />
+          {isScanning ? 'Đóng Camera' : 'Quét QR'}
+        </button>
       </form>
+
+      {/* QR Scanner */}
+      {isScanning && (
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-6 flex flex-col items-center">
+          <style>{`
+            #qr-reader {
+              border: 1px solid rgba(255, 255, 255, 0.15) !important;
+              color: #ffffff !important;
+              background-color: #09090b !important;
+            }
+            #qr-reader * {
+              color: #ffffff !important;
+            }
+            #qr-reader__header_message {
+              color: #fca5a5 !important;
+              background: rgba(239, 68, 68, 0.2) !important;
+              border: 1px solid rgba(239, 68, 68, 0.4) !important;
+              padding: 10px 14px !important;
+              border-radius: 12px !important;
+              font-weight: 700 !important;
+              margin-bottom: 12px !important;
+              font-size: 13px !important;
+              word-break: break-word !important;
+            }
+            #qr-reader__status_span {
+              color: #38bdf8 !important;
+              font-weight: 600 !important;
+            }
+            #qr-reader__scan_region {
+              background-color: #000000 !important;
+              border-radius: 12px !important;
+              overflow: hidden !important;
+            }
+            #qr-reader__dashboard {
+              padding: 12px 0 !important;
+            }
+            #html5-qrcode-anchor-scan-type-change {
+              color: #f87171 !important;
+              font-weight: 700 !important;
+              text-decoration: underline !important;
+              margin-top: 10px !important;
+              display: inline-block !important;
+              cursor: pointer !important;
+              font-size: 13px !important;
+            }
+            #qr-reader button,
+            .html5-qrcode-element {
+              background-color: #e50914 !important;
+              color: #ffffff !important;
+              font-weight: 700 !important;
+              border-radius: 12px !important;
+              border: none !important;
+              padding: 10px 20px !important;
+              margin: 8px 4px !important;
+              cursor: pointer !important;
+              font-size: 13px !important;
+              transition: all 0.2s ease !important;
+              box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3) !important;
+            }
+            #qr-reader button:hover,
+            .html5-qrcode-element:hover {
+              background-color: #b91c1c !important;
+              transform: translateY(-1px) !important;
+            }
+            #qr-reader select {
+              background-color: #18181b !important;
+              color: #ffffff !important;
+              border: 1px solid #3f3f46 !important;
+              border-radius: 10px !important;
+              padding: 8px 14px !important;
+              margin: 6px 0 !important;
+              font-size: 13px !important;
+            }
+          `}</style>
+          <div id="qr-reader" className="w-full max-w-md rounded-2xl overflow-hidden bg-black text-white p-4"></div>
+          <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+            Đưa mã QR vé của khách vào giữa khung hình để quét.
+          </p>
+        </div>
+      )}
 
       {/* Ticket Details Panel */}
       {selectedTicket ? (
         <div className="animate-fade-in space-y-6">
-          {/* Ticket Stub Design */}
-          <div
-            className="rounded-3xl border border-[var(--color-border)] overflow-hidden shadow-2xl relative"
-            style={{
-              background: 'linear-gradient(145deg, #0e121e 0%, #080a10 100%)',
-            }}
-          >
-            {/* Top Indicator Strip */}
-            <div
-              className={`h-2.5 w-full ${
-                selectedTicket.checkedIn ? 'bg-emerald-500' : 'bg-yellow-500 animate-pulse'
-              }`}
-            />
+          <div className="w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 bg-[#121420] border-2 border-red-600/30 rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8),0_0_40px_rgba(229,9,20,0.15)] relative">
 
-            <div className="p-8 grid grid-cols-1 md:grid-cols-3 gap-8">
-              {/* Left Column: Film Title & Room Details */}
-              <div className="md:col-span-2 space-y-6">
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary-container)] flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                    <span>🎟️</span> Chi tiết vé xem phim
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                    {/* Movie Name */}
-                    <div className="col-span-2 md:col-span-4 bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Tên phim (Movie Name)</span>
-                      <span className="text-sm font-extrabold text-white mt-1 block leading-snug">{selectedTicket.movie}</span>
+              {/* LEFT SECTION (Main Ticket Details) - 8 Cols */}
+              <div className="lg:col-span-8 p-6 md:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-dashed border-red-500/20 relative">
+
+                {/* Top Bar */}
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full text-xs font-black bg-red-600 text-white shadow-[0_0_12px_rgba(229,9,20,0.6)] uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles size={13} className={selectedTicket.checkedIn ? "" : "animate-pulse"} /> {selectedTicket.checkedIn ? "ĐÃ CHECK-IN" : "CHỜ KIỂM TRA"}
+                      </span>
+                      <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-white/5 text-red-400 border border-red-500/30 font-mono">
+                        #{selectedTicket.id?.substring(0, 8).toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Movie Title & Cinema Info */}
+                  <div className="mb-6">
+                    <h3 className="text-2xl md:text-3xl font-black text-white mb-2 leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      {selectedTicket.movie}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-red-400 font-semibold">
+                      <MapPin size={16} className="shrink-0 text-red-500" />
+                      <span>Cinemate Center — <strong className="text-white">{selectedTicket.screen}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Show Details Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 rounded-2xl bg-black/40 border border-white/5 mb-6">
+                    <div>
+                      <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Calendar size={13} className="text-red-500" /> Ngày chiếu
+                      </p>
+                      <p className="text-white font-extrabold text-base">{selectedTicket.date}</p>
                     </div>
 
-                    {/* Ticket Booking ID */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Mã đặt vé (Booking ID)</span>
-                      <span className="text-xs font-black text-white mt-1 block font-mono">{selectedTicket.id}</span>
+                    <div>
+                      <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Clock size={13} className="text-red-500" /> Suất chiếu
+                      </p>
+                      <p className="text-red-400 font-black text-base">{selectedTicket.time}</p>
                     </div>
 
-                    {/* Screen */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Phòng chiếu (Screen)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.screen}</span>
+                    <div className="col-span-2">
+                      <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <TicketIcon size={13} className="text-red-500" /> Ghế ngồi
+                      </p>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {selectedTicket.seats.split(',').map((seat) => (
+                          <span key={seat} className="text-xs font-black bg-red-600/20 text-red-300 border border-red-500/40 px-2 py-0.5 rounded-md">
+                            {seat.trim()}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Date */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Ngày chiếu (Date)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.date}</span>
+                    <div>
+                      <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <Tag size={13} className="text-red-500" /> Tổng tiền
+                      </p>
+                      <p className="text-red-500 font-black text-base">{formatPrice(selectedTicket.total)}</p>
                     </div>
+                  </div>
 
-                    {/* Time */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Giờ chiếu (Time)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.time}</span>
+                  {/* Member Details */}
+                  <div className="mb-6">
+                    <p className="text-xs font-black uppercase text-gray-300 tracking-wider mb-3 flex items-center gap-2">
+                      <User size={15} className="text-red-500" /> Thông tin khách hàng
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="bg-black/30 p-3.5 rounded-2xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Mã thành viên</span>
+                        <span className="text-sm font-bold text-white block">{selectedTicket.memberId}</span>
+                      </div>
+                      <div className="bg-black/30 p-3.5 rounded-2xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Tên khách hàng</span>
+                        <span className="text-sm font-bold text-white block">{selectedTicket.customerName}</span>
+                      </div>
+                      <div className="bg-black/30 p-3.5 rounded-2xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Số điện thoại</span>
+                        <span className="text-sm font-bold text-white block">{selectedTicket.phone}</span>
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Seat */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Ghế ngồi (Seat)</span>
-                      <span className="text-xs font-black text-[var(--color-primary-container)] mt-1 block">{selectedTicket.seats}</span>
-                    </div>
+                  {/* CONCESSIONS / BẮP NƯỚC SECTION */}
+                  <div>
+                    <p className="text-xs font-black uppercase text-gray-300 tracking-wider mb-3 flex items-center gap-2">
+                      <Coffee size={15} className="text-red-500" /> Đồ ăn & Bắp nước đặt kèm:
+                    </p>
 
-                    {/* Price per ticket */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Đơn giá (Price)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{formatVND(selectedTicket.price)}</span>
-                    </div>
-
-                    {/* Total Price */}
-                    <div className="col-span-2 bg-[var(--color-primary)]/10 border border-[var(--color-primary)]/20 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-primary-container)] block">Tổng tiền (Total)</span>
-                      <span className="text-sm font-black text-[var(--color-primary-container)] mt-1 block">{formatVND(selectedTicket.total)}</span>
-                    </div>
-
-                    {/* Score Conversion Details */}
-                    {selectedTicket.convertTickets > 0 && (
-                      <>
-                        <div className="col-span-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                          <span className="text-[10px] uppercase font-bold text-yellow-500 block">Convert to Ticket</span>
-                          <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.convertTickets} vé</span>
-                        </div>
-                        <div className="col-span-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3">
-                          <span className="text-[10px] uppercase font-bold text-yellow-500 block">Score for Ticket Converting</span>
-                          <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.scoreUsed} điểm</span>
-                        </div>
-                      </>
+                    {selectedTicket.concessions && selectedTicket.concessions.length > 0 ? (
+                      <div className="space-y-2 bg-black/30 p-3.5 rounded-2xl border border-white/5">
+                        {selectedTicket.concessions.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-gray-200 py-1 border-b border-white/5 last:border-0">
+                            <div className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-lg bg-red-600/20 text-red-400 font-extrabold flex items-center justify-center text-[10px] border border-red-500/30">
+                                {item.quantity}x
+                              </span>
+                              <div>
+                                <span className="font-bold text-white">{item.name}</span>
+                                {item.size && (
+                                  <span className="ml-2 text-[10px] text-red-400 bg-red-950/60 px-1.5 py-0.2 rounded border border-red-800/40 uppercase">
+                                    Size {item.size}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="font-extrabold text-red-400">
+                              {formatPrice(item.lineTotal || ((item.unitPrice || 0) * item.quantity))}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-black/20 rounded-xl border border-white/5 text-center">
+                        <p className="text-xs text-gray-500 italic">Không mua kèm bắp nước</p>
+                      </div>
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Section B: Thông tin thành viên */}
-                <div className="space-y-3 pt-4 border-t border-white/5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                    <span>👤</span> Thông tin thành viên (Member Details)
+              {/* RIGHT SECTION (Status & Actions) - 4 Cols */}
+              <div className="lg:col-span-4 bg-gradient-to-b from-[#181a28] to-[#0f101a] p-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
+
+                {/* Decorative Notch Circles */}
+                <div className="hidden lg:block absolute -top-4 -left-4 w-8 h-8 rounded-full bg-[#07080E] border-r border-red-500/30" />
+                <div className="hidden lg:block absolute -bottom-4 -left-4 w-8 h-8 rounded-full bg-[#07080E] border-r border-red-500/30" />
+
+                <div className="w-full flex flex-col items-center">
+                  <div className="w-full max-w-[200px] aspect-[2/3] rounded-2xl overflow-hidden border-2 border-red-600/40 shadow-[0_10px_30px_rgba(229,9,20,0.3)] mb-6 group relative">
+                    <img
+                      src={selectedTicket.posterUrl || 'https://via.placeholder.com/300x450?text=CineMate'}
+                      alt={selectedTicket.movie}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
+                    <span className="absolute bottom-2 left-2 right-2 text-[10px] font-extrabold text-white bg-red-600/80 backdrop-blur-sm py-1 rounded text-center uppercase tracking-widest">
+                      PASS TICKET
+                    </span>
+                  </div>
+
+                  <div className="relative mb-6">
+                    <div className={`absolute inset-0 blur-2xl ${selectedTicket.checkedIn ? 'bg-emerald-600/40' : 'bg-yellow-500/40'} rounded-full`} />
+                    {selectedTicket.checkedIn ? (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-[0_0_40px_rgba(16,185,129,0.6)] relative z-10 border-2 border-emerald-400/40">
+                        <CheckCircle2 size={50} strokeWidth={2.2} />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-800 to-yellow-900 flex items-center justify-center text-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] relative z-10 border-2 border-yellow-500/30">
+                        <AlertCircle size={50} strokeWidth={2} />
+                      </div>
+                    )}
+                  </div>
+
+                  <h4 className="text-xl font-bold text-white mb-1">
+                    {selectedTicket.checkedIn ? "Đã Check-in" : "Chờ Check-in"}
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                    {/* Member ID */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Mã thành viên (Member ID)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block font-mono">{selectedTicket.memberId}</span>
-                    </div>
+                  {selectedTicket.checkedIn && selectedTicket.checkInTime ? (
+                    <p className="text-xs text-gray-400 font-mono mb-8">
+                      {selectedTicket.checkInTime}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400 mb-8">
+                      Vé hợp lệ, sẵn sàng vào phòng chiếu
+                    </p>
+                  )}
 
-                    {/* Email */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 md:col-span-2">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Email</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block truncate" title={selectedTicket.email}>{selectedTicket.email}</span>
-                    </div>
-
-                    {/* Phone Number */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số điện thoại (Phone)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.phone}</span>
-                    </div>
-
-                    {/* Identity Card */}
-                    <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Số CCCD (Identity Card)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.idCard}</span>
-                    </div>
-
-                    {/* Full Name */}
-                    <div className="col-span-2 bg-white/5 border border-white/10 rounded-xl p-3">
-                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Họ tên thành viên (Full Name)</span>
-                      <span className="text-xs font-extrabold text-white mt-1 block">{selectedTicket.customerName}</span>
-                    </div>
+                  {/* Confirm Action Button */}
+                  <div className="w-full mt-auto">
+                    {selectedTicket.checkedIn ? (
+                      <button
+                        disabled
+                        className="w-full py-4 px-6 bg-white/5 border border-white/10 rounded-2xl font-bold text-sm text-gray-500 cursor-not-allowed flex justify-center items-center gap-2"
+                      >
+                        Đã kiểm tra vé
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleCheckIn}
+                        disabled={loading}
+                        className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-2xl text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] border-none active:scale-[0.98] transition-all flex justify-center items-center gap-2"
+                      >
+                        {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
+                        Xác nhận vào phòng
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: QR/Scan Status Stub */}
-              <div className="border-t md:border-t-0 md:border-l border-white/5 pt-6 md:pt-0 md:pl-8 flex flex-col justify-between items-center text-center">
-                <div className="space-y-3">
-                  <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-widest">MÃ ĐẶT VÉ</p>
-                  <p className="text-lg font-black text-white bg-white/5 border border-white/10 px-4 py-1.5 rounded-xl inline-block" style={{ fontFamily: 'monospace' }}>
-                    {selectedTicket.id}
-                  </p>
-                </div>
-
-                {/* Status Indicator */}
-                <div className="my-6 space-y-1">
-                  <span className="text-xs font-medium text-[var(--color-text-muted)] block">TRẠNG THÁI VÉ</span>
-                  {selectedTicket.checkedIn ? (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 uppercase tracking-wide">
-                      <CheckCircle size={12} /> Đã vào phòng
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 uppercase tracking-wide">
-                      <AlertCircle size={12} /> Chờ check-in
-                    </div>
-                  )}
-                  {selectedTicket.checkedIn && selectedTicket.checkInTime && (
-                    <p className="text-[10px] text-gray-500 mt-1">{selectedTicket.checkInTime}</p>
-                  )}
-                </div>
-
-                {/* Confirm Action Button */}
-                {selectedTicket.checkedIn ? (
-                  <button
-                    disabled
-                    className="w-full bg-slate-800 text-gray-500 font-bold py-3.5 rounded-2xl text-sm border border-white/5 cursor-not-allowed"
-                  >
-                    Đã kiểm tra vé
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleCheckIn}
-                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl text-sm shadow-lg shadow-emerald-500/20 border border-emerald-500/10 active:scale-[0.98] transition-all"
-                  >
-                    Xác nhận vào phòng
-                  </button>
-                )}
-              </div>
             </div>
-
-            {/* Ticket Cutout Circles */}
-            <div className="hidden md:block absolute left-[66.6%] top-0 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-[var(--color-background)] border-b border-[var(--color-border)]" />
-            <div className="hidden md:block absolute left-[66.6%] bottom-0 -translate-x-1/2 translate-y-1/2 w-6 h-6 rounded-full bg-[var(--color-background)] border-t border-[var(--color-border)]" />
           </div>
         </div>
       ) : (
@@ -397,7 +494,7 @@ export default function StaffTicketVerifierPage() {
             Đang đợi thông tin quét vé...
           </h4>
           <p className="text-sm text-[var(--color-text-muted)] max-w-sm mx-auto mt-2">
-            Nhập Booking ID hợp lệ (ví dụ: <strong className="text-gray-400">CM-1718556391</strong> hoặc <strong className="text-gray-400">CM-9988112233</strong>) ở thanh tìm kiếm để tra cứu thông tin vé.
+            Quét mã QR trên vé của khách hoặc nhập ID thủ công ở thanh tìm kiếm để tra cứu thông tin vé.
           </p>
         </div>
       )}

@@ -89,21 +89,25 @@ export default function DashboardPage() {
           update('employees', count)
         }),
 
-      // Vé bán hôm nay
-      api.get('/api/v1/bookings/today')
+      // Vé bán hôm nay / tổng vé đặt
+      api.get('/api/v1/admin/bookings', { params: { page: 0, size: 1 } })
+        .catch(() => api.get('/api/v1/bookings', { params: { page: 0, size: 1 } }))
         .then(r => {
-          const result = r.data?.result
-          const count = result?.totalElements ?? result?.length ?? (typeof result === 'number' ? result : 0)
+          const result = r?.data?.result || r?.data
+          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
           update('tickets', count)
-        }),
+        })
+        .catch(() => update('tickets', 0)),
 
       // Khuyến mãi đang hoạt động
-      api.get('/api/v1/promotions', { params: { status: 'ACTIVE', size: 1 } })
+      api.get('/api/v1/promotions/active')
+        .catch(() => api.get('/api/v1/admin/promotions', { params: { status: 'ACTIVE', page: 0, size: 1 } }))
         .then(r => {
-          const result = r.data?.result
+          const result = r?.data?.result || r?.data
           const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
           update('promotions', count)
-        }),
+        })
+        .catch(() => update('promotions', 0)),
     ]).finally(() => setStatsLoading(false))
   }, [])
 
@@ -123,7 +127,7 @@ export default function DashboardPage() {
       >
         <div>
           <h1
-            className="text-4xl text-gray-900 font-bold tracking-wider uppercase"
+            className="text-2xl sm:text-3xl lg:text-4xl text-gray-900 font-bold tracking-wider uppercase"
             style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
           >
             Tổng Quan Hệ Thống

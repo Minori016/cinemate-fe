@@ -1,7 +1,7 @@
 import api from './api'
 
 // Status user được xem/chọn ghế (DRAFT bị loại — chỉ SCHEDULED trở lên mới hiển thị)
-export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'SOLD_OUT']
+export const PUBLIC_SHOWTIME_STATUSES = ['SCHEDULED', 'OPEN_FOR_BOOKING', 'SOLD_OUT']
 
 export const isPublicShowtimeStatus = (status) => {
   if (!status) return true
@@ -68,25 +68,31 @@ export const showtimeService = {
   // GET /api/v1/admin/showtimes
   // Accepts optional filter params for client-side filtering:
   // { date, cinemaId, roomId }
-  getAll: async (filterParams = {}) => {
-    const res = await api.get('/api/v1/admin/showtimes')
-    let list = res.data?.result || res.data || []
+  getAll: async (filterParams = {}, page = 0, size = 500) => {
+    const params = { page, size }
+    if (filterParams.startDate) params.startDate = filterParams.startDate
+    if (filterParams.endDate) params.endDate = filterParams.endDate
+    if (filterParams.date && !filterParams.startDate && !filterParams.endDate) {
+      params.startDate = filterParams.date
+      params.endDate = filterParams.date
+    }
+    if (filterParams.movieId && filterParams.movieId !== 'all') params.movieId = filterParams.movieId
+    if (filterParams.roomId && filterParams.roomId !== 'all') params.roomId = filterParams.roomId
+
+    const res = await api.get('/api/v1/admin/showtimes', { params })
+    
+    // Xử lý PageResponse từ API mới
+    let responseData = res.data?.result || res.data || {}
+    let list = responseData.content || (Array.isArray(responseData) ? responseData : [])
     if (!Array.isArray(list)) list = []
 
-    // Client-side filter
-    if (filterParams.date || filterParams.cinemaId || filterParams.roomId) {
+    // Client-side filter fallback (if single date, cinemaId specified)
+    if (filterParams.date || filterParams.cinemaId) {
       list = list.filter(st => {
-        // Filter by date
         if (filterParams.date && st.startTime) {
           const stDate = st.startTime.split('T')[0]
           if (stDate !== filterParams.date) return false
         }
-        // Filter by roomId
-        if (filterParams.roomId) {
-          const rid = String(st.roomId || st.room?.id || '')
-          if (rid !== String(filterParams.roomId)) return false
-        }
-        // Filter by cinemaId
         if (filterParams.cinemaId && !filterParams.roomId) {
           const cid = String(st.cinemaId || st.room?.cinemaId || st.cinema?.id || '')
           if (cid !== String(filterParams.cinemaId)) return false
@@ -95,7 +101,14 @@ export const showtimeService = {
       })
     }
 
-    return list.map(item => mapShowtimeFromBackend(item))
+    const mappedList = list.map(item => mapShowtimeFromBackend(item))
+    mappedList.pageNumber = responseData.pageNumber ?? page
+    mappedList.pageSize = responseData.pageSize ?? size
+    mappedList.totalElements = responseData.totalElements ?? mappedList.length
+    mappedList.totalPages = responseData.totalPages ?? 1
+    mappedList.last = responseData.last ?? true
+
+    return mappedList
   },
 
   // GET /api/v1/admin/showtimes/{id}
@@ -151,7 +164,9 @@ export const showtimeService = {
 
   // POST /api/v1/admin/showtimes/auto-generate/save
   autoConfirm: async (confirmData) => {
-    const res = await api.post('/api/v1/admin/showtimes/auto-generate/save', confirmData)
+    const res = await api.post('/api/v1/admin/showtimes/auto-generate/save', confirmData, {
+      timeout: 120000
+    })
     return res.data
   },
 

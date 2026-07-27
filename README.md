@@ -6,12 +6,6 @@
 
 ## ✨ Tính năng nổi bật
 
-### 🎥 Cinematic Intro Experience
-- **Video intro fullscreen** tự động phát khi truy cập lần đầu
-- **Skip button** với hiệu ứng mượt mà
-- **CTA overlay** với các nút "Khám phá ngay" và "Mua vé ngay"
-- **localStorage tracking** - chỉ hiện intro 1 lần
-
 ### 👤 Hệ thống phân quyền đa vai trò
 | Role | Chức năng |
 |------|-----------|
@@ -54,18 +48,12 @@
 ```
 movie-theater-front-end/
 ├── public/                          # Tài nguyên tĩnh
-│   ├── Intro.mp4                   # Video intro
 │   ├── favicon.png, .svg, .ico     # Icon và favicon
 │   └── icons.svg                   # SVG icons bundle
 ├── src/
 │   ├── components/                 # Reusable components
 │   │   ├── common/                 # UI cơ bản (Button, Input, Modal, Table, Badge...)
-│   │   ├── layout/                 # Layout components (Navbar, Sidebar, Footer...)
-│   │   ├── video/                  # Video/3D components
-│   │   │   ├── HeroCinematic.jsx   # 3D particle cinematic hero (planned)
-│   │   │   └── VideoIntro.jsx      # Intro video component ✅
-│   │   └── intro/                  # Intro section components
-│   │       └── VideoIntro.jsx      # Main intro component
+│   │   └── layout/                 # Layout components (Navbar, Sidebar, Footer...)
 │   ├── contexts/                   # React Context providers
 │   │   └── AuthContext.jsx         # Authentication & user state
 │   ├── hooks/                      # Custom React hooks
@@ -97,7 +85,7 @@ movie-theater-front-end/
 │   │   │   ├── concessions/        # Bán bắp/nước
 │   │   │   └── overview/           # Tổng quan ca làm
 │   │   └── user/                   # Customer-facing pages
-│   │       ├── HomePage.jsx        # Trang chủ + cinematic intro
+│   │       ├── HomePage.jsx        # Trang chủ
 │   │       ├── MoviesPage.jsx      # Danh sách phim
 │   │       ├── MovieDetailPage.jsx # Chi tiết phim + trailer modal
 │   │       ├── ProfilePage.jsx     # Trang cá nhân
@@ -125,7 +113,7 @@ movie-theater-front-end/
 │   │   └── genreService.js        # Genre APIs
 │   ├── style/                      # Styles & configuration
 │   │   └── globals.css             # Global CSS + Tailwind imports
-│   ├── App.jsx                     # Main app component with intro wrapper
+│   ├── App.jsx                     # Main application shell and providers
 │   ├── main.jsx                    # Entry point
 │   └── index.css                   # Global styles
 ├── .env.example                    # Environment variables template
@@ -198,38 +186,31 @@ VITE_API_URL=/api
 
 ## 🎯 Key Features Breakdown
 
-### 1. Cinematic Intro
-- Fullscreen video playback on first visit
-- Auto-plays with fallback for browser restrictions
-- Skip button (appears after 3s, enabled after 3s)
-- Call-to-action overlay with navigation buttons
-- localStorage flag prevents re-showing
-
-### 2. Authentication & Authorization
+### 1. Authentication & Authorization
 - JWT token-based auth
 - Role-based route protection (Admin, Manager, Staff, Member)
 - Auto-logout on token expiry
 - Public vs protected API endpoints
 
-### 3. Movie Management (Admin)
+### 2. Movie Management (Admin)
 - CRUD operations for movies
 - Poster upload with multipart/form-data
 - Genre and country associations
 - Status management (active/inactive)
 
-### 4. Cinema Room & Seat Management
+### 3. Cinema Room & Seat Management
 - Visual seat layout builder
 - Multiple seat types (Standard, VIP, Couple)
 - Heatmap visualization for optimal seating
 - Real-time preview of seat configuration
 
-### 5. Booking System
+### 4. Booking System
 - Date & time selection for showtimes
 - Interactive seat map
 - Real-time seat availability
 - Price calculation based on seat type
 
-### 6. Staff & Manager Features
+### 5. Staff & Manager Features
 - Ticket verification/check-in
 - Concessions (popcorn & drinks) sales
 - Shift management

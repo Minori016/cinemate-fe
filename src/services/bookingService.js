@@ -10,6 +10,7 @@ export const bookingService = {
   holdSeats: (data) => api.post('/api/v1/bookings/hold', data),
   confirm: (id) => api.post(`/api/v1/bookings/${id}/confirm`),
   cancelBooking: (id) => api.post(`/api/v1/bookings/${id}/cancel`),
+  checkIn: (id) => api.post(`/api/v1/bookings/${id}/checkin`),
   lockSeats: (showtimeId, seatIds) => api.post(`/api/v1/showtimes/${showtimeId}/seats/lock`, { seatIds }),
   unlockSeat: (showtimeId, seatId) => api.post(`/api/v1/showtimes/${showtimeId}/seats/${seatId}/unlock`),
   clearMyLocks: (showtimeId) => api.delete(`/api/v1/showtimes/${showtimeId}/seats/my-locks`),
@@ -19,5 +20,5 @@ export const bookingService = {
 lookupCustomer: (query) => api.get('/api/v1/bookings/customers/lookup', { params: { query } }),
 
   getMyBookings: () => api.get('/api/v1/bookings/my'),
-  getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),
+  getAllAdminBookings: (params) => api.get('/api/v1/admin/bookings', { params }),
 }

@@ -7,6 +7,7 @@ import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
 import { paymentService } from '../../services/paymentService'
 import Input from '../../components/common/Input'
+import { QRCodeSVG } from 'qrcode.react'
 
 const MOCK_BOOKINGS = [
   {
@@ -181,10 +182,23 @@ export default function ProfilePage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const resolveTab = (tab) => {
+    if (tab === 'tickets' || tab === 'booked') return 'booked'
+    return tab || 'info'
+  }
+
   const [profile, setProfile] = useState(null)
-  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'info')
+  const [activeTab, setActiveTab] = useState(resolveTab(location.state?.activeTab))
   const [bookings, setBookings] = useState([])
   const [moviePosters, setMoviePosters] = useState({})
+
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      const targetTab = resolveTab(location.state.activeTab)
+      setActiveTab(targetTab)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [location.state])
 
   // Fetch movie posters map
   useEffect(() => {
@@ -1849,6 +1863,33 @@ export default function ProfilePage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* QR Code Section for Check-in */}
+                        {booking.status === 'CONFIRMED' && (
+                          <div className="bg-white/5 border-l border-white/10 p-4 flex flex-col items-center justify-center min-w-[120px]">
+                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-2 text-center">
+                              Mã Check-in
+                            </p>
+                            <div className="bg-white p-2 rounded-lg">
+                              <QRCodeSVG 
+                                value={booking.id.toString()} 
+                                size={80} 
+                                level="H" 
+                                includeMargin={false} 
+                                fgColor="#000000" 
+                                bgColor="#FFFFFF"
+                              />
+                            </div>
+                          </div>
+                        )}
+                        {booking.status === 'CHECKED_IN' && (
+                          <div className="bg-white/5 border-l border-white/10 p-4 flex flex-col items-center justify-center min-w-[120px]">
+                            <span className="material-symbols-outlined text-4xl text-green-500 mb-2">check_circle</span>
+                            <p className="text-xs font-bold text-green-500 tracking-wider text-center uppercase">
+                              Đã Check-in
+                            </p>
+                          </div>
+                        )}
                       </motion.div>
                     ))}
                   </div>

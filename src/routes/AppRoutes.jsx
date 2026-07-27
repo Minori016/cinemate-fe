@@ -25,7 +25,6 @@ import FaqPage from '../pages/user/FaqPage'
 import ContactPage from '../pages/user/ContactPage'
 import FeedbackPage from '../pages/user/FeedbackPage'
 import CareersPage from '../pages/user/CareersPage'
-import VideoIntro from '../components/intro/VideoIntro'
 import ShowtimesPage from '../pages/booking/ShowtimesPage'
 import SeatSelectionPage from '../pages/booking/SeatSelectionPage'
 import CheckoutPage from '../pages/booking/CheckoutPage'
@@ -59,15 +58,6 @@ import ManagerShowtimesPage from '../pages/manager/showtimes/ManagerShowtimesPag
 import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
-function RootRedirect() {
-  const storage = import.meta.env.DEV ? sessionStorage : localStorage
-  const introSeen = storage.getItem('cinemate_intro_seen')
-  console.log('[RootRedirect] introSeen:', introSeen, '| storage:', import.meta.env.DEV ? 'sessionStorage' : 'localStorage')
-  return introSeen === 'true'
-    ? <Navigate to="/home" replace />
-    : <Navigate to="/intro" replace />
-}
-
 export default function AppRoutes() {
   const location = useLocation()
 
@@ -76,25 +66,14 @@ export default function AppRoutes() {
       <Routes location={location} key={location.key}>
 
         {/* Root */}
-        <Route path="/" element={<RootRedirect />} />
-
-        {/* Intro — không navbar/footer */}
-        <Route
-          path="/intro"
-          element={
-            <VideoIntro
-              onExplore={() => { window.location.href = '/home' }}
-              onBuyTicket={() => { window.location.href = '/home' }}
-            />
-          }
-        />
+        <Route path="/" element={<Navigate to="/home" replace />} />
 
         {/* Auth */}
         <Route path="/login" element={<AuthPage />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<AuthPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/first-login" element={<FirstLoginPage />} />
+        <Route path="/first-login" element={<ProtectedRoute allowFirstLogin><FirstLoginPage /></ProtectedRoute>} />
 
         {/* User Layout */}
         <Route element={<UserLayout />}>
@@ -117,8 +96,8 @@ export default function AppRoutes() {
         {/* Booking */}
         <Route path="/booking" element={<ProtectedRoute><SeatSelectionPage /></ProtectedRoute>} />
         <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
-        <Route path="/checkout/result" element={<ProtectedRoute><CheckoutResultPage /></ProtectedRoute>} />
-        <Route path="/manager/booking/confirm" element={<ProtectedRoute><CounterCheckoutPage /></ProtectedRoute>} />
+        <Route path="/checkout/result" element={<CheckoutResultPage />} />
+        <Route path="/manager/booking/confirm" element={<ProtectedRoute role="MANAGER"><CounterCheckoutPage /></ProtectedRoute>} />
 
         {/* Staff */}
         <Route path="/staff" element={<ProtectedRoute role="STAFF"><StaffLayout /></ProtectedRoute>}>
