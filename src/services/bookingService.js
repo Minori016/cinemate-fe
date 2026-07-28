@@ -20,5 +20,5 @@ export const bookingService = {
 lookupCustomer: (query) => api.get('/api/v1/bookings/customers/lookup', { params: { query } }),
 
   getMyBookings: () => api.get('/api/v1/bookings/my'),
-  getAllAdminBookings: () => api.get('/api/v1/admin/bookings'),
+  getAllAdminBookings: (params) => api.get('/api/v1/admin/bookings', { params }),
 }

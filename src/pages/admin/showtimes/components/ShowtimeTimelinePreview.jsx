@@ -210,7 +210,7 @@ export default function ShowtimeTimelinePreview({
       if (response && response.enhancedList) {
         setAiEnhancedResult(response);
         setCurrentViewTab('ai');
-        toast.success(`Tối ưu hóa AI thành công! Hiệu suất: ${response.originalScore.toFixed(1)}% ➔ ${response.enhancedScore.toFixed(1)}%`);
+        toast.success(`Tối ưu hóa AI thành công!`);
       } else {
         toast.error('AI không trả về kết quả tối ưu hợp lệ.');
       }
@@ -944,11 +944,7 @@ export default function ShowtimeTimelinePreview({
               psychology
             </span>
             <div>
-              <h4 className="font-bold text-sm">Đề xuất tối ưu hóa bằng Trí Tuệ Nhân Tạo (AI)</h4>
-              <p className="text-xs text-purple-200 mt-0.5">
-                Hiệu suất: <span className="line-through opacity-65">{aiEnhancedResult.originalScore.toFixed(1)}%</span> ➔ <span className="font-bold text-green-300">{aiEnhancedResult.enhancedScore.toFixed(1)}%</span> 
-                {aiEnhancedResult.enhancedScore > aiEnhancedResult.originalScore && ` (+${(aiEnhancedResult.enhancedScore - aiEnhancedResult.originalScore).toFixed(1)}%)`}
-              </p>
+              <h4 className="font-bold text-sm text-white">Đề xuất tối ưu hóa bằng Trí Tuệ Nhân Tạo (AI)</h4>
             </div>
           </div>
           <div className="flex gap-2">
