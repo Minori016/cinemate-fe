@@ -39,11 +39,20 @@ export default function PromotionFormPage() {
   const [isToggling, setIsToggling] = useState(false)
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
+  const [todayStart, setTodayStart] = useState('')
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 4000)
   }
+
+  useEffect(() => {
+    const d = new Date()
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    setTodayStart(`${yyyy}-${mm}-${dd}T00:00`)
+  }, [])
 
   const isCoupon = type === PROMOTION_TYPES.COUPON
   const isTypeUnsupported = type !== PROMOTION_TYPES.COUPON
@@ -158,6 +167,23 @@ export default function PromotionFormPage() {
       const start = new Date(startTime)
       const end = new Date(endTime)
       if (start >= end) newErrors.endTime = 'Thời gian kết thúc phải lớn hơn thời gian bắt đầu.'
+    }
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (startTime) {
+      const start = new Date(startTime)
+      if (start < today) {
+        newErrors.startTime = 'Ngày bắt đầu không được ở trong quá khứ.'
+      }
+    }
+
+    if (endTime) {
+      const end = new Date(endTime)
+      if (end < today) {
+        newErrors.endTime = 'Ngày kết thúc không được ở trong quá khứ.'
+      }
     }
 
     if (isCoupon) {
@@ -351,6 +377,7 @@ export default function PromotionFormPage() {
                 <input
                   type="datetime-local"
                   value={startTime}
+                  min={todayStart || undefined}
                   onChange={(e) => setStartTime(e.target.value)}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
                     ${errors.startTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
@@ -365,6 +392,7 @@ export default function PromotionFormPage() {
                 <input
                   type="datetime-local"
                   value={endTime}
+                  min={todayStart || undefined}
                   onChange={(e) => setEndTime(e.target.value)}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
                     ${errors.endTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
