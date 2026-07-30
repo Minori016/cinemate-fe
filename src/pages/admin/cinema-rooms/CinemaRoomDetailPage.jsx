@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import { 
@@ -59,6 +59,8 @@ export default function CinemaRoomDetailPage() {
   const { roomId } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   // Authorization check (AC-07)
   const isAdmin = user && user.roles?.includes('ADMIN')
@@ -83,7 +85,7 @@ export default function CinemaRoomDetailPage() {
     if (isDirty) {
       setShowExitConfirm(true)
     } else {
-      navigate('/admin/cinema-rooms')
+      navigate(`${basePath}/cinema-rooms`)
     }
   }
 
@@ -186,7 +188,7 @@ export default function CinemaRoomDetailPage() {
       setSeats(payload.seats)
       
       // Return to listing and show confirmation (AC-04)
-      navigate('/admin/cinema-rooms', { 
+      navigate(`${basePath}/cinema-rooms`, { 
         state: { successMessage: `Cấu hình ghế cho phòng "${room?.name || roomId}" thành công!` } 
       })
     } catch (err) {
@@ -338,7 +340,7 @@ export default function CinemaRoomDetailPage() {
               <button
                 onClick={() => {
                   setShowExitConfirm(false)
-                  navigate('/admin/cinema-rooms')
+                  navigate(`${basePath}/cinema-rooms`)
                 }}
                 className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 cursor-pointer shadow-md transition-colors"
               >

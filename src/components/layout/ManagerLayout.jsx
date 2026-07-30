@@ -1,12 +1,19 @@
 import { Outlet } from 'react-router-dom'
-import { TrendingUp, Calendar, Users, FileText } from 'lucide-react'
+import { TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat, ClipboardList } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const navItems = [
   { to: '/manager/analytics', icon: TrendingUp, label: 'Thống kê & Phân tích' },
-  { to: '/manager/showtimes', icon: Calendar, label: 'Quản lý lịch chiếu' },
-  { to: '/manager/shifts', icon: Users, label: 'Ca trực nhân viên' },
-  { to: '/manager/tickets', icon: FileText, label: 'Quản lý đặt vé' },
+  { to: '/manager/movies', icon: Film, label: 'Phim' },
+  { to: '/manager/cinema-rooms', icon: LayoutGrid, label: 'Phòng chiếu' },
+  { to: '/manager/showtimes', icon: Calendar, label: 'Lịch chiếu' },
+  { to: '/manager/employees', icon: Users, label: 'Nhân viên' },
+  { to: '/manager/members', icon: User, label: 'Thành viên' },
+  { to: '/manager/tickets', icon: Ticket, label: 'Quản lý vé' },
+  { to: '/manager/promotions', icon: Tag, label: 'Khuyến mãi' },
+  { to: '/manager/concessions', icon: ChefHat, label: 'Quản lý đồ ăn' },
+  { to: '/manager/system-configs', icon: Settings, label: 'Cấu hình Hệ thống' },
+  { to: '/manager/shifts', icon: ClipboardList, label: 'Ca trực nhân viên' },
 ]
 
 export default function ManagerLayout() {

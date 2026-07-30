@@ -13,6 +13,7 @@ export default function CinemaRoomListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   const [toast, setToast] = useState(null)
   
@@ -327,7 +328,7 @@ export default function CinemaRoomListPage() {
         </div>
 
         {/* Add Room trigger button (AC-03) */}
-        <Button onClick={() => navigate('/admin/cinema-rooms/add')}>
+        <Button onClick={() => navigate(`${basePath}/cinema-rooms/add`)}>
           <Plus size={16} className="mr-1" /> Thêm phòng chiếu
         </Button>
       </div>
@@ -409,7 +410,7 @@ export default function CinemaRoomListPage() {
 
                 {/* Seat Detail Button (AC-02) */}
                 <button
-                  onClick={() => navigate(`/admin/cinema-rooms/${row.id}`)}
+                  onClick={() => navigate(`${basePath}/cinema-rooms/${row.id}`)}
                   className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 hover:text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20 active:scale-[0.98] cursor-pointer"
                 >
                   Seat Detail
