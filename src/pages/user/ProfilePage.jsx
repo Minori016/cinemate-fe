@@ -1878,8 +1878,6 @@ export default function ProfilePage() {
                               style={{ backgroundColor: 'var(--color-background, #0b0c10)' }}
                             />
 
-<<<<<<< Updated upstream
-=======
                             {isCheckedIn ? (
                               <div className="flex flex-col items-center justify-center text-center py-2">
                                 <span className="material-symbols-outlined text-3xl text-blue-400 mb-1">check_circle</span>
@@ -1914,7 +1912,6 @@ export default function ProfilePage() {
             )
           })()}
 
->>>>>>> Stashed changes
           {/* ── Tab Payments (Lịch sử thanh toán) ── */}
           {activeTab === 'payments' && (() => {
             return (
