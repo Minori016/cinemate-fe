@@ -693,20 +693,28 @@ export default function MovieDetailPage() {
     if (e) e.preventDefault()
     setSubmitError('')
 
-    // MoMo Real Payment Flow
     try {
       setSubmitting(true)
-      setProcessingStep('Đang khởi tạo thanh toán MoMo...')
-      const res = await paymentService.createMomoPayment(bookingId)
+      setProcessingStep(`Đang khởi tạo thanh toán ${paymentMethod.toUpperCase()}...`)
+      
+      let res;
+      if (paymentMethod === 'momo') {
+        res = await paymentService.createMomoPayment(bookingId)
+      } else if (paymentMethod === 'vnpay') {
+        res = await paymentService.createVnPayPayment(bookingId)
+      } else {
+        throw new Error('Chưa hỗ trợ phương thức thanh toán này')
+      }
+      
       const payUrl = res.data?.result?.payUrl || res.data?.payUrl
       if (payUrl) {
         window.location.href = payUrl
       } else {
-        setSubmitError('Không nhận được đường dẫn thanh toán từ MoMo')
+        setSubmitError(`Không nhận được đường dẫn thanh toán từ ${paymentMethod.toUpperCase()}`)
         setSubmitting(false)
       }
     } catch (err) {
-      console.error('MoMo error:', err)
+      console.error('Payment error:', err)
       setSubmitError(err.response?.data?.message || 'Khởi tạo thanh toán thất bại')
       setSubmitting(false)
     }
