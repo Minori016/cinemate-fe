@@ -270,8 +270,8 @@ export default function ProfilePage() {
     }
   }, [user, activeTab])
 
-  const [fromDateStr, setFromDateStr] = useState('01/05/2026')
-  const [toDateStr, setToDateStr] = useState('30/06/2026')
+  const [fromDateStr, setFromDateStr] = useState('01/01/2026')
+  const [toDateStr, setToDateStr] = useState('31/12/2026')
   const [scoreFilterType, setScoreFilterType] = useState('EARN') // 'EARN' = Adding, 'SPEND' = Using
   const [filteredScoreHistory, setFilteredScoreHistory] = useState([])
   const [scoreFilterError, setScoreFilterError] = useState('')
@@ -293,7 +293,7 @@ export default function ProfilePage() {
     return date
   }
 
-  const handleViewScore = (e) => {
+  const handleViewScore = async (e) => {
     if (e) e.preventDefault()
     setScoreFilterError('')
     setHasViewedScore(true)
@@ -325,36 +325,57 @@ export default function ProfilePage() {
       return
     }
 
-    const toDateEnd = new Date(toDate)
-    toDateEnd.setHours(23, 59, 59, 999)
-
-    const results = MOCK_POINT_HISTORY.filter(item => {
-      const matchType = item.type === scoreFilterType
-      const itemDate = new Date(item.date)
-      return matchType && itemDate >= fromDate && itemDate <= toDateEnd
-    })
-
-    setFilteredScoreHistory(results)
+    try {
+      const res = await userService.getMyScoreHistory({
+        fromDate: fromDateStr.trim(),
+        toDate: toDateStr.trim(),
+        type: scoreFilterType
+      })
+      const apiData = res.data?.result || []
+      setFilteredScoreHistory(apiData)
+    } catch (err) {
+      console.error('Lỗi khi tải lịch sử điểm:', err)
+      const toDateEnd = new Date(toDate)
+      toDateEnd.setHours(23, 59, 59, 999)
+      const results = MOCK_POINT_HISTORY.filter(item => {
+        const matchType = item.type === scoreFilterType
+        const itemDate = new Date(item.date)
+        return matchType && itemDate >= fromDate && itemDate <= toDateEnd
+      })
+      setFilteredScoreHistory(results)
+    }
   }
 
   // Load initial score history when switching to 'history' tab
   useEffect(() => {
     if (activeTab === 'history') {
-      const fromDate = parseDateDMY(fromDateStr)
-      const toDate = parseDateDMY(toDateStr)
-      if (fromDate && toDate && fromDate <= toDate) {
-        const toDateEnd = new Date(toDate)
-        toDateEnd.setHours(23, 59, 59, 999)
-        const results = MOCK_POINT_HISTORY.filter(item => {
-          return item.type === scoreFilterType && new Date(item.date) >= fromDate && new Date(item.date) <= toDateEnd
-        })
-        Promise.resolve().then(() => {
-          setFilteredScoreHistory(results)
+      const fetchHistory = async () => {
+        try {
+          const res = await userService.getMyScoreHistory({
+            fromDate: fromDateStr.trim(),
+            toDate: toDateStr.trim(),
+            type: scoreFilterType
+          })
+          const apiData = res.data?.result || []
+          setFilteredScoreHistory(apiData)
           setHasViewedScore(true)
-        })
+        } catch (err) {
+          const fromDate = parseDateDMY(fromDateStr)
+          const toDate = parseDateDMY(toDateStr)
+          if (fromDate && toDate && fromDate <= toDate) {
+            const toDateEnd = new Date(toDate)
+            toDateEnd.setHours(23, 59, 59, 999)
+            const results = MOCK_POINT_HISTORY.filter(item => {
+              return item.type === scoreFilterType && new Date(item.date) >= fromDate && new Date(item.date) <= toDateEnd
+            })
+            setFilteredScoreHistory(results)
+            setHasViewedScore(true)
+          }
+        }
       }
+      fetchHistory()
     }
-  }, [activeTab])
+  }, [activeTab, scoreFilterType])
 
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState({

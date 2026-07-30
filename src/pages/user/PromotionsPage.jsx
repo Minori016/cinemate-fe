@@ -101,7 +101,7 @@ export default function PromotionsPage() {
   // Lọc ra KM còn hạn để hiển thị
   const visiblePromotions = promotions.filter(p => {
     const s = computePromotionStatus(p)
-    return s !== PROMOTION_STATUS.EXPIRED
+    return s === PROMOTION_STATUS.ACTIVE || s === 'ACTIVE' || (s !== PROMOTION_STATUS.EXPIRED && s !== 'EXPIRED' && s !== 'DISABLED')
   })
 
   return (

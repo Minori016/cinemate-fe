@@ -6,7 +6,8 @@ import api from './api'
  * Auth POST: /api/v1/promotions/validate
  */
 export const promotionService = {
-  getAll: (params = {}) => api.get('/api/v1/admin/promotions', { params: { page: 0, size: 100, sortBy: 'createdAt', ...params } }),
+  getAll: (params = {}) => api.get('/api/v1/promotions', { params: { page: 0, size: 100, sortBy: 'createdAt', ...params } }),
+  getAdminAll: (params = {}) => api.get('/api/v1/admin/promotions', { params: { page: 0, size: 100, sortBy: 'createdAt', ...params } }),
   getById: (id) => api.get(`/api/v1/promotions/${id}`),
   getByCode: (code) => api.get(`/api/v1/promotions/code/${encodeURIComponent(code)}`),
   getActive: () => api.get('/api/v1/promotions/active'),
@@ -24,23 +25,24 @@ export const promotionService = {
     try {
       const res = await api.get('/api/v1/promotions/active')
       const list = unwrapList(res.data)
-      return list.map(mapPromotionForUi).filter(p => p.id || p.code)
-    } catch (err) {
-      console.error('Failed to load active promotions:', err)
-      // Fallback: try paged list and filter client-side
-      try {
-        const res = await api.get('/api/v1/promotions', { params: { page: 0, size: 50 } })
-        const list = unwrapList(res.data)
-        return list
-          .map(mapPromotionForUi)
-          .filter(p => {
-            const s = computePromotionStatus(p)
-            return s === PROMOTION_STATUS.ACTIVE || s === 'ACTIVE'
-          })
-      } catch (err2) {
-        console.error('Failed to load promotions list:', err2)
-        return []
+      if (Array.isArray(list) && list.length > 0) {
+        return list.map(mapPromotionForUi).filter(p => p.id || p.code || p.title)
       }
+    } catch (err) {
+      console.error('Failed to load active promotions via /active:', err)
+    }
+    try {
+      const res = await api.get('/api/v1/promotions', { params: { page: 0, size: 100 } })
+      const list = unwrapList(res.data)
+      return list
+        .map(mapPromotionForUi)
+        .filter(p => {
+          const s = computePromotionStatus(p)
+          return s === PROMOTION_STATUS.ACTIVE || s === 'ACTIVE'
+        })
+    } catch (err2) {
+      console.error('Failed to load promotions list:', err2)
+      return []
     }
   },
 
