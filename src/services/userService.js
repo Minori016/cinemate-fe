@@ -16,7 +16,7 @@ export const userService = {
       'Content-Type': 'multipart/form-data'
     }
   }),
-  
+
   // Admin endpoints
   getAll: () => api.get('/api/v1/users'),
   getById: (id) => api.get(`/api/v1/users/${id}`),

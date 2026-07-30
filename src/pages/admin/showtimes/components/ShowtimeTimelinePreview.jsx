@@ -337,19 +337,10 @@ export default function ShowtimeTimelinePreview({
 
     setLoading(true);
     try {
-      const calculateCGVPrices = (base, showDate) => {
+      const calculateCGVPrices = (base) => {
         let effectiveBase = Number(base);
         let calcVip = effectiveBase * 1.2;
         let calcCouple = (effectiveBase * 2) * 1.1;
-
-        if (showDate) {
-          const d = new Date(showDate);
-          if (d.getDay() === 3) {
-            effectiveBase = effectiveBase * 0.7;
-            calcVip = calcVip * 0.7;
-            calcCouple = calcCouple * 0.7;
-          }
-        }
 
         return {
           calcBase: Math.round(effectiveBase),
@@ -361,7 +352,7 @@ export default function ShowtimeTimelinePreview({
       const confirmPayload = previewList.map(st => {
         const fmt = normalizeFormat(st.format) || '2D';
         const baseFromConfig = formatPrices[fmt] || 90000;
-        const { calcBase, calcVip, calcCouple } = calculateCGVPrices(baseFromConfig, st.startTime);
+        const { calcBase, calcVip, calcCouple } = calculateCGVPrices(baseFromConfig);
         return {
           movie_id: st.movie_id,
           room_id: st.room_id,

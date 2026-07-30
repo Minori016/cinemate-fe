@@ -280,7 +280,7 @@ export default function ConcessionFormPage() {
       const type = String(p.itemType || p.category || '').toLowerCase()
       const pSz = (p.size || 'STANDARD').toUpperCase()
       return (type === selectedCategoryType || (selectedCategoryType === 'drink' && type === 'beverage')) &&
-             (pSz === selectedCategorySize || pSz === 'L' || pSz === 'STANDARD')
+        (pSz === selectedCategorySize || pSz === 'L' || pSz === 'STANDARD')
     }) || availableProducts.find(p => {
       const type = String(p.itemType || p.category || '').toLowerCase()
       return type === selectedCategoryType || (selectedCategoryType === 'drink' && type === 'beverage')
@@ -766,19 +766,17 @@ export default function ConcessionFormPage() {
                         key={s.key}
                         type="button"
                         onClick={() => handleSizeToggle(s.key)}
-                        className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
-                          isSelected
+                        className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${isSelected
                             ? 'bg-red-500/10 border-red-500 text-white shadow-[0_0_12px_rgba(229,9,20,0.25)]'
                             : 'bg-[var(--color-surface-2)] border-[var(--color-border)] text-gray-400 hover:border-gray-500 hover:text-white'
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between w-full mb-1">
                           <span className={`font-extrabold text-sm ${isSelected ? 'text-red-400' : 'text-gray-300'}`}>
                             {s.label}
                           </span>
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${
-                            isSelected ? 'border-red-500 bg-red-500 text-white' : 'border-gray-600'
-                          }`}>
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${isSelected ? 'border-red-500 bg-red-500 text-white' : 'border-gray-600'
+                            }`}>
                             {isSelected ? '✓' : ''}
                           </span>
                         </div>
@@ -859,11 +857,10 @@ export default function ConcessionFormPage() {
                                 key={discountPercent}
                                 type="button"
                                 onClick={() => setPrice(String(suggestedPrice))}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${
-                                  isCurrent
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${isCurrent
                                     ? 'bg-amber-600 text-white border-amber-600 shadow-xs scale-105'
                                     : 'bg-white dark:bg-gray-800 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-gray-700'
-                                }`}
+                                  }`}
                                 title={`Áp dụng giảm ${discountPercent}% so với mua lẻ`}
                               >
                                 -{discountPercent}% ({new Intl.NumberFormat('vi-VN').format(suggestedPrice)}đ)
@@ -935,22 +932,20 @@ export default function ConcessionFormPage() {
                   <button
                     type="button"
                     onClick={() => setComboAddMode('category')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      comboAddMode === 'category'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${comboAddMode === 'category'
                         ? 'bg-red-600 text-white shadow-sm'
                         : 'bg-[var(--color-surface-2)] text-gray-500 hover:text-gray-700'
-                    }`}
+                      }`}
                   >
                     🎯 Theo Phân loại Danh mục (Khuyên dùng)
                   </button>
                   <button
                     type="button"
                     onClick={() => setComboAddMode('specific')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      comboAddMode === 'specific'
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${comboAddMode === 'specific'
                         ? 'bg-red-600 text-white shadow-sm'
                         : 'bg-[var(--color-surface-2)] text-gray-500 hover:text-gray-700'
-                    }`}
+                      }`}
                   >
                     🍿 Theo Món cụ thể
                   </button>
@@ -1056,8 +1051,8 @@ export default function ConcessionFormPage() {
                         const itemTypeIcon = (ci.productName || '').toLowerCase().includes('bắp') || (ci.productName || '').toLowerCase().includes('popcorn')
                           ? '🍿'
                           : (ci.productName || '').toLowerCase().includes('nước') || (ci.productName || '').toLowerCase().includes('coca') || (ci.productName || '').toLowerCase().includes('pepsi')
-                          ? '🥤'
-                          : '🍔'
+                            ? '🥤'
+                            : '🍔'
 
                         const unitPrice = getItemUnitPrice(ci)
                         const lineTotal = unitPrice * (ci.quantity || 1)

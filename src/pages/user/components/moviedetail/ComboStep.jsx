@@ -44,7 +44,7 @@ export default function ComboStep({
     return () => { cancelled = true }
   }, [])
 
-  // Build dynamic popcorn/beverage options from active single concessions in Admin DB
+  // Build dynamic popcorn/beverage options ONLY from active single concessions in Admin DB
   const dynamicComboOptions = useMemo(() => {
     const popcornItems = (combos || []).filter(i => {
       if (!i) return false
@@ -57,10 +57,10 @@ export default function ComboStep({
       if (!i) return false
       const type = String(i.itemType || i.category || '').toLowerCase()
       const name = String(i.name || i.baseName || '').toLowerCase()
-      return (type === 'drink' || type === 'beverage' || name.includes('nước') || name.includes('coca') || name.includes('sprite') || name.includes('fanta')) && type !== 'combo'
+      return (type === 'drink' || type === 'beverage' || name.includes('nước') || name.includes('coca') || name.includes('sprite') || name.includes('fanta') || name.includes('pepsi') || name.includes('7up') || name.includes('mirinda')) && type !== 'combo'
     })
 
-    let popcornFlavors = DEFAULT_COMBO_OPTIONS.popcornFlavors
+    let popcornFlavors = []
     if (popcornItems.length > 0) {
       const minPrice = Math.min(...popcornItems.map(p => Number(p.price) || 0))
       popcornFlavors = popcornItems.map(p => {
@@ -77,9 +77,13 @@ export default function ComboStep({
           name: p.name
         }
       })
+    } else {
+      popcornFlavors = [
+        { id: 'default_popcorn', label: 'Vị tiêu chuẩn', extraFee: 0, name: 'Vị tiêu chuẩn' }
+      ]
     }
 
-    let drinkTypes = DEFAULT_COMBO_OPTIONS.drinkTypes
+    let drinkTypes = []
     if (drinkItems.length > 0) {
       const minPrice = Math.min(...drinkItems.map(d => Number(d.price) || 0))
       drinkTypes = drinkItems.map(d => {
@@ -96,6 +100,10 @@ export default function ComboStep({
           name: d.name
         }
       })
+    } else {
+      drinkTypes = [
+        { id: 'default_drink', label: 'Nước ngọt tiêu chuẩn', extraFee: 0, name: 'Nước ngọt tiêu chuẩn' }
+      ]
     }
 
     return { popcornFlavors, drinkTypes }
@@ -122,7 +130,7 @@ export default function ComboStep({
           ...(prev[comboId]?.[subItemId] || {}),
           [key]: value,
           extraFee: extraFee,
-          label: chosenOption?.label || value
+          label: chosenOption?.label || chosenOption?.name || value
         }
       }
     }))
@@ -132,8 +140,8 @@ export default function ComboStep({
     const customState = comboCustomizations[comboId] || {}
     let totalExtra = 0
     const itemsToEvaluate = subItemsList.length > 0 ? subItemsList : [
-      { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', defaultFlavor: 'sweet' },
-      { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', defaultFlavor: 'coca' }
+      { id: 'popcorn_1', name: 'Bắp Rang Lớn', type: 'popcorn', defaultFlavor: 'default_popcorn' },
+      { id: 'drink_1', name: 'Nước Ngọt tùy chọn', type: 'drink', defaultFlavor: 'default_drink' }
     ]
 
     itemsToEvaluate.forEach(subItem => {
@@ -142,11 +150,8 @@ export default function ComboStep({
         totalExtra += Number(custom.extraFee) || 0
       } else {
         const isPopcorn = subItem.type === 'popcorn' || (subItem.name || '').toLowerCase().includes('bắp')
-        const flavorsList = subItem.flavors && subItem.flavors.length > 0
-          ? subItem.flavors
-          : (isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes)
-        const defaultId = subItem.defaultFlavor || (isPopcorn ? 'sweet' : 'coca')
-        const defaultOpt = flavorsList.find(f => String(f.id) === String(defaultId))
+        const flavorsList = isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes
+        const defaultOpt = flavorsList[0]
         if (defaultOpt && defaultOpt.extraFee) {
           totalExtra += Number(defaultOpt.extraFee) || 0
         }
@@ -364,12 +369,15 @@ export default function ComboStep({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {subItemsList.map((subItem) => {
                         const isPopcorn = subItem.type === 'popcorn' || (subItem.name || '').toLowerCase().includes('bắp')
-                        const flavorsList = (subItem.flavors && subItem.flavors.length > 0)
-                          ? subItem.flavors
-                          : (isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes)
+                        const flavorsList = isPopcorn ? dynamicComboOptions.popcornFlavors : dynamicComboOptions.drinkTypes
+                        const hasAdminItems = isPopcorn
+                          ? (flavorsList.length > 0 && flavorsList[0]?.id !== 'default_popcorn')
+                          : (flavorsList.length > 0 && flavorsList[0]?.id !== 'default_drink')
 
                         const customState = comboCustomizations[prod.id]?.[subItem.id] || {}
-                        const selectedFlavor = customState.flavor || subItem.defaultFlavor || (flavorsList[0]?.id || 'sweet')
+                        const selectedFlavor = (customState.flavor && flavorsList.some(f => String(f.id) === String(customState.flavor)))
+                          ? customState.flavor
+                          : (flavorsList[0]?.id || '')
                         const selectedSize = customState.size || subItem.defaultSize || 'L'
 
                         return (
@@ -386,12 +394,13 @@ export default function ComboStep({
                             {/* Flavor Options Dropdown */}
                             <div>
                               <span className="text-[10px] text-gray-400 block mb-1 font-bold">
-                                {isPopcorn ? 'Chọn vị bắp rang:' : 'Chọn loại nước ngọt / đồ uống:'}
+                                {isPopcorn ? 'Chọn món / vị bắp:' : 'Chọn loại nước ngọt / đồ uống:'}
                               </span>
                               <select
                                 value={selectedFlavor}
                                 onChange={(e) => handleSubItemOptionChange(prod.id, subItem.id, 'flavor', e.target.value, flavorsList)}
-                                className="w-full bg-slate-900 border border-white/20 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-white outline-none focus:border-red-500 transition-colors shadow-sm"
+                                disabled={!hasAdminItems || flavorsList.length <= 1}
+                                className="w-full bg-slate-900 border border-white/20 rounded-lg py-1.5 px-2.5 text-xs font-semibold text-white outline-none focus:border-red-500 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {flavorsList.map(f => (
                                   <option key={f.id} value={f.id} className="bg-slate-900 text-white py-1">
@@ -399,6 +408,11 @@ export default function ComboStep({
                                   </option>
                                 ))}
                               </select>
+                              {!hasAdminItems && (
+                                <span className="text-[10px] text-gray-500 italic block mt-1 font-medium">
+                                  (Khẩu phần mặc định — Admin chưa thêm món lẻ vào hệ thống)
+                                </span>
+                              )}
                             </div>
                           </div>
                         )

@@ -87,6 +87,26 @@ export default function CheckoutResultPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0)
   }
 
+  const seatCount = bookingDetails?.seatNames?.length || 0
+  const concessionAmount = bookingDetails?.concessionAmount || 
+    (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
+  
+  let discountAmount = bookingDetails?.discountAmount || 0
+  let ticketAmount = bookingDetails?.ticketAmount || 0
+
+  if (ticketAmount <= 0 && seatCount > 0) {
+    if (bookingDetails?.totalAmount > 0) {
+      ticketAmount = Math.max(0, bookingDetails.totalAmount + discountAmount - concessionAmount)
+    }
+    if (ticketAmount <= 0) {
+      ticketAmount = seatCount * 90000
+    }
+  }
+
+  if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (bookingDetails?.totalAmount || 0)) {
+    discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
+  }
+
   const handlePrint = () => {
     window.print()
   }
@@ -282,7 +302,7 @@ export default function CheckoutResultPage() {
 
                         <div>
                           <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
-                            <Ticket size={10} className="text-red-500" /> Ghế ({bookingDetails.seatNames?.length || 0})
+                            <Ticket size={10} className="text-red-500" /> Ghế ({seatCount})
                           </p>
                           <div className="flex flex-wrap gap-1 mt-0.5">
                             {bookingDetails.seatNames?.map((seat) => (
@@ -335,6 +355,47 @@ export default function CheckoutResultPage() {
                             <p className="text-[10px] text-gray-500 italic">Không mua kèm bắp nước</p>
                           </div>
                         )}
+                      </div>
+
+                      {/* BILL SUMMARY BREAKDOWN / HÓA ĐƠN CHI TIẾT */}
+                      <div className="mb-2.5 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
+                        <p className="font-extrabold uppercase text-gray-300 tracking-wider flex items-center gap-1 border-b border-white/10 pb-1 text-[10px]">
+                          <Tag size={11} className="text-red-500" /> Chi tiết thanh toán:
+                        </p>
+
+                        {/* Tiền ghế */}
+                        <div className="flex justify-between items-center text-gray-300">
+                          <span>Tiền vé ghế ({seatCount} ghế):</span>
+                          <span className="font-bold text-white">
+                            {formatPrice(ticketAmount)}
+                          </span>
+                        </div>
+
+                        {/* Tiền bắp nước */}
+                        {((concessionAmount > 0) || (bookingDetails.concessions && bookingDetails.concessions.length > 0)) && (
+                          <div className="flex justify-between items-center text-gray-300">
+                            <span>Bắp nước & Đồ ăn:</span>
+                            <span className="font-bold text-white">
+                              {formatPrice(concessionAmount)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Số tiền đã giảm */}
+                        {discountAmount > 0 && (
+                          <div className="flex justify-between items-center text-emerald-400 font-medium">
+                            <span>Mã giảm giá {bookingDetails.promotionCode ? `(${bookingDetails.promotionCode})` : ''}:</span>
+                            <span className="font-extrabold">
+                              -{formatPrice(discountAmount)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Tổng thanh toán thực tế */}
+                        <div className="flex justify-between items-center pt-1.5 border-t border-white/10 text-xs font-black">
+                          <span className="uppercase text-white">Tổng tiền đã thanh toán:</span>
+                          <span className="text-red-500 text-sm font-mono">{formatPrice(bookingDetails.totalAmount)}</span>
+                        </div>
                       </div>
                     </div>
 

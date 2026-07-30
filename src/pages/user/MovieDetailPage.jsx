@@ -458,7 +458,7 @@ export default function MovieDetailPage() {
 
   const processingSeatsRef = useRef(processingSeats)
   const selectedSeatsRef = useRef(selectedSeats)
-  
+
   useEffect(() => {
     processingSeatsRef.current = processingSeats
     selectedSeatsRef.current = selectedSeats
@@ -635,12 +635,30 @@ export default function MovieDetailPage() {
         return;
       }
 
-      // 2. Format concessions into valid comboId UUID objects
+      // 2. Format concessions into valid comboId / concessionId UUID objects with extra fees
       const validConcessions = Object.entries(selectedCombos)
         .filter(([id, qty]) => qty > 0)
         .map(([id, qty]) => {
           if (isUuid(id)) {
-            return { comboId: id, quantity: Number(qty) };
+            let extraFee = 0
+            const customObj = comboCustomizations[id] || {}
+            Object.values(customObj).forEach(sub => {
+              if (sub && sub.extraFee) {
+                extraFee += Number(sub.extraFee) || 0
+              }
+            })
+            const combo = activeCombos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+            const basePrice = combo ? (Number(combo.price) || 0) : 0
+            const unitPrice = basePrice + extraFee
+
+            return {
+              comboId: id,
+              concessionId: id,
+              productId: id,
+              quantity: Number(qty),
+              extraFee: extraFee,
+              unitPrice: unitPrice
+            };
           }
           return null;
         })
