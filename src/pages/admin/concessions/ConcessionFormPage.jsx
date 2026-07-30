@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS, PRODUCT_SIZES, extractBaseName } from '../../../services/concessionService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
@@ -9,6 +9,8 @@ export default function ConcessionFormPage() {
   const { id } = useParams()
   const isEdit = !!id
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   // Form states
   const [name, setName] = useState('')
@@ -652,7 +654,7 @@ export default function ConcessionFormPage() {
       }
 
       setTimeout(() => {
-        navigate('/admin/concessions')
+        navigate(`${basePath}/concessions`)
       }, 1000)
     } catch (err) {
       console.error('Lỗi khi lưu sản phẩm:', err)
@@ -685,7 +687,7 @@ export default function ConcessionFormPage() {
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/admin/concessions')}
+            onClick={() => navigate(`${basePath}/concessions`)}
             className="p-2 bg-[var(--color-surface)] border border-[var(--color-border)] hover:border-red-500/50 hover:text-red-500 rounded-xl transition-all cursor-pointer text-[var(--color-on-surface)]"
           >
             <ArrowLeft size={16} />
@@ -1252,7 +1254,7 @@ export default function ConcessionFormPage() {
             </Button>
             <Button
               variant="secondary"
-              onClick={() => navigate('/admin/concessions')}
+              onClick={() => navigate(`${basePath}/concessions`)}
               className="w-full py-3 text-sm font-semibold text-[var(--color-on-surface)]"
               type="button"
             >

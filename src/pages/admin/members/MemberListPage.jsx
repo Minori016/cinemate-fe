@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { memberService } from '../../../services/memberService'
 import Button from '../../../components/common/Button'
 import { motion, AnimatePresence } from 'motion/react'
@@ -10,6 +10,8 @@ import {
 
 export default function MemberListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -201,7 +203,7 @@ export default function MemberListPage() {
           </p>
         </div>
         <Button
-          onClick={() => navigate('/admin/members/add')}
+          onClick={() => navigate(`${basePath}/members/add`)}
           style={{
             background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
             border: 'none', color: '#fff', fontWeight: 600,
@@ -469,7 +471,7 @@ export default function MemberListPage() {
                   <Button
                     variant="secondary"
                     style={{ flex: 1, fontSize: '0.8125rem' }}
-                    onClick={() => navigate(`/admin/members/edit/${member.uuid || member.id}`)}
+                    onClick={() => navigate(`${basePath}/members/edit/${member.uuid || member.id}`)}
                   >
                     <Pencil size={13} style={{ marginRight: '0.3rem' }} />
                     Chỉnh sửa

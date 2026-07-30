@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import Fuse from 'fuse.js'
 import { movieService } from '../../../services/movieService'
 import Table from '../../../components/common/Table'
@@ -112,6 +112,8 @@ export default function MovieListPage() {
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   // Search bar state
   const [query, setQuery] = useState('')
@@ -329,7 +331,7 @@ export default function MovieListPage() {
             Quản lý danh mục phim, thông tin chi tiết, thời lượng và phiên bản trình chiếu tại rạp.
           </p>
         </div>
-        <Button onClick={() => navigate('/admin/movies/add')}>
+        <Button onClick={() => navigate(`${basePath}/movies/add`)}>
           <Plus size={16} className="mr-1" /> Thêm phim
         </Button>
       </motion.div>
@@ -535,7 +537,7 @@ export default function MovieListPage() {
       >
         <Table columns={columns} data={movies} actions={row => (
           <div className="flex gap-2 justify-end">
-            <Button size="sm" variant="info" onClick={() => navigate(`/admin/movies/edit/${row.id}`)}><Pencil size={12}/></Button>
+            <Button size="sm" variant="info" onClick={() => navigate(`${basePath}/movies/edit/${row.id}`)}><Pencil size={12}/></Button>
             <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}><Trash2 size={12}/></Button>
           </div>
         )} />

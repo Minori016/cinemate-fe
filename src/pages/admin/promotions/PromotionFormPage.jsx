@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   promotionService,
   PROMOTION_TYPES,
@@ -19,6 +19,8 @@ export default function PromotionFormPage() {
   const { id } = useParams()
   const isEdit = !!id
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -227,7 +229,7 @@ export default function PromotionFormPage() {
         await promotionService.create(payload)
         showToast('Thêm khuyến mãi mới thành công!')
       }
-      setTimeout(() => navigate('/admin/promotions'), 1000)
+      setTimeout(() => navigate(`${basePath}/promotions`), 1000)
     } catch (err) {
       console.error('Lỗi khi lưu khuyến mãi:', err)
       const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra trong quá trình lưu dữ liệu.'
@@ -284,7 +286,7 @@ export default function PromotionFormPage() {
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/admin/promotions')}
+            onClick={() => navigate(`${basePath}/promotions`)}
             className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-on-surface)] hover:border-white/20 transition-all active:scale-95 cursor-pointer"
           >
             <ArrowLeft size={18} />
@@ -573,7 +575,7 @@ export default function PromotionFormPage() {
               type="button"
               variant="secondary"
               disabled={isSubmitting}
-              onClick={() => navigate('/admin/promotions')}
+              onClick={() => navigate(`${basePath}/promotions`)}
               className="w-full py-3.5 uppercase tracking-wider font-extrabold"
             >
               Quay lại danh sách

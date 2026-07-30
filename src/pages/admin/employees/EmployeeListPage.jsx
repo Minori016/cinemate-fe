@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../../contexts/AuthContext'
 import { employeeService } from '../../../services/employeeService'
 import Button from '../../../components/common/Button'
 import { motion, AnimatePresence } from 'motion/react'
@@ -11,6 +12,10 @@ import {
 
 export default function EmployeeListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const { user } = useAuth()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
+  const isManager = user && user.roles?.includes('MANAGER')
   const [employees, setEmployees] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -47,8 +52,11 @@ export default function EmployeeListPage() {
       .then(r => {
         const resData = r.data?.result ?? r.data ?? {}
         const list = resData.content ?? []
-        // Loại bỏ user có role MANAGER (chỉ hiển thị STAFF cho admin quản lý)
-        let filtered = list.filter(e => !e.roles?.includes('MANAGER'))
+        // Admin: chỉ hiển thị STAFF (loại bỏ MANAGER)
+        // Manager: hiển thị cả STAFF và ADMIN
+        let filtered = isManager
+          ? list.filter(e => !e.roles?.includes('MANAGER'))
+          : list.filter(e => !e.roles?.includes('MANAGER'))
         if (statusFilter !== 'all') {
           filtered = filtered.filter(e => e.status === statusFilter)
         }
@@ -268,7 +276,7 @@ export default function EmployeeListPage() {
           </p>
         </div>
         <Button
-          onClick={() => navigate('/admin/employees/add')}
+          onClick={() => navigate(`${basePath}/employees/add`)}
           style={{
             background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
             border: 'none', color: '#fff', fontWeight: 600,
@@ -552,7 +560,7 @@ export default function EmployeeListPage() {
                       <Button
                         variant="info"
                         style={{ fontSize: '0.8125rem' }}
-                        onClick={() => navigate(`/admin/employees/edit/${employee.uuid || employee.id}`)}
+                        onClick={() => navigate(`${basePath}/employees/edit/${employee.uuid || employee.id}`)}
                       >
                         <Pencil size={13} />
                       </Button>

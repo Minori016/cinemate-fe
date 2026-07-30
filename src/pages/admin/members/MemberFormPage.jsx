@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { memberService } from '../../../services/memberService'
 import {
   ArrowLeft, User, Eye, EyeOff, CheckCircle, XCircle,
@@ -37,6 +37,8 @@ const ERROR_TEXT = {
 export default function MemberFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   const isEditMode = !!id
   const formRef = useRef(null)
 
@@ -145,7 +147,7 @@ export default function MemberFormPage() {
       if (isEditMode) await memberService.update(id, data)
       else await memberService.register(data)
       showToast(isEditMode ? 'Cập nhật thành viên thành công!' : 'Thêm thành viên mới thành công!', 'success')
-      setTimeout(() => navigate('/admin/members'), 1600)
+      setTimeout(() => navigate(`${basePath}/members`), 1600)
     } catch (err) {
       console.error('Save error:', err.response?.data)
       const errCode = err.response?.data?.code
@@ -199,7 +201,7 @@ export default function MemberFormPage() {
       {/* Header */}
       <div style={{ marginBottom: '32px' }}>
         <button
-          onClick={() => navigate('/admin/members')}
+          onClick={() => navigate(`${basePath}/members`)}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
             background: 'transparent', border: 'none', cursor: 'pointer',
@@ -512,7 +514,7 @@ export default function MemberFormPage() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/admin/members')}
+                onClick={() => navigate(`${basePath}/members`)}
                 disabled={isSubmitting}
                 style={{
                   width: '100%', padding: '12px', marginTop: '10px',

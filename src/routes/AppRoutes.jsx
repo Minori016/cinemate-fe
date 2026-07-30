@@ -115,10 +115,29 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="analytics" replace />} />
           <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
           <Route path="analytics" element={<ManagerAnalyticsPage />} />
+          <Route path="movies" element={<MovieListPage />} />
+          <Route path="movies/add" element={<MovieFormPage />} />
+          <Route path="movies/edit/:id" element={<MovieFormPage />} />
+          <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
+          <Route path="cinema-rooms/add" element={<CinemaRoomFormPage />} />
+          <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
           <Route path="showtimes/:id" element={<ShowtimeDetailPage />} />
           <Route path="showtimes/auto-generate" element={<AutoGeneratePage />} />
+          <Route path="employees" element={<EmployeeListPage />} />
+          <Route path="employees/add" element={<EmployeeFormPage />} />
+          <Route path="employees/edit/:id" element={<EmployeeFormPage />} />
+          <Route path="members" element={<MemberListPage />} />
+          <Route path="members/add" element={<MemberFormPage />} />
+          <Route path="members/edit/:id" element={<MemberFormPage />} />
+          <Route path="promotions" element={<PromotionListPage />} />
+          <Route path="promotions/add" element={<PromotionFormPage />} />
+          <Route path="promotions/edit/:id" element={<PromotionFormPage />} />
+          <Route path="concessions" element={<ConcessionListPage />} />
+          <Route path="concessions/add" element={<ConcessionFormPage />} />
+          <Route path="concessions/edit/:id" element={<ConcessionFormPage />} />
+          <Route path="system-configs" element={<SystemConfigPage />} />
           <Route path="shifts" element={<ManagerShiftsPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
         </Route>
