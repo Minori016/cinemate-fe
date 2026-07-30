@@ -30,16 +30,10 @@ export const SIZE_DISPLAY = {
 /** Default flavor & beverage options for customizable items inside combos */
 export const DEFAULT_COMBO_OPTIONS = {
   popcornFlavors: [
-    { id: 'sweet', label: 'Vị Ngọt (Truyền Thống)', extraFee: 0 },
-    { id: 'cheese', label: 'Vị Phô Mai (+10.000đ)', extraFee: 10000 },
-    { id: 'caramel', label: 'Vị Caramel (+10.000đ)', extraFee: 10000 },
-    { id: 'salty', label: 'Vị Mặn / Bơ', extraFee: 0 },
+    { id: 'default_popcorn', label: 'Vị tiêu chuẩn', extraFee: 0 },
   ],
   drinkTypes: [
-    { id: 'coca', label: 'Coca-Cola (Ly lớn)', extraFee: 0 },
-    { id: 'sprite', label: 'Sprite (Ly lớn)', extraFee: 0 },
-    { id: 'fanta', label: 'Fanta Cam (Ly lớn)', extraFee: 0 },
-    { id: 'water', label: 'Nước Suối Dasani', extraFee: 0 },
+    { id: 'default_drink', label: 'Nước ngọt tiêu chuẩn', extraFee: 0 },
   ],
 }
 
@@ -54,8 +48,8 @@ export const FALLBACK_COMBOS = [
     category: 'combo',
     itemType: 'combo',
     subItems: [
-      { id: 'popcorn_1', name: 'Bắp Rang Lớn 60oz', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'sweet', defaultSize: 'L' },
-      { id: 'drink_1', name: 'Nước Ngọt 22oz', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'coca', defaultSize: 'L' }
+      { id: 'popcorn_1', name: 'Bắp Rang Lớn 60oz', type: 'popcorn', sizes: ['L'], defaultFlavor: 'default_popcorn', defaultSize: 'L' },
+      { id: 'drink_1', name: 'Nước Ngọt 22oz', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' }
     ]
   },
   {
@@ -67,9 +61,9 @@ export const FALLBACK_COMBOS = [
     category: 'combo',
     itemType: 'combo',
     subItems: [
-      { id: 'popcorn_1', name: 'Bắp Rang Lớn 60oz', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'sweet', defaultSize: 'L' },
-      { id: 'drink_1', name: 'Nước Ngọt Thứ 1 (22oz)', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'coca', defaultSize: 'L' },
-      { id: 'drink_2', name: 'Nước Ngọt Thứ 2 (22oz)', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'sprite', defaultSize: 'L' }
+      { id: 'popcorn_1', name: 'Bắp Rang Lớn 60oz', type: 'popcorn', sizes: ['L'], defaultFlavor: 'default_popcorn', defaultSize: 'L' },
+      { id: 'drink_1', name: 'Nước Ngọt Thứ 1 (22oz)', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' },
+      { id: 'drink_2', name: 'Nước Ngọt Thứ 2 (22oz)', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' }
     ]
   },
   {
@@ -81,11 +75,11 @@ export const FALLBACK_COMBOS = [
     category: 'combo',
     itemType: 'combo',
     subItems: [
-      { id: 'popcorn_1', name: 'Bắp Rang Lớn Thứ 1', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'caramel', defaultSize: 'L' },
-      { id: 'popcorn_2', name: 'Bắp Rang Lớn Thứ 2', type: 'popcorn', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.popcornFlavors, defaultFlavor: 'cheese', defaultSize: 'L' },
-      { id: 'drink_1', name: 'Nước Ngọt Thứ 1', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'coca', defaultSize: 'L' },
-      { id: 'drink_2', name: 'Nước Ngọt Thứ 2', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'sprite', defaultSize: 'L' },
-      { id: 'drink_3', name: 'Nước Ngọt Thứ 3', type: 'drink', sizes: ['L'], flavors: DEFAULT_COMBO_OPTIONS.drinkTypes, defaultFlavor: 'fanta', defaultSize: 'L' }
+      { id: 'popcorn_1', name: 'Bắp Rang Lớn Thứ 1', type: 'popcorn', sizes: ['L'], defaultFlavor: 'default_popcorn', defaultSize: 'L' },
+      { id: 'popcorn_2', name: 'Bắp Rang Lớn Thứ 2', type: 'popcorn', sizes: ['L'], defaultFlavor: 'default_popcorn', defaultSize: 'L' },
+      { id: 'drink_1', name: 'Nước Ngọt Thứ 1', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' },
+      { id: 'drink_2', name: 'Nước Ngọt Thứ 2', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' },
+      { id: 'drink_3', name: 'Nước Ngọt Thứ 3', type: 'drink', sizes: ['L'], defaultFlavor: 'default_drink', defaultSize: 'L' }
     ]
   },
 ]

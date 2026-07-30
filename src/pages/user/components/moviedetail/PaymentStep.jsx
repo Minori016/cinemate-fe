@@ -88,20 +88,11 @@ export default function PaymentStep({
 
             {/* Payment method */}
             <div
-              className="p-3 rounded-xl mb-6 text-center bg-white/10 text-white font-bold text-sm shadow-md border border-white/10 flex items-center justify-center gap-2"
+              className="p-3.5 rounded-xl text-center bg-white/10 text-white font-bold text-sm shadow-md border border-white/10 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined">qr_code_2</span>
               <span>Thanh toán bằng Ví MoMo</span>
             </div>
-
-            <button
-              type="button"
-              onClick={handleSubmitPayment}
-              disabled={submitting || !bookingId}
-              className="w-full rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitting ? (processingStep || 'Đang chuyển đến MoMo...') : 'Thanh toán với MoMo'}
-            </button>
           </GlassCard>
         </div>
 
