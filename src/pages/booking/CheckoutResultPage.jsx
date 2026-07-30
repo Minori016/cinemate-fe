@@ -96,25 +96,48 @@ export default function CheckoutResultPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0)
   }
 
+  const formatVietnameseDate = (dateStr) => {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      const weekday = d.toLocaleDateString('vi-VN', { weekday: 'long' }).toUpperCase()
+      const dayMonth = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+      return weekday + ', ' + dayMonth
+    } catch {
+      return dateStr
+    }
+  }
+
   const seatCount = bookingDetails?.seatNames?.length || 0
-  const concessionAmount = bookingDetails?.concessionAmount || 
-    (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
-  
+  const concessionAmount = bookingDetails?.concessionAmount ?? (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
   let discountAmount = bookingDetails?.discountAmount || 0
   let ticketAmount = bookingDetails?.ticketAmount || 0
+  const finalPrice = bookingDetails?.finalPrice ?? bookingDetails?.totalAmount ?? bookingDetails?.totalPrice ?? Math.max(0, ticketAmount + concessionAmount - discountAmount)
 
+<<<<<<< Updated upstream
+  if (bookingDetails?.totalAmount > 0) {
+    if (discountAmount > 0) {
+      ticketAmount = bookingDetails.totalAmount + discountAmount - concessionAmount
+    } else if (ticketAmount > 0 && (ticketAmount + concessionAmount) > bookingDetails.totalAmount) {
+      discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
+    } else if (ticketAmount <= 0) {
+      ticketAmount = Math.max(0, bookingDetails.totalAmount - concessionAmount)
+    } else if ((ticketAmount + concessionAmount - discountAmount) !== bookingDetails.totalAmount) {
+=======
   if (ticketAmount <= 0 && seatCount > 0) {
-    if (bookingDetails?.totalAmount > 0) {
+    if (finalPrice > 0) {
+>>>>>>> Stashed changes
       ticketAmount = Math.max(0, bookingDetails.totalAmount + discountAmount - concessionAmount)
     }
-    if (ticketAmount <= 0) {
-      ticketAmount = seatCount * 90000
-    }
   }
 
-  if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (bookingDetails?.totalAmount || 0)) {
+<<<<<<< Updated upstream
+=======
+  if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (finalPrice || 0)) {
     discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
   }
+>>>>>>> Stashed changes
 
   const handlePrint = () => {
     window.print()
@@ -326,7 +349,7 @@ export default function CheckoutResultPage() {
                           <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
                             <Tag size={10} className="text-red-500" /> Tổng tiền
                           </p>
-                          <p className="text-red-500 font-black text-sm">{formatPrice(bookingDetails.totalAmount)}</p>
+                          <p className="text-red-500 font-black text-sm">{formatPrice(finalPrice)}</p>
                         </div>
                       </div>
 
@@ -393,7 +416,7 @@ export default function CheckoutResultPage() {
                         {/* Số tiền đã giảm */}
                         {discountAmount > 0 && (
                           <div className="flex justify-between items-center text-emerald-400 font-medium">
-                            <span>Mã giảm giá {bookingDetails.promotionCode ? `(${bookingDetails.promotionCode})` : ''}:</span>
+                            <span>Mã giảm giá {bookingDetails.promotionCode ? `(${bookingDetails.promotionCode})` : ""}:</span>
                             <span className="font-extrabold">
                               -{formatPrice(discountAmount)}
                             </span>
@@ -403,7 +426,7 @@ export default function CheckoutResultPage() {
                         {/* Tổng thanh toán thực tế */}
                         <div className="flex justify-between items-center pt-1.5 border-t border-white/10 text-xs font-black">
                           <span className="uppercase text-white">Tổng tiền đã thanh toán:</span>
-                          <span className="text-red-500 text-sm font-mono">{formatPrice(bookingDetails.totalAmount)}</span>
+                          <span className="text-red-500 text-sm font-mono">{formatPrice(finalPrice)}</span>
                         </div>
                       </div>
                     </div>

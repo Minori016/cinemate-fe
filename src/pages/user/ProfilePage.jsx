@@ -931,19 +931,19 @@ export default function ProfilePage() {
           
           {/* ── Sidebar Navigation ── */}
           <div className="w-full md:w-[260px] flex-shrink-0 flex flex-col gap-2.5">
-            {['info', 'history', 'booked', 'canceled', 'payments'].map((tabKey) => {
+            {['info', 'history', 'booked', 'payments'].map((tabKey) => {
               const tabLabels = {
                 info: 'Thông tin tài khoản',
                 history: 'Xem hạng thành viên',
                 booked: 'Vé đã đặt',
-                canceled: 'Vé đã hủy',
+                
                 payments: 'Lịch sử thanh toán'
               }
               const tabIcons = {
                 info: 'account_circle',
                 history: 'stars',
                 booked: 'confirmation_number',
-                canceled: 'cancel',
+                
                 payments: 'payments'
               }
               const isActive = activeTab === tabKey
@@ -1765,7 +1765,7 @@ export default function ProfilePage() {
 
           {/* ── Tab Booked (Vé đã đặt hoạt động) ── */}
           {activeTab === 'booked' && (() => {
-            const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+            const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'COMPLETED' || b.status === 'CHECKED_IN' || b.status === 'PAID')
             return (
               <div className="w-full space-y-4">
                 {activeBookings.length === 0 ? (
@@ -1774,236 +1774,147 @@ export default function ProfilePage() {
                     delay={0.05}
                   >
                     <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">confirmation_number</span>
-                    <p className="text-gray-400 font-medium">No booked tickets found.</p>
+                    <p className="text-gray-400 font-medium">Không tìm thấy vé đã đặt nào.</p>
                   </GlassCard>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
-                    {activeBookings.map((booking, idx) => (
-                      <motion.div 
-                        key={booking.id}
-                        variants={stagger(idx * 0.05)}
-                        initial="hidden"
-                        whileInView="show"
-                        viewport={{ once: true, margin: '-40px' }}
-                        whileHover={{ scale: 1.02, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
-                        className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full transition-all duration-300"
-                        style={{ 
-                          background: 'rgba(255,255,255,0.04)', 
-                          backdropFilter: 'blur(14px)', 
-                          border: '1px solid rgba(255,255,255,0.06)',
-                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
-                        }}
-                      >
-                        <div 
-                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
-                        <div 
-                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full text-left">
+                    {activeBookings.map((booking, idx) => {
+                      const posterUrl = moviePosters[booking.movieName?.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName?.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'
+                      const isCheckedIn = booking.status === 'CHECKED_IN'
 
-                        {/* Movie Poster Cover */}
-                        <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto flex-shrink-0 relative overflow-hidden">
-                          <img 
-                            src={moviePosters[booking.movieName.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
-                            alt={booking.movieName}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-black/50" />
-                        </div>
-
-                        <div className="p-6 flex-grow flex flex-col justify-between min-w-0">
-                          <div>
-                            <div className="flex justify-between items-start gap-2 mb-2">
-                              <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                                {booking.movieName}
-                              </h3>
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-green-500/15 text-green-400 border border-green-500/20 shrink-0 uppercase tracking-wider">
-                                ĐÃ THANH TOÁN
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs text-gray-400 mt-4">
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Mã vé</p>
-                                <p className="text-white font-mono font-bold mt-0.5">{booking.id}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</p>
-                                <p className="text-white font-medium mt-0.5">{booking.room}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
-                                <p className="text-white font-medium mt-0.5">
-                                  {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ghế ngồi</p>
-                                <p className="text-red-500 font-black mt-0.5 tracking-wider">{booking.seats.join(', ')}</p>
-                              </div>
-                            </div>
+                      return (
+                        <motion.div 
+                          key={booking.id}
+                          variants={stagger(idx * 0.05)}
+                          initial="hidden"
+                          whileInView="show"
+                          viewport={{ once: true, margin: '-40px' }}
+                          whileHover={{ scale: 1.01, border: '1px solid rgba(255,255,255,0.15)', boxShadow: '0 16px 36px rgba(0,0,0,0.4)' }}
+                          className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full transition-all duration-300"
+                          style={{ 
+                            background: 'rgba(255, 255, 255, 0.03)', 
+                            backdropFilter: 'blur(16px)', 
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
+                          }}
+                        >
+                          {/* Movie Poster Cover */}
+                          <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto shrink-0 relative overflow-hidden bg-black/40">
+                            <img 
+                              src={posterUrl} 
+                              alt={booking.movieName}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/60 via-transparent to-black/30" />
                           </div>
 
-                          <div className="border-t border-dashed border-white/10 mt-5 pt-4 flex justify-between items-end">
+                          {/* Main Information */}
+                          <div className="p-4 sm:p-5 flex-grow flex flex-col justify-between min-w-0 text-left space-y-3">
                             <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </p>
+                              <div className="flex justify-between items-start gap-2 mb-2">
+                                <h3 className="text-sm sm:text-base font-extrabold text-white tracking-wide line-clamp-2 leading-snug" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                  {booking.movieName}
+                                </h3>
+                                {isCheckedIn ? (
+                                  <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0 uppercase tracking-wider">
+                                    ĐÃ CHECK-IN
+                                  </span>
+                                ) : (
+                                  <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0 uppercase tracking-wider">
+                                    ĐÃ THANH TOÁN
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-gray-400 mt-3 pt-3 border-t border-white/5">
+                                <div>
+                                  <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Mã vé</p>
+                                  <p className="text-white font-mono font-bold mt-0.5 text-[11px] truncate bg-white/5 px-1.5 py-0.5 rounded inline-block max-w-full">{booking.id}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</p>
+                                  <p className="text-white font-semibold mt-0.5 truncate">{booking.room}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
+                                  <p className="text-white font-semibold mt-0.5 truncate">
+                                    {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Ghế ngồi</p>
+                                  <p className="text-red-400 font-black mt-0.5 tracking-wider truncate">
+                                    {Array.isArray(booking.seats) ? booking.seats.join(', ') : booking.seats}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2 text-right">
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                                <p className="text-lg font-black text-red-500 font-mono mt-0.5">
+
+                            <div className="border-t border-dashed border-white/10 pt-3 flex justify-between items-end gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
+                                <p className="text-[11px] text-gray-400 mt-0.5 truncate">
+                                  {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
+                                <p className="text-sm sm:text-base font-black text-red-500 font-mono mt-0.5 whitespace-nowrap">
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
                                 </p>
                               </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* QR Code Section for Check-in */}
-                        {booking.status === 'CONFIRMED' && (
-                          <div className="bg-white/5 border-l border-white/10 p-4 flex flex-col items-center justify-center min-w-[120px]">
-                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-2 text-center">
-                              Mã Check-in
-                            </p>
-                            <div className="bg-white p-2 rounded-lg">
-                              <QRCodeSVG 
-                                value={booking.id.toString()} 
-                                size={80} 
-                                level="H" 
-                                includeMargin={false} 
-                                fgColor="#000000" 
-                                bgColor="#FFFFFF"
-                              />
-                            </div>
-                          </div>
-                        )}
-                        {booking.status === 'CHECKED_IN' && (
-                          <div className="bg-white/5 border-l border-white/10 p-4 flex flex-col items-center justify-center min-w-[120px]">
-                            <span className="material-symbols-outlined text-4xl text-green-500 mb-2">check_circle</span>
-                            <p className="text-xs font-bold text-green-500 tracking-wider text-center uppercase">
-                              Đã Check-in
-                            </p>
-                          </div>
-                        )}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
+                          {/* QR Code Section for Check-in (Stub) */}
+                          <div className="bg-black/30 border-l border-dashed border-white/15 p-4 flex flex-col items-center justify-center shrink-0 min-w-[120px] relative">
+                            {/* Decorative Notch Circles for Stub Tear Effect at Stub Seam */}
+                            <div 
+                              className="absolute -top-3 -left-3 w-6 h-6 rounded-full border-b border-r border-white/10 sm:block hidden z-10"
+                              style={{ backgroundColor: 'var(--color-background, #0b0c10)' }}
+                            />
+                            <div 
+                              className="absolute -bottom-3 -left-3 w-6 h-6 rounded-full border-t border-r border-white/10 sm:block hidden z-10"
+                              style={{ backgroundColor: 'var(--color-background, #0b0c10)' }}
+                            />
 
-          {/* ── Tab Canceled (Vé đã hủy) ── */}
-          {activeTab === 'canceled' && (() => {
-            const canceledBookings = bookings.filter(b => b.status === 'CANCELED' || b.status === 'CANCELLED')
-            return (
-              <div className="w-full space-y-4">
-                {canceledBookings.length === 0 ? (
-                  <GlassCard 
-                    className="text-center py-20 w-full"
-                    delay={0.05}
-                  >
-                    <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">cancel</span>
-                    <p className="text-gray-400 font-medium">No canceled tickets found.</p>
-                  </GlassCard>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
-                    {canceledBookings.map((booking, idx) => (
-                      <motion.div 
-                        key={booking.id}
-                        variants={stagger(idx * 0.05)}
-                        initial="hidden"
-                        whileInView="show"
-                        viewport={{ once: true, margin: '-40px' }}
-                        whileHover={{ scale: 1.01, border: '1px solid rgba(255,255,255,0.1)' }}
-                        className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full opacity-75 grayscale-[20%] transition-all duration-300"
-                        style={{ 
-                          background: 'rgba(255,255,255,0.03)', 
-                          backdropFilter: 'blur(14px)', 
-                          border: '1px solid rgba(255,255,255,0.05)',
-                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
-                        }}
-                      >
-                        <div 
-                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
-                        <div 
-                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
-
-                        {/* Movie Poster Cover */}
-                        <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto flex-shrink-0 relative overflow-hidden">
-                          <img 
-                            src={moviePosters[booking.movieName.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
-                            alt={booking.movieName}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-black/50" />
-                        </div>
-
-                        <div className="p-6 flex-grow flex flex-col justify-between min-w-0">
-                          <div>
-                            <div className="flex justify-between items-start gap-2 mb-2">
-                              <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                                {booking.movieName}
-                              </h3>
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20 shrink-0 uppercase tracking-wider">
-                                ĐÃ HỦY
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs text-gray-400 mt-4">
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Mã vé</p>
-                                <p className="text-white font-mono font-bold mt-0.5">{booking.id}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</p>
-                                <p className="text-white font-medium mt-0.5">{booking.room}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
-                                <p className="text-white font-medium mt-0.5">
-                                  {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+<<<<<<< Updated upstream
+=======
+                            {isCheckedIn ? (
+                              <div className="flex flex-col items-center justify-center text-center py-2">
+                                <span className="material-symbols-outlined text-3xl text-blue-400 mb-1">check_circle</span>
+                                <p className="text-[10px] font-black text-blue-400 tracking-wider uppercase">
+                                  Đã Check-in
                                 </p>
                               </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ghế ngồi</p>
-                                <p className="text-red-500 font-black mt-0.5 tracking-wider">{booking.seats.join(', ')}</p>
-                              </div>
-                            </div>
+                            ) : (
+                              <>
+                                <p className="text-[9px] uppercase font-extrabold text-gray-400 tracking-wider mb-2 text-center">
+                                  Mã Check-in
+                                </p>
+                                <div className="bg-white p-1.5 rounded-lg shadow-md">
+                                  <QRCodeSVG 
+                                    value={booking.id.toString()} 
+                                    size={72} 
+                                    level="H" 
+                                    includeMargin={false} 
+                                    fgColor="#000000" 
+                                    bgColor="#FFFFFF"
+                                  />
+                                </div>
+                              </>
+                            )}
                           </div>
-
-                          <div className="border-t border-dashed border-white/10 mt-5 pt-4 flex justify-between items-end">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                              <p className="text-lg font-black text-red-500 font-mono mt-0.5">
-                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
+                        </motion.div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             )
           })()}
 
+>>>>>>> Stashed changes
           {/* ── Tab Payments (Lịch sử thanh toán) ── */}
           {activeTab === 'payments' && (() => {
             return (
