@@ -30,6 +30,7 @@ export default function PromotionFormPage() {
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false)
   const [discountType, setDiscountType] = useState(DISCOUNT_TYPES.PERCENT)
   const [discountValue, setDiscountValue] = useState('')
+  const [discountValueDisplay, setDiscountValueDisplay] = useState('')
   const [maxTotalUsage, setMaxTotalUsage] = useState('')
   const [maxPerUser, setMaxPerUser] = useState('1')
   const [imageUrl, setImageUrl] = useState('')
@@ -40,6 +41,13 @@ export default function PromotionFormPage() {
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
   const [todayStart, setTodayStart] = useState('')
+
+  // Format currency input (add dot separator every 3 digits)
+  const formatCurrencyInput = (value) => {
+    if (!value) return ''
+    const num = value.replace(/\D/g, '')
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -98,6 +106,12 @@ export default function PromotionFormPage() {
     }
   }
 
+  const handleDiscountValueChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '')
+    setDiscountValue(raw)
+    setDiscountValueDisplay(formatCurrencyInput(raw))
+  }
+
   const handleAutoGenerateCode = () => {
     const autoCode = generateVoucherCodeFromTitle(title, discountValue, discountType)
     if (autoCode) {
@@ -126,6 +140,11 @@ export default function PromotionFormPage() {
             setDiscountType(isPercent ? DISCOUNT_TYPES.PERCENT : DISCOUNT_TYPES.FIXED_AMOUNT)
             setDiscountValue(
               isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? '')
+            )
+            setDiscountValueDisplay(
+              formatCurrencyInput(
+                isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? '')
+              )
             )
 
             setMaxTotalUsage(promo.maxTotalUsage ?? '')
@@ -285,7 +304,7 @@ export default function PromotionFormPage() {
 
   const previewDiscountText =
     discountValue && !isNaN(Number(discountValue))
-      ? formatDiscountValue({ discountType, discountValue: Number(discountValue) })
+      ? formatDiscountValue({ discountType, discountValue: Number(discountValue) }).replace('đ', ' VND')
       : '—'
 
   return (
@@ -485,12 +504,11 @@ export default function PromotionFormPage() {
                   Giá trị giảm {discountType === DISCOUNT_TYPES.PERCENT ? '(%)' : '(VNĐ)'}
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
-                  placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50000'}
+                  type="text"
+                  inputMode="numeric"
+                  value={discountValueDisplay}
+                  onChange={handleDiscountValueChange}
+                  placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50.000'}
                   disabled={!isCoupon}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50
                     ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
@@ -505,7 +523,7 @@ export default function PromotionFormPage() {
                   min="1"
                   value={maxTotalUsage}
                   onChange={(e) => setMaxTotalUsage(e.target.value)}
-                  placeholder="Không giới hạn"
+                  placeholder="100"
                   disabled={!isCoupon}
                   className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50"
                 />
@@ -576,7 +594,7 @@ export default function PromotionFormPage() {
               <li>Mã <b>code</b> phải viết HOA, không có khoảng trắng.</li>
               <li>Nếu giảm theo <b>%</b>: nhập số từ 1 đến 100.</li>
               <li>Nếu giảm tiền mặt: nhập số tiền VNĐ.</li>
-              <li>Để trống <b>Tổng lượt dùng</b> = không giới hạn.</li>
+              <li>Để trống <b>Tổng lượt dùng</b> = mặc định 100.</li>
               <li>Sau khi lưu, có thể bật/tắt ở nút <b>Vô hiệu hóa</b> trên header.</li>
             </ul>
           </div>
