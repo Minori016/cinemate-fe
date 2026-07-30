@@ -115,29 +115,15 @@ export default function CheckoutResultPage() {
   let ticketAmount = bookingDetails?.ticketAmount || 0
   const finalPrice = bookingDetails?.finalPrice ?? bookingDetails?.totalAmount ?? bookingDetails?.totalPrice ?? Math.max(0, ticketAmount + concessionAmount - discountAmount)
 
-<<<<<<< Updated upstream
-  if (bookingDetails?.totalAmount > 0) {
-    if (discountAmount > 0) {
-      ticketAmount = bookingDetails.totalAmount + discountAmount - concessionAmount
-    } else if (ticketAmount > 0 && (ticketAmount + concessionAmount) > bookingDetails.totalAmount) {
-      discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
-    } else if (ticketAmount <= 0) {
-      ticketAmount = Math.max(0, bookingDetails.totalAmount - concessionAmount)
-    } else if ((ticketAmount + concessionAmount - discountAmount) !== bookingDetails.totalAmount) {
-=======
   if (ticketAmount <= 0 && seatCount > 0) {
     if (finalPrice > 0) {
->>>>>>> Stashed changes
       ticketAmount = Math.max(0, bookingDetails.totalAmount + discountAmount - concessionAmount)
     }
   }
 
-<<<<<<< Updated upstream
-=======
   if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (finalPrice || 0)) {
     discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
   }
->>>>>>> Stashed changes
 
   const handlePrint = () => {
     window.print()
