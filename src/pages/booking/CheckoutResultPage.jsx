@@ -113,7 +113,9 @@ export default function CheckoutResultPage() {
   const concessionAmount = bookingDetails?.concessionAmount ?? (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
   let discountAmount = bookingDetails?.discountAmount || 0
   let ticketAmount = bookingDetails?.ticketAmount || 0
+  const finalPrice = bookingDetails?.finalPrice ?? bookingDetails?.totalAmount ?? bookingDetails?.totalPrice ?? Math.max(0, ticketAmount + concessionAmount - discountAmount)
 
+<<<<<<< Updated upstream
   if (bookingDetails?.totalAmount > 0) {
     if (discountAmount > 0) {
       ticketAmount = bookingDetails.totalAmount + discountAmount - concessionAmount
@@ -122,10 +124,20 @@ export default function CheckoutResultPage() {
     } else if (ticketAmount <= 0) {
       ticketAmount = Math.max(0, bookingDetails.totalAmount - concessionAmount)
     } else if ((ticketAmount + concessionAmount - discountAmount) !== bookingDetails.totalAmount) {
+=======
+  if (ticketAmount <= 0 && seatCount > 0) {
+    if (finalPrice > 0) {
+>>>>>>> Stashed changes
       ticketAmount = Math.max(0, bookingDetails.totalAmount + discountAmount - concessionAmount)
     }
   }
 
+<<<<<<< Updated upstream
+=======
+  if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (finalPrice || 0)) {
+    discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
+  }
+>>>>>>> Stashed changes
 
   const handlePrint = () => {
     window.print()
@@ -337,7 +349,7 @@ export default function CheckoutResultPage() {
                           <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
                             <Tag size={10} className="text-red-500" /> Tổng tiền
                           </p>
-                          <p className="text-red-500 font-black text-sm">{formatPrice(bookingDetails.totalAmount)}</p>
+                          <p className="text-red-500 font-black text-sm">{formatPrice(finalPrice)}</p>
                         </div>
                       </div>
 
@@ -414,7 +426,7 @@ export default function CheckoutResultPage() {
                         {/* Tổng thanh toán thực tế */}
                         <div className="flex justify-between items-center pt-1.5 border-t border-white/10 text-xs font-black">
                           <span className="uppercase text-white">Tổng tiền đã thanh toán:</span>
-                          <span className="text-red-500 text-sm font-mono">{formatPrice(bookingDetails.totalAmount)}</span>
+                          <span className="text-red-500 text-sm font-mono">{formatPrice(finalPrice)}</span>
                         </div>
                       </div>
                     </div>
