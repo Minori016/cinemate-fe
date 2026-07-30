@@ -931,19 +931,19 @@ export default function ProfilePage() {
           
           {/* ── Sidebar Navigation ── */}
           <div className="w-full md:w-[260px] flex-shrink-0 flex flex-col gap-2.5">
-            {['info', 'history', 'booked', 'canceled', 'payments'].map((tabKey) => {
+            {['info', 'history', 'booked', 'payments'].map((tabKey) => {
               const tabLabels = {
                 info: 'Thông tin tài khoản',
                 history: 'Xem hạng thành viên',
                 booked: 'Vé đã đặt',
-                canceled: 'Vé đã hủy',
+                
                 payments: 'Lịch sử thanh toán'
               }
               const tabIcons = {
                 info: 'account_circle',
                 history: 'stars',
                 booked: 'confirmation_number',
-                canceled: 'cancel',
+                
                 payments: 'payments'
               }
               const isActive = activeTab === tabKey
@@ -1890,112 +1890,6 @@ export default function ProfilePage() {
                             </p>
                           </div>
                         )}
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })()}
-
-          {/* ── Tab Canceled (Vé đã hủy) ── */}
-          {activeTab === 'canceled' && (() => {
-            const canceledBookings = bookings.filter(b => b.status === 'CANCELED' || b.status === 'CANCELLED')
-            return (
-              <div className="w-full space-y-4">
-                {canceledBookings.length === 0 ? (
-                  <GlassCard 
-                    className="text-center py-20 w-full"
-                    delay={0.05}
-                  >
-                    <span className="material-symbols-outlined text-5xl text-gray-600 mb-3">cancel</span>
-                    <p className="text-gray-400 font-medium">No canceled tickets found.</p>
-                  </GlassCard>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left">
-                    {canceledBookings.map((booking, idx) => (
-                      <motion.div 
-                        key={booking.id}
-                        variants={stagger(idx * 0.05)}
-                        initial="hidden"
-                        whileInView="show"
-                        viewport={{ once: true, margin: '-40px' }}
-                        whileHover={{ scale: 1.01, border: '1px solid rgba(255,255,255,0.1)' }}
-                        className="rounded-2xl overflow-hidden flex flex-col sm:flex-row relative w-full opacity-75 grayscale-[20%] transition-all duration-300"
-                        style={{ 
-                          background: 'rgba(255,255,255,0.03)', 
-                          backdropFilter: 'blur(14px)', 
-                          border: '1px solid rgba(255,255,255,0.05)',
-                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
-                        }}
-                      >
-                        <div 
-                          className="absolute top-1/2 -left-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-r border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
-                        <div 
-                          className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 rounded-full z-10 border-l border-white/10 sm:block hidden"
-                          style={{ backgroundColor: 'var(--color-background)' }}
-                        ></div>
-
-                        {/* Movie Poster Cover */}
-                        <div className="w-full sm:w-28 md:w-32 h-44 sm:h-auto flex-shrink-0 relative overflow-hidden">
-                          <img 
-                            src={moviePosters[booking.movieName.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'} 
-                            alt={booking.movieName}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-black/50" />
-                        </div>
-
-                        <div className="p-6 flex-grow flex flex-col justify-between min-w-0">
-                          <div>
-                            <div className="flex justify-between items-start gap-2 mb-2">
-                              <h3 className="text-lg font-bold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                                {booking.movieName}
-                              </h3>
-                              <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/20 shrink-0 uppercase tracking-wider">
-                                ĐÃ HỦY
-                              </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs text-gray-400 mt-4">
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Mã vé</p>
-                                <p className="text-white font-mono font-bold mt-0.5">{booking.id}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Phòng chiếu</p>
-                                <p className="text-white font-medium mt-0.5">{booking.room}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
-                                <p className="text-white font-medium mt-0.5">
-                                  {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ghế ngồi</p>
-                                <p className="text-red-500 font-black mt-0.5 tracking-wider">{booking.seats.join(', ')}</p>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="border-t border-dashed border-white/10 mt-5 pt-4 flex justify-between items-end">
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
-                              <p className="text-lg font-black text-red-500 font-mono mt-0.5">
-                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
                       </motion.div>
                     ))}
                   </div>
