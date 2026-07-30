@@ -34,13 +34,16 @@ export default function PromotionListPage() {
 
   const loadPromotions = (search = '') => {
     setLoading(true)
-    promotionService.getAll(search ? { search } : {})
+    const fetchFunc = promotionService.getAdminAll || promotionService.getAll
+    fetchFunc(search ? { search } : {})
       .then(res => {
         const data = unwrapList(res.data)
         setPromotions(data)
       })
       .catch(err => {
-        console.error('Lỗi tải danh sách khuyến mãi:', err)
+        promotionService.getAll(search ? { search } : {})
+          .then(res => setPromotions(unwrapList(res.data)))
+          .catch(e => console.error('Lỗi tải danh sách khuyến mãi:', e))
       })
       .finally(() => {
         setLoading(false)
@@ -87,7 +90,8 @@ export default function PromotionListPage() {
     return promotions.filter(p => {
       const status = computePromotionStatus(p)
       if (statusFilter !== 'ALL' && status !== statusFilter) return false
-      if (typeFilter !== 'ALL' && p.promotionType !== typeFilter) return false
+      const pType = p.promotionType || p.type
+      if (typeFilter !== 'ALL' && pType !== typeFilter) return false
       return true
     })
   }, [promotions, typeFilter, statusFilter])
