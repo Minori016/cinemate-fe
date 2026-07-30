@@ -19,6 +19,9 @@ export default function TicketManagementPage() {
   const [currentPage, setCurrentPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [search, setSearch] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [dateType, setDateType] = useState('created') // 'created' or 'showtime'
   const [successBanner, setSuccessBanner] = useState(location.state?.successMessage || '')
 
   useEffect(() => {
@@ -32,11 +35,18 @@ export default function TicketManagementPage() {
 
   const [loading, setLoading] = useState(false)
 
-  // Fetch real data from API (AC-01)
+  // Fetch real data from API (AC-01) - Only completed transactions
   const loadBookings = async () => {
     try {
       setLoading(true)
-      const res = await bookingService.getAllAdminBookings({ page: currentPage, size: 10 })
+      const res = await bookingService.getAllAdminBookings({
+        page: currentPage,
+        size: 10,
+        search: search.trim(),
+        fromDate,
+        toDate,
+        dateType,
+      })
       const data = res.data?.result || res.data || {}
       setBookings(data.content || [])
       setTotalPages(data.totalPages || 0)
@@ -57,11 +67,10 @@ export default function TicketManagementPage() {
     if (!selectedBooking) return
 
     try {
-      // Call confirm API
       await bookingService.confirm(selectedBooking.id)
       setSuccessBanner(`Đã xác nhận booking ${selectedBooking.id} thành công!`)
       setSelectedBooking(null)
-      loadBookings() // refresh the list
+      loadBookings()
     } catch (err) {
       alert(err.response?.data?.message || 'Không thể xác nhận booking. Vui lòng thử lại.')
     }
@@ -69,25 +78,51 @@ export default function TicketManagementPage() {
 
   useEffect(() => {
     loadBookings()
-  }, [currentPage])
-
-  // (Storage listener removed since we use API)
-
-  const filtered = bookings.filter(b =>
-    b.id?.toLowerCase().includes(search.toLowerCase()) ||
-    b.memberId?.toLowerCase().includes(search.toLowerCase()) ||
-    b.phone?.includes(search) ||
-    b.idCard?.includes(search)
-  )
+  }, [currentPage, search, fromDate, toDate, dateType])
 
   const columns = [
-    { key: 'id', label: 'Booking ID' },
-    { key: 'phoneNumber', label: 'Phone Number' },
-    { key: 'movieName', label: 'Movie Title' },
-    { key: 'showtime', label: 'Showtime', render: row => `${row.date} - ${row.showtime}` },
+    {
+      key: 'id',
+      label: 'Booking ID',
+      render: row => <span className="font-mono text-xs font-bold text-white">{row.id?.substring(0, 8).toUpperCase()}</span>
+    },
+    {
+      key: 'customerName',
+      label: 'Khách Hàng',
+      render: row => (
+        <div>
+          <div className="font-semibold text-white text-xs">{row.customerName || 'Khách vãng lai'}</div>
+          <div className="text-[11px] text-gray-400">{row.phoneNumber || 'N/A'}</div>
+        </div>
+      )
+    },
+    {
+      key: 'movieName',
+      label: 'Tên Phim',
+      render: row => <span className="font-bold text-emerald-400 text-xs">{row.movieName}</span>
+    },
+    {
+      key: 'showtime',
+      label: 'Suất Chiếu',
+      render: row => <span className="text-xs text-gray-300">{row.date} — {row.showtime}</span>
+    },
+    {
+      key: 'totalAmount',
+      label: 'Tổng Tiền',
+      render: row => <span className="font-extrabold text-amber-400 text-xs">{formatVND(row.totalAmount)}</span>
+    },
+    {
+      key: 'status',
+      label: 'Trạng Thái',
+      render: row => (
+        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${row.status === 'CHECKED_IN' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
+          {row.status === 'CHECKED_IN' ? 'Đã Check-in' : 'Đã thanh toán'}
+        </span>
+      )
+    }
   ]
 
-  const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
+  const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num || 0)
 
   return (
     <motion.div
@@ -109,7 +144,7 @@ export default function TicketManagementPage() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-2">
+      <div className="flex flex-col gap-4 mb-2">
         <div>
           <h1 
             className="text-4xl text-gray-900 font-bold tracking-wider uppercase" 
@@ -118,33 +153,97 @@ export default function TicketManagementPage() {
             Quản lý đặt vé
           </h1>
           <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Xem danh sách đặt vé của khách hàng, đối chiếu thông tin giao dịch và kiểm tra trạng thái vé.
+            Quản lý và đối chiếu danh sách các vé đã hoàn thành giao dịch thành công.
           </p>
         </div>
-        <input 
-          placeholder="Tìm theo Booking ID, CCCD, SĐT..." 
-          value={search} 
-          onChange={e => setSearch(e.target.value)}
-          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 w-80 transition-colors shadow-sm"
-          style={{ fontFamily: 'Inter, sans-serif' }}
-        />
+
+        {/* Search and Filters Bar */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-lg space-y-4">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <input 
+                placeholder="Tìm theo Booking ID, Số điện thoại, Tên phim, Tên khách..." 
+                value={search} 
+                onChange={e => { setSearch(e.target.value); setCurrentPage(0); }}
+                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-emerald-500 transition-colors shadow-sm"
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              />
+            </div>
+
+            {/* Date Type Selector */}
+            <div className="flex items-center bg-[#1a1d2d] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
+              <button
+                onClick={() => { setDateType('created'); setCurrentPage(0); }}
+                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'created' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                Thời gian đặt vé
+              </button>
+              <button
+                onClick={() => { setDateType('showtime'); setCurrentPage(0); }}
+                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'showtime' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                Thời gian suất chiếu
+              </button>
+            </div>
+
+            {/* Date Pickers */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2">
+                <Calendar size={14} className="text-gray-400" />
+                <span className="text-[11px] text-gray-400 font-semibold">Từ:</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={e => { setFromDate(e.target.value); setCurrentPage(0); }}
+                  className="bg-transparent text-xs text-white outline-none cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2">
+                <Calendar size={14} className="text-gray-400" />
+                <span className="text-[11px] text-gray-400 font-semibold">Đến:</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={e => { setToDate(e.target.value); setCurrentPage(0); }}
+                  className="bg-transparent text-xs text-white outline-none cursor-pointer"
+                />
+              </div>
+
+              {(search || fromDate || toDate) && (
+                <button
+                  onClick={() => { setSearch(''); setFromDate(''); setToDate(''); setCurrentPage(0); }}
+                  className="px-3 py-2 text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 rounded-xl border border-red-500/20 transition-all cursor-pointer"
+                >
+                  Xóa lọc
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bookings Table List */}
       <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl overflow-hidden shadow-xl flex flex-col">
-        {filtered.length > 0 ? (
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center gap-3 text-gray-400">
+            <Loader2 className="animate-spin text-emerald-400" size={32} />
+            <span className="text-xs font-semibold">Đang tải danh sách vé đã hoàn tất...</span>
+          </div>
+        ) : bookings.length > 0 ? (
           <>
             <div className="p-4">
               <Table
                 columns={columns}
-                data={filtered}
+                data={bookings}
                 actions={row => (
                   <button
                     onClick={() => handleSelectBooking(row)}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center gap-1.5 ml-auto"
+                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-500/10 active:scale-[0.98] transition-all flex items-center gap-1.5 ml-auto cursor-pointer"
                   >
                     <CheckCircle size={13} />
-                    Successful Booking
+                    Booking Detail
                   </button>
                 )}
               />
@@ -237,7 +336,7 @@ export default function TicketManagementPage() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                   <div className="col-span-2 md:col-span-4 bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Tên Phim (Movie Name)</span>
-                    <span className="text-sm font-extrabold text-white mt-1 block leading-snug">{selectedBooking.movie}</span>
+                    <span className="text-sm font-extrabold text-white mt-1 block leading-snug">{selectedBooking.movieName || selectedBooking.movie}</span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
@@ -247,7 +346,10 @@ export default function TicketManagementPage() {
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block">Phòng Chiếu (Screen)</span>
-                    <span className="text-xs font-extrabold text-white mt-1 block">{selectedBooking.screen}</span>
+                    <span className="text-xs font-extrabold text-white mt-1 block">
+                      {selectedBooking.roomName || selectedBooking.screen || 'Phòng chiếu'}
+                      {selectedBooking.cinemaName ? ` - ${selectedBooking.cinemaName}` : ''}
+                    </span>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-xl p-3">
