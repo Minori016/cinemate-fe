@@ -87,25 +87,36 @@ export default function CheckoutResultPage() {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0)
   }
 
+  const formatVietnameseDate = (dateStr) => {
+    if (!dateStr) return ''
+    try {
+      const d = new Date(dateStr)
+      if (isNaN(d.getTime())) return dateStr
+      const weekday = d.toLocaleDateString('vi-VN', { weekday: 'long' }).toUpperCase()
+      const dayMonth = d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })
+      return weekday + ', ' + dayMonth
+    } catch {
+      return dateStr
+    }
+  }
+
   const seatCount = bookingDetails?.seatNames?.length || 0
-  const concessionAmount = bookingDetails?.concessionAmount || 
-    (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
-  
+  const concessionAmount = bookingDetails?.concessionAmount ?? (bookingDetails?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
   let discountAmount = bookingDetails?.discountAmount || 0
   let ticketAmount = bookingDetails?.ticketAmount || 0
 
-  if (ticketAmount <= 0 && seatCount > 0) {
-    if (bookingDetails?.totalAmount > 0) {
+  if (bookingDetails?.totalAmount > 0) {
+    if (discountAmount > 0) {
+      ticketAmount = bookingDetails.totalAmount + discountAmount - concessionAmount
+    } else if (ticketAmount > 0 && (ticketAmount + concessionAmount) > bookingDetails.totalAmount) {
+      discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
+    } else if (ticketAmount <= 0) {
+      ticketAmount = Math.max(0, bookingDetails.totalAmount - concessionAmount)
+    } else if ((ticketAmount + concessionAmount - discountAmount) !== bookingDetails.totalAmount) {
       ticketAmount = Math.max(0, bookingDetails.totalAmount + discountAmount - concessionAmount)
-    }
-    if (ticketAmount <= 0) {
-      ticketAmount = seatCount * 90000
     }
   }
 
-  if (discountAmount <= 0 && (ticketAmount + concessionAmount) > (bookingDetails?.totalAmount || 0)) {
-    discountAmount = (ticketAmount + concessionAmount) - bookingDetails.totalAmount
-  }
 
   const handlePrint = () => {
     window.print()
@@ -357,49 +368,85 @@ export default function CheckoutResultPage() {
                         )}
                       </div>
 
-                      {/* BILL SUMMARY BREAKDOWN / HÓA ĐƠN CHI TIẾT */}
-                      <div className="mb-2.5 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
-                        <p className="font-extrabold uppercase text-gray-300 tracking-wider flex items-center gap-1 border-b border-white/10 pb-1 text-[10px]">
-                          <Tag size={11} className="text-red-500" /> Chi tiết thanh toán:
-                        </p>
+                      {/* BILL SUMMARY BREAKDOWN / VÉ CỦA BẠN DISPLAY */}
+                      <div className='mb-2.5 bg-black/60 p-3 rounded-xl border border-red-600/30 space-y-2 text-[11px] shadow-inner'>
+                        <div className='flex items-center justify-between border-b border-white/10 pb-1.5'>
+                          <span className='font-black uppercase text-red-500 tracking-wider text-xs flex items-center gap-1.5' style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                            <Ticket size={13} className='text-red-500' /> VÉ CỦA BẠN
+                          </span>
+                          {bookingDetails.promotionCode && (
+                            <span className='text-[9px] font-extrabold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-700/50 uppercase tracking-wide'>
+                              Mã: {bookingDetails.promotionCode}
+                            </span>
+                          )}
+                        </div>
 
-                        {/* Tiền ghế */}
-                        <div className="flex justify-between items-center text-gray-300">
-                          <span>Tiền vé ghế ({seatCount} ghế):</span>
-                          <span className="font-bold text-white">
+                        {/* SUẤT CHIẾU */}
+                        <div className='border-b border-white/5 pb-2 text-left space-y-0.5'>
+                          <p className='text-gray-400 text-[9px] font-extrabold uppercase tracking-wider'>SUẤT CHIẾU</p>
+                          <p className='text-white font-black text-xs uppercase'>{formatVietnameseDate(bookingDetails.date) || bookingDetails.date}</p>
+                          <p className='text-gray-300 text-[10px]'>
+                            Giờ chiếu: <strong className='text-white font-bold'>{bookingDetails.showtime}</strong> tại <strong className='text-red-400 font-bold'>{bookingDetails.roomName || 'Phòng chiếu'}</strong> ({bookingDetails.cinemaName})
+                          </p>
+                        </div>
+
+                        {/* GHẾ NGỒI */}
+                        <div className='flex justify-between items-start border-b border-white/5 pb-2 text-left'>
+                          <div>
+                            <p className='text-gray-400 text-[9px] font-extrabold uppercase tracking-wider mb-0.5'>GHẾ NGỒI</p>
+                            <p className='text-white font-extrabold font-mono tracking-wide text-xs'>
+                              {bookingDetails.seatNames?.join(' | ') || 'Chưa chọn ghế'}
+                            </p>
+                          </div>
+                          <span className='font-extrabold text-white text-xs font-mono'>
                             {formatPrice(ticketAmount)}
                           </span>
                         </div>
 
-                        {/* Tiền bắp nước */}
-                        {((concessionAmount > 0) || (bookingDetails.concessions && bookingDetails.concessions.length > 0)) && (
-                          <div className="flex justify-between items-center text-gray-300">
-                            <span>Bắp nước & Đồ ăn:</span>
-                            <span className="font-bold text-white">
+                        {/* BẮP NƯỚC (COMBO) */}
+                        {concessionAmount > 0 && (
+                          <div className='flex justify-between items-start border-b border-white/5 pb-2 text-left'>
+                            <div>
+                              <p className='text-gray-400 text-[9px] font-extrabold uppercase tracking-wider mb-0.5'>BẮP NƯỚC (COMBO)</p>
+                              <div className='space-y-0.5'>
+                                {bookingDetails.concessions && bookingDetails.concessions.length > 0 ? (
+                                  bookingDetails.concessions.map((c, idx) => (
+                                    <p key={idx} className='text-white font-medium text-[10px]'>
+                                      {c.name} x {c.quantity}
+                                    </p>
+                                  ))
+                                ) : (
+                                  <p className='text-white font-medium text-[10px]'>Combo bắp nước</p>
+                                )}
+                              </div>
+                            </div>
+                            <span className='font-extrabold text-white text-xs font-mono'>
                               {formatPrice(concessionAmount)}
                             </span>
                           </div>
                         )}
 
-                        {/* Số tiền đã giảm */}
+                        {/* MÃ GIẢM GIÁ */}
                         {discountAmount > 0 && (
-                          <div className="flex justify-between items-center text-emerald-400 font-medium">
-                            <span>Mã giảm giá {bookingDetails.promotionCode ? `(${bookingDetails.promotionCode})` : ''}:</span>
-                            <span className="font-extrabold">
+                          <div className='flex justify-between items-center border-b border-white/5 pb-2 text-left text-emerald-400'>
+                            <div>
+                              <p className='text-[9px] font-extrabold uppercase tracking-wider mb-0.5 text-gray-400'>MÃ GIẢM GIÁ</p>
+                              <p className='font-black text-xs'>{bookingDetails.promotionCode || 'PROMOTION'}</p>
+                            </div>
+                            <span className='font-black text-xs font-mono'>
                               -{formatPrice(discountAmount)}
                             </span>
                           </div>
                         )}
 
-                        {/* Tổng thanh toán thực tế */}
-                        <div className="flex justify-between items-center pt-1.5 border-t border-white/10 text-xs font-black">
-                          <span className="uppercase text-white">Tổng tiền đã thanh toán:</span>
-                          <span className="text-red-500 text-sm font-mono">{formatPrice(bookingDetails.totalAmount)}</span>
+                        {/* TỔNG CỘNG */}
+                        <div className='flex justify-between items-center pt-1.5 text-left'>
+                          <span className='uppercase text-white font-black text-xs tracking-wider'>TỔNG CỘNG</span>
+                          <span className='text-red-500 text-base font-black font-mono tracking-tight'>{formatPrice(bookingDetails.totalAmount)}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* QR & Barcode Section */}
+                      {/* QR & Barcode Section */}
                     <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-2.5 items-center justify-between bg-black/20 p-2 rounded-lg">
                       <div className="flex-1 text-left">
                         <p className="text-[10px] font-bold text-white mb-0.5">Quy định soát vé:</p>
