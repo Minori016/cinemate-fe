@@ -71,12 +71,20 @@ export default function CheckoutPage() {
   const handlePayment = async () => {
     try {
       setIsProcessing(true)
-      const res = await paymentService.createMomoPayment(bookingId)
+      let res;
+      if (paymentMethod === 'momo') {
+        res = await paymentService.createMomoPayment(bookingId)
+      } else if (paymentMethod === 'vnpay') {
+        res = await paymentService.createVnPayPayment(bookingId)
+      } else {
+        throw new Error('Chưa hỗ trợ phương thức thanh toán này')
+      }
+      
       const payUrl = res.data?.result?.payUrl || res.data?.payUrl
       if (payUrl) {
         window.location.href = payUrl
       } else {
-        setError('Không nhận được đường dẫn thanh toán từ MoMo')
+        setError(`Không nhận được đường dẫn thanh toán từ ${paymentMethod.toUpperCase()}`)
         setIsProcessing(false)
       }
     } catch (err) {
@@ -248,6 +256,21 @@ export default function CheckoutPage() {
                     {paymentMethod === 'momo' && <div className="w-2.5 h-2.5 rounded-full bg-[#A50064]" />}
                   </div>
                 </label>
+
+                {/* Option 2: VNPAY */}
+                <label className={`flex items-center gap-4 p-4 rounded-2xl cursor-pointer border-2 transition-all ${paymentMethod === 'vnpay' ? 'border-[#005BAA] bg-[#005BAA]/10' : 'border-white/10 bg-white/5 hover:border-white/30'}`}>
+                  <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} className="hidden" />
+                  <div className="w-10 h-10 bg-[#005BAA] rounded-lg flex items-center justify-center shrink-0">
+                    <span className="text-white font-black text-[10px] tracking-wider">VNPAY</span>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm">Cổng Thanh Toán VNPAY</h4>
+                    <p className="text-xs text-gray-400">Thanh toán qua VNPAY, Thẻ ATM/Visa</p>
+                  </div>
+                  <div className={`ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'vnpay' ? 'border-[#005BAA]' : 'border-gray-500'}`}>
+                    {paymentMethod === 'vnpay' && <div className="w-2.5 h-2.5 rounded-full bg-[#005BAA]" />}
+                  </div>
+                </label>
               </div>
             </div>
             
@@ -256,6 +279,7 @@ export default function CheckoutPage() {
               disabled={isProcessing || timeLeft <= 0}
               className={`w-full text-white font-bold text-lg py-4 rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none flex justify-center items-center gap-2 ${
                 paymentMethod === 'momo' ? 'bg-[#A50064] shadow-[0_5px_20px_rgba(165,0,100,0.3)] hover:bg-[#80004d]' :
+                paymentMethod === 'vnpay' ? 'bg-[#005BAA] shadow-[0_5px_20px_rgba(0,91,170,0.3)] hover:bg-[#004a8b]' :
                 paymentMethod === 'credit' ? 'bg-blue-600 shadow-[0_5px_20px_rgba(37,99,235,0.3)] hover:bg-blue-700' :
                 'bg-emerald-600 shadow-[0_5px_20px_rgba(5,150,105,0.3)] hover:bg-emerald-700'
               }`}
