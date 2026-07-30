@@ -15,7 +15,9 @@ export default function CheckoutResultPage() {
   const navigate = useNavigate()
   
   const orderId = params.get('orderId')
-  const resultCode = params.get('resultCode')
+  const vnpTxnRef = params.get('vnp_TxnRef')
+  const paymentId = orderId || vnpTxnRef
+  const resultCode = params.get('resultCode') || params.get('vnp_ResponseCode')
   
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState(false)
@@ -25,7 +27,7 @@ export default function CheckoutResultPage() {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (!orderId) {
+    if (!paymentId) {
       setLoading(false)
       setSuccess(false)
       setMessage('Không tìm thấy thông tin giao dịch.')
@@ -34,14 +36,21 @@ export default function CheckoutResultPage() {
 
     const checkStatus = async () => {
       try {
-        const response = await paymentService.checkMomoPaymentStatus(orderId)
+        let response;
+        if (vnpTxnRef) {
+          // Pass the entire query string to backend for VNPay
+          response = await paymentService.checkVnPayPaymentStatus(window.location.search)
+        } else {
+          response = await paymentService.checkMomoPaymentStatus(paymentId)
+        }
+        
         const status = response.data?.result ?? response.data ?? {}
         const paymentStatus = String(status.paymentStatus || status.status || '').toUpperCase()
         const bookingStatus = String(status.bookingStatus || status.booking?.status || '').toUpperCase()
-        const bookingId = status.bookingId || status.booking?.id || (orderId ? orderId.split('_')[1] : null)
+        const bookingId = status.bookingId || status.booking?.id || (orderId ? orderId.split('_')[1] : null) || (vnpTxnRef ? vnpTxnRef.split('_')[1] : null)
         const isConfirmed = ['SUCCESS', 'COMPLETED', 'PAID'].includes(paymentStatus)
           || ['CONFIRMED', 'COMPLETED', 'PAID', 'HOLDING'].includes(bookingStatus)
-          || resultCode === '0'
+          || resultCode === '0' || resultCode === '00'
 
         if (isConfirmed && bookingId) {
           try {
@@ -51,7 +60,7 @@ export default function CheckoutResultPage() {
           setSuccess(true)
           setVerificationState('confirmed')
           setMessage('Thanh toán đã được hệ thống xác nhận. Cảm ơn bạn đã đặt vé xem phim tại CineMate!')
-        } else if (resultCode && resultCode !== '0') {
+        } else if (resultCode && resultCode !== '0' && resultCode !== '00') {
           setSuccess(false)
           setVerificationState('failed')
           setMessage('Giao dịch đã bị hủy hoặc thanh toán thất bại.')
@@ -61,7 +70,7 @@ export default function CheckoutResultPage() {
           setMessage('Giao dịch đang được xác minh. Vui lòng kiểm tra lại vé của bạn sau ít phút.')
         }
       } catch {
-        const bookingId = orderId ? orderId.split('_')[1] : null
+        const bookingId = orderId ? orderId.split('_')[1] : (vnpTxnRef ? vnpTxnRef.split('_')[1] : null)
         if (resultCode === '0' && bookingId) {
           try {
             const bookingResponse = await bookingService.getById(bookingId)

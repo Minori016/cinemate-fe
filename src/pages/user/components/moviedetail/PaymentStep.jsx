@@ -87,12 +87,68 @@ export default function PaymentStep({
             </h3>
 
             {/* Payment method */}
-            <div
-              className="p-3.5 rounded-xl text-center bg-white/10 text-white font-bold text-sm shadow-md border border-white/10 flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined">qr_code_2</span>
-              <span>Thanh toán bằng Ví MoMo</span>
+            <div className="space-y-3 mb-6">
+              {/* MoMo Option */}
+              <label 
+                className={`p-3 rounded-xl cursor-pointer font-bold text-sm shadow-md border flex items-center justify-between transition-all ${
+                  paymentMethod === 'momo' 
+                    ? 'bg-[#A50064]/20 border-[#A50064] text-[#A50064]' 
+                    : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">qr_code_2</span>
+                  <span>Ví MoMo</span>
+                </div>
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="momo" 
+                  checked={paymentMethod === 'momo'} 
+                  onChange={() => setPaymentMethod('momo')} 
+                  className="hidden" 
+                />
+                {paymentMethod === 'momo' && (
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                )}
+              </label>
+
+              {/* VNPAY Option */}
+              <label 
+                className={`p-3 rounded-xl cursor-pointer font-bold text-sm shadow-md border flex items-center justify-between transition-all ${
+                  paymentMethod === 'vnpay' 
+                    ? 'bg-[#005BAA]/20 border-[#005BAA] text-[#005BAA]' 
+                    : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined">account_balance</span>
+                  <span>VNPAY</span>
+                </div>
+                <input 
+                  type="radio" 
+                  name="paymentMethod" 
+                  value="vnpay" 
+                  checked={paymentMethod === 'vnpay'} 
+                  onChange={() => setPaymentMethod('vnpay')} 
+                  className="hidden" 
+                />
+                {paymentMethod === 'vnpay' && (
+                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                )}
+              </label>
             </div>
+
+            <button
+              type="button"
+              onClick={handleSubmitPayment}
+              disabled={submitting || !bookingId}
+              className={`w-full rounded-xl px-5 py-3 font-bold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50 ${
+                paymentMethod === 'momo' ? 'bg-[#A50064] hover:bg-[#80004d]' : 'bg-[#005BAA] hover:bg-[#004a8b]'
+              }`}
+            >
+              {submitting ? (processingStep || `Đang chuyển đến ${paymentMethod.toUpperCase()}...`) : `Thanh toán với ${paymentMethod === 'momo' ? 'MoMo' : 'VNPAY'}`}
+            </button>
           </GlassCard>
         </div>
 
@@ -134,7 +190,7 @@ export default function PaymentStep({
                 <div>
                   <p className="text-[9px] uppercase text-gray-500 tracking-wider font-bold">Hình thức TT</p>
                   <p className="text-gray-300 mt-0.5 font-medium">
-                    Ví MoMo
+                    {paymentMethod === 'momo' ? 'Ví MoMo' : 'VNPAY'}
                   </p>
                 </div>
                 <div className="text-right">
