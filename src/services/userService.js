@@ -17,6 +17,9 @@ export const userService = {
     }
   }),
 
+  // GET /users/myinfo/score-history — Lấy lịch sử tích điểm
+  getMyScoreHistory: (params) => api.get('/api/v1/users/myinfo/score-history', { params }),
+
   // Admin endpoints
   getAll: () => api.get('/api/v1/users'),
   getById: (id) => api.get(`/api/v1/users/${id}`),
