@@ -256,7 +256,7 @@ export default function MovieListPage() {
     setShowDropdown(false)
     setActiveIndex(-1)
     setSuggestions([])
-    navigate(`/admin/movies/edit/${movieId}`)
+    navigate(`${basePath}/movies/edit/${movieId}`)
   }
 
   // Đóng dropdown khi click ngoài
