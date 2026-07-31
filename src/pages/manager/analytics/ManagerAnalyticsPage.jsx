@@ -1090,55 +1090,7 @@ export default function ManagerAnalyticsPage() {
         </div>
       </div>
 
-      {/* Branch Revenue Section */}
-      <div className="space-y-6">
-        {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h2 className="text-2xl font-extrabold tracking-tight uppercase text-white" style={{ fontFamily: 'Montserrat' }}>
-              📍 Doanh Thu Theo Chi Nhánh
-            </h2>
-            <p className="text-sm text-[var(--color-text-muted)] mt-1">
-              So sánh hiệu suất kinh doanh giữa các rạp chiếu phim trong hệ thống.
-            </p>
-          </div>
 
-          <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
-            <button
-              onClick={() => setExportModalOpen(true)}
-              className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
-            >
-              <Download size={14} />
-              Xuất báo cáo chi nhánh
-            </button>
-          </div>
-        </div>
-
-        {/* Branch Performance Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBranches.map((branch, index) => (
-            <BranchCard
-              key={branch.id}
-              branch={branch}
-              index={index}
-            />
-          ))}
-        </div>
-
-        {/* Branch Comparison Chart */}
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
-                📊 So Sánh Doanh Thu Chi Nhánh
-              </h3>
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Biểu đồ cột so sánh tổng doanh thu giữa các chi nhánh.</p>
-            </div>
-          </div>
-
-          <BranchComparisonChart data={filteredBranchComparison} />
-        </div>
-      </div>
 
       {/* Graphs Section */}
       <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-300 ${isRefreshing ? 'blur-[1px] opacity-75' : ''}`}>
