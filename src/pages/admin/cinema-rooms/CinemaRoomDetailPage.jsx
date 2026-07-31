@@ -64,7 +64,7 @@ export default function CinemaRoomDetailPage() {
   const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   // Authorization check (AC-07)
-  const isAdmin = user && user.roles?.includes('ADMIN')
+  const isAuthorized = user && (user.roles?.includes('ADMIN') || user.roles?.includes('MANAGER'))
 
   // States
   const [room, setRoom] = useState(null)
@@ -195,14 +195,14 @@ export default function CinemaRoomDetailPage() {
       }
     }
 
-    if (isAdmin && roomId) {
+    if (isAuthorized && roomId) {
       fetchRoomAndSeats()
     }
 
     return () => {
       active = false
     }
-  }, [roomId, isAdmin])
+  }, [roomId, isAuthorized])
 
   // Handle Save Seats layout (AC-04 & AC-05)
   const handleSave = async (payload) => {
@@ -240,7 +240,7 @@ export default function CinemaRoomDetailPage() {
   }
 
   // Access Denied (AC-07)
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-[#06080F]">
         <span className="material-symbols-outlined text-red-500 text-6xl font-bold mb-4 animate-bounce">

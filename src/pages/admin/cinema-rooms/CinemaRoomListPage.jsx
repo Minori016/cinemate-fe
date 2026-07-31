@@ -34,7 +34,7 @@ export default function CinemaRoomListPage() {
   }, [location.state, triggerToast])
 
   // Authorization check (AC-06)
-  const isAdmin = user && user.roles?.includes('ADMIN')
+  const isAuthorized = user && (user.roles?.includes('ADMIN') || user.roles?.includes('MANAGER'))
 
   const [rooms, setRooms] = useState([])
   const [loading, setLoading] = useState(true)
@@ -265,7 +265,7 @@ export default function CinemaRoomListPage() {
   ]
 
   // Render Access Denied state (AC-06)
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-[#06080F]">
         <span className="material-symbols-outlined text-red-500 text-6xl font-bold mb-4 animate-bounce">
