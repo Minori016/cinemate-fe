@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
-  CheckCircle2, XCircle, Loader2, ArrowRight, Calendar, Clock, MapPin, 
+  CheckCircle2, XCircle, Loader2, ArrowRight, ArrowLeft, Calendar, Clock, MapPin, 
   Tag, Film, Ticket, Share2, Printer, Coffee, Sparkles, Copy, Check, ChevronLeft 
 } from 'lucide-react'
 import { paymentService } from '../../services/paymentService'
@@ -191,13 +191,16 @@ export default function CheckoutResultPage() {
         <div className="w-full max-w-4xl mx-auto z-10 flex flex-col items-center">
 
           {/* Back Link */}
-          <div className="w-full mb-1.5 no-print">
-            <button
+          <div className="w-full mb-3 no-print text-left">
+            <motion.button
               onClick={() => navigate('/')}
-              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-gray-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 border border-white/10 px-2.5 py-1 rounded-lg cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all hover:bg-white/10 active:scale-95 cursor-pointer border border-white/20 text-white bg-black/40 backdrop-blur-md shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <ChevronLeft size={13} /> Quay về Trang Chủ
-            </button>
+              <ArrowLeft size={14} className="text-red-500 font-bold" />
+              <span>Quay lại trang chủ</span>
+            </motion.button>
           </div>
 
           {/* Status Header */}
