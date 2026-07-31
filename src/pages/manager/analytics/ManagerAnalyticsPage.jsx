@@ -969,71 +969,7 @@ export default function ManagerAnalyticsPage() {
         </div>
       </div>
 
-      {/* Filter Control Bar */}
-      <div className="p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-lg">
-        <h4 className="text-xs uppercase font-extrabold text-white tracking-widest mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm text-red-500">filter_alt</span>
-          Bộ lọc thống kê nâng cao (Advanced Filters)
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] tracking-wider">Phim chiếu</label>
-            <select
-              value={filterMovie}
-              onChange={(e) => setFilterMovie(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
-            >
-              <option value="all">Tất cả phim</option>
-              <option value="latmat">Lật Mặt 7: Một Điều Ước</option>
-              <option value="dune">Dune: Hành Tinh Cát - Phần 2</option>
-              <option value="insideout">Inside Out 2</option>
-              <option value="furiosa">Furiosa: Mad Max Saga</option>
-            </select>
-          </div>
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] tracking-wider">Thời gian</label>
-            <select
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
-            >
-              <option value="all">Tất cả ngày</option>
-              <option value="today">Hôm nay (Today)</option>
-              <option value="yesterday">Hôm qua (Yesterday)</option>
-              <option value="last7days">7 ngày qua</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] tracking-wider">Khung giờ chiếu</label>
-            <select
-              value={filterTime}
-              onChange={(e) => setFilterTime(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
-            >
-              <option value="all">Tất cả khung giờ</option>
-              <option value="morning">Ca Sáng (08:00 - 12:00)</option>
-              <option value="afternoon">Ca Chiều (12:00 - 18:00)</option>
-              <option value="evening">Ca Tối (18:00 - 23:00)</option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] tracking-wider">Chi nhánh Rạp</label>
-            <select
-              value={filterLocation}
-              onChange={(e) => setFilterLocation(e.target.value)}
-              className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
-            >
-              <option value="all">Tất cả chi nhánh</option>
-              <option value="hungvuong">CineMate Hùng Vương Plaza</option>
-              <option value="nguyentrai">CineMate Nguyễn Trãi</option>
-              <option value="tranhungdao">CineMate Trần Hưng Đạo</option>
-            </select>
-          </div>
-        </div>
-      </div>
 
       {/* Metrics Row */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-300 ${isRefreshing ? 'opacity-50' : 'opacity-100'}`}>
