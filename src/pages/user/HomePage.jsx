@@ -1023,7 +1023,7 @@ export default function HomePage() {
           </section>
 
           {/* ====================================================
-              SECTION: HỆ THỐNG RẠP CHIẾU
+              SECTION: RẠP CHIẾU CINEMATE
           ==================================================== */}
           <section
             className="w-full py-20 px-6 md:px-14"
@@ -1101,7 +1101,7 @@ export default function HomePage() {
 
                   {/* Caption */}
                   <p className="text-xs text-center" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'Inter, sans-serif' }}>
-                    Hệ thống 4 rạp tại TP. Hồ Chí Minh — Chi nhánh tổng tại Quận 1
+                    CineMate Cinema — 135 Đồng Khởi, Quận 1, TP. Hồ Chí Minh
                   </p>
                 </motion.div>
 
@@ -1176,7 +1176,7 @@ export default function HomePage() {
                     className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl text-sm font-bold uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border-2 border-red-500/40 hover:border-red-500/80 hover:bg-red-500/10 text-red-500"
                     style={{ fontFamily: 'Montserrat, sans-serif' }}
                   >
-                    Xem Tất Cả Rạp <ArrowRight size={15} />
+                    Xem Chi Tiết Rạp <ArrowRight size={15} />
                   </Link>
                 </motion.div>
               </div>

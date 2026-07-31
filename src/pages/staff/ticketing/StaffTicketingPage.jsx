@@ -13,11 +13,7 @@ import { concessionService, FALLBACK_COMBOS } from '../../../services/concession
 import { bookingService } from '../../../services/bookingService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 
-const MOCK_MEMBERS = [
-  { memberId: 'MEM-889922', idCard: '012345678901', fullName: 'Nguyễn Văn Anh', phone: '0912345678', score: 1500 },
-  { memberId: 'MEM-445511', idCard: '023456789012', fullName: 'Trần Thị Bình', phone: '0987654321', score: 3500 },
-  { memberId: 'MEM-332211', idCard: '034567890123', fullName: 'Lê Văn Cường', phone: '0933445566', score: 500 }
-]
+const MOCK_MEMBERS = []
 
 // 🟢 HÀM KIỂM TRA GHẾ THUỘC VÙNG VIP TRUNG TÂM (ĐỒNG BỘ NGUYÊN BẢN VỚI USER)
 const checkIsVipCenterSeat = (seatId) => {
@@ -30,6 +26,8 @@ const checkIsVipCenterSeat = (seatId) => {
   if (row === 'H') return num >= 6 && num <= 15
   return false
 }
+
+
 
 export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
@@ -288,18 +286,7 @@ export default function StaffTicketingPage() {
     }
 
     const uppercaseQuery = trimmed.toUpperCase()
-    const mockMatch = MOCK_MEMBERS.find(
-      m => m.memberId.toUpperCase() === uppercaseQuery || m.phone === uppercaseQuery || m.idCard === uppercaseQuery
-    )
-
-    if (mockMatch) {
-      setFoundMember({
-        ...mockMatch,
-        loyaltyPoints: mockMatch.score
-      })
-    } else {
-      setFoundMember(null)
-    }
+    setFoundMember(null)
   }
 
   useEffect(() => {

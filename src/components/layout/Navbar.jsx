@@ -12,11 +12,32 @@ import {
   X,
   Menu,
   Clapperboard,
+  CheckCheck,
+  Ticket,
+  Tag,
 } from 'lucide-react'
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'motion/react'
 import gsap from 'gsap'
 import * as THREE from 'three'
 import logoImg from '../../assets/Cinematelogo.png'
+import { bookingService } from '../../services/bookingService'
+import { promotionService, getQuickDiscountText } from '../../services/promotionService'
+
+function formatRelativeTime(dateInput) {
+  if (!dateInput) return 'Vừa xong'
+  const date = new Date(dateInput)
+  if (isNaN(date.getTime())) return 'Vừa xong'
+  const now = new Date()
+  const diffSec = Math.floor((now - date) / 1000)
+  if (diffSec < 60) return 'Vừa xong'
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin} phút trước`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} giờ trước`
+  const diffDay = Math.floor(diffHour / 24)
+  if (diffDay < 7) return `${diffDay} ngày trước`
+  return date.toLocaleDateString('vi-VN')
+}
 
 const NAVBAR_HEIGHT = 72
 const NAVBAR_SCROLL_THRESHOLD = 60
@@ -175,11 +196,139 @@ export default function Navbar() {
     navigate('/login')
   }, [logout, navigate])
 
-  const notifications = [
-    { id: 1, title: 'Vé đặt thành công', message: 'Mã đặt vé của bạn đã được xác nhận.', time: 'Vừa xong', read: false },
-    { id: 2, title: 'Khuyến mãi hot', message: 'Giảm ngay 20% khi mua Combo Solo.', time: '1 giờ trước', read: false },
-    { id: 3, title: 'Suất chiếu đặc biệt', message: 'Dune: Hành Tinh Cát - Phần 2 đã mở bán vé IMAX.', time: '1 ngày trước', read: true },
-  ]
+  const [notifications, setNotifications] = useState([])
+  const [readNotifIds, setReadNotifIds] = useState([])
+
+  useEffect(() => {
+    try {
+      const key = `read_notifs_${user?.id || 'guest'}`
+      const saved = localStorage.getItem(key)
+      setReadNotifIds(saved ? JSON.parse(saved) : [])
+    } catch {
+      setReadNotifIds([])
+    }
+  }, [user?.id])
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user) {
+      setNotifications([])
+      return
+    }
+
+    const list = []
+
+    // 1. Fetch user bookings
+    try {
+      const resBooking = await bookingService.getMyBookings()
+      const rawBookings = resBooking.data?.result || resBooking.data || []
+      if (Array.isArray(rawBookings)) {
+        rawBookings.forEach((b) => {
+          const seatsStr = Array.isArray(b.seatNames) ? b.seatNames.join(', ') : (b.seatNames || '')
+          const amountFormatted = b.totalAmount != null
+            ? new Intl.NumberFormat('vi-VN').format(b.totalAmount) + 'đ'
+            : ''
+          const showInfo = [b.date, b.showtime].filter(Boolean).join(' - ')
+
+          if (b.status === 'CONFIRMED' || b.status === 'PAID' || b.status === 'CHECKED_IN') {
+            list.push({
+              id: `booking-success-${b.id}`,
+              title: 'Vé đặt thành công 🎉',
+              message: `Vé xem phim "${b.movieName || 'Phim'}" (${showInfo}${seatsStr ? `, Ghế: ${seatsStr}` : ''})${amountFormatted ? `. Tổng: ${amountFormatted}` : ''}.`,
+              timeRaw: b.createdAt,
+              type: 'BOOKING_SUCCESS',
+              route: '/profile',
+            })
+          } else if (b.status === 'CANCELLED') {
+            list.push({
+              id: `booking-cancel-${b.id}`,
+              title: 'Vé đã bị hủy ❌',
+              message: `Đơn đặt vé phim "${b.movieName || 'Phim'}" (${showInfo}) đã được hủy.`,
+              timeRaw: b.createdAt,
+              type: 'BOOKING_CANCELLED',
+              route: '/profile',
+            })
+          } else if (b.status === 'HELD' || b.status === 'PENDING') {
+            list.push({
+              id: `booking-held-${b.id}`,
+              title: 'Đang giữ ghế ⏳',
+              message: `Đơn giữ ghế phim "${b.movieName || 'Phim'}" (${showInfo}). Vui lòng hoàn tất thanh toán.`,
+              timeRaw: b.createdAt,
+              type: 'BOOKING_HELD',
+              route: `/checkout?bookingId=${b.id}`,
+            })
+          }
+        })
+      }
+    } catch (err) {
+      console.error('Không thể tải vé cho thông báo:', err)
+    }
+
+    // 2. Fetch active promotions
+    try {
+      const activePromos = await promotionService.getActiveForUi()
+      if (Array.isArray(activePromos)) {
+        activePromos.slice(0, 5).forEach((p) => {
+          const discountText = getQuickDiscountText(p)
+          list.push({
+            id: `promo-${p.id || p.code}`,
+            title: `Khuyến mãi: ${p.code || 'Mới'} 🎁`,
+            message: `${p.title || 'Ưu đãi hot'}${discountText ? ` (${discountText})` : ''}: ${p.description || p.detail || 'Nhập mã để nhận ưu đãi!'}`,
+            timeRaw: p.startTime || p.createdAt,
+            type: 'PROMOTION',
+            route: '/promotions',
+          })
+        })
+      }
+    } catch (err) {
+      console.error('Không thể tải khuyến mãi cho thông báo:', err)
+    }
+
+    list.sort((a, b) => new Date(b.timeRaw || 0) - new Date(a.timeRaw || 0))
+    setNotifications(list)
+  }, [user])
+
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 30000)
+    const handleBookingUpdate = () => fetchNotifications()
+    window.addEventListener('bookingUpdated', handleBookingUpdate)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('bookingUpdated', handleBookingUpdate)
+    }
+  }, [fetchNotifications])
+
+  const handleMarkAllRead = () => {
+    const allIds = notifications.map((n) => n.id)
+    setReadNotifIds(allIds)
+    try {
+      localStorage.setItem(`read_notifs_${user?.id || 'guest'}`, JSON.stringify(allIds))
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleNotificationClick = (n) => {
+    if (!readNotifIds.includes(n.id)) {
+      const updated = [...readNotifIds, n.id]
+      setReadNotifIds(updated)
+      try {
+        localStorage.setItem(`read_notifs_${user?.id || 'guest'}`, JSON.stringify(updated))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    setNotificationsOpen(false)
+    if (n.route) {
+      if (n.route === '/profile') {
+        navigate('/profile', { state: { activeTab: n.tab || 'booked' } })
+      } else {
+        navigate(n.route)
+      }
+    }
+  }
+
+  const unreadCount = notifications.filter((n) => !readNotifIds.includes(n.id)).length
 
   return (
     <>
@@ -370,15 +519,16 @@ export default function Navbar() {
                   }}
                   className="w-9 h-9 rounded-xl flex items-center justify-center relative transition-colors hover:bg-white/5"
                   style={{ color: 'rgba(255,255,255,0.6)' }}
+                  title="Thông báo"
                 >
                   <Bell size={16} />
-                  {notifications.some((n) => !n.read) && (
+                  {unreadCount > 0 && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-4 h-4 bg-[#e50914] text-white text-[8px] font-black rounded-full flex items-center justify-center border-2 border-[#070707]"
+                      className="absolute -top-1 -right-1 min-w-4 h-4 px-1 bg-[#e50914] text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-[#070707] shadow-sm shadow-red-500/50"
                     >
-                      {notifications.filter((n) => !n.read).length}
+                      {unreadCount > 9 ? '9+' : unreadCount}
                     </motion.span>
                   )}
                 </motion.button>
@@ -390,7 +540,7 @@ export default function Navbar() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-80 rounded-xl overflow-hidden z-50"
+                      className="absolute right-0 top-full mt-2 w-84 sm:w-96 rounded-xl overflow-hidden z-50"
                       style={{
                         background: 'rgba(17,17,17,0.95)',
                         border: '1px solid rgba(255,255,255,0.08)',
@@ -398,33 +548,81 @@ export default function Navbar() {
                         boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
                       }}
                     >
-                      <div className="px-4 py-3 flex justify-between items-center border-b border-white/5">
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-white">
-                          Thông báo
-                        </span>
-                        <button
-                          className="text-[10px] font-semibold text-[#e50914] hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer"
-                        >
-                          Đánh dấu đã đọc
-                        </button>
-                      </div>
-                      <div className="max-h-72 overflow-y-auto">
-                        {notifications.map((n) => (
-                          <div
-                            key={n.id}
-                            className={`px-4 py-3 border-b border-white/[0.04] cursor-pointer transition-colors ${
-                              !n.read ? 'bg-[#e50914]/[0.04]' : 'hover:bg-white/[0.03]'
-                            }`}
+                      <div className="px-4 py-3 flex justify-between items-center border-b border-white/5 bg-white/[0.02]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-white">
+                            Thông báo
+                          </span>
+                          {unreadCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#e50914]/20 text-[#e50914] border border-[#e50914]/30">
+                              {unreadCount} chưa đọc
+                            </span>
+                          )}
+                        </div>
+                        {notifications.length > 0 && unreadCount > 0 && (
+                          <button
+                            onClick={handleMarkAllRead}
+                            className="text-[10px] font-semibold text-[#e50914] hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer flex items-center gap-1"
                           >
-                            <div className="flex justify-between items-start mb-1">
-                              <span className={`text-xs font-bold ${!n.read ? 'text-[#e50914]' : 'text-white'}`}>
-                                {n.title}
-                              </span>
-                              <span className="text-[10px] text-white/25">{n.time}</span>
-                            </div>
-                            <p className="text-[11px] text-white/40 leading-relaxed">{n.message}</p>
+                            <CheckCheck size={12} />
+                            Đánh dấu đã đọc
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="py-8 px-4 text-center">
+                            <Bell size={24} className="mx-auto mb-2 text-white/20" />
+                            <p className="text-xs text-white/40 font-medium">Chưa có thông báo nào</p>
                           </div>
-                        ))}
+                        ) : (
+                          notifications.map((n) => {
+                            const isRead = readNotifIds.includes(n.id)
+                            let IconComponent = Bell
+                            let iconColor = 'text-blue-400 bg-blue-500/10'
+
+                            if (n.type === 'BOOKING_SUCCESS') {
+                              IconComponent = Ticket
+                              iconColor = 'text-emerald-400 bg-emerald-500/10'
+                            } else if (n.type === 'BOOKING_CANCELLED') {
+                              IconComponent = X
+                              iconColor = 'text-red-400 bg-red-500/10'
+                            } else if (n.type === 'BOOKING_HELD') {
+                              IconComponent = Ticket
+                              iconColor = 'text-amber-400 bg-amber-500/10'
+                            } else if (n.type === 'PROMOTION') {
+                              IconComponent = Tag
+                              iconColor = 'text-purple-400 bg-purple-500/10'
+                            }
+
+                            return (
+                              <div
+                                key={n.id}
+                                onClick={() => handleNotificationClick(n)}
+                                className={`px-4 py-3 border-b border-white/[0.04] cursor-pointer transition-all flex items-start gap-3 ${
+                                  !isRead ? 'bg-[#e50914]/[0.06] hover:bg-[#e50914]/[0.1]' : 'hover:bg-white/[0.04] opacity-80 hover:opacity-100'
+                                }`}
+                              >
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${iconColor}`}>
+                                  <IconComponent size={15} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-start mb-1 gap-2">
+                                    <span className={`text-xs font-bold truncate ${!isRead ? 'text-white' : 'text-white/80'}`}>
+                                      {n.title}
+                                    </span>
+                                    <span className="text-[10px] text-white/30 shrink-0">{formatRelativeTime(n.timeRaw)}</span>
+                                  </div>
+                                  <p className="text-[11px] text-white/60 leading-relaxed line-clamp-2">{n.message}</p>
+                                </div>
+                                {!isRead && (
+                                  <span className="w-2 h-2 rounded-full bg-[#e50914] shrink-0 mt-1 shadow-sm shadow-red-500/50" />
+                                )}
+                              </div>
+                            )
+                          })
+                        )}
                       </div>
                     </motion.div>
                   )}

@@ -6,11 +6,7 @@ import { bookingService } from '../../services/bookingService'
 import { Calendar, Clock, MapPin, Search, CheckCircle, AlertCircle, ArrowLeft, Shield } from 'lucide-react'
 
 // Mock Members Database for checking (AC-02 & AC-03)
-const MOCK_MEMBERS = [
-  { memberId: 'MEM-889922', idCard: '012345678901', fullName: 'Nguyễn Văn Anh', phone: '0912345678', score: 1500 },
-  { memberId: 'MEM-445511', idCard: '023456789012', fullName: 'Trần Thị Bình', phone: '0987654321', score: 3500 },
-  { memberId: 'MEM-332211', idCard: '034567890123', fullName: 'Lê Văn Cường', phone: '0933445566', score: 500 }
-]
+const MOCK_MEMBERS = []
 
 export default function CounterCheckoutPage() {
   const navigate = useNavigate()
