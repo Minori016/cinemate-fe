@@ -289,8 +289,23 @@ export default function HomePage() {
   }
   // ─────────────────────────────────────────────────────────────
 
-  // Lấy tối đa 6 phim đầu làm banner
-  const bannerMovies = movies.slice(0, 6)
+  // Lấy 6 phim có số lượng vé mua / vé đặt bán ra nhiều nhất làm Phim Hot Trong Tháng Banner
+  const bannerMovies = useMemo(() => {
+    if (!movies || movies.length === 0) return []
+    return [...movies]
+      .sort((a, b) => {
+        const aCount = Number(a.ticketsSold ?? a.ticketCount ?? a.bookingCount ?? a.totalBookings ?? a.soldTickets ?? a.totalTickets ?? a.bookings ?? 0)
+        const bCount = Number(b.ticketsSold ?? b.ticketCount ?? b.bookingCount ?? b.totalBookings ?? b.soldTickets ?? b.totalTickets ?? b.bookings ?? 0)
+        if (bCount !== aCount) {
+          return bCount - aCount
+        }
+        // Fallback sort: release date descending
+        const aDate = Date.parse(a.releaseDate) || 0
+        const bDate = Date.parse(b.releaseDate) || 0
+        return bDate - aDate
+      })
+      .slice(0, 6)
+  }, [movies])
 
   // Tự động lướt banner mỗi 5 giây
   useEffect(() => {
@@ -660,7 +675,7 @@ export default function HomePage() {
                         <div className="w-full max-w-7xl mx-auto px-6 md:px-14 mt-auto mb-2 select-none">
                           <h3 className="text-white text-xs font-black uppercase tracking-wider mb-3 flex items-center gap-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                             <span className="text-base">🔥</span>
-                            <span>PHIM HOT TRONG THÁNG</span>
+                            <span>PHIM HOT TRONG THÁNG (Theo Số Vé Mua)</span>
                           </h3>
 
                           {/* Netflix-style row: fixed cards scroll on small screens, then flex evenly across desktop */}
@@ -701,6 +716,15 @@ export default function HomePage() {
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         onError={handleImageError}
                                       />
+                                      {(() => {
+                                        const ticketsCount = Number(m.ticketsSold ?? m.ticketCount ?? m.bookingCount ?? m.totalBookings ?? m.soldTickets ?? m.totalTickets ?? m.bookings ?? 0);
+                                        if (ticketsCount <= 0) return null;
+                                        return (
+                                          <span className="absolute top-1 right-1 text-[8px] font-black px-1 py-0.2 rounded bg-red-600/90 text-white shadow-md backdrop-blur-xs z-20">
+                                            {new Intl.NumberFormat('vi-VN').format(ticketsCount)} vé
+                                          </span>
+                                        );
+                                      })()}
                                       {/* Dark gradient overlay at bottom half of poster */}
                                       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                                       {/* Movie Title over gradient */}
