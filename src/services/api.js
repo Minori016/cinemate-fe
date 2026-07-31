@@ -21,6 +21,7 @@ const PUBLIC_URLS = [
   '/api/v1/auth/reset-password',
   '/api/v1/auth/introspect',
   '/api/v1/payments/momo/status',
+  '/api/v1/contacts',
 ]
 
 const PUBLIC_GET_PREFIXES = [
