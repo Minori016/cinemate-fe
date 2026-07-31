@@ -27,17 +27,7 @@ const checkIsVipCenterSeat = (seatId) => {
   return false
 }
 
-// 🟢 HÀM KIỂM TRA GHẾ THUỘC VÙNG VIP TRUNG TÂM (ĐỒNG BỘ NGUYÊN BẢN VỚI USER)
-const checkIsVipCenterSeat = (seatId) => {
-  if (!seatId) return false
-  const row = seatId.charAt(0).toUpperCase()
-  const num = parseInt(seatId.substring(1), 10)
 
-  if (row === 'D') return num >= 7 && num <= 14
-  if (row === 'E' || row === 'F' || row === 'G') return num >= 4 && num <= 17
-  if (row === 'H') return num >= 6 && num <= 15
-  return false
-}
 
 export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
