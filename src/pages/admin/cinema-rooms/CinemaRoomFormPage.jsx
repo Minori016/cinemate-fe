@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
@@ -10,6 +10,8 @@ const AVAILABLE_FORMATS = ['2D', '3D', '4DX', 'IMAX'];
 export default function CinemaRoomFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   const isEditMode = !!id
 
   const [name, setName] = useState('')
@@ -108,7 +110,7 @@ export default function CinemaRoomFormPage() {
         setToast({ message: 'Thêm phòng chiếu mới thành công!', type: 'success' })
       }
       setTimeout(() => {
-        navigate('/admin/cinema-rooms')
+        navigate(`${basePath}/cinema-rooms`)
       }, 1500)
     } catch (err) {
       console.error('Failed to save cinema room', err)
@@ -138,7 +140,7 @@ export default function CinemaRoomFormPage() {
   }, [id, isEditMode])
 
   const handleCancel = () => {
-    navigate('/admin/cinema-rooms')
+    navigate(`${basePath}/cinema-rooms`)
   }
 
   return (

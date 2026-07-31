@@ -6,13 +6,14 @@ import { cinemaRoomService } from '../../../services/cinemaRoomService'
 import { showtimeService } from '../../../services/showtimeService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
-import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Plus, Search, HelpCircle, CheckCircle, AlertCircle, X, RotateCcw, Pencil } from 'lucide-react'
 
 
 export default function CinemaRoomListPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   const [toast, setToast] = useState(null)
   
@@ -327,7 +328,7 @@ export default function CinemaRoomListPage() {
         </div>
 
         {/* Add Room trigger button (AC-03) */}
-        <Button onClick={() => navigate('/admin/cinema-rooms/add')}>
+        <Button onClick={() => navigate(`${basePath}/cinema-rooms/add`)}>
           <Plus size={16} className="mr-1" /> Thêm phòng chiếu
         </Button>
       </div>
@@ -407,9 +408,19 @@ export default function CinemaRoomListPage() {
                   <option value="MAINTENANCE">MAINTENANCE</option>
                 </select>
 
+                {/* Edit Room Info & Formats */}
+                <button
+                  onClick={() => navigate(`${basePath}/cinema-rooms/edit/${row.id}`)}
+                  className="px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 font-bold text-xs rounded-xl transition-all border border-blue-500/20 active:scale-[0.98] cursor-pointer flex items-center gap-1"
+                  title="Sửa thông tin & định dạng phòng chiếu"
+                >
+                  <Pencil size={12} />
+                  Sửa
+                </button>
+
                 {/* Seat Detail Button (AC-02) */}
                 <button
-                  onClick={() => navigate(`/admin/cinema-rooms/${row.id}`)}
+                  onClick={() => navigate(`${basePath}/cinema-rooms/${row.id}`)}
                   className="px-4 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-500 hover:text-red-400 font-bold text-xs rounded-xl transition-all border border-red-500/20 active:scale-[0.98] cursor-pointer"
                 >
                   Seat Detail

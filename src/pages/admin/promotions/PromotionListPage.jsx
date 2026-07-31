@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   promotionService,
   PROMOTION_TYPE_LABELS,
@@ -20,6 +20,9 @@ import { motion } from 'motion/react'
 
 export default function PromotionListPage() {
   const [promotions, setPromotions] = useState([])
+  const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
@@ -28,17 +31,19 @@ export default function PromotionListPage() {
   const [typeFilter, setTypeFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
 
-  const navigate = useNavigate()
 
   const loadPromotions = (search = '') => {
     setLoading(true)
-    promotionService.getAll(search ? { search } : {})
+    const fetchFunc = promotionService.getAdminAll || promotionService.getAll
+    fetchFunc(search ? { search } : {})
       .then(res => {
         const data = unwrapList(res.data)
         setPromotions(data)
       })
       .catch(err => {
-        console.error('Lỗi tải danh sách khuyến mãi:', err)
+        promotionService.getAll(search ? { search } : {})
+          .then(res => setPromotions(unwrapList(res.data)))
+          .catch(e => console.error('Lỗi tải danh sách khuyến mãi:', e))
       })
       .finally(() => {
         setLoading(false)
@@ -85,7 +90,8 @@ export default function PromotionListPage() {
     return promotions.filter(p => {
       const status = computePromotionStatus(p)
       if (statusFilter !== 'ALL' && status !== statusFilter) return false
-      if (typeFilter !== 'ALL' && p.promotionType !== typeFilter) return false
+      const pType = p.promotionType || p.type
+      if (typeFilter !== 'ALL' && pType !== typeFilter) return false
       return true
     })
   }, [promotions, typeFilter, statusFilter])
@@ -199,7 +205,7 @@ export default function PromotionListPage() {
             Xem, tìm kiếm, thêm mới, cập nhật hoặc xóa các chương trình khuyến mãi và chiến dịch quảng cáo.
           </p>
         </div>
-        <Button onClick={() => navigate('/admin/promotions/add')}>
+        <Button onClick={() => navigate(`${basePath}/promotions/add`)}>
           <Plus size={16} className="mr-1" /> Thêm khuyến mãi
         </Button>
       </motion.div>
@@ -308,7 +314,7 @@ export default function PromotionListPage() {
         ) : (
           <Table columns={columns} data={filtered} actions={row => (
             <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="info" onClick={() => navigate(`/admin/promotions/edit/${row.id}`)}>
+              <Button size="sm" variant="info" onClick={() => navigate(`${basePath}/promotions/edit/${row.id}`)}>
                 <Pencil size={12} />
               </Button>
               <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>

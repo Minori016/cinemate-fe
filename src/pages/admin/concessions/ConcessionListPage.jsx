@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { concessionService, CONCESSION_ITEM_TYPES, ITEM_TYPE_EMOJIS, SIZE_DISPLAY, groupConcessionsByBaseName } from '../../../services/concessionService'
 import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
@@ -16,6 +16,8 @@ export default function ConcessionListPage() {
   const [categoryFilter, setCategoryFilter] = useState('ALL')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   const loadConcessions = () => {
     setLoading(true)
@@ -232,7 +234,7 @@ export default function ConcessionListPage() {
         return (
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate(`/admin/concessions/edit/${targetEditId}`)}
+              onClick={() => navigate(`${basePath}/concessions/edit/${targetEditId}`)}
               className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 rounded-xl transition-all cursor-pointer"
               title="Sửa"
             >
@@ -274,7 +276,7 @@ export default function ConcessionListPage() {
             Quản lý danh sách các món ăn, thức uống và gói combo phục vụ khách hàng.
           </p>
         </div>
-        <Button onClick={() => navigate('/admin/concessions/add')}>
+        <Button onClick={() => navigate(`${basePath}/concessions/add`)}>
           <Plus size={16} className="mr-1" /> Thêm món mới
         </Button>
       </motion.div>

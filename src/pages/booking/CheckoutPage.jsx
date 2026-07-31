@@ -125,7 +125,14 @@ export default function CheckoutPage() {
 
 
 
-  const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
+  const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val || 0)
+
+  const seatCount = booking?.seatNames?.length || 0
+  const concessionAmount = booking?.concessionAmount || 
+    (booking?.concessions || []).reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
+  const discountAmount = booking?.discountAmount || 0
+  const ticketAmount = booking?.ticketAmount || 0
+  const finalPrice = booking?.finalPrice ?? booking?.totalAmount ?? booking?.totalPrice ?? Math.max(0, ticketAmount + concessionAmount - discountAmount)
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
@@ -225,10 +232,30 @@ export default function CheckoutPage() {
           
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-end">
             <div>
-              <span className="text-xs text-gray-400 font-medium uppercase tracking-wider block">Tổng Thanh Toán Vé & Bắp Nước</span>
+              {/* Chi tiết khấu trừ & mã giảm giá */}
+          <div className="mt-6 pt-5 border-t border-white/10 space-y-2 text-xs">
+            <div className="flex justify-between items-center text-gray-400">
+              <span>Tiền vé ({seatCount} ghế)</span>
+              <span className="font-bold text-white">{formatCurrency(ticketAmount || Math.max(0, finalPrice + discountAmount - concessionAmount))}</span>
+            </div>
+            {concessionAmount > 0 && (
+              <div className="flex justify-between items-center text-gray-400">
+                <span>Bắp nước & Combo</span>
+                <span className="font-bold text-white">{formatCurrency(concessionAmount)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div className="flex justify-between items-center text-emerald-400">
+                <span>Mã giảm giá {booking?.promotionCode ? `(${booking.promotionCode})` : ''}</span>
+                <span className="font-extrabold">-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+          </div>
+
+          <span className="text-xs text-gray-400 font-medium uppercase tracking-wider block">Tổng Thanh Toán Thực Tế</span>
               <span className="text-[10px] text-emerald-400 font-semibold">Đã bao gồm VAT & Bắp nước</span>
             </div>
-            <span className="text-3xl font-black text-red-500">{formatCurrency(booking.totalAmount)}</span>
+            <span className="text-3xl font-black text-red-500">{formatCurrency(finalPrice)}</span>
           </div>
         </motion.div>
 

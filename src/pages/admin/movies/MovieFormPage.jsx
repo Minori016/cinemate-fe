@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { movieService } from '../../../services/movieService'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
@@ -11,6 +11,8 @@ import {
 export default function MovieFormPage() {
   const navigate = useNavigate()
   const { id } = useParams()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   
   const isEditMode = !!id
 
@@ -88,7 +90,7 @@ export default function MovieFormPage() {
     if (isDirty) {
       setShowExitConfirm(true)
     } else {
-      navigate('/admin/movies')
+      navigate(`${basePath}/movies`)
     }
   }
 
@@ -274,7 +276,7 @@ export default function MovieFormPage() {
         showToast('Thêm phim mới thành công!', 'success')
       }
       setTimeout(() => {
-        navigate('/admin/movies')
+        navigate(`${basePath}/movies`)
       }, 1500)
     } catch (err) {
       console.error('Failed to save movie', err)
@@ -812,7 +814,7 @@ export default function MovieFormPage() {
               <button
                 onClick={() => {
                   setShowExitConfirm(false)
-                  navigate('/admin/movies')
+                  navigate(`${basePath}/movies`)
                 }}
                 className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 cursor-pointer shadow-md transition-colors"
               >

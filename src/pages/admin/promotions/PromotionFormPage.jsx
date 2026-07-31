@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   promotionService,
   PROMOTION_TYPES,
@@ -19,6 +19,8 @@ export default function PromotionFormPage() {
   const { id } = useParams()
   const isEdit = !!id
   const navigate = useNavigate()
+  const location = useLocation()
+  const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -30,6 +32,7 @@ export default function PromotionFormPage() {
   const [isCodeManuallyEdited, setIsCodeManuallyEdited] = useState(false)
   const [discountType, setDiscountType] = useState(DISCOUNT_TYPES.PERCENT)
   const [discountValue, setDiscountValue] = useState('')
+  const [discountValueDisplay, setDiscountValueDisplay] = useState('')
   const [maxTotalUsage, setMaxTotalUsage] = useState('')
   const [maxPerUser, setMaxPerUser] = useState('1')
   const [imageUrl, setImageUrl] = useState('')
@@ -40,6 +43,13 @@ export default function PromotionFormPage() {
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
   const [todayStart, setTodayStart] = useState('')
+
+  // Format currency input (add dot separator every 3 digits)
+  const formatCurrencyInput = (value) => {
+    if (!value) return ''
+    const num = value.replace(/\D/g, '')
+    return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -98,6 +108,12 @@ export default function PromotionFormPage() {
     }
   }
 
+  const handleDiscountValueChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '')
+    setDiscountValue(raw)
+    setDiscountValueDisplay(formatCurrencyInput(raw))
+  }
+
   const handleAutoGenerateCode = () => {
     const autoCode = generateVoucherCodeFromTitle(title, discountValue, discountType)
     if (autoCode) {
@@ -126,6 +142,11 @@ export default function PromotionFormPage() {
             setDiscountType(isPercent ? DISCOUNT_TYPES.PERCENT : DISCOUNT_TYPES.FIXED_AMOUNT)
             setDiscountValue(
               isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? '')
+            )
+            setDiscountValueDisplay(
+              formatCurrencyInput(
+                isPercent ? (promo.discountPercent ?? '') : (promo.discountValue ?? '')
+              )
             )
 
             setMaxTotalUsage(promo.maxTotalUsage ?? '')
@@ -253,7 +274,7 @@ export default function PromotionFormPage() {
         await promotionService.create(payload)
         showToast('Thêm khuyến mãi mới thành công!')
       }
-      setTimeout(() => navigate('/admin/promotions'), 1000)
+      setTimeout(() => navigate(`${basePath}/promotions`), 1000)
     } catch (err) {
       console.error('Lỗi khi lưu khuyến mãi:', err)
       const errorMsg = err.response?.data?.message || 'Có lỗi xảy ra trong quá trình lưu dữ liệu.'
@@ -285,7 +306,7 @@ export default function PromotionFormPage() {
 
   const previewDiscountText =
     discountValue && !isNaN(Number(discountValue))
-      ? formatDiscountValue({ discountType, discountValue: Number(discountValue) })
+      ? formatDiscountValue({ discountType, discountValue: Number(discountValue) }).replace('đ', ' VND')
       : '—'
 
   return (
@@ -310,7 +331,7 @@ export default function PromotionFormPage() {
       <div className="flex items-center justify-between border-b border-[var(--color-border)] pb-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/admin/promotions')}
+            onClick={() => navigate(`${basePath}/promotions`)}
             className="p-2.5 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-on-surface)] hover:border-white/20 transition-all active:scale-95 cursor-pointer"
           >
             <ArrowLeft size={18} />
@@ -485,12 +506,11 @@ export default function PromotionFormPage() {
                   Giá trị giảm {discountType === DISCOUNT_TYPES.PERCENT ? '(%)' : '(VNĐ)'}
                 </label>
                 <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={discountValue}
-                  onChange={(e) => setDiscountValue(e.target.value)}
-                  placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50000'}
+                  type="text"
+                  inputMode="numeric"
+                  value={discountValueDisplay}
+                  onChange={handleDiscountValueChange}
+                  placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50.000'}
                   disabled={!isCoupon}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50
                     ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
@@ -505,7 +525,7 @@ export default function PromotionFormPage() {
                   min="1"
                   value={maxTotalUsage}
                   onChange={(e) => setMaxTotalUsage(e.target.value)}
-                  placeholder="Không giới hạn"
+                  placeholder="100"
                   disabled={!isCoupon}
                   className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50"
                 />
@@ -576,7 +596,7 @@ export default function PromotionFormPage() {
               <li>Mã <b>code</b> phải viết HOA, không có khoảng trắng.</li>
               <li>Nếu giảm theo <b>%</b>: nhập số từ 1 đến 100.</li>
               <li>Nếu giảm tiền mặt: nhập số tiền VNĐ.</li>
-              <li>Để trống <b>Tổng lượt dùng</b> = không giới hạn.</li>
+              <li>Để trống <b>Tổng lượt dùng</b> = mặc định 100.</li>
               <li>Sau khi lưu, có thể bật/tắt ở nút <b>Vô hiệu hóa</b> trên header.</li>
             </ul>
           </div>
@@ -601,7 +621,7 @@ export default function PromotionFormPage() {
               type="button"
               variant="secondary"
               disabled={isSubmitting}
-              onClick={() => navigate('/admin/promotions')}
+              onClick={() => navigate(`${basePath}/promotions`)}
               className="w-full py-3.5 uppercase tracking-wider font-extrabold"
             >
               Quay lại danh sách
