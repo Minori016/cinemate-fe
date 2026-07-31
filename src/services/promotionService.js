@@ -17,6 +17,11 @@ export const promotionService = {
   toggleStatus: (id) => api.patch(`/api/v1/admin/promotions/${id}/toggle`),
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
 
+  // === Points Redemption ===
+  getPointsOptions: () => api.get('/api/v1/promotions/points/options'),
+  getMyPoints: () => api.get('/api/v1/promotions/points/my'),
+  redeemPoints: (customerId, promotionId) => api.post('/api/v1/promotions/points/redeem', { customerId, promotionId }),
+
   /**
    * User pages: load active promotions, mapped for UI.
    * Falls back to empty list (no mock fake discounts).
@@ -125,6 +130,20 @@ export const PROMOTION_TYPES = {
   COUPON: 'COUPON',
   CAMPAIGN: 'CAMPAIGN',
   POINTS: 'POINTS',
+}
+
+export const REDEMPTION_TYPES = {
+  MONEY_FIXED: 'MONEY_FIXED',
+  MONEY_PERCENT: 'MONEY_PERCENT',
+  PRODUCT: 'PRODUCT',
+  COMBO: 'COMBO',
+}
+
+export const REDEMPTION_TYPE_LABELS = {
+  MONEY_FIXED: 'Giảm tiền mặt',
+  MONEY_PERCENT: 'Giảm %',
+  PRODUCT: 'Đổi sản phẩm',
+  COMBO: 'Đổi combo',
 }
 
 export const PROMOTION_TYPE_LABELS = {
