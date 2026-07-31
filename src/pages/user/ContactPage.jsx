@@ -1,23 +1,28 @@
 import { useState } from 'react'
 import { MapPin, Phone, Mail, Clock, Send, CheckCircle2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
+import { contactService } from '../../services/contactService'
 
 export default function ContactPage() {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', subject: 'Hỏi đáp dịch vụ', message: '' })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.name || !form.email || !form.message) return
+    if (!form.name || !form.email || !form.message || !form.subject) return
 
     setLoading(true)
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
+    try {
+      await contactService.submitContact(form)
       setSubmitted(true)
-      setForm({ name: '', email: '', phone: '', subject: '', message: '' })
-    }, 1200)
+      setForm({ name: '', email: '', phone: '', subject: 'Hỏi đáp dịch vụ', message: '' })
+    } catch (error) {
+      console.error('Lỗi khi gửi liên hệ:', error)
+      alert('Có lỗi xảy ra, vui lòng thử lại sau.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const inputStyle = {
@@ -220,15 +225,19 @@ export default function ContactPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-2">
-                      <label className="text-white font-bold text-xs uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>Chủ đề</label>
-                      <input
-                        type="text"
+                      <label className="text-white font-bold text-xs uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>Chủ đề *</label>
+                      <select
+                        required
                         value={form.subject}
                         onChange={e => setForm({ ...form, subject: e.target.value })}
-                        placeholder="Hỏi đáp dịch vụ, Hợp tác..."
-                        style={inputStyle}
-                        className="rounded-xl px-4 py-3 outline-none focus:border-red-500/80 transition-all font-medium"
-                      />
+                        style={{ ...inputStyle, appearance: 'none' }}
+                        className="rounded-xl px-4 py-3 outline-none focus:border-red-500/80 transition-all font-medium cursor-pointer"
+                      >
+                        <option value="Hỏi đáp dịch vụ" style={{ color: '#000' }}>Hỏi đáp dịch vụ</option>
+                        <option value="Hợp tác kinh doanh" style={{ color: '#000' }}>Hợp tác kinh doanh</option>
+                        <option value="Khiếu nại" style={{ color: '#000' }}>Khiếu nại</option>
+                        <option value="Khác" style={{ color: '#000' }}>Khác</option>
+                      </select>
                     </div>
                   </div>
 

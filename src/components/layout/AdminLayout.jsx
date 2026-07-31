@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { BarChart2, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat } from 'lucide-react'
+import { BarChart2, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { to: '/admin/tickets', icon: Ticket, label: 'Quản lý vé' },
   { to: '/admin/promotions', icon: Tag, label: 'Khuyến mãi' },
   { to: '/admin/concessions', icon: ChefHat, label: 'Quản lý đồ ăn' },
+  { to: '/admin/contacts', icon: MessageSquare, label: 'Liên hệ' },
   { to: '/admin/system-configs', icon: Settings, label: 'Cấu hình Hệ thống' },
 ]
 

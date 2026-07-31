@@ -49,6 +49,7 @@ import PromotionListPage from '../pages/admin/promotions/PromotionListPage'
 import PromotionFormPage from '../pages/admin/promotions/PromotionFormPage'
 import ConcessionListPage from '../pages/admin/concessions/ConcessionListPage'
 import ConcessionFormPage from '../pages/admin/concessions/ConcessionFormPage'
+import ContactManagementPage from '../pages/admin/contacts/ContactManagementPage'
 import StaffOverviewPage from '../pages/staff/overview/StaffOverviewPage'
 import StaffTicketVerifierPage from '../pages/staff/checkin/StaffTicketVerifierPage'
 import StaffConcessionsPage from '../pages/staff/concessions/StaffConcessionsPage'
@@ -170,6 +171,7 @@ export default function AppRoutes() {
           <Route path="concessions" element={<ConcessionListPage />} />
           <Route path="concessions/add" element={<ConcessionFormPage />} />
           <Route path="concessions/edit/:id" element={<ConcessionFormPage />} />
+          <Route path="contacts" element={<ContactManagementPage />} />
         </Route>
 
         {/* Wildcard */}
