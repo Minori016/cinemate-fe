@@ -52,11 +52,7 @@ export default function EmployeeListPage() {
       .then(r => {
         const resData = r.data?.result ?? r.data ?? {}
         const list = resData.content ?? []
-        // Admin: chỉ hiển thị STAFF (loại bỏ MANAGER)
-        // Manager: hiển thị cả STAFF và ADMIN
-        let filtered = isManager
-          ? list.filter(e => !e.roles?.includes('MANAGER'))
-          : list.filter(e => !e.roles?.includes('MANAGER'))
+        let filtered = list
         if (statusFilter !== 'all') {
           filtered = filtered.filter(e => e.status === statusFilter)
         }
