@@ -56,7 +56,6 @@ import StaffConcessionsPage from '../pages/staff/concessions/StaffConcessionsPag
 import StaffTicketingPage from '../pages/staff/ticketing/StaffTicketingPage'
 import ManagerAnalyticsPage from '../pages/manager/analytics/ManagerAnalyticsPage'
 import ManagerShowtimesPage from '../pages/manager/showtimes/ManagerShowtimesPage'
-import ManagerShiftsPage from '../pages/manager/shifts/ManagerShiftsPage'
 import CounterCheckoutPage from '../pages/manager/CounterCheckoutPage'
 
 export default function AppRoutes() {
@@ -139,7 +138,6 @@ export default function AppRoutes() {
           <Route path="concessions/add" element={<ConcessionFormPage />} />
           <Route path="concessions/edit/:id" element={<ConcessionFormPage />} />
           <Route path="system-configs" element={<SystemConfigPage />} />
-          <Route path="shifts" element={<ManagerShiftsPage />} />
           <Route path="tickets" element={<TicketManagementPage />} />
         </Route>
 

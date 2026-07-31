@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
-import { TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat, ClipboardList } from 'lucide-react'
+import { TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const navItems = [
@@ -13,7 +13,6 @@ const navItems = [
   { to: '/manager/promotions', icon: Tag, label: 'Khuyến mãi' },
   { to: '/manager/concessions', icon: ChefHat, label: 'Quản lý đồ ăn' },
   { to: '/manager/system-configs', icon: Settings, label: 'Cấu hình Hệ thống' },
-  { to: '/manager/shifts', icon: ClipboardList, label: 'Ca trực nhân viên' },
 ]
 
 export default function ManagerLayout() {
