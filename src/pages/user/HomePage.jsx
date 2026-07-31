@@ -35,10 +35,7 @@ const TAG_COLORS = ['#e50914', '#2563eb', '#d97706', '#16a34a', '#9333ea']
 
 // ── Static Data ────────────────────────────────────────────────
 const CINEMAS = [
-  { id: 1, name: 'CineMate Quận 1', badge: 'CHI NHÁNH TỔNG', badgeColor: '#d97706', address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh', phone: '1900 1234', rooms: 10, screens: ['2D', '3D', 'IMAX', '4DX'], img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800' },
-  { id: 2, name: 'CineMate Bình Thạnh', badge: null, badgeColor: null, address: '156 Xo Vìt Nghệ Tĩnh, Phường 26, Quận Bình Thạnh, TP. Hồ Chí Minh', phone: '1900 1235', rooms: 8, screens: ['2D', '3D', '4DX'], img: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=800' },
-  { id: 3, name: 'CineMate Gò Vấp', badge: null, badgeColor: null, address: '12 Quang Trung, Phường 10, Quận Gò Vấp, TP. Hồ Chí Minh', phone: '1900 1236', rooms: 6, screens: ['2D', '3D'], img: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800' },
-  { id: 4, name: 'CineMate Thủ Đức', badge: null, badgeColor: null, address: 'Võ Văn Ngân, Phường Bình Thọ, TP. Thủ Đức, TP. Hồ Chí Minh', phone: '1900 1237', rooms: 7, screens: ['2D', '3D', 'IMAX'], img: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?q=80&w=800' },
+  { id: 1, name: 'CineMate Cinema', badge: 'RẠP CHÍNH', badgeColor: '#e50914', address: '135 Đồng Khởi, Phường Bến Nghé, Quận 1, TP. Hồ Chí Minh', phone: '1900 1234', rooms: 10, screens: ['2D', '3D', 'IMAX', '4DX'], img: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=800' },
 ]
 
 const MEMBER_PERKS = [
@@ -914,12 +911,14 @@ export default function HomePage() {
           {/* ================= HẾT PHẦN PHIM ĐANG CHIẾU ================= */}
 
           {/* ====================================================
-              SECTION: ƯU ĐÃI NỔI BẬT
+              SECTION: RẠP CHIẾU CINEMATE
           ==================================================== */}
-          <section className="w-full py-20 px-6 md:px-14" style={{ backgroundColor: 'var(--color-background)' }}>
+          <section
+            className="w-full py-20 px-6 md:px-14"
+            style={{ background: 'linear-gradient(180deg, var(--color-background) 0%, rgba(25,10,10,0.9) 50%, var(--color-background) 100%)' }}
+          >
             <div className="max-w-7xl mx-auto">
 
-              {/* Header */}
               <motion.div
                 className="flex items-end justify-between mb-10"
                 initial={{ opacity: 0, y: 24 }}
@@ -928,97 +927,138 @@ export default function HomePage() {
                 transition={{ duration: 0.55 }}
               >
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Chương trình</p>
+                  <p className="text-xs font-bold uppercase tracking-widest text-red-500 mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Vị Trí Rạp Chiếu</p>
                   <h2 className="text-3xl md:text-4xl font-black uppercase text-white" style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '1px' }}>
-                    Ưu Đãi Nổi Bật
+                    Rạp Chiếu CineMate
                   </h2>
                 </div>
                 <Link
-                  to="/promotions"
+                  to="/cinemas"
                   className="hidden sm:flex items-center gap-2 text-sm font-bold text-red-500 hover:text-red-400 transition-colors"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 >
-                  Xem tất cả <ArrowRight size={16} />
+                  Xem chi tiết <ArrowRight size={16} />
                 </Link>
               </motion.div>
 
-              {/* Cards grid */}
-              {promotionsLoading ? (
-                <div className="flex justify-center py-16">
-                  <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
-                </div>
-              ) : promotions.length === 0 ? (
-                <div className="text-center py-12 rounded-2xl border border-white/5 bg-white/[0.02]">
-                  <p className="text-white/60 text-sm">Chưa có chương trình ưu đãi đang chạy.</p>
-                  <Link to="/promotions" className="inline-block mt-3 text-sm font-bold text-red-500 hover:text-red-400">Xem trang khuyến mãi</Link>
-                </div>
-              ) : (
-              <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true, margin: '-60px' }}
-                variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1 } } }}
-              >
-                {promotions.map((promo) => (
-                  <Link to="/promotions" key={promo.id}>
-                  <motion.div
-                    className="group relative rounded-2xl overflow-hidden flex flex-col cursor-pointer glass-card h-full"
-                    variants={{ hidden: { opacity: 0, y: 32 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] } } }}
-                    whileHover={{ y: -6, transition: { duration: 0.22 } }}
+              {/* Layout: Bản đồ trái + Thông tin rạp chính phải */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+
+                {/* Cột trái: Bản đồ rạp chính */}
+                <motion.div
+                  initial={{ opacity: 0, x: -40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="flex flex-col gap-3 h-full"
+                >
+                  {/* Map container */}
+                  <div
+                    className="relative rounded-2xl overflow-hidden h-full min-h-[360px]"
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                      border: '1px solid rgba(229,9,20,0.3)',
+                      boxShadow: '0 12px 48px rgba(0,0,0,0.6)',
                     }}
                   >
-                    {/* Promo image */}
-                    <div className="relative aspect-[16/9] overflow-hidden">
-                      <img
-                        src={promo.img}
-                        alt={promo.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                        style={{ filter: 'brightness(0.75)' }}
-                        onError={(e) => { e.currentTarget.src = FALLBACK_PROMOTION_IMGS[0] }}
-                      />
-                      {/* Tag badge */}
-                      <span
-                        className="absolute top-3 left-3 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-md shadow-lg tracking-widest"
-                        style={{ backgroundColor: promo.tagColor }}
-                      >
-                        {promo.tag}
-                      </span>
-                      {/* Hover overlay */}
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{ background: 'linear-gradient(to top, rgba(229,9,20,0.35), transparent)' }} />
+                    <iframe
+                      title="Bản đồ CineMate Quận 1"
+                      src="https://www.openstreetmap.org/export/embed.html?bbox=106.6900%2C10.7700%2C106.7100%2C10.7850&layer=mapnik&marker=10.7757%2C106.7004"
+                      className="w-full h-full min-h-[360px]"
+                      style={{ filter: 'invert(90%) hue-rotate(180deg) brightness(0.85) saturate(1.3)', border: 'none' }}
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(10,5,5,0.45) 0%, transparent 20%, transparent 80%, rgba(10,5,5,0.6) 100%)' }} />
+                    
+                    {/* Location Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ backgroundColor: 'rgba(10,5,5,0.85)', border: '1px solid rgba(229,9,20,0.35)' }}>
+                      <MapPin size={13} className="text-red-500 animate-pulse" />
+                      <span className="text-white text-xs font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>135 Đồng Khởi, Q.1, TP. Hồ Chí Minh</span>
                     </div>
 
-                    {/* Content */}
-                    <div className="p-5 flex flex-col flex-1">
-                      <h3 className="text-white font-bold text-sm mb-2 group-hover:text-red-400 transition-colors" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                        {promo.title}
-                      </h3>
-                      <p className="text-xs leading-relaxed flex-1 mb-4" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'Inter, sans-serif' }}>
-                        {promo.desc}
-                      </p>
-                      {promo.code && (
-                        <p className="text-[11px] font-mono font-bold text-yellow-400/90 mb-2 tracking-wider">Mã: {promo.code}</p>
-                      )}
-                      <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: promo.tagColor }}>
-                        <Calendar size={12} />
-                        <span>{promo.date}</span>
+                    {/* Single Cinema Tag */}
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1 rounded-lg bg-black/80 border border-red-500/30">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_6px_#e50914]" />
+                      <span className="text-[11px] font-bold text-white">CineMate Cinema</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-center text-gray-400 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    📍 Trụ sở rạp duy nhất ngay trung tâm Quận 1 — TP. Hồ Chí Minh
+                  </p>
+                </motion.div>
+
+                {/* Cột phải: Thẻ Rạp chiếu duy nhất */}
+                <motion.div
+                  className="flex flex-col h-full justify-between"
+                  initial={{ opacity: 0, x: 40 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.65, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  {CINEMAS.map((cinema) => (
+                    <div
+                      key={cinema.id}
+                      className="rounded-2xl p-6 md:p-8 flex flex-col justify-between h-full relative overflow-hidden text-left"
+                      style={{
+                        background: 'linear-gradient(135deg, rgba(25,15,15,0.95) 0%, rgba(35,18,18,0.95) 100%)',
+                        border: '1px solid rgba(229,9,20,0.3)',
+                        boxShadow: '0 8px 32px rgba(229,9,20,0.15)',
+                      }}
+                    >
+                      {/* Image Preview Header */}
+                      <div className="relative aspect-video rounded-xl overflow-hidden mb-5 border border-white/10">
+                        <img
+                          src={cinema.img}
+                          alt={cinema.name}
+                          className="w-full h-full object-cover"
+                          style={{ filter: 'brightness(0.75)' }}
+                        />
+                        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md text-[10px] font-black uppercase text-white shadow-lg bg-red-600">
+                          {cinema.badge}
+                        </div>
+                        <div className="absolute bottom-3 left-3 flex gap-1.5">
+                          {cinema.screens.map(s => (
+                            <span key={s} className="text-[10px] font-black uppercase px-2 py-0.5 rounded text-white backdrop-blur-md bg-black/70 border border-white/10">{s}</span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  </motion.div>
-                  </Link>
-                ))}
-              </motion.div>
-              )}
 
-              <div className="flex justify-center mt-8 sm:hidden">
-                <Link to="/promotions" className="text-sm font-bold text-red-500 hover:text-red-400 transition-colors flex items-center gap-1.5">
-                  Xem tất cả ưu đãi <ArrowRight size={15} />
-                </Link>
+                      {/* Information */}
+                      <div className="flex-1 mb-5">
+                        <h3 className="text-xl font-extrabold text-white mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                          {cinema.name}
+                        </h3>
+                        <p className="text-xs text-gray-300 mb-4 flex items-start gap-2 leading-relaxed">
+                          <MapPin size={15} className="text-red-500 shrink-0 mt-0.5" />
+                          <span>{cinema.address}</span>
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-3 text-xs text-gray-300 pt-3 border-t border-white/10">
+                          <div className="flex items-center gap-2">
+                            <Phone size={13} className="text-red-500 shrink-0" />
+                            <span className="font-semibold">{cinema.phone}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                            <span className="font-semibold text-emerald-400">10 Phòng chiếu (IMAX & 4DX)</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action link */}
+                      <Link
+                        to="/cinemas"
+                        className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/30"
+                        style={{ fontFamily: 'Montserrat, sans-serif' }}
+                      >
+                        Khám Phá Rạp Chiếu & Bản Đồ <ArrowRight size={15} />
+                      </Link>
+                    </div>
+                  ))}
+                </motion.div>
+
               </div>
+
             </div>
           </section>
 
