@@ -13,11 +13,19 @@ import { concessionService, FALLBACK_COMBOS } from '../../../services/concession
 import { bookingService } from '../../../services/bookingService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
 
-const MOCK_MEMBERS = [
-  { memberId: 'MEM-889922', idCard: '012345678901', fullName: 'Nguyễn Văn Anh', phone: '0912345678', score: 1500 },
-  { memberId: 'MEM-445511', idCard: '023456789012', fullName: 'Trần Thị Bình', phone: '0987654321', score: 3500 },
-  { memberId: 'MEM-332211', idCard: '034567890123', fullName: 'Lê Văn Cường', phone: '0933445566', score: 500 }
-]
+const MOCK_MEMBERS = []
+
+// 🟢 HÀM KIỂM TRA GHẾ THUỘC VÙNG VIP TRUNG TÂM (ĐỒNG BỘ NGUYÊN BẢN VỚI USER)
+const checkIsVipCenterSeat = (seatId) => {
+  if (!seatId) return false
+  const row = seatId.charAt(0).toUpperCase()
+  const num = parseInt(seatId.substring(1), 10)
+
+  if (row === 'D') return num >= 7 && num <= 14
+  if (row === 'E' || row === 'F' || row === 'G') return num >= 4 && num <= 17
+  if (row === 'H') return num >= 6 && num <= 15
+  return false
+}
 
 export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
@@ -54,10 +62,9 @@ export default function StaffTicketingPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const todayStr = new Date().toISOString().split('T')[0]
         const [moviesRes, showtimesRes] = await Promise.all([
-          movieService.getAll({ status: 'now-showing', page: 0, size: 50 }),
-          showtimeService.getAll({ startDate: todayStr })
+          movieService.getAll({ page: 0, size: 100 }),
+          showtimeService.getPublicShowtimes()
         ])
 
         let showtimesList = showtimesRes
@@ -199,26 +206,27 @@ export default function StaffTicketingPage() {
     return () => { cancelled = true }
   }, [selectedShowtime, seatMapRefreshKey])
 
+  // 🟢 1. TÍNH GIÁ TIỀN GHẾ DỰA TRÊN VÙNG VIP TRUNG TÂM VÀ LOẠI SUẤT CHIẾU
   const getSeatPrice = (seatId) => {
-    let type = 'STANDARD'
-    if (roomLayout && roomLayout.seatMatrix) {
-      const rowChar = seatId.charAt(0)
-      const seatNumber = seatId.substring(1)
-      const row = roomLayout.seatMatrix.find(r => r.rowLabel === rowChar)
-      if (row) {
-        const seat = row.seats.find(s => String(s.number) === seatNumber)
-        if (seat && seat.type) type = String(seat.type).toUpperCase()
-      }
+    const rowChar = seatId.charAt(0).toUpperCase()
+
+    // Lấy giá cơ sở gốc từ Suất chiếu
+    const roomStr = String(selectedShowtime?.room || selectedShowtime?.roomName || '').toUpperCase()
+    const isImax = roomStr.includes('IMAX')
+
+    let baseStandardPrice = isImax ? 150000 : (Number(selectedShowtime?.price) || 120000)
+
+    // Kiểm tra vùng VIP trung tâm (+30k)
+    if (checkIsVipCenterSeat(seatId)) {
+      return baseStandardPrice + 30000
+    }
+    // Ghế Đôi hàng I (+50k)
+    if (rowChar === 'I') {
+      return baseStandardPrice + 50000
     }
 
-    let basePrice = 90000
-    if (type === 'VIP') basePrice = 110000
-    else if (type === 'COUPLE') basePrice = 130000
-
-    if (selectedShowtime && selectedShowtime.room?.includes('IMAX')) {
-      return basePrice + 30000
-    }
-    return basePrice
+    // Ghế Thường (A, B, C và các ghế rìa)
+    return baseStandardPrice
   }
 
   const handleSeatClick = (primarySeatId, pairedSeatId = null) => {
@@ -256,7 +264,6 @@ export default function StaffTicketingPage() {
     setFoundMember(null)
 
     try {
-      // Gọi API tra cứu từ Back-End Java
       const res = await bookingService.lookupCustomer(trimmed)
       const data = res.data?.result || res.data
 
@@ -276,20 +283,8 @@ export default function StaffTicketingPage() {
       console.warn('API không tìm thấy dữ liệu hội viên:', err)
     }
 
-    // Fallback dữ liệu Mock nếu API không trả về kết quả
     const uppercaseQuery = trimmed.toUpperCase()
-    const mockMatch = MOCK_MEMBERS.find(
-      m => m.memberId.toUpperCase() === uppercaseQuery || m.phone === uppercaseQuery || m.idCard === uppercaseQuery
-    )
-
-    if (mockMatch) {
-      setFoundMember({
-        ...mockMatch,
-        loyaltyPoints: mockMatch.score
-      })
-    } else {
-      setFoundMember(null)
-    }
+    setFoundMember(null)
   }
 
   useEffect(() => {
@@ -454,29 +449,44 @@ export default function StaffTicketingPage() {
   }
 
   const demoMatrix = [
-    { rowLabel: 'A', seats: Array.from({ length: 8 }, (_, i) => ({ number: i + 1, type: 'VIP' })) },
-    { rowLabel: 'B', seats: Array.from({ length: 8 }, (_, i) => ({ number: i + 1, type: 'VIP' })) },
-    { rowLabel: 'C', seats: Array.from({ length: 8 }, (_, i) => ({ number: i + 1, type: 'VIP' })) },
-    { rowLabel: 'D', seats: Array.from({ length: 8 }, (_, i) => ({ number: i + 1, type: 'VIP' })) },
-    { rowLabel: 'E', seats: Array.from({ length: 8 }, (_, i) => ({ number: i + 1, type: 'VIP' })) },
+    { rowLabel: 'A', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'B', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'C', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'D', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'E', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'F', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'G', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'H', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
     {
-      rowLabel: 'F',
-      seats: [
-        { number: 1, type: 'COUPLE' },
-        { number: 2, type: 'COUPLE' },
-        { number: 3, type: 'COUPLE' },
-        { number: 4, type: 'COUPLE' },
-        { number: 5, type: 'COUPLE' },
-        { number: 6, type: 'COUPLE' },
-        { number: 7, type: 'COUPLE' },
-        { number: 8, type: 'COUPLE' },
-      ]
+      rowLabel: 'I',
+      seats: Array.from({ length: 10 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
     },
   ]
 
-  const activeSeatMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
-    ? roomLayout.seatMatrix
-    : demoMatrix
+  // 🟢 CHUẨN HÓA LẠI MA TRẬN GHẾ: CHỈ NHỮNG GHẾ NẰM TRONG VÙNG TRUNG TÂM MỚI LÀ VIP
+  const activeSeatMatrix = useMemo(() => {
+    const rawMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
+      ? roomLayout.seatMatrix
+      : demoMatrix
+
+    return rawMatrix.map(row => {
+      const label = String(row.rowLabel || '').toUpperCase()
+
+      return {
+        ...row,
+        seats: row.seats.map(seat => {
+          const seatLabel = `${label}${seat.number}`
+          const isVipCenter = checkIsVipCenterSeat(seatLabel)
+          const isCouple = label === 'I'
+
+          return {
+            ...seat,
+            type: isCouple ? 'COUPLE' : isVipCenter ? 'VIP' : 'STANDARD'
+          }
+        })
+      }
+    })
+  }, [roomLayout])
 
   return (
     <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -658,6 +668,7 @@ export default function StaffTicketingPage() {
             {currentStep === 2 && (
               <div key="step2" className="bg-[#0a0b0e] border border-white/10 rounded-2xl p-6 relative flex flex-col justify-between shadow-2xl min-h-[660px]">
                 <div>
+                  {/* TOP BANNER INFO */}
                   <div className="flex items-center justify-between bg-[#130b0e] border border-red-900/30 rounded-full px-5 py-2.5 mb-6">
                     <div className="flex items-center gap-3 text-xs">
                       <div className="w-5 h-5 rounded-full border border-red-500/50 flex items-center justify-center text-red-500">
@@ -680,6 +691,7 @@ export default function StaffTicketingPage() {
                     </div>
                   </div>
 
+                  {/* SEAT LEGEND */}
                   <div className="flex items-center justify-center gap-6 mb-10 text-[11px] font-semibold text-slate-300">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full border border-slate-600 bg-transparent" />
@@ -707,11 +719,13 @@ export default function StaffTicketingPage() {
                     </div>
                   </div>
 
+                  {/* SCREEN ARCH GRAPHIC */}
                   <div className="relative flex flex-col items-center mb-12">
                     <div className="w-3/4 h-3 border-t-2 border-red-600/80 rounded-[100%] shadow-[0_-8px_20px_rgba(239,68,68,0.4)]" />
                     <span className="text-[10px] text-red-800 font-bold uppercase tracking-[0.3em] mt-3">MÀN HÌNH CHIẾU</span>
                   </div>
 
+                  {/* SEAT GRID WITH RESPONSIVE SCALING & COLOR FIX */}
                   <div className="w-full overflow-x-auto py-2 custom-scrollbar">
                     <div className="space-y-2.5 min-w-max mx-auto px-4 flex flex-col items-center">
                       {activeSeatMatrix.map((row) => {
@@ -725,7 +739,7 @@ export default function StaffTicketingPage() {
                           }
 
                           const seatType = String(seat.type || '').toUpperCase()
-                          const isCouple = seatType === 'COUPLE'
+                          const isCouple = seatType === 'COUPLE' || ['I'].includes(row.rowLabel.toUpperCase())
 
                           if (isCouple) {
                             const nextSeat = row.seats[idx + 1]
@@ -759,7 +773,11 @@ export default function StaffTicketingPage() {
                                 const isOccupied = occupiedSeats.includes(seat.seatId) || (seat.pairedSeatId && occupiedSeats.includes(seat.pairedSeatId))
                                 const isSelected = selectedSeats.includes(seat.seatId)
 
-                                if (seat.isCouple) {
+                                const seatType = String(seat.type || '').toUpperCase()
+                                const isVip = seatType === 'VIP'
+                                const isCouple = seat.isCouple || seatType === 'COUPLE'
+
+                                if (isCouple) {
                                   return (
                                     <button
                                       key={seat.seatId}
@@ -787,7 +805,9 @@ export default function StaffTicketingPage() {
                                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
                                         : isOccupied
                                           ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
-                                          : 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
+                                          : isVip
+                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20' // 🟨 VIP TRUNG TÂM: VIỀN VÀNG
+                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'        // ⬜ GHẾ THƯỜNG: VIỀN XÁM TRẮNG
                                       }`}
                                   >
                                     {seat.seatId}
@@ -1260,100 +1280,98 @@ export default function StaffTicketingPage() {
             WebkitBackdropFilter: 'blur(4px)'
           }}
         >
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-slate-800 text-left relative overflow-hidden">
-            <div className="flex flex-col items-center border-b-2 border-dashed border-slate-200 pb-5 text-center space-y-2">
-              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <CheckCircle size={10} className="text-emerald-500" />
+          <div className="bg-white border border-slate-200 rounded-3xl p-7 shadow-2xl max-w-md w-full text-slate-800 text-left relative overflow-hidden">
+            <div className="flex flex-col items-center border-b-2 border-dashed border-slate-200 pb-6 text-center space-y-2.5">
+              <span className="text-xs font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3.5 py-1.5 rounded-full uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle size={14} className="text-emerald-500" />
                 XUẤT VÉ THÀNH CÔNG
               </span>
 
-              <h4 className="text-lg font-black tracking-widest text-slate-900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <h4 className="text-2xl font-black tracking-widest text-slate-900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                 CINE<span className="text-red-650">MATE</span>
               </h4>
-              <p className="text-[9px] font-medium text-slate-500">
+              <p className="text-xs font-medium text-slate-500 leading-relaxed">
                 HÓA ĐƠN VÉ &amp; DỊCH VỤ TẠI QUẦY<br />
-                Mã giao dịch: {printedTicket.id}
+                Mã giao dịch: <span className="font-mono text-slate-700 font-bold">{printedTicket.id}</span>
               </p>
             </div>
 
-            <div className="py-5 space-y-3.5 text-[11px] font-semibold text-slate-600">
+            <div className="py-6 space-y-4 text-xs font-semibold text-slate-600">
 
               <div className="space-y-1">
-                <span className="text-[9px] uppercase font-bold text-slate-400 block">Tên Phim</span>
-                <span className="text-xs font-black text-slate-900 leading-snug block">{printedTicket.movie}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Tên Phim</span>
+                <span className="text-sm font-black text-slate-900 leading-snug block">{printedTicket.movie}</span>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Phòng chiếu</span>
-                  <span className="text-xs font-bold text-slate-900 block">{printedTicket.screen}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Phòng chiếu</span>
+                  <span className="text-sm font-bold text-slate-900 block">{printedTicket.screen}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Suất chiếu</span>
-                  <span className="text-xs font-black text-red-650 block font-mono">{printedTicket.time}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Suất chiếu</span>
+                  <span className="text-sm font-black text-red-650 block font-mono">{printedTicket.time}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Ngày chiếu</span>
-                  <span className="text-xs font-bold text-slate-900 block">{printedTicket.date}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Ngày chiếu</span>
+                  <span className="text-sm font-bold text-slate-900 block">{printedTicket.date}</span>
                 </div>
                 <div>
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Số Ghế</span>
-                  <span className="text-xs font-black text-slate-900 block font-mono">{printedTicket.seats}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Số Ghế</span>
+                  <span className="text-sm font-black text-slate-900 block font-mono">{printedTicket.seats}</span>
                 </div>
               </div>
 
               {printedTicket.combosSummary && (
-                <div className="border-t border-slate-100 pt-3">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 block">Bắp nước kèm theo</span>
-                  <span className="text-[11px] text-slate-800 block mt-0.5 leading-snug font-medium">{printedTicket.combosSummary}</span>
+                <div className="border-t border-slate-100 pt-3.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Bắp nước kèm theo</span>
+                  <span className="text-xs text-slate-800 block mt-1 leading-relaxed font-semibold">{printedTicket.combosSummary}</span>
                 </div>
               )}
 
-              <div className="border-t border-slate-100 pt-3 space-y-1.5">
+              <div className="border-t border-slate-100 pt-3.5 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-500">
                   <span>Hình thức thanh toán:</span>
-                  <span>{printedTicket.paymentMethod}</span>
+                  <span className="font-bold text-slate-800">{printedTicket.paymentMethod}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>Tài khoản hội viên:</span>
-                  <span>{printedTicket.memberId} ({printedTicket.customerName})</span>
+                  <span className="font-bold text-slate-800">{printedTicket.memberId} ({printedTicket.customerName})</span>
                 </div>
                 {printedTicket.convertTickets > 0 && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-green-600 font-bold">
                     <span>Đổi điểm tích lũy:</span>
                     <span>-{formatVND(printedTicket.convertTickets * printedTicket.price)}</span>
                   </div>
                 )}
-                <div className="flex justify-between items-center text-slate-900 pt-2 border-t border-slate-100 text-xs">
-                  <span className="font-bold">TỔNG TIỀN THANH TOÁN:</span>
-                  <span className="font-black text-red-650 text-sm font-mono">{formatVND(printedTicket.total)}</span>
+                <div className="flex justify-between items-center text-slate-900 pt-3 border-t border-slate-100">
+                  <span className="font-bold text-xs uppercase tracking-wider">TỔNG TIỀN THANH TOÁN:</span>
+                  <span className="font-black text-red-650 text-base font-mono">{formatVND(printedTicket.total)}</span>
                 </div>
               </div>
 
             </div>
 
-            <div className="flex flex-col items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-2 mt-2">
-              <div className="w-full h-10 border-2 border-slate-900 border-dashed flex items-center justify-center text-[10px] font-black tracking-[0.4em] text-slate-800 select-none">
+            <div className="flex flex-col items-center justify-center p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-2">
+              <div className="w-full h-11 border-2 border-slate-900 border-dashed flex items-center justify-center text-xs font-black tracking-[0.3em] text-slate-800 select-none bg-white rounded-lg">
                 * {printedTicket.id} *
               </div>
-              <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Quét mã vạch này tại cửa soát vé</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Quét mã vạch này tại cửa soát vé</p>
             </div>
 
-            <div className="flex gap-2.5 mt-6 pt-4 border-t border-slate-100">
+            <div className="flex gap-3 mt-6 pt-4 border-t border-slate-100">
               <button
-                onClick={() => {
-                  window.print()
-                }}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                onClick={() => window.print()}
+                className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer border-none"
               >
-                <Printer size={14} />
+                <Printer size={16} />
                 <span>In vé quầy</span>
               </button>
               <button
                 onClick={handleReset}
-                className="flex-1 py-3 bg-red-650 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer border-none"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={16} />
                 <span>Giao dịch tiếp</span>
               </button>
             </div>

@@ -1,3 +1,20 @@
+import { 
+  Ticket, 
+  Eye, 
+  X, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Coffee, 
+  Tag, 
+  CheckCircle2, 
+  Printer, 
+  Copy, 
+  Check, 
+  ChevronLeft, 
+  Loader2,
+  Sparkles
+} from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
@@ -9,104 +26,9 @@ import { paymentService } from '../../services/paymentService'
 import Input from '../../components/common/Input'
 import { QRCodeSVG } from 'qrcode.react'
 
-const MOCK_BOOKINGS = [
-  {
-    id: 'BK99502',
-    movieName: 'Backrooms: Vùng Ngoài Tầm Kiểm Soát',
-    bookingDate: '2026-06-16T08:00:00Z',
-    showDate: '2026-06-22',
-    showTime: '20:00',
-    room: 'Phòng chiếu 04 (IMAX 3D)',
-    seats: ['F10', 'F11'],
-    totalPrice: 280000,
-    status: 'COMPLETED',
-  },
-  {
-    id: 'BK92384',
-    movieName: 'Spider-man: Brand New Day',
-    bookingDate: '2026-06-15T12:30:00Z',
-    showDate: '2026-06-15',
-    showTime: '19:30',
-    room: 'Phòng chiếu 03 (IMAX)',
-    seats: ['C4', 'C5'],
-    totalPrice: 220000,
-    status: 'COMPLETED',
-  },
-  {
-    id: 'BK91048',
-    movieName: 'Lớp Học Ám Sát: Giờ Của Chúng Ta',
-    bookingDate: '2026-06-13T10:15:00Z',
-    showDate: '2026-06-13',
-    showTime: '15:00',
-    room: 'Phòng chiếu 01 (2D)',
-    seats: ['B5', 'B6'],
-    totalPrice: 180000,
-    status: 'COMPLETED',
-  },
-  {
-    id: 'BK88402',
-    movieName: 'Kumanthong Ác Quỷ Dẫn Đường',
-    bookingDate: '2026-06-08T14:00:00Z',
-    showDate: '2026-06-08',
-    showTime: '21:45',
-    room: 'Phòng chiếu 02 (2D)',
-    seats: ['E1'],
-    totalPrice: 130000,
-    status: 'COMPLETED',
-  }
-]
+const MOCK_BOOKINGS = []
 
-const MOCK_POINT_HISTORY = [
-  {
-    id: 'TX1004',
-    type: 'EARN',
-    amount: 22,
-    movieName: 'Spider-man: Brand New Day',
-    date: '2026-06-15T12:30:00Z',
-  },
-  {
-    id: 'TX1003',
-    type: 'SPEND',
-    amount: 50,
-    movieName: 'Sweet Combo (Bắp nước)',
-    date: '2026-06-14T09:15:00Z',
-  },
-  {
-    id: 'TX1002',
-    type: 'EARN',
-    amount: 18,
-    movieName: 'Lớp Học Ám Sát: Giờ Của Chúng Ta',
-    date: '2026-06-13T10:15:00Z',
-  },
-  {
-    id: 'TX1001',
-    type: 'EARN',
-    amount: 13,
-    movieName: 'Kumanthong Ác Quỷ Dẫn Đường',
-    date: '2026-06-08T14:00:00Z',
-  },
-  {
-    id: 'TX1005',
-    type: 'SPEND',
-    amount: 100,
-    movieName: 'Vé 2D Doraemon: Bản Tình Ca Đất Nước',
-    date: '2026-06-05T16:45:00Z',
-  },
-  {
-    id: 'TX1006',
-    type: 'EARN',
-    amount: 25,
-    movieName: 'Lật Mặt 7: Một Điều Ước',
-    date: '2026-05-28T19:00:00Z',
-  },
-  {
-    id: 'TX1007',
-    type: 'SPEND',
-    amount: 40,
-    movieName: 'Bắp ngọt vừa (M)',
-    date: '2026-05-25T11:30:00Z',
-  }
-]
+const MOCK_POINT_HISTORY = []
 const MOCK_POSTERS = {
   'backrooms: vùng ngoài tầm kiểm soát': 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?q=80&w=300',
   'spider-man: brand new day': 'https://images.unsplash.com/photo-1635805737707-575885ab0820?q=80&w=300',
@@ -177,6 +99,17 @@ function GlassCard({ children, className = '', delay = 0, style = {} }) {
   )
 }
 
+function formatDateSafe(dateVal, options = { day: '2-digit', month: '2-digit' }) {
+  if (!dateVal) return ''
+  try {
+    const d = new Date(dateVal)
+    if (isNaN(d.getTime())) return String(dateVal)
+    return d.toLocaleDateString('vi-VN', options)
+  } catch {
+    return String(dateVal || '')
+  }
+}
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
   const navigate = useNavigate()
@@ -188,6 +121,83 @@ export default function ProfilePage() {
   }
 
   const [profile, setProfile] = useState(null)
+  const [selectedBooking, setSelectedBooking] = useState(null)
+  const [selectedBookingDetails, setSelectedBookingDetails] = useState(null)
+  const [modalLoading, setModalLoading] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
+
+  const handleOpenTicketModal = async (booking) => {
+    setSelectedBooking(booking)
+    setSelectedBookingDetails(null)
+    setModalLoading(true)
+
+    const bookingIdToFetch = booking.fullId || booking.rawBooking?.id || booking.id
+    if (bookingIdToFetch) {
+      try {
+        const res = await bookingService.getById(bookingIdToFetch)
+        const detail = res.data?.result || res.data || null
+        if (detail) {
+          setSelectedBookingDetails(detail)
+        }
+      } catch (err) {
+        console.warn('Could not fetch full booking details via API:', err)
+      }
+    }
+    setModalLoading(false)
+  }
+
+  const handleCloseTicketModal = () => {
+    setSelectedBooking(null)
+    setSelectedBookingDetails(null)
+    setModalLoading(false)
+  }
+
+  const normalizeTicketData = (detail, fallbackBooking) => {
+    const data = detail || fallbackBooking?.rawBooking || fallbackBooking || {}
+    const rawSeats = data.seatNames || data.seats || fallbackBooking?.seats || []
+    const seatNames = Array.isArray(rawSeats) 
+      ? rawSeats 
+      : (typeof rawSeats === 'string' ? rawSeats.split(',').map(s => s.trim()) : [])
+    const seatCount = seatNames.length || 1
+
+    const movieName = data.movieName || fallbackBooking?.movieName || 'Vé xem phim'
+    const movieKey = String(movieName).toLowerCase().trim()
+    const posterUrl = data.posterUrl || data.moviePoster || fallbackBooking?.posterUrl || (movieKey && moviePosters[movieKey]) || (movieKey && MOCK_POSTERS[movieKey]) || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'
+    
+    const cinemaName = data.cinemaName || 'CineMate Center'
+    const roomName = data.roomName || data.room || fallbackBooking?.room || 'Phòng chiếu'
+    const date = data.date || data.showDate || fallbackBooking?.showDate || ''
+    const showtime = data.showtime || data.showTime || fallbackBooking?.showTime || ''
+    
+    const finalPrice = data.totalAmount ?? data.totalPrice ?? fallbackBooking?.totalPrice ?? 0
+    const concessions = data.concessions || []
+    const concessionAmount = data.concessionAmount ?? concessions.reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
+    const discountAmount = data.discountAmount || 0
+    const ticketAmount = data.ticketAmount ?? Math.max(0, finalPrice + discountAmount - concessionAmount)
+
+    const rawId = data.id || fallbackBooking?.fullId || fallbackBooking?.id || ''
+
+    return {
+      id: rawId,
+      displayId: (rawId.length > 10 ? rawId.substring(0, 10) : rawId).toUpperCase(),
+      movieName,
+      posterUrl,
+      cinemaName,
+      roomName,
+      date,
+      showtime,
+      seatNames,
+      seatCount,
+      concessions,
+      concessionAmount,
+      discountAmount,
+      promotionCode: data.promotionCode,
+      ticketAmount,
+      finalPrice,
+      status: data.status || fallbackBooking?.status || 'CONFIRMED',
+      bookingDate: data.createdAt || data.bookingDate || fallbackBooking?.bookingDate,
+    }
+  }
   const [activeTab, setActiveTab] = useState(resolveTab(location.state?.activeTab))
   const [bookings, setBookings] = useState([])
   const [moviePosters, setMoviePosters] = useState({})
@@ -228,7 +238,9 @@ export default function ProfilePage() {
         const res = await bookingService.getMyBookings()
         const data = res.data?.result ?? []
         const mappedData = data.map(b => ({
-          id: b.id.substring(0, 8).toUpperCase(),
+          id: (b.id || '').substring(0, 8).toUpperCase(),
+          fullId: b.id,
+          rawBooking: b,
           movieName: b.movieName,
           bookingDate: b.createdAt,
           showDate: b.date,
@@ -337,12 +349,7 @@ export default function ProfilePage() {
       console.error('Lỗi khi tải lịch sử điểm:', err)
       const toDateEnd = new Date(toDate)
       toDateEnd.setHours(23, 59, 59, 999)
-      const results = MOCK_POINT_HISTORY.filter(item => {
-        const matchType = item.type === scoreFilterType
-        const itemDate = new Date(item.date)
-        return matchType && itemDate >= fromDate && itemDate <= toDateEnd
-      })
-      setFilteredScoreHistory(results)
+      setFilteredScoreHistory([])
     }
   }
 
@@ -365,10 +372,7 @@ export default function ProfilePage() {
           if (fromDate && toDate && fromDate <= toDate) {
             const toDateEnd = new Date(toDate)
             toDateEnd.setHours(23, 59, 59, 999)
-            const results = MOCK_POINT_HISTORY.filter(item => {
-              return item.type === scoreFilterType && new Date(item.date) >= fromDate && new Date(item.date) <= toDateEnd
-            })
-            setFilteredScoreHistory(results)
+            setFilteredScoreHistory([])
             setHasViewedScore(true)
           }
         }
@@ -889,7 +893,7 @@ export default function ProfilePage() {
                   <span className="material-symbols-outlined" style={{ fontSize: '20px', color: '#22c55e', fontVariationSettings: "'FILL' 1" }}>verified</span>
                 </div>
                 <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '13px', color: 'var(--color-on-surface-variant)', margin: 0 }}>
-                  {profile?.email}
+                  <span style={{ wordBreak: 'break-all' }}>{profile?.email}</span>
                 </p>
                 {profile?.score !== undefined && profile?.score !== null && (
                   <button
@@ -1222,17 +1226,16 @@ export default function ProfilePage() {
                       ].map(({ label, value, icon }, idx) => (
                         <motion.div 
                           key={label} 
-                          className="flex items-start gap-3 p-1.5 rounded-xl transition-all"
+                          className="flex items-start gap-3 p-1.5 rounded-xl transition-all min-w-0"
                           whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.02)' }}
                           initial={{ opacity: 0, x: 10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.04 }}
                         >
                           <span
-                            className="material-symbols-outlined mt-0.5"
-                            style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
+                            className="material-symbols-outlined mt-0.5 shrink-0" style={{ fontSize: '20px', color: 'var(--color-primary)', opacity: 0.7 }}
                           >{icon}</span>
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '12px', color: 'var(--color-on-surface-variant)', margin: '0 0 2px 0', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500 }}>
                               {label}
                             </p>
@@ -1242,6 +1245,8 @@ export default function ProfilePage() {
                               margin: 0,
                               color: isEmpty(value) ? 'var(--color-on-surface-variant)' : 'var(--color-on-surface)',
                               fontStyle: isEmpty(value) ? 'italic' : 'normal',
+                              wordBreak: 'break-all',
+                              overflowWrap: 'anywhere',
                             }}>
                               {displayValue(value)}
                             </p>
@@ -1307,7 +1312,7 @@ export default function ProfilePage() {
                       label: 'Ngày tạo tài khoản',
                       content: (
                         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: '15px', color: 'var(--color-on-surface)', margin: 0 }}>
-                          {new Date(profile.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          {formatDateSafe(profile?.createdAt, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                         </p>
                       )
                     } : null,
@@ -1800,7 +1805,8 @@ export default function ProfilePage() {
                 ) : (
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full text-left">
                     {activeBookings.map((booking, idx) => {
-                      const posterUrl = moviePosters[booking.movieName?.toLowerCase().trim()] || MOCK_POSTERS[booking.movieName?.toLowerCase().trim()] || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'
+                      const movieKey = String(booking?.movieName || '').toLowerCase().trim()
+                      const posterUrl = (movieKey && moviePosters[movieKey]) || (movieKey && MOCK_POSTERS[movieKey]) || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'
                       const isCheckedIn = booking.status === 'CHECKED_IN'
 
                       return (
@@ -1859,7 +1865,7 @@ export default function ProfilePage() {
                                 <div>
                                   <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Suất chiếu</p>
                                   <p className="text-white font-semibold mt-0.5 truncate">
-                                    {booking.showTime} · {new Date(booking.showDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                                    {booking.showTime} · {formatDateSafe(booking?.showDate, { day: '2-digit', month: '2-digit' })}
                                   </p>
                                 </div>
                                 <div>
@@ -1875,10 +1881,10 @@ export default function ProfilePage() {
                               <div className="min-w-0 flex-1">
                                 <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Ngày đặt</p>
                                 <p className="text-[11px] text-gray-400 mt-0.5 truncate">
-                                  {new Date(booking.bookingDate).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                  {formatDateSafe(booking?.bookingDate, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                 </p>
                               </div>
-                              <div className="text-right shrink-0">
+<div className="text-right shrink-0">
                                 <p className="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Tổng tiền</p>
                                 <p className="text-sm sm:text-base font-black text-red-500 font-mono mt-0.5 whitespace-nowrap">
                                   {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(booking.totalPrice)}
@@ -1921,6 +1927,16 @@ export default function ProfilePage() {
                                     bgColor="#FFFFFF"
                                   />
                                 </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenTicketModal(booking);
+                                  }}
+                                  className="mt-2.5 px-2.5 py-1 rounded bg-white/10 hover:bg-red-600 text-white text-[10px] font-bold transition-all border border-white/10 hover:border-red-500 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Ticket size={11} /> Xem vé
+                                </button>
                               </>
                             )}
                           </div>
@@ -2044,6 +2060,362 @@ export default function ProfilePage() {
           scrollbar-width: none;
         }
       `}</style>
+    
+      {/* ── TICKET DETAIL MODAL POPUP ── */}
+      <AnimatePresence>
+        {selectedBooking && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto">
+            
+            {/* Print Styles Sheet inside Modal */}
+            <style>{`
+              @media print {
+                body * {
+                  visibility: hidden !important;
+                }
+                .printable-profile-ticket, .printable-profile-ticket * {
+                  visibility: visible !important;
+                }
+                .printable-profile-ticket {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  border: 2px solid black !important;
+                  background: white !important;
+                  color: black !important;
+                  box-shadow: none !important;
+                  padding: 12px !important;
+                }
+                .printable-profile-ticket * {
+                  color: black !important;
+                  border-color: #ccc !important;
+                }
+                .no-print-modal {
+                  display: none !important;
+                }
+              }
+            `}</style>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-4xl bg-[#0b0c10] border border-red-500/30 rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85),0_0_30px_rgba(229,9,20,0.2)] overflow-hidden flex flex-col max-h-[92vh] relative"
+            >
+              {/* Modal Header */}
+              <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-white/10 bg-white/[0.02] flex items-center justify-between no-print-modal shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-red-600/20 text-red-500 border border-red-500/30 flex items-center justify-center">
+                    <Ticket size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-white tracking-wide" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                      Chi Tiết Vé Xem Phim
+                    </h3>
+                    <p className="text-[10px] sm:text-xs text-gray-400">
+                      Mã vé: <span className="font-mono text-white font-bold">{selectedBooking.id}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {/* Copy ticket info button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const norm = normalizeTicketData(selectedBookingDetails, selectedBooking);
+                      const info = `Vé xem phim CineMate\nPhim: ${norm.movieName}\nMã vé: ${norm.id}\nNgày: ${norm.date} (${norm.showtime})\nGhế: ${norm.seatNames.join(', ')}`;
+                      navigator.clipboard.writeText(info);
+                      setCopiedCode(true);
+                      setTimeout(() => setCopiedCode(false), 2500);
+                    }}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="Sao chép thông tin vé"
+                  >
+                    {copiedCode ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    <span className="hidden sm:inline">{copiedCode ? 'Đã chép' : 'Sao chép'}</span>
+                  </button>
+
+                  {/* Print button */}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-gray-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="In vé"
+                  >
+                    <Printer size={14} />
+                    <span className="hidden sm:inline">In vé</span>
+                  </button>
+
+                  {/* Close button */}
+                  <button
+                    type="button"
+                    onClick={handleCloseTicketModal}
+                    className="w-8 h-8 rounded-lg bg-white/5 hover:bg-red-600/20 text-gray-400 hover:text-red-400 border border-white/10 hover:border-red-500/30 flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content Body */}
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1 text-left scrollbar-thin scrollbar-thumb-white/10">
+                {modalLoading ? (
+                  <div className="py-16 flex flex-col items-center justify-center text-center">
+                    <Loader2 size={36} className="animate-spin text-red-600 mb-3" />
+                    <p className="text-sm font-bold text-white">Đang tải thông tin chi tiết vé...</p>
+                  </div>
+                ) : (() => {
+                  const norm = normalizeTicketData(selectedBookingDetails, selectedBooking);
+                  const isCheckedIn = norm.status === 'CHECKED_IN';
+
+                  return (
+                    <div className="printable-profile-ticket w-full">
+                      {/* Physical Ticket Container Card */}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 bg-[#121420] border border-red-600/30 rounded-xl overflow-hidden shadow-[0_12px_35px_rgba(0,0,0,0.7),0_0_25px_rgba(229,9,20,0.1)] relative">
+                        
+                        {/* LEFT SECTION (Main Ticket Details) - 8 Cols */}
+                        <div className="lg:col-span-8 p-3.5 md:p-5 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-dashed border-red-500/20 relative">
+                          <div>
+                            {/* Top status bar */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                              <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                                <span className="text-[10px] font-extrabold uppercase tracking-widest text-red-400">
+                                  CineMate E-Ticket Pass
+                                </span>
+                              </div>
+                              {isCheckedIn ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/20 text-blue-400 border border-blue-500/30 uppercase tracking-wider">
+                                  ĐÃ CHECK-IN
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase tracking-wider">
+                                  ĐÃ THANH TOÁN
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Movie title & Cinema */}
+                            <div className="mb-3">
+                              <h3 className="text-lg md:text-xl font-black text-white mb-1 leading-tight tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                                {norm.movieName}
+                              </h3>
+                              <div className="flex items-center gap-1.5 text-[11px] text-red-400 font-semibold">
+                                <MapPin size={13} className="shrink-0 text-red-500" />
+                                <span>{norm.cinemaName} — <strong className="text-white">{norm.roomName}</strong></span>
+                              </div>
+                            </div>
+
+                            {/* Show Details Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 p-3 rounded-lg bg-black/40 border border-white/5 mb-3">
+                              <div>
+                                <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                  <Calendar size={10} className="text-red-500" /> Ngày chiếu
+                                </p>
+                                <p className="text-white font-extrabold text-xs">{norm.date}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                  <Clock size={10} className="text-red-500" /> Suất chiếu
+                                </p>
+                                <p className="text-red-400 font-black text-xs">{norm.showtime}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                  <Ticket size={10} className="text-red-500" /> Ghế ({norm.seatCount})
+                                </p>
+                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                  {norm.seatNames.map((seat) => (
+                                    <span key={seat} className="text-[10px] font-black bg-red-600/20 text-red-300 border border-red-500/40 px-1 py-0.2 rounded">
+                                      {seat}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="text-gray-400 text-[9px] font-bold uppercase tracking-wider mb-0.5 flex items-center gap-1">
+                                  <Tag size={10} className="text-red-500" /> Tổng tiền
+                                </p>
+                                <p className="text-red-500 font-black text-sm">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.finalPrice)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* CONCESSIONS / BẮP NƯỚC SECTION */}
+                            <div className="mb-3">
+                              <p className="text-[10px] font-black uppercase text-gray-300 tracking-wider mb-1.5 flex items-center gap-1">
+                                <Coffee size={12} className="text-red-500" /> Đồ ăn & Bắp nước đặt kèm:
+                              </p>
+
+                              {norm.concessions && norm.concessions.length > 0 ? (
+                                <div className="space-y-1 bg-black/30 p-2.5 rounded-lg border border-white/5">
+                                  {norm.concessions.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-[10px] text-gray-200 py-0.5 border-b border-white/5 last:border-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-4.5 h-4.5 rounded bg-red-600/20 text-red-400 font-extrabold flex items-center justify-center text-[9px] border border-red-500/30">
+                                          {item.quantity}x
+                                        </span>
+                                        <div>
+                                          <span className="font-bold text-white">{item.name}</span>
+                                          {item.size && (
+                                            <span className="ml-1 text-[8px] text-red-400 bg-red-950/60 px-1 py-0.2 rounded border border-red-800/40 uppercase">
+                                              Size {item.size}
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <span className="font-extrabold text-red-400">
+                                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(item.lineTotal || ((item.unitPrice || 0) * item.quantity))}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="p-2 bg-black/20 rounded-lg border border-white/5 text-center">
+                                  <p className="text-[10px] text-gray-500 italic">Không mua kèm bắp nước</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* BILL BREAKDOWN */}
+                            <div className="mb-3 bg-black/40 p-3 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
+                              <p className="font-extrabold uppercase text-gray-300 tracking-wider flex items-center gap-1 border-b border-white/10 pb-1 text-[10px]">
+                                <Tag size={11} className="text-red-500" /> Chi tiết thanh toán:
+                              </p>
+
+                              <div className="flex justify-between items-center text-gray-300">
+                                <span>Tiền vé ghế ({norm.seatCount} ghế):</span>
+                                <span className="font-bold text-white">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.ticketAmount)}
+                                </span>
+                              </div>
+
+                              {norm.concessionAmount > 0 && (
+                                <div className="flex justify-between items-center text-gray-300">
+                                  <span>Bắp nước & Đồ ăn:</span>
+                                  <span className="font-bold text-white">
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.concessionAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {norm.discountAmount > 0 && (
+                                <div className="flex justify-between items-center text-emerald-400 font-medium">
+                                  <span>Mã giảm giá {norm.promotionCode ? `(${norm.promotionCode})` : ""}:</span>
+                                  <span className="font-extrabold">
+                                    -{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.discountAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center pt-1.5 border-t border-white/10 text-xs font-black">
+                                <span className="uppercase text-white">Tổng tiền đã thanh toán:</span>
+                                <span className="text-red-500 text-sm font-mono">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.finalPrice)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* QR Code & Rules Footer */}
+                          <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-3 items-center justify-between bg-black/20 p-2.5 rounded-lg">
+                            <div className="flex-1 text-left">
+                              <p className="text-[10px] font-bold text-white mb-0.5">Quy định soát vé:</p>
+                              <p className="text-[9px] text-gray-400 leading-tight">
+                                Vui lòng đến rạp trước 15 phút và xuất trình mã QR này trên điện thoại để quét mã vào phòng chiếu.
+                              </p>
+                            </div>
+
+                            <div className="flex flex-col items-center shrink-0 bg-white p-1.5 rounded-md border border-red-600 shadow-xs">
+                              <QRCodeSVG 
+                                value={norm.id.toString()} 
+                                size={65} 
+                                level="H" 
+                                includeMargin={false} 
+                                fgColor="#000000" 
+                                bgColor="#FFFFFF"
+                              />
+                              <span className="text-[8px] text-gray-800 font-mono font-bold mt-0.5 tracking-tighter">
+                                {norm.displayId}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT SECTION (Physical Stub Ticket Poster) - 4 Cols */}
+                        <div className="lg:col-span-4 bg-gradient-to-b from-[#181a28] to-[#0f101a] p-4 flex flex-col items-center justify-between text-center relative overflow-hidden">
+                          <div className="w-full flex flex-col items-center">
+                            <div className="w-full max-w-[120px] aspect-[2/3] rounded-lg overflow-hidden border border-red-600/40 shadow-[0_6px_15px_rgba(229,9,20,0.2)] mb-3 group relative">
+                              <img 
+                                src={norm.posterUrl} 
+                                alt={norm.movieName}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80" />
+                              <span className="absolute bottom-1 left-1 right-1 text-[8px] font-extrabold text-white bg-red-600/80 backdrop-blur-sm py-0.5 rounded text-center uppercase tracking-widest">
+                                PASS TICKET
+                              </span>
+                            </div>
+
+                            <h4 className="text-xs font-bold text-white mb-1 line-clamp-1">
+                              {norm.movieName}
+                            </h4>
+                            <p className="text-[9px] text-gray-400 mb-2 font-mono">
+                              MÃ VÉ: {norm.displayId}
+                            </p>
+
+                            <div className="w-full bg-black/40 p-2.5 rounded-md border border-white/5 space-y-1 text-[10px] text-left mb-3">
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Rạp:</span>
+                                <span className="font-bold text-white truncate max-w-[100px]">{norm.cinemaName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Phòng:</span>
+                                <span className="font-bold text-red-400">{norm.roomName}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Suất:</span>
+                                <span className="font-bold text-white">{norm.showtime}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-400">Ngày:</span>
+                                <span className="font-bold text-white">{norm.date}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="w-full">
+                            {isCheckedIn ? (
+                              <div className="py-2 bg-blue-500/20 border border-blue-500/40 rounded-lg text-center">
+                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                                  ✓ ĐÃ DÙNG VÉ
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="py-2 bg-emerald-500/20 border border-emerald-500/40 rounded-lg text-center">
+                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                                  ✓ VÉ HỢP LỆ
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </motion.main>
   )
 }
