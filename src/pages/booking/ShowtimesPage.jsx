@@ -120,12 +120,7 @@ export default function ShowtimesPage() {
         const mappedRooms = (Array.isArray(data) ? data : []).map((r, index) => {
           let cinemaName = r.cinemaName
           if (!cinemaName) {
-            const mockCinemas = [
-              'CineMate Quận 1',
-              'CineMate Bình Thạnh',
-              'CineMate Gò Vấp',
-              'CineMate Thủ Đức'
-            ]
+            const mockCinemas = ['CineMate Cinema']
             cinemaName = mockCinemas[index % mockCinemas.length]
           }
           return { ...r, cinemaName }

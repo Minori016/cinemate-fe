@@ -80,10 +80,10 @@ export default function Footer() {
           </h3>
           <div className="flex flex-col gap-2.5">
             {[
-              { label: 'CineMate Quận 1', to: '/cinemas' },
-              { label: 'CineMate Bình Thạnh', to: '/cinemas' },
-              { label: 'CineMate Gò Vấp', to: '/cinemas' },
-              { label: 'CineMate Thủ Đức', to: '/cinemas' },
+              { label: 'CineMate Cinema (Q.1, TP.HCM)', to: '/cinemas' },
+              { label: '135 Đồng Khởi, Q.1, TP.HCM', to: '/cinemas' },
+              { label: 'Hotline: 1900 1234', to: '/cinemas' },
+              { label: 'Giờ mở cửa: 08:00 - 00:00', to: '/cinemas' },
             ].map((link) => (
               <FooterLink key={link.label} label={link.label} to={link.to} />
             ))}
