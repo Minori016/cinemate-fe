@@ -113,7 +113,7 @@ export default function AppRoutes() {
         {/* Manager */}
         <Route path="/manager" element={<ProtectedRoute role="MANAGER"><ManagerLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="analytics" replace />} />
-          <Route path="dashboard" element={<Navigate to="/manager/analytics" replace />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="analytics" element={<ManagerAnalyticsPage />} />
           <Route path="movies" element={<MovieListPage />} />
           <Route path="movies/add" element={<MovieFormPage />} />
@@ -145,6 +145,7 @@ export default function AppRoutes() {
         <Route path="/admin" element={<ProtectedRoute role="ADMIN"><AdminLayout /></ProtectedRoute>}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="analytics" element={<ManagerAnalyticsPage />} />
           <Route path="movies" element={<MovieListPage />} />
           <Route path="movies/add" element={<MovieFormPage />} />
           <Route path="movies/edit/:id" element={<MovieFormPage />} />
