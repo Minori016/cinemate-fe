@@ -57,7 +57,7 @@ export default function PointsRedemption({
     setError('')
 
     try {
-      const result = await promotionService.redeemPoints(userId, promotion.id)
+      const result = await promotionService.redeemPoints(promotion.id)
       if (result.success) {
         setRedeemedOption(promotion.id)
         

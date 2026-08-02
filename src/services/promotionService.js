@@ -20,7 +20,7 @@ export const promotionService = {
   // === Points Redemption ===
   getPointsOptions: () => api.get('/api/v1/promotions/points/options'),
   getMyPoints: () => api.get('/api/v1/promotions/points/my'),
-  redeemPoints: (customerId, promotionId) => api.post('/api/v1/promotions/points/redeem', { customerId, promotionId }),
+  redeemPoints: (promotionId) => api.post('/api/v1/promotions/points/redeem', { promotionId }),
 
   /**
    * User pages: load active promotions, mapped for UI.
