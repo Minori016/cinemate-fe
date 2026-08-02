@@ -12,29 +12,31 @@ import { showtimeService } from '../../../services/showtimeService'
 import { concessionService, FALLBACK_COMBOS } from '../../../services/concessionService'
 import { bookingService } from '../../../services/bookingService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
+import { paymentService } from '../../../services/paymentService'
 
 const MOCK_MEMBERS = []
 
-// 🟢 HÀM KIỂM TRA GHẾ THUỘC VÙNG VIP TRUNG TÂM (ĐỒNG BỘ NGUYÊN BẢN VỚI USER)
+// 🟢 HÀM KIỂM TRA GHẾ THUỘC VÙNG VIP TRUNG TÂM (ĐỒNG BỘ THEO DỮ LIỆU ADMIN)
 const checkIsVipCenterSeat = (seatId) => {
   if (!seatId) return false
   const row = seatId.charAt(0).toUpperCase()
   const num = parseInt(seatId.substring(1), 10)
 
-  if (row === 'D') return num >= 7 && num <= 14
-  if (row === 'E' || row === 'F' || row === 'G') return num >= 4 && num <= 17
-  if (row === 'H') return num >= 6 && num <= 15
+  if (row === 'F') return num >= 1 && num <= 10
+  if (row === 'G') return num >= 3 && num <= 8
+  if (row === 'H') return num >= 3 && num <= 8
+  if (row === 'I') return num >= 4 && num <= 7
+
   return false
 }
-
-
 
 export default function StaffTicketingPage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [movies, setMovies] = useState([])
   const [showtimes, setShowtimes] = useState([])
-  const [combos, setCombos] = useState(FALLBACK_COMBOS)
+  const [combos, setCombos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingCombos, setLoadingCombos] = useState(false)
   const [error, setError] = useState('')
 
   // Selected values
@@ -59,7 +61,7 @@ export default function StaffTicketingPage() {
 
   const [seatMapRefreshKey, setSeatMapRefreshKey] = useState(0)
 
-  // Fetch movies and showtimes on load
+  // 1. Fetch movies and showtimes on load
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -93,16 +95,28 @@ export default function StaffTicketingPage() {
     fetchData()
   }, [])
 
+  // 2. TẢI DANH SÁCH BẮP NƯỚC TỪ API BACKEND
   useEffect(() => {
     let cancelled = false
+    setLoadingCombos(true)
     concessionService.getActiveForUi({ fallback: true })
       .then(list => {
         if (cancelled) return
         const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
         setCombos(mapped)
         const initQty = {}
-        mapped.forEach(c => { initQty[c.id] = 0 })
+        mapped.forEach(c => {
+          const comboId = c.id || c.uuid
+          initQty[comboId] = 0
+        })
         setSelectedCombos(initQty)
+      })
+      .catch(err => {
+        console.error('Lỗi khi nạp danh sách bắp nước:', err)
+        setCombos(FALLBACK_COMBOS)
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCombos(false)
       })
     return () => { cancelled = true }
   }, [])
@@ -208,27 +222,46 @@ export default function StaffTicketingPage() {
     return () => { cancelled = true }
   }, [selectedShowtime, seatMapRefreshKey])
 
-  // 🟢 1. TÍNH GIÁ TIỀN GHẾ DỰA TRÊN VÙNG VIP TRUNG TÂM VÀ LOẠI SUẤT CHIẾU
+  // 🟢 TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
+  // 🟢 TÍNH GIÁ GHẾ ĐỒNG BỘ CHUẨN THEO USER & BACKEND
   const getSeatPrice = (seatId) => {
     const rowChar = seatId.charAt(0).toUpperCase()
 
-    // Lấy giá cơ sở gốc từ Suất chiếu
-    const roomStr = String(selectedShowtime?.room || selectedShowtime?.roomName || '').toUpperCase()
-    const isImax = roomStr.includes('IMAX')
-
-    let baseStandardPrice = isImax ? 150000 : (Number(selectedShowtime?.price) || 120000)
-
-    // Kiểm tra vùng VIP trung tâm (+30k)
+    // 1. Xác định loại ghế theo đúng sơ đồ
+    let seatType = 'STANDARD'
     if (checkIsVipCenterSeat(seatId)) {
-      return baseStandardPrice + 30000
-    }
-    // Ghế Đôi hàng I (+50k)
-    if (rowChar === 'I') {
-      return baseStandardPrice + 50000
+      seatType = 'VIP'
+    } else if (rowChar === 'J') {
+      seatType = 'COUPLE'
     }
 
-    // Ghế Thường (A, B, C và các ghế rìa)
-    return baseStandardPrice
+    // 2. ƯU TIÊN LẤY GIÁ CHÍNH XÁC TỪ BACK-END (selectedShowtime.prices)
+    if (selectedShowtime?.prices && Array.isArray(selectedShowtime.prices) && selectedShowtime.prices.length > 0) {
+      const matchedPriceObj = selectedShowtime.prices.find(
+        p => String(p.seatType || '').toUpperCase() === seatType
+      )
+      if (matchedPriceObj && matchedPriceObj.price != null) {
+        return Number(matchedPriceObj.price)
+      }
+    }
+
+    // 3. Fallback nếu suất chiếu chỉ có giá phẳng (selectedShowtime.price / vipPrice / couplePrice)
+    if (seatType === 'VIP' && selectedShowtime?.vipPrice != null) {
+      return Number(selectedShowtime.vipPrice)
+    }
+    if (seatType === 'COUPLE' && selectedShowtime?.couplePrice != null) {
+      return Number(selectedShowtime.couplePrice)
+    }
+    if (seatType === 'STANDARD' && selectedShowtime?.price != null) {
+      return Number(selectedShowtime.price)
+    }
+
+    // 4. Fallback mặc định theo công thức Back-End (Base = 90k)
+    const basePrice = Number(selectedShowtime?.price) || 90000
+    if (seatType === 'VIP') return basePrice + 20000       // 90k + 20k = 110k (hoặc theo cấu hình)
+    if (seatType === 'COUPLE') return basePrice * 2 + 10000 // 90k * 2 + 10k = 190k
+
+    return basePrice
   }
 
   const handleSeatClick = (primarySeatId, pairedSeatId = null) => {
@@ -248,10 +281,11 @@ export default function StaffTicketingPage() {
     })
   }
 
+  // Tăng giảm số lượng bắp nước
   const handleComboQty = (comboId, delta) => {
     setSelectedCombos(prev => ({
       ...prev,
-      [comboId]: Math.max(0, prev[comboId] + delta)
+      [comboId]: Math.max(0, (prev[comboId] || 0) + delta)
     }))
   }
 
@@ -285,7 +319,6 @@ export default function StaffTicketingPage() {
       console.warn('API không tìm thấy dữ liệu hội viên:', err)
     }
 
-    const uppercaseQuery = trimmed.toUpperCase()
     setFoundMember(null)
   }
 
@@ -307,9 +340,10 @@ export default function StaffTicketingPage() {
     return selectedSeats.reduce((sum, seat) => sum + getSeatPrice(seat), 0)
   }, [selectedSeats, selectedShowtime])
 
+  // TÍNH TỔNG TIỀN BẮP NƯỚC THỰC TẾ
   const comboPriceTotal = useMemo(() => {
     return Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-      const combo = combos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+      const combo = combos.find(c => String(c.id || c.uuid) === String(id))
       return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
     }, 0)
   }, [selectedCombos, combos])
@@ -325,7 +359,8 @@ export default function StaffTicketingPage() {
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN').format(num) + ' đ'
 
-  // XỬ LÝ THANH TOÁN
+  // XỬ LÝ THANH TOÁN THẬT VỚI API
+  // 🟢 XỬ LÝ THANH TOÁN ĐỒNG BỘ CHUẨN AXIOS & BẮT LỖI 409
   const handleCheckout = async () => {
     if (paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived, 10) < finalPriceTotal)) {
       setError('Số tiền khách đưa chưa đủ để thanh toán.')
@@ -345,16 +380,22 @@ export default function StaffTicketingPage() {
     try {
       const showtimeUuid = selectedShowtime?.id || selectedShowtime?.showtimeId
 
+      // 1. Chuẩn hóa payload bắp nước
+      const validConcessions = Object.entries(selectedCombos)
+        .filter(([_, qty]) => qty > 0)
+        .map(([id, qty]) => ({
+          concessionId: id,
+          quantity: qty
+        }))
+
       const holdPayload = {
         showtimeId: showtimeUuid,
         seatIds: backendSeatIds,
         customerId: foundMember ? (foundMember.customerId || foundMember.userId) : null,
-        concessions: Object.entries(selectedCombos)
-          .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => ({ concessionId: id, quantity: qty }))
+        concessions: validConcessions
       }
 
-      // 1. Giữ ghế (Hold seats)
+      // 2. Giữ ghế (Hold seats) thông qua bookingService
       const holdRes = await bookingService.holdSeats(holdPayload)
       const bookingData = holdRes?.data?.result || holdRes?.data
       const backendBookingId = bookingData?.bookingId || bookingData?.id
@@ -363,29 +404,20 @@ export default function StaffTicketingPage() {
         throw new Error('Máy chủ không tạo được mã booking.')
       }
 
-      // 2. Xử lý thanh toán MoMo QR
+      // 3. Xử lý thanh toán MoMo QR qua paymentService (Chuẩn Axios + Token Auth)
       if (paymentMethod === 'qr') {
-        const token = localStorage.getItem('token') || localStorage.getItem('accessToken')
-        const momoRes = await fetch(`/api/v1/payments/momo/create/${backendBookingId}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-          }
-        })
-        const momoData = await momoRes.json()
-        const payUrl = momoData?.result?.payUrl || momoData?.payUrl || momoData?.data?.payUrl
+        const momoRes = await paymentService.createMomoPayment(backendBookingId)
+        const payUrl = momoRes?.data?.result?.payUrl || momoRes?.data?.payUrl
 
         if (payUrl) {
           window.location.href = payUrl
           return
         } else {
-          throw new Error(momoData?.message || momoData?.result?.message || 'Không thể tạo mã QR MoMo.')
+          throw new Error(momoRes?.data?.message || 'Không nhận được đường dẫn thanh toán từ MoMo.')
         }
       }
 
-      // 3. Tiền mặt / Cà thẻ -> Confirm Booking ngay
+      // 4. Tiền mặt / Cà thẻ -> Confirm Booking ngay
       await bookingService.confirm(backendBookingId)
 
       const payload = {
@@ -411,7 +443,7 @@ export default function StaffTicketingPage() {
         combosSummary: Object.entries(selectedCombos)
           .filter(([_, qty]) => qty > 0)
           .map(([id, qty]) => {
-            const c = combos.find(combo => String(combo.id) === String(id))
+            const c = combos.find(combo => String(combo.id || combo.uuid) === String(id))
             return c ? `${c.name} (x${qty})` : `(x${qty})`
           }).join(', ')
       }
@@ -423,8 +455,15 @@ export default function StaffTicketingPage() {
       setPrintedTicket(payload)
     } catch (err) {
       console.error('Lỗi khi thanh toán:', err)
-      const serverMessage = err.response?.data?.message || err.response?.data?.result?.message || err.message
-      setError(serverMessage || 'Ghế đã có người đặt hoặc có lỗi xảy ra trong quá trình xuất vé.')
+
+      // Xử lý thông báo lỗi chi tiết khi gặp lỗi 409 Conflict hoặc lỗi khác
+      if (err.response?.status === 409) {
+        setError('Ghế này đã có người giữ hoặc đặt trước đó! Vui lòng bấm "Tạo giao dịch mới" hoặc chọn ghế khác.')
+        setSeatMapRefreshKey(prev => prev + 1) // Refresh sơ đồ ghế ngay lập tức
+      } else {
+        const serverMessage = err.response?.data?.message || err.response?.data?.result?.message || err.message
+        setError(serverMessage || 'Có lỗi xảy ra trong quá trình thanh toán.')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -436,7 +475,10 @@ export default function StaffTicketingPage() {
     setSelectedShowtime(null)
     setSelectedSeats([])
     const initQty = {}
-    combos.forEach(c => { initQty[c.id] = 0 })
+    combos.forEach(c => {
+      const comboId = c.id || c.uuid
+      initQty[comboId] = 0
+    })
     setSelectedCombos(initQty)
     setMemberQuery('')
     setCheckedMember(false)
@@ -451,21 +493,21 @@ export default function StaffTicketingPage() {
   }
 
   const demoMatrix = [
-    { rowLabel: 'A', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'B', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'C', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'D', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'E', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'F', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'G', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'H', seats: Array.from({ length: 20 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
     {
-      rowLabel: 'I',
-      seats: Array.from({ length: 10 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
+      rowLabel: 'J',
+      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
     },
   ]
 
-  // 🟢 CHUẨN HÓA LẠI MA TRẬN GHẾ: CHỈ NHỮNG GHẾ NẰM TRONG VÙNG TRUNG TÂM MỚI LÀ VIP
   const activeSeatMatrix = useMemo(() => {
     const rawMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
       ? roomLayout.seatMatrix
@@ -479,7 +521,7 @@ export default function StaffTicketingPage() {
         seats: row.seats.map(seat => {
           const seatLabel = `${label}${seat.number}`
           const isVipCenter = checkIsVipCenterSeat(seatLabel)
-          const isCouple = label === 'I'
+          const isCouple = label === 'J'
 
           return {
             ...seat,
@@ -741,7 +783,16 @@ export default function StaffTicketingPage() {
                           }
 
                           const seatType = String(seat.type || '').toUpperCase()
-                          const isCouple = seatType === 'COUPLE' || ['I'].includes(row.rowLabel.toUpperCase())
+
+                          if (seatType === 'EMPTY' || seatType === 'WALKWAY') {
+                            renderedSeats.push({
+                              isWalkway: true,
+                              seatId: `walkway-${row.rowLabel}-${idx}`
+                            })
+                            return
+                          }
+
+                          const isCouple = seatType === 'COUPLE' || ['J'].includes(row.rowLabel.toUpperCase())
 
                           if (isCouple) {
                             const nextSeat = row.seats[idx + 1]
@@ -772,6 +823,10 @@ export default function StaffTicketingPage() {
 
                             <div className={`flex items-center ${isLargeRow ? 'gap-1.5' : 'gap-2.5'}`}>
                               {renderedSeats.map((seat) => {
+                                if (seat.isWalkway) {
+                                  return <div key={seat.seatId} className="w-6 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">│</div>
+                                }
+
                                 const isOccupied = occupiedSeats.includes(seat.seatId) || (seat.pairedSeatId && occupiedSeats.includes(seat.pairedSeatId))
                                 const isSelected = selectedSeats.includes(seat.seatId)
 
@@ -808,8 +863,8 @@ export default function StaffTicketingPage() {
                                         : isOccupied
                                           ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
                                           : isVip
-                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20' // 🟨 VIP TRUNG TÂM: VIỀN VÀNG
-                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'        // ⬜ GHẾ THƯỜNG: VIỀN XÁM TRẮNG
+                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
+                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'
                                       }`}
                                   >
                                     {seat.seatId}
@@ -854,7 +909,7 @@ export default function StaffTicketingPage() {
               </div>
             )}
 
-            {/* STEP 3: CONCESSIONS & MEMBERS */}
+            {/* STEP 3: CONCESSIONS & MEMBERS (DÙNG DỮ LIỆU THỰC TẾ TỪ API) */}
             {currentStep === 3 && (
               <div key="step3" className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-4">
@@ -863,37 +918,52 @@ export default function StaffTicketingPage() {
                     Bắp nước &amp; đồ ăn
                   </h3>
 
-                  <div className="space-y-4">
-                    {combos.map(combo => (
-                      <div key={combo.id} className="flex justify-between items-center bg-black/20 border border-white/5 p-4 rounded-xl">
-                        <div className="space-y-0.5 text-left pr-2">
-                          <span className="text-sm font-black text-black tracking-tight block">{combo.name}</span>
-                          <span className="text-[10px] text-slate-600 font-medium block leading-normal">{combo.desc}</span>
-                          <span className="text-xs font-bold text-red-700 block mt-1">{formatVND(Number(combo.price))}</span>
-                        </div>
+                  {loadingCombos ? (
+                    <div className="py-12 text-center text-slate-500 text-xs">
+                      <span className="material-symbols-outlined animate-spin text-2xl text-red-500 block mb-1">sync</span>
+                      Đang tải danh sách bắp nước...
+                    </div>
+                  ) : combos.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500 text-xs border border-dashed border-slate-700 rounded-xl">
+                      Không có sản phẩm bắp nước nào khả dụng.
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                      {combos.map(combo => {
+                        const comboId = combo.id || combo.uuid
+                        const qty = selectedCombos[comboId] || 0
+                        return (
+                          <div key={comboId} className="flex justify-between items-center bg-black/20 border border-white/5 p-4 rounded-xl">
+                            <div className="space-y-0.5 text-left pr-2 flex-1 min-w-0">
+                              <span className="text-sm font-black text-black tracking-tight block truncate">{combo.name}</span>
+                              <span className="text-[10px] text-slate-600 font-medium block leading-normal line-clamp-2">{combo.desc || combo.description}</span>
+                              <span className="text-xs font-bold text-red-700 block mt-1">{formatVND(Number(combo.price))}</span>
+                            </div>
 
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleComboQty(combo.id, -1)}
-                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
-                          >
-                            -
-                          </button>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <button
+                                onClick={() => handleComboQty(comboId, -1)}
+                                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                              >
+                                -
+                              </button>
 
-                          <span className="text-sm font-black w-6 text-center font-mono text-slate-900">
-                            {selectedCombos[combo.id] || 0}
-                          </span>
+                              <span className="text-sm font-black w-6 text-center font-mono text-slate-900">
+                                {qty}
+                              </span>
 
-                          <button
-                            onClick={() => handleComboQty(combo.id, 1)}
-                            className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                              <button
+                                onClick={() => handleComboQty(comboId, 1)}
+                                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Membership Integration */}
@@ -1200,6 +1270,7 @@ export default function StaffTicketingPage() {
               </p>
             </div>
 
+            {/* HIỂN THỊ BẮP NƯỚC TẠI SIDEBAR VÉ CỦA BẠN */}
             <div className="space-y-1 border-t border-white/5 pt-4">
               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                 BẮP NƯỚC (COMBO)
@@ -1210,13 +1281,13 @@ export default function StaffTicketingPage() {
                   {Object.entries(selectedCombos)
                     .filter(([_, qty]) => qty > 0)
                     .map(([id, qty]) => {
-                      const combo = combos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+                      const combo = combos.find(c => String(c.id || c.uuid) === String(id))
                       return combo ? (
                         <div key={id} className="flex justify-between items-center text-xs">
-                          <span className="text-slate-200 font-medium">
+                          <span className="text-slate-200 font-medium truncate max-w-[180px]">
                             {combo.name} <span className="text-red-400 font-bold">(x{qty})</span>
                           </span>
-                          <span className="text-slate-400 font-mono text-[11px]">
+                          <span className="text-slate-400 font-mono text-[11px] shrink-0">
                             {formatVND((Number(combo.price) || 0) * qty)}
                           </span>
                         </div>
