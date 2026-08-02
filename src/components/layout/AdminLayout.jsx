@@ -1,9 +1,10 @@
 import { Outlet } from 'react-router-dom'
-import { BarChart2, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat, MessageSquare } from 'lucide-react'
+import { BarChart2, TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat, MessageSquare } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const navItems = [
   { to: '/admin/dashboard', icon: BarChart2, label: 'Dashboard' },
+  { to: '/admin/analytics', icon: TrendingUp, label: 'Thống kê & Phân tích' },
   { to: '/admin/movies', icon: Film, label: 'Phim' },
   { to: '/admin/cinema-rooms', icon: LayoutGrid, label: 'Phòng chiếu' },
   { to: '/admin/showtimes', icon: Calendar, label: 'Lịch chiếu' },
