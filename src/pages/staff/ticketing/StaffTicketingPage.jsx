@@ -115,7 +115,7 @@ export default function StaffTicketingPage() {
         if (cancelled) return
         const rawList = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
         setRawConcessions(rawList)
-        
+
         const grouped = groupConcessionsByBaseName(rawList)
         setCombos(grouped)
 
@@ -245,6 +245,8 @@ export default function StaffTicketingPage() {
   // TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
   const getSeatPrice = (seatId) => {
     const rowChar = seatId.charAt(0).toUpperCase()
+
+    // 1. Xác định loại ghế theo đúng sơ đồ
     let seatType = 'STANDARD'
     if (checkIsVipCenterSeat(seatId)) {
       seatType = 'VIP'
@@ -252,6 +254,7 @@ export default function StaffTicketingPage() {
       seatType = 'COUPLE'
     }
 
+    // 2. ƯU TIÊN LẤY GIÁ CHÍNH XÁC TỪ BACK-END (selectedShowtime.prices)
     if (selectedShowtime?.prices && Array.isArray(selectedShowtime.prices) && selectedShowtime.prices.length > 0) {
       const matchedPriceObj = selectedShowtime.prices.find(
         p => String(p.seatType || '').toUpperCase() === seatType
@@ -261,9 +264,21 @@ export default function StaffTicketingPage() {
       }
     }
 
+    // 3. Fallback nếu suất chiếu chỉ có giá phẳng (selectedShowtime.price / vipPrice / couplePrice)
+    if (seatType === 'VIP' && selectedShowtime?.vipPrice != null) {
+      return Number(selectedShowtime.vipPrice)
+    }
+    if (seatType === 'COUPLE' && selectedShowtime?.couplePrice != null) {
+      return Number(selectedShowtime.couplePrice)
+    }
+    if (seatType === 'STANDARD' && selectedShowtime?.price != null) {
+      return Number(selectedShowtime.price)
+    }
+
+    // 4. Fallback mặc định theo công thức Back-End (Base = 90k)
     const basePrice = Number(selectedShowtime?.price) || 90000
-    if (seatType === 'VIP') return basePrice + 20000
-    if (seatType === 'COUPLE') return basePrice * 2 + 10000
+    if (seatType === 'VIP') return basePrice + 20000       // 90k + 20k = 110k (hoặc theo cấu hình)
+    if (seatType === 'COUPLE') return basePrice * 2 + 10000 // 90k * 2 + 10k = 190k
 
     return basePrice
   }
@@ -551,9 +566,9 @@ export default function StaffTicketingPage() {
     setSelectedShowtime(null)
     setSelectedSeats([])
     const initQty = {}
-    combos.forEach(c => { 
+    combos.forEach(c => {
       const comboId = c.id || c.uuid
-      initQty[comboId] = 0 
+      initQty[comboId] = 0
     })
     setSelectedCombos(initQty)
     setMemberQuery('')
@@ -992,7 +1007,7 @@ export default function StaffTicketingPage() {
             {/* STEP 3: CONCESSIONS, MEMBER & PROMOTION IN ONE UNIFIED CARD */}
             {currentStep === 3 && (
               <div key="step3" className="bg-[#0a0b0e] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-8 text-left">
-                
+
                 {/* 1. CHỌN BẮP & NƯỚC */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-black text-white uppercase tracking-wider font-mono flex items-center gap-2">
@@ -1035,7 +1050,7 @@ export default function StaffTicketingPage() {
                               <div className="space-y-1 text-left flex-1 min-w-0">
                                 <h4 className="text-base font-bold text-white tracking-wide truncate">{item.name}</h4>
                                 <p className="text-xs text-slate-400 line-clamp-1">{item.desc || item.description}</p>
-                                
+
                                 {item.sizes && item.sizes.length > 0 && (
                                   <div className="flex items-center gap-2 pt-1.5 flex-wrap">
                                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SIZE:</span>
@@ -1049,7 +1064,7 @@ export default function StaffTicketingPage() {
                                           className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${isSelectedSize
                                             ? 'bg-red-600 border-red-500 text-white shadow-md'
                                             : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                                          }`}
+                                            }`}
                                         >
                                           {sz.label} ({formatVND(sz.price)})
                                         </button>
@@ -1100,7 +1115,7 @@ export default function StaffTicketingPage() {
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${promoTab === 'coupon'
                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]'
                         : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       <Tag size={14} />
                       MÃ COUPON
@@ -1111,7 +1126,7 @@ export default function StaffTicketingPage() {
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${promoTab === 'points'
                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]'
                         : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                      }`}
+                        }`}
                     >
                       <Star size={14} />
                       ĐỔI ĐIỂM HỘI VIÊN
@@ -1312,11 +1327,10 @@ export default function StaffTicketingPage() {
                               setPaymentMethod(method.id)
                               if (method.id !== 'cash') setCashReceived('')
                             }}
-                            className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
-                              isSelected
+                            className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${isSelected
                                 ? 'bg-red-600/20 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.35)]'
                                 : 'bg-[#121620] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
-                            }`}
+                              }`}
                           >
                             <Icon size={20} className={isSelected ? 'text-red-500' : 'text-slate-400'} />
                             <span className="text-[11px] font-black font-mono tracking-wider">{method.label}</span>
