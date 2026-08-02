@@ -17,6 +17,11 @@ export const promotionService = {
   toggleStatus: (id) => api.patch(`/api/v1/admin/promotions/${id}/toggle`),
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
 
+  // === Points Redemption ===
+  getPointsOptions: () => api.get('/api/v1/promotions/points/options'),
+  getMyPoints: () => api.get('/api/v1/promotions/points/my'),
+  redeemPoints: (customerId, promotionId) => api.post('/api/v1/promotions/points/redeem', { customerId, promotionId }),
+
   /**
    * User pages: load active promotions, mapped for UI.
    * Falls back to empty list (no mock fake discounts).
@@ -127,6 +132,20 @@ export const PROMOTION_TYPES = {
   POINTS: 'POINTS',
 }
 
+export const REDEMPTION_TYPES = {
+  MONEY_FIXED: 'MONEY_FIXED',
+  MONEY_PERCENT: 'MONEY_PERCENT',
+  PRODUCT: 'PRODUCT',
+  COMBO: 'COMBO',
+}
+
+export const REDEMPTION_TYPE_LABELS = {
+  MONEY_FIXED: 'Giảm tiền mặt',
+  MONEY_PERCENT: 'Giảm %',
+  PRODUCT: 'Đổi sản phẩm',
+  COMBO: 'Đổi combo',
+}
+
 export const PROMOTION_TYPE_LABELS = {
   COUPON: 'Voucher (nhập mã)',
   CAMPAIGN: 'Tự động áp dụng (Campaign)',
@@ -143,21 +162,24 @@ export const DISCOUNT_TYPE_LABELS = {
   FIXED_AMOUNT: 'Giảm tiền mặt (VNĐ)',
 }
 
-/** Backend PromotionStatus enum: ACTIVE / EXPIRED / DISABLED */
+/** Backend PromotionStatus enum: ACTIVE / EXPIRED / DISABLED / UPCOMING (derived) */
 export const PROMOTION_STATUS = {
   ACTIVE: 'ACTIVE',
+  UPCOMING: 'UPCOMING',
   EXPIRED: 'EXPIRED',
   DISABLED: 'DISABLED',
 }
 
 export const PROMOTION_STATUS_LABELS = {
   ACTIVE: 'Đang hoạt động',
+  UPCOMING: 'Sắp diễn ra',
   EXPIRED: 'Đã hết hạn',
   DISABLED: 'Đã bị vô hiệu hóa',
 }
 
 export const PROMOTION_STATUS_COLORS = {
   ACTIVE: 'bg-emerald-500 text-white border-emerald-300 shadow-sm shadow-emerald-500/30',
+  UPCOMING: 'bg-yellow-500 text-white border-yellow-300 shadow-sm shadow-yellow-500/30',
   EXPIRED: 'bg-red-500 text-white border-red-300 shadow-sm shadow-red-500/30',
   DISABLED: 'bg-amber-500 text-white border-amber-300 shadow-sm shadow-amber-500/30',
 }
@@ -166,10 +188,20 @@ export const PROMOTION_STATUS_COLORS = {
  * Helper: Tính trạng thái hiệu lực từ data (nếu backend chưa trả về field status)
  */
 export function computePromotionStatus(promo) {
-  if (promo?.status) return promo.status
+  // DISABLED / EXPIRED từ backend luôn ưu tiên
+  if (promo?.status === PROMOTION_STATUS.DISABLED) return PROMOTION_STATUS.DISABLED
+  if (promo?.status === PROMOTION_STATUS.EXPIRED) return PROMOTION_STATUS.EXPIRED
+
   const now = new Date()
+  const start = promo?.startTime ? new Date(promo.startTime) : null
   const end = promo?.endTime ? new Date(promo.endTime) : null
+
+  // UPCOMING: chưa tới startTime
+  if (start && now < start) return PROMOTION_STATUS.UPCOMING
+
+  // EXPIRED: đã qua endTime
   if (end && end < now) return PROMOTION_STATUS.EXPIRED
+
   // Backend v2: maxTotalUsage + currentTotalUsage
   const max = promo?.maxTotalUsage
   const used = promo?.currentTotalUsage ?? promo?.usedCount ?? 0
@@ -227,6 +259,22 @@ export function getDaysRemaining(endTime) {
   const end = new Date(endTime)
   const now = new Date()
   const diffMs = end - now
+  if (diffMs <= 0) return 0
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * Helper: Tính số ngày còn lại cho đến khi bắt đầu (countdown tới startTime)
+ * Trả về:
+ *   - null nếu không có startTime
+ *   - 0 nếu đã qua startTime (now >= startTime)
+ *   - số ngày > 0 nếu chưa tới
+ */
+export function getDaysUntilStart(startTime) {
+  if (!startTime) return null
+  const start = new Date(startTime)
+  const now = new Date()
+  const diffMs = start - now
   if (diffMs <= 0) return 0
   return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
 }

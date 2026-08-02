@@ -262,6 +262,8 @@ export default function MovieDetailPage() {
   const [dbCombos, setDbCombos] = useState([])
   const [promoCode, setPromoCode] = useState('')
   const [discount, setDiscount] = useState(0)
+  const [pointsDiscount, setPointsDiscount] = useState(0)
+  const [pointsRedemption, setPointsRedemption] = useState(null)
 
   // Sync state with query parameters — nếu khách vãng lai từ /showtimes, chặn bước ghế và yêu cầu đăng nhập
   const [handledGuestQuery, setHandledGuestQuery] = useState(false)
@@ -579,18 +581,30 @@ export default function MovieDetailPage() {
   }, 0)
 
   const discountAmount = useMemo(() => {
-    if (discount <= 0) return 0
-    if (discount < 1) {
-      return Math.round((ticketPrice + comboPrice) * discount)
+    // Handle coupon discount (can be percentage < 1 or fixed amount >= 1)
+    let couponDiscount = 0
+    if (discount > 0) {
+      if (discount < 1) {
+        couponDiscount = Math.round((ticketPrice + comboPrice) * discount)
+      } else {
+        couponDiscount = discount
+      }
     }
-    return discount
-  }, [discount, ticketPrice, comboPrice])
+    // Add points discount
+    const totalDiscount = couponDiscount + pointsDiscount
+    return Math.min(totalDiscount, ticketPrice + comboPrice)
+  }, [discount, ticketPrice, comboPrice, pointsDiscount])
 
   const finalPrice = Math.max(0, ticketPrice + comboPrice - discountAmount)
 
   const onApplyPromo = (code, val) => {
     setPromoCode(code)
     setDiscount(val)
+  }
+
+  const onApplyPoints = (promotionId, discountAmount, data) => {
+    setPointsDiscount(discountAmount)
+    setPointsRedemption(data)
   }
 
   const onChangeCombo = (id, change) => {
@@ -1054,6 +1068,9 @@ export default function MovieDetailPage() {
                     onApplyPromo={onApplyPromo}
                     setBookingStep={setBookingStep}
                     orderAmount={ticketPrice + comboPrice}
+                    userId={user?.id}
+                    onApplyPoints={onApplyPoints}
+                    pointsDiscount={pointsDiscount}
                   />
                 )}
                 {bookingStep === 4 && (

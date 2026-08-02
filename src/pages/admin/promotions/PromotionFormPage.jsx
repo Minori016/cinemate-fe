@@ -8,8 +8,11 @@ import {
   DISCOUNT_TYPE_LABELS,
   PROMOTION_STATUS,
   PROMOTION_STATUS_LABELS,
+  REDEMPTION_TYPES,
+  REDEMPTION_TYPE_LABELS,
   formatDiscountValue,
 } from '../../../services/promotionService'
+import api from '../../../services/api'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
 import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power } from 'lucide-react'
@@ -44,6 +47,15 @@ export default function PromotionFormPage() {
   const [errors, setErrors] = useState({})
   const [todayStart, setTodayStart] = useState('')
 
+  // POINTS-specific state
+  const [redemptionType, setRedemptionType] = useState(REDEMPTION_TYPES.MONEY_FIXED)
+  const [minLoyaltyPoints, setMinLoyaltyPoints] = useState('')
+  const [pointsDiscountValue, setPointsDiscountValue] = useState('')
+  const [pointsDiscountPercent, setPointsDiscountPercent] = useState('')
+  const [itemUuid, setItemUuid] = useState('')
+  const [concessionOptions, setConcessionOptions] = useState([])
+  const [loadingItems, setLoadingItems] = useState(false)
+
   // Format currency input (add dot separator every 3 digits)
   const formatCurrencyInput = (value) => {
     if (!value) return ''
@@ -65,7 +77,8 @@ export default function PromotionFormPage() {
   }, [])
 
   const isCoupon = type === PROMOTION_TYPES.COUPON
-  const isTypeUnsupported = type !== PROMOTION_TYPES.COUPON
+  const isPoints = type === PROMOTION_TYPES.POINTS
+  const isTypeUnsupported = type === PROMOTION_TYPES.CAMPAIGN
 
   // Auto generate voucher code from promotion title
   const generateVoucherCodeFromTitle = (titleStr, dVal = discountValue, dType = discountType) => {
@@ -153,6 +166,17 @@ export default function PromotionFormPage() {
             setMaxPerUser(promo.maxPerUser ?? '1')
             setImageUrl(promo.imageUrl || '')
             setStatus(promo.status || PROMOTION_STATUS.ACTIVE)
+
+            // Load POINTS-specific fields if applicable
+            const promoType = promo.promotionType || promo.type
+            if (promoType === PROMOTION_TYPES.POINTS) {
+              const points = promo.points || promo
+              setRedemptionType(points.redemptionType || REDEMPTION_TYPES.MONEY_FIXED)
+              setMinLoyaltyPoints(points.requiredPoints ?? points.minLoyaltyPoints ?? '')
+              setPointsDiscountValue(points.discountValue ?? '')
+              setPointsDiscountPercent(points.discountPercent ?? '')
+              setItemUuid(points.itemUuid ?? '')
+            }
           }
         })
         .catch(err => {
@@ -161,6 +185,20 @@ export default function PromotionFormPage() {
         })
     }
   }, [id, isEdit])
+
+  // Load item options for POINTS redemption (PRODUCT/COMBO)
+  useEffect(() => {
+    if (type !== PROMOTION_TYPES.POINTS) return
+
+    setLoadingItems(true)
+    api.get('/api/v1/concessions/all')
+      .then(res => {
+        const list = res.data?.result || []
+        setConcessionOptions(Array.isArray(list) ? list : [])
+      })
+      .catch(err => console.error('Load concessions failed:', err))
+      .finally(() => setLoadingItems(false))
+  }, [type])
 
   const toDatetimeLocal = (isoString) => {
     if (!isoString) return ''
@@ -221,6 +259,29 @@ export default function PromotionFormPage() {
       }
     }
 
+    if (isPoints) {
+      if (!minLoyaltyPoints || isNaN(Number(minLoyaltyPoints)) || Number(minLoyaltyPoints) < 1) {
+        newErrors.minLoyaltyPoints = 'Số điểm đổi phải >= 1.'
+      }
+      if (!redemptionType) {
+        newErrors.redemptionType = 'Chọn loại phần thưởng.'
+      }
+      if (redemptionType === REDEMPTION_TYPES.MONEY_FIXED) {
+        if (!pointsDiscountValue || isNaN(Number(pointsDiscountValue)) || Number(pointsDiscountValue) <= 0) {
+          newErrors.pointsDiscountValue = 'Giá trị tiền phải > 0.'
+        }
+      } else if (redemptionType === REDEMPTION_TYPES.MONEY_PERCENT) {
+        const pct = Number(pointsDiscountPercent)
+        if (!pointsDiscountPercent || isNaN(pct) || pct <= 0 || pct > 100) {
+          newErrors.pointsDiscountPercent = 'Phần trăm phải từ 1 đến 100.'
+        }
+      } else if (redemptionType === REDEMPTION_TYPES.PRODUCT || redemptionType === REDEMPTION_TYPES.COMBO) {
+        if (!itemUuid) {
+          newErrors.itemUuid = 'Vui lòng chọn sản phẩm/combo.'
+        }
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -251,6 +312,23 @@ export default function PromotionFormPage() {
       }
       payload.maxTotalUsage = maxTotalUsage === '' ? null : Number(maxTotalUsage)
       payload.maxPerUser = maxPerUser === '' ? 1 : Number(maxPerUser)
+    }
+
+    if (isPoints) {
+      payload.minLoyaltyPoints = Number(minLoyaltyPoints)
+      payload.redemptionType = redemptionType
+      // POINTS không gửi maxTotalUsage / maxPerUser (entity dùng default Integer.MAX_VALUE)
+      if (redemptionType === REDEMPTION_TYPES.MONEY_FIXED) {
+        payload.discountValue = Number(pointsDiscountValue)
+        payload.discountPercent = null
+      } else if (redemptionType === REDEMPTION_TYPES.MONEY_PERCENT) {
+        payload.discountPercent = Number(pointsDiscountPercent)
+        payload.discountValue = null
+      } else if (redemptionType === REDEMPTION_TYPES.PRODUCT || redemptionType === REDEMPTION_TYPES.COMBO) {
+        payload.itemUuid = itemUuid
+        payload.discountValue = null
+        payload.discountPercent = null
+      }
     }
 
     return payload
@@ -485,6 +563,103 @@ export default function PromotionFormPage() {
                 }
               </div>
             </div>
+
+            {isPoints && (
+              <div className="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="text-amber-500" size={18} />
+                  <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
+                    Cấu hình đổi điểm
+                  </h4>
+                </div>
+
+                {/* Số điểm cần */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)]">Số điểm cần để đổi</label>
+                  <input
+                    type="number" min="1"
+                    value={minLoyaltyPoints}
+                    onChange={(e) => setMinLoyaltyPoints(e.target.value)}
+                    placeholder="VD: 100"
+                    className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.minLoyaltyPoints ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                  />
+                  {errors.minLoyaltyPoints && <span className="text-xs text-red-400 mt-1">{errors.minLoyaltyPoints}</span>}
+                </div>
+
+                {/* Loại phần thưởng */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)]">Loại phần thưởng</label>
+                  <select
+                    value={redemptionType}
+                    onChange={(e) => { setRedemptionType(e.target.value); setItemUuid('') }}
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                  >
+                    {Object.entries(REDEMPTION_TYPE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Conditional fields theo redemptionType */}
+                {redemptionType === REDEMPTION_TYPES.MONEY_FIXED && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)]">Số tiền giảm (VNĐ)</label>
+                    <input
+                      type="number" min="1"
+                      value={pointsDiscountValue}
+                      onChange={(e) => setPointsDiscountValue(e.target.value)}
+                      placeholder="50000"
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.pointsDiscountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                    />
+                    {errors.pointsDiscountValue && <span className="text-xs text-red-400 mt-1">{errors.pointsDiscountValue}</span>}
+                  </div>
+                )}
+
+                {redemptionType === REDEMPTION_TYPES.MONEY_PERCENT && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)]">Phần trăm giảm (%)</label>
+                    <input
+                      type="number" min="1" max="100"
+                      value={pointsDiscountPercent}
+                      onChange={(e) => setPointsDiscountPercent(e.target.value)}
+                      placeholder="10"
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.pointsDiscountPercent ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                    />
+                    {errors.pointsDiscountPercent && <span className="text-xs text-red-400 mt-1">{errors.pointsDiscountPercent}</span>}
+                  </div>
+                )}
+
+                {(redemptionType === REDEMPTION_TYPES.PRODUCT || redemptionType === REDEMPTION_TYPES.COMBO) && (
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)]">
+                      Chọn {redemptionType === REDEMPTION_TYPES.PRODUCT ? 'sản phẩm' : 'combo'}
+                    </label>
+                    <select
+                      value={itemUuid}
+                      onChange={(e) => setItemUuid(e.target.value)}
+                      disabled={loadingItems}
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer disabled:opacity-50 ${errors.itemUuid ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                    >
+                      <option value="">
+                        {loadingItems ? 'Đang tải...' : `-- Chọn ${redemptionType === REDEMPTION_TYPES.PRODUCT ? 'sản phẩm' : 'combo'} --`}
+                      </option>
+                      {concessionOptions
+                        .filter(item => redemptionType === REDEMPTION_TYPES.COMBO
+                          ? item.itemType === 'combo'
+                          : ['food', 'drink', 'popcorn'].includes(item.itemType))
+                        .map(item => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}{item.size ? ` (${item.size})` : ''}
+                          </option>
+                        ))}
+                    </select>
+                    {errors.itemUuid && <span className="text-xs text-red-400 mt-1">{errors.itemUuid}</span>}
+                  </div>
+                )}
+
+                {/* POINTS không giới hạn lượt đổi - user đủ điểm là đổi được */}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1 w-full text-left">
