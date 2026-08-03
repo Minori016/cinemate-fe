@@ -1,0 +1,1215 @@
+﻿import { useState, useEffect, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
+import {
+  LayoutGrid, Ticket, ShoppingBag, CheckCircle,
+  AlertCircle, X, Search, CreditCard, QrCode,
+  Coins, User, Printer, RotateCcw, ChevronRight,
+  ChevronLeft, Armchair, Square, Sofa, Wrench, ShieldAlert
+} from 'lucide-react'
+import { movieService } from '../../../services/movieService'
+import { showtimeService } from '../../../services/showtimeService'
+import { concessionService, FALLBACK_COMBOS } from '../../../services/concessionService'
+import { bookingService } from '../../../services/bookingService'
+
+// Mock Members Database for checking (consistent with CounterCheckoutPage.jsx)
+const MOCK_MEMBERS = [
+  { memberId: 'MEM-889922', idCard: '012345678901', fullName: 'Nguyß╗àn V─ân Anh', phone: '0912345678', score: 1500 },
+  { memberId: 'MEM-445511', idCard: '023456789012', fullName: 'Trß║ºn Thß╗ï B├¼nh', phone: '0987654321', score: 3500 },
+  { memberId: 'MEM-332211', idCard: '034567890123', fullName: 'L├¬ V─ân C╞░ß╗¥ng', phone: '0933445566', score: 500 }
+]
+
+export default function StaffTicketingPage() {
+  const [currentStep, setCurrentStep] = useState(1)
+  const [movies, setMovies] = useState([])
+  const [showtimes, setShowtimes] = useState([])
+  const [combos, setCombos] = useState(FALLBACK_COMBOS)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  // Selected values
+  const [selectedMovie, setSelectedMovie] = useState(null)
+  const [selectedShowtime, setSelectedShowtime] = useState(null)
+  const [selectedSeats, setSelectedSeats] = useState([])
+  const [selectedCombos, setSelectedCombos] = useState({})
+
+  // Member states
+  const [memberQuery, setMemberQuery] = useState('')
+  const [checkedMember, setCheckedMember] = useState(false)
+  const [foundMember, setFoundMember] = useState(null)
+  const [convertCount, setConvertCount] = useState(0)
+  const [scoreError, setScoreError] = useState('')
+
+  // Checkout states
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [cashReceived, setCashReceived] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [printedTicket, setPrintedTicket] = useState(null)
+
+  // Fetch movies and showtimes on load
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const todayStr = new Date().toISOString().split('T')[0]
+        const [moviesRes, showtimesRes] = await Promise.all([
+          movieService.getAll({ status: 'now-showing', page: 0, size: 50 }),
+          showtimeService.getAll({ startDate: todayStr })
+        ])
+
+        const rawMovies = moviesRes.data?.result?.content || moviesRes.data?.result || moviesRes.data || []
+        const moviesList = Array.isArray(rawMovies) ? rawMovies : (Array.isArray(rawMovies?.content) ? rawMovies.content : [])
+        setMovies(moviesList)
+
+        let showtimesList = showtimesRes
+        if (!Array.isArray(showtimesList)) {
+          showtimesList = showtimesRes?.result || showtimesRes?.data || []
+        }
+        if (!Array.isArray(showtimesList)) {
+          showtimesList = []
+        }
+        setShowtimes(showtimesList)
+      } catch (err) {
+        console.error('API offline, loading mock data', err)
+        // Mock fallback movies matching scraped_movies.json seed
+        setMovies([
+          { id: '1', titleVn: 'COLONY: Bß║ªY X├üC Sß╗ÉNG', titleEn: 'Colony', rating: 'K', durationMinutes: 122, posterUrl: 'https://iguov8nhvyobj.vcdn.cloud/media/catalog/product/cache/1/image/c5f0a1eff4c394a251036189ccddaacd/3/5/350x495-colony.jpg' },
+          { id: '2', titleVn: 'Lß║¼T Mß║╢T 7: Mß╗ÿT ─ÉIß╗ÇU ╞»ß╗ÜC', titleEn: 'Face Off 7', rating: 'K', durationMinutes: 138, posterUrl: 'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?w=500' },
+          { id: '3', titleVn: 'Doraemon: Nobita v├á L├óu ─É├ái D╞░ß╗¢i ─É├íy Biß╗ân', titleEn: 'Doraemon', rating: 'P', durationMinutes: 101, posterUrl: 'https://iguov8nhvyobj.vcdn.cloud/media/catalog/product/cache/1/image/c5f0a1eff4c394a251036189ccddaacd/p/o/poster_doraemon_movie_2026_g_c.jpg' },
+          { id: '4', titleVn: 'T├èN Cß║¼U L├Ç G├î.', titleEn: 'Your Name', rating: 'T13', durationMinutes: 107, posterUrl: 'https://iguov8nhvyobj.vcdn.cloud/media/catalog/product/cache/1/image/c5f0a1eff4c394a251036189ccddaacd/y/o/your_name_localized_adaptation_social_470_x_700.jpg' }
+        ])
+        setShowtimes([
+          { id: 101, movie: 'COLONY: Bß║ªY X├üC Sß╗ÉNG', room: 'Ph├▓ng chiß║┐u 3 (IMAX)', date: 'H├┤m nay', time: '18:30', price: 120000 },
+          { id: 102, movie: 'COLONY: Bß║ªY X├üC Sß╗ÉNG', room: 'Ph├▓ng chiß║┐u 1 (Standard)', date: 'H├┤m nay', time: '20:15', price: 90000 },
+          { id: 103, movie: 'Lß║¼T Mß║╢T 7: Mß╗ÿT ─ÉIß╗ÇU ╞»ß╗ÜC', room: 'Ph├▓ng chiß║┐u 1 (Standard)', date: 'H├┤m nay', time: '17:00', price: 110000 },
+          { id: 104, movie: 'T├èN Cß║¼U L├Ç G├î.', room: 'Ph├▓ng chiß║┐u 3 (IMAX)', date: 'H├┤m nay', time: '19:30', price: 120000 }
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // Tß║úi combo tß╗½ backend, fallback vß╗ü FALLBACK_COMBOS nß║┐u API lß╗ùi/rß╗ùng
+  useEffect(() => {
+    let cancelled = false
+    concessionService.getActiveForUi({ fallback: true })
+      .then(list => {
+        if (cancelled) return
+        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        setCombos(mapped)
+        const initQty = {}
+        mapped.forEach(c => { initQty[c.id] = 0 })
+        setSelectedCombos(initQty)
+      })
+    return () => { cancelled = true }
+  }, [])
+
+  // Filter showtimes for selected movie
+  const availableShowtimes = useMemo(() => {
+    if (!selectedMovie || !Array.isArray(showtimes)) return []
+    const mTitle = selectedMovie.titleVn || selectedMovie.title || ''
+    return showtimes.filter(s => {
+      const matchTitle = s.movie && mTitle && s.movie.toUpperCase() === mTitle.toUpperCase()
+      const matchId = String(s.movieId) === String(selectedMovie.id)
+      return matchTitle || matchId
+    })
+  }, [selectedMovie, showtimes])
+
+  // Custom Seeded Occupied seats (Deterministic for same showtime)
+  const occupiedSeats = useMemo(() => {
+    if (!selectedShowtime) return []
+    const id = Number(selectedShowtime.id) || 100
+    const occupied = []
+    const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 1; c <= 12; c++) {
+        const hash = (r * 7 + c * 13 + id * 19) % 100
+        if (hash < 30) { // 30% occupancy
+          occupied.push(`${rows[r]}${c}`)
+        }
+      }
+    }
+    return occupied
+  }, [selectedShowtime])
+
+  // Maintenance seats simulation (Deterministic for same showtime)
+  const maintenanceSeats = useMemo(() => {
+    if (!selectedShowtime) return []
+    const id = Number(selectedShowtime.id) || 100
+    const maintenance = []
+    const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+    for (let r = 0; r < rows.length; r++) {
+      for (let c = 1; c <= 12; c++) {
+        const hash = (r * 11 + c * 17 + id * 23) % 100
+        if (hash === 99) { // 1% maintenance
+          maintenance.push(`${rows[r]}${c}`)
+        }
+      }
+    }
+    return maintenance
+  }, [selectedShowtime])
+
+  // Seating grid configuration
+  const SEAT_ROWS = [
+    { row: 'A', type: 'STANDARD', price: 90000 },
+    { row: 'B', type: 'STANDARD', price: 90000 },
+    { row: 'C', type: 'STANDARD', price: 90000 },
+    { row: 'D', type: 'VIP', price: 110000 },
+    { row: 'E', type: 'VIP', price: 110000 },
+    { row: 'F', type: 'VIP', price: 110000 },
+    { row: 'G', type: 'COUPLE', price: 130000 },
+    { row: 'H', type: 'COUPLE', price: 130000 },
+  ]
+
+  const getSeatPrice = (seatId) => {
+    const rowChar = seatId.charAt(0)
+    const match = SEAT_ROWS.find(r => r.row === rowChar)
+    if (selectedShowtime && selectedShowtime.room?.includes('IMAX')) {
+      return match ? match.price + 30000 : 120000 // IMAX premium upcharge
+    }
+    return match ? match.price : 90000
+  }
+
+  const handleSeatClick = (seatId) => {
+    if (occupiedSeats.includes(seatId) || maintenanceSeats.includes(seatId)) return
+    setSelectedSeats(prev =>
+      prev.includes(seatId) ? prev.filter(id => id !== seatId) : [...prev, seatId]
+    )
+  }
+
+  const handleComboQty = (comboId, delta) => {
+    setSelectedCombos(prev => ({
+      ...prev,
+      [comboId]: Math.max(0, prev[comboId] + delta)
+    }))
+  }
+
+  // Member check logic
+  const handleCheckMember = (e) => {
+    if (e) e.preventDefault()
+    if (!memberQuery.trim()) return
+
+    const trimmed = memberQuery.trim().toUpperCase()
+    const member = MOCK_MEMBERS.find(
+      m => m.memberId.toUpperCase() === trimmed || m.phone === trimmed || m.idCard === trimmed
+    )
+
+    setCheckedMember(true)
+    setConvertCount(0)
+    setScoreError('')
+
+    if (member) {
+      setFoundMember(member)
+    } else {
+      setFoundMember(null)
+    }
+  }
+
+  // Member score validation
+  useEffect(() => {
+    if (!foundMember || convertCount === 0) {
+      setScoreError('')
+      return
+    }
+
+    const requiredScore = convertCount * 1000
+    if (foundMember.score < requiredScore) {
+      setScoreError('─Éiß╗âm t├¡ch l┼⌐y kh├┤ng ─æß╗º ─æß╗â thß╗▒c hiß╗çn ─æß╗òi v├⌐')
+    } else {
+      setScoreError('')
+    }
+  }, [convertCount, foundMember])
+
+  // Calculation summaries
+  const ticketPriceTotal = useMemo(() => {
+    return selectedSeats.reduce((sum, seat) => sum + getSeatPrice(seat), 0)
+  }, [selectedSeats, selectedShowtime])
+
+  const comboPriceTotal = useMemo(() => {
+    return Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
+      const combo = combos.find(c => String(c.id) === String(id) || String(c.uuid) === String(id))
+      return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
+    }, 0)
+  }, [selectedCombos, combos])
+
+  const singleTicketPrice = selectedSeats.length > 0 ? (ticketPriceTotal / selectedSeats.length) : 0
+  const discountTotal = convertCount * singleTicketPrice
+  const finalPriceTotal = Math.max(0, ticketPriceTotal - discountTotal) + comboPriceTotal
+
+  const changeReturn = useMemo(() => {
+    if (!cashReceived || isNaN(cashReceived)) return 0
+    return Math.max(0, parseInt(cashReceived, 10) - finalPriceTotal)
+  }, [cashReceived, finalPriceTotal])
+
+  // Formats currency in VND
+  const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
+
+  // Checkout process simulation
+  const handleCheckout = async () => {
+    if (paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived, 10) < finalPriceTotal)) {
+      setError('Sß╗æ tiß╗ün kh├ích ─æ╞░a ch╞░a ─æß╗º ─æß╗â thanh to├ín.')
+      return
+    }
+    setError('')
+    setIsSubmitting(true)
+
+    try {
+      // 1. Hold seats
+      const holdRes = await bookingService.holdSeats({
+        showtimeId: selectedShowtime.id,
+        seatIds: selectedSeats,
+        concessions: Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([id, qty]) => ({ concessionId: id, quantity: qty }))
+      })
+      const bookingData = holdRes.data?.result || holdRes.data
+      const backendBookingId = bookingData.bookingId
+
+      // 2. Confirm booking immediately (POS flow)
+      await bookingService.confirm(backendBookingId)
+
+      // 3. Prepare payload for local display
+      const payload = {
+        id: backendBookingId,
+        movie: selectedMovie.titleVn || selectedMovie.title,
+        screen: selectedShowtime.room,
+        date: selectedShowtime.date === 'H├┤m nay' ? new Date().toLocaleDateString('vi-VN') : selectedShowtime.date,
+        time: selectedShowtime.time,
+        seats: selectedSeats.join(', '),
+        price: singleTicketPrice,
+        total: finalPriceTotal,
+        convertTickets: convertCount,
+        scoreUsed: convertCount * 1000,
+        memberId: foundMember ? foundMember.memberId : 'GUEST',
+        customerName: foundMember ? foundMember.fullName : 'Kh├ích v├úng lai',
+        phone: foundMember ? foundMember.phone : 'N/A',
+        email: foundMember ? `${foundMember.memberId.toLowerCase()}@cinemate.vn` : 'counter@cinemate.vn',
+        idCard: foundMember ? foundMember.idCard : 'N/A',
+        status: '─É├ú thanh to├ín',
+        checkedIn: false,
+        checkInTime: null,
+        paymentMethod: paymentMethod === 'cash' ? 'Tiß╗ün mß║╖t' : paymentMethod === 'card' ? 'Thß║╗ ng├ón h├áng' : 'Qu├⌐t m├ú QR',
+        combosSummary: Object.entries(selectedCombos)
+          .filter(([_, qty]) => qty > 0)
+          .map(([id, qty]) => {
+            const c = combos.find(combo => String(combo.id) === String(id))
+            return c ? `${c.name} (x${qty})` : `(x${qty})`
+          }).join(', ')
+      }
+
+      const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
+      localStorage.setItem('staff_bookings_db', JSON.stringify([payload, ...localBookings]))
+
+      // Trigger printed ticket modal view
+      setPrintedTicket(payload)
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.message || 'Ghß║┐ ─æ├ú c├│ ng╞░ß╗¥i ─æß║╖t hoß║╖c c├│ lß╗ùi xß║úy ra trong qu├í tr├¼nh xuß║Ñt v├⌐.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Reset page states for next sale
+  const handleReset = () => {
+    setCurrentStep(1)
+    setSelectedMovie(null)
+    setSelectedShowtime(null)
+    setSelectedSeats([])
+    const initQty = {}
+    combos.forEach(c => { initQty[c.id] = 0 })
+    setSelectedCombos(initQty)
+    setMemberQuery('')
+    setCheckedMember(false)
+    setFoundMember(null)
+    setConvertCount(0)
+    setScoreError('')
+    setPaymentMethod('cash')
+    setCashReceived('')
+    setPrintedTicket(null)
+    setError('')
+  }
+
+  return (
+    <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
+
+      {/* Page Header */}
+      <div className="flex justify-between items-center pb-4 border-b border-[var(--color-border)]">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight uppercase text-white" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            B├ín v├⌐ tß║íi quß║ºy (POS)
+          </h2>
+          <p className="text-sm text-[var(--color-text-muted)] mt-1">
+            Giao diß╗çn xuß║Ñt v├⌐ v├á thanh to├ín nhanh d├ánh cho nh├ón vi├¬n b├ín v├⌐ tß║íi rß║íp.
+          </p>
+        </div>
+
+        {selectedMovie && (
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer"
+          >
+            <RotateCcw size={14} />
+            <span>Tß║ío giao dß╗ïch mß╗¢i</span>
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        {/* LEFT WORKFLOW: Steps 1-4 */}
+        <div className="lg:col-span-8 space-y-6">
+
+          {/* Stepper Navigation bar */}
+          <div className="flex justify-between items-center bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-4 shadow-xl select-none">
+            {[
+              { step: 1, label: 'Phim & Suß║Ñt' },
+              { step: 2, label: 'Chß╗ìn Ghß║┐' },
+              { step: 3, label: 'Bß║»p N╞░ß╗¢c & Th├ánh Vi├¬n' },
+              { step: 4, label: 'Thanh To├ín' }
+            ].map((s, idx) => (
+              <div key={s.step} className="flex items-center flex-1 last:flex-initial">
+                <button
+                  disabled={currentStep < s.step && (!selectedMovie || (s.step === 3 && selectedSeats.length === 0))}
+                  onClick={() => setCurrentStep(s.step)}
+                  className={`flex items-center gap-2 cursor-pointer border-none bg-transparent transition-all outline-none disabled:opacity-30 disabled:cursor-not-allowed`}
+                >
+                  <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all border-2
+                    ${currentStep === s.step
+                      ? 'border-[var(--color-primary)] text-[var(--color-primary)] bg-transparent shadow-[0_0_8px_rgba(229,9,20,0.15)]'
+                      : currentStep > s.step
+                        ? 'border-green-500 text-green-500 bg-transparent'
+                        : 'border-slate-700 text-slate-500 bg-transparent'}`}
+                  >
+                    {currentStep > s.step ? 'Γ£ô' : s.step}
+                  </span>
+                  <span className={`text-xs font-bold whitespace-nowrap ${currentStep === s.step ? 'text-white' : 'text-slate-500'}`}>
+                    {s.label}
+                  </span>
+                </button>
+                {idx < 3 && (
+                  <div className="h-px flex-1 mx-4 bg-slate-800" />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Step Contents */}
+          <AnimatePresence mode="wait">
+
+            {/* STEP 1: SELECT MOVIE & SHOWTIME */}
+            {currentStep === 1 && (
+              <motion.div
+                key="step1"
+                className="space-y-6"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+              >
+                {loading ? (
+                  <div className="py-20 text-center text-slate-500 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl">
+                    <span className="material-symbols-outlined animate-spin text-3xl text-red-500">progress_activity</span>
+                    <p className="text-xs mt-2">─Éang tß║úi danh s├ích phim...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {movies.map(movie => {
+                      const isSelected = selectedMovie && selectedMovie.id === movie.id
+                      const movieTitle = movie.titleVn || movie.title
+                      return (
+                        <div
+                          key={movie.id}
+                          className={`flex rounded-2xl bg-[var(--color-surface)] border transition-all duration-200 overflow-hidden shadow-xl hover:border-white/10
+                            ${isSelected ? 'border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]' : 'border-[var(--color-border)]'}`}
+                        >
+                          <div className="w-28 shrink-0 relative bg-black/40">
+                            <img
+                              src={movie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=300'}
+                              alt={movieTitle}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+
+                          <div className="flex-1 p-4 flex flex-col justify-between">
+                            <div className="space-y-1">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold text-white bg-red-650 inline-block uppercase">
+                                {movie.rating || 'P'}
+                              </span>
+                              <h4 className="text-sm font-bold text-white leading-snug line-clamp-2" title={movieTitle}>
+                                {movieTitle}
+                              </h4>
+                              <p className="text-[11px] text-[var(--color-text-muted)] font-medium">
+                                {movie.durationMinutes || 120} ph├║t ΓÇó {movie.titleEn || 'N/A'}
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                setSelectedMovie(movie)
+                                setSelectedShowtime(null) // reset showtime on movie switch
+                              }}
+                              className={`w-fit mt-3 px-4 py-1.5 rounded-xl text-xs font-bold uppercase transition-all cursor-pointer border
+                                ${isSelected
+                                  ? 'bg-[var(--color-primary)] text-white border-transparent shadow-md'
+                                  : 'bg-transparent text-gray-400 hover:text-white border-white/10 hover:border-white/20'}`}
+                            >
+                              {isSelected ? '─Éang chß╗ìn' : 'Chß╗ìn phim'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Showtimes Selection panel */}
+                {selectedMovie && (
+                  <motion.div
+                    className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-left space-y-4"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                  >
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                      Suß║Ñt chiß║┐u khß║ú dß╗Ñng cho: {selectedMovie.titleVn || selectedMovie.title}
+                    </h3>
+
+                    {availableShowtimes.length === 0 ? (
+                      <div className="py-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+                        Kh├┤ng c├│ suß║Ñt chiß║┐u n├áo ─æ╞░ß╗úc l├¬n lß╗ïch cho phim n├áy trong ng├áy h├┤m nay.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {availableShowtimes.map(st => {
+                          const isStSelected = selectedShowtime && selectedShowtime.id === st.id
+                          return (
+                            <button
+                              key={st.id}
+                              onClick={() => {
+                                setSelectedShowtime(st)
+                                setSelectedSeats([]) // reset seats on showtime switch
+                                setCurrentStep(2) // proceed to step 2 automatically
+                              }}
+                              className={`p-3.5 rounded-xl text-left border cursor-pointer transition-all flex flex-col justify-between gap-1
+                                ${isStSelected
+                                  ? 'bg-red-600/10 border-[var(--color-primary)] text-red-400 shadow-sm'
+                                  : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-300 hover:text-white'
+                                }`}
+                            >
+                              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{st.room}</span>
+                              <span className="text-lg font-black font-mono leading-none mt-1">{st.time}</span>
+                              <span className="text-[10px] font-bold text-slate-400 mt-1">{formatVND(st.price)}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </motion.div>
+            )}
+
+            {/* STEP 2: SELECT SEAT LAYOUT */}
+            {currentStep === 2 && (
+              <motion.div
+                key="step2"
+                className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-center space-y-8"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+              >
+                <div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono text-left">
+                    S╞í ─æß╗ô ph├▓ng chiß║┐u: {selectedShowtime?.room} ({selectedShowtime?.time})
+                  </h3>
+                  <p className="text-xs text-[var(--color-text-muted)] text-left mt-0.5">Nhß║Ñp v├áo ghß║┐ trß╗æng ─æß╗â b├ín v├⌐.</p>
+                </div>
+
+                {/* Cinema Screen Curve */}
+                <div className="w-4/5 mx-auto h-8 relative flex flex-col items-center justify-start pointer-events-none mb-10 select-none">
+                  <div className="w-full h-8 rounded-[100%] border-t-2 border-red-500/30 bg-gradient-to-b from-red-500/10 to-transparent shadow-[0_12px_24px_rgba(229,9,20,0.06)]" />
+                  <p className="text-[9px] text-red-500/40 font-bold uppercase tracking-[0.25em] mt-2">M├ÇN H├îNH CH├ìNH (SCREEN)</p>
+                </div>
+
+                {/* Seating Grid map */}
+                <div className="overflow-x-auto pb-4 custom-scrollbar">
+                  <div className="inline-flex flex-col gap-2 relative px-8 py-6 rounded-3xl bg-black/30 border border-white/5 select-none">
+                    {SEAT_ROWS.map((rowConfig, rIndex) => (
+                      <div key={rowConfig.row} className="flex items-center gap-3">
+                        {/* Row letter left */}
+                        <span className="w-6 text-right font-black text-slate-500 text-[10px] font-mono pr-1.5">{rowConfig.row}</span>
+
+                        <div className="flex gap-2">
+                          {Array.from({ length: 12 }).map((_, colIndex) => {
+                            const seatId = `${rowConfig.row}${colIndex + 1}`
+                            const isOccupied = occupiedSeats.includes(seatId)
+                            const isMaintenance = maintenanceSeats.includes(seatId)
+                            const isSelected = selectedSeats.includes(seatId)
+
+                            let seatStyle = ''
+                            if (rowConfig.type === 'STANDARD') {
+                              seatStyle = 'border border-slate-700 bg-transparent text-slate-400 hover:bg-slate-800'
+                            } else if (rowConfig.type === 'VIP') {
+                              seatStyle = 'border border-blue-500/40 bg-transparent text-blue-500 hover:bg-blue-950/40'
+                            } else {
+                              seatStyle = 'border border-red-500/40 bg-transparent text-red-500 hover:bg-red-950/40'
+                            }
+
+                            if (isOccupied) {
+                              seatStyle = 'bg-slate-800 border-slate-900 text-slate-600 opacity-30 cursor-not-allowed'
+                            } else if (isMaintenance) {
+                              seatStyle = 'bg-amber-500/10 border-2 border-amber-500 text-amber-500 cursor-not-allowed'
+                            } else if (isSelected) {
+                              seatStyle = 'bg-[var(--color-primary)] border-transparent text-white shadow-[0_0_12px_rgba(229,9,20,0.35)] scale-105'
+                            }
+
+                            return (
+                              <button
+                                key={seatId}
+                                disabled={isOccupied || isMaintenance}
+                                onClick={() => handleSeatClick(seatId)}
+                                className={`w-8 h-8 rounded-t-lg rounded-b-md flex items-center justify-center text-[9px] font-black font-mono transition-all cursor-pointer
+                                  ${seatStyle}`}
+                              >
+                                {isMaintenance ? <Wrench size={10} /> : seatId}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        {/* Row letter right */}
+                        <span className="w-6 text-left font-black text-slate-500 text-[10px] font-mono pl-1.5">{rowConfig.row}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Seating Grid Legend */}
+                <div className="flex flex-wrap items-center justify-center gap-6 border-t border-white/5 pt-6 text-[11px] font-semibold text-slate-400">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-slate-950 border border-slate-700" />
+                    <span>Standard</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-blue-950/30 border border-blue-500/40" />
+                    <span>VIP</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-red-950/30 border border-red-500/40" />
+                    <span>Couple</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-[var(--color-primary)] shadow-md" />
+                    <span>─Éang chß╗ìn</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-slate-800 opacity-30 border border-slate-900" />
+                    <span>─É├ú b├ín</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-amber-500/10 border-2 border-amber-500 flex items-center justify-center text-amber-500">
+                      <Wrench size={9} />
+                    </div>
+                    <span>Bß║úo tr├¼</span>
+                  </div>
+                </div>
+
+                {/* Continue button */}
+                <div className="flex justify-end pt-4 border-t border-white/5">
+                  <button
+                    disabled={selectedSeats.length === 0}
+                    onClick={() => setCurrentStep(3)}
+                    className="flex items-center gap-1.5 px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs uppercase transition-all shadow-md cursor-pointer border-none"
+                  >
+                    <span>Tiß║┐p tß╗Ñc bß║»p n╞░ß╗¢c</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 3: CONCESSIONS & MEMBERS */}
+            {currentStep === 3 && (
+              <motion.div
+                key="step3"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+              >
+                {/* Popcorn Concessions counter */}
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2 font-mono">
+                    <ShoppingBag size={16} className="text-red-500" />
+                    Bß║»p n╞░ß╗¢c & ─æß╗ô ─ân
+                  </h3>
+
+                  <div className="space-y-4">
+                    {combos.map(combo => (
+                      <div key={combo.id} className="flex justify-between items-center bg-black/20 border border-white/5 p-4 rounded-xl">
+                        <div className="space-y-0.5 text-left pr-2">
+                          <span className="text-xs font-bold text-white block">{combo.name}</span>
+                          <span className="text-[10px] text-gray-500 block leading-normal">{combo.desc}</span>
+                          <span className="text-xs font-semibold text-slate-400 block mt-1">{formatVND(Number(combo.price))}</span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => handleComboQty(combo.id, -1)}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                          >
+                            -
+                          </button>
+                          <span className="text-sm font-black w-6 text-center font-mono text-white">
+                            {selectedCombos[combo.id] || 0}
+                          </span>
+                          <button
+                            onClick={() => handleComboQty(combo.id, 1)}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Membership Integration */}
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-5 text-left">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2 font-mono">
+                    <User size={16} className="text-red-500" />
+                    T├¡ch hß╗úp Hß╗Öi vi├¬n
+                  </h3>
+
+                  {/* Search member */}
+                  <form onSubmit={handleCheckMember} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Sß╗æ ─ÉT hoß║╖c Member ID hß╗Öi vi├¬n..."
+                      value={memberQuery}
+                      onChange={(e) => setMemberQuery(e.target.value)}
+                      className="flex-1 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-red-500 transition-colors font-medium"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-red-650 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 border-none shadow-md"
+                    >
+                      <Search size={12} />
+                      Tra cß╗⌐u
+                    </button>
+                  </form>
+
+                  {/* Check Results details */}
+                  {checkedMember && (
+                    <div className="space-y-4">
+                      {foundMember ? (
+                        <div className="bg-red-950/15 border border-red-500/20 rounded-xl p-4 space-y-3 text-xs leading-normal">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">T├¬n hß╗Öi vi├¬n:</span>
+                            <span className="text-white font-bold">{foundMember.fullName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">M├ú thß║╗:</span>
+                            <span className="text-white font-bold font-mono">{foundMember.memberId}</span>
+                          </div>
+                          <div className="flex justify-between border-t border-red-500/10 pt-2">
+                            <span className="text-gray-400 font-bold">─Éiß╗âm t├¡ch l┼⌐y:</span>
+                            <span className="text-red-500 font-black text-sm">{foundMember.score} ─æiß╗âm</span>
+                          </div>
+
+                          {/* Convert points logic */}
+                          <div className="flex flex-col gap-1.5 border-t border-red-500/10 pt-3">
+                            <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">─Éß╗òi v├⌐ miß╗àn ph├¡ (1000 ─æiß╗âm = 1 v├⌐)</label>
+                            <select
+                              value={convertCount}
+                              onChange={(e) => setConvertCount(parseInt(e.target.value, 10))}
+                              className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+                            >
+                              {Array.from({ length: selectedSeats.length + 1 }).map((_, i) => (
+                                <option key={i} value={i}>{i} v├⌐</option>
+                              ))}
+                            </select>
+
+                            {scoreError && (
+                              <span className="text-[10px] text-red-500 font-bold block mt-1 leading-normal">
+                                ΓÜá∩╕Å {scoreError}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 rounded-xl border bg-red-500/5 border-red-500/20 text-red-500 text-center text-xs font-bold flex items-center justify-center gap-1.5">
+                          <AlertCircle size={14} />
+                          <span>Kh├┤ng t├¼m thß║Ñy th├┤ng tin hß╗Öi vi├¬n!</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Navigation step button */}
+                  <div className="flex justify-end pt-4 border-t border-white/5">
+                    <button
+                      disabled={!!scoreError}
+                      onClick={() => setCurrentStep(4)}
+                      className="flex items-center gap-1.5 px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs uppercase transition-all shadow-md cursor-pointer border-none"
+                    >
+                      <span>Tiß║┐n h├ánh thanh to├ín</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* STEP 4: CHECKOUT PAYMENT */}
+            {currentStep === 4 && (
+              <motion.div
+                key="step4"
+                className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-6 text-left"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+              >
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2 font-mono">
+                  <CreditCard size={16} className="text-red-500" />
+                  Ph╞░╞íng thß╗⌐c thanh to├ín & ─É╞ín h├áng
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                  {/* Select payment method */}
+                  <div className="space-y-4">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Chß╗ìn h├¼nh thß╗⌐c thanh to├ín</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'cash', label: 'Tiß╗ün mß║╖t', icon: Coins },
+                        { id: 'card', label: 'C├á thß║╗', icon: CreditCard },
+                        { id: 'qr', label: 'Qu├⌐t QR', icon: QrCode },
+                      ].map(method => {
+                        const Icon = method.icon
+                        const isSelected = paymentMethod === method.id
+                        return (
+                          <button
+                            key={method.id}
+                            type="button"
+                            onClick={() => {
+                              setPaymentMethod(method.id)
+                              if (method.id !== 'cash') setCashReceived('')
+                            }}
+                            className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all
+                              ${isSelected
+                                ? 'bg-red-650/10 border-[var(--color-primary)] text-red-400'
+                                : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                              }`}
+                          >
+                            <Icon size={20} />
+                            <span className="text-[11px] font-bold">{method.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Cash received calculator */}
+                    {paymentMethod === 'cash' && (
+                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl space-y-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] uppercase font-bold text-slate-400">Sß╗æ tiß╗ün kh├ích ─æ╞░a (VND) *</label>
+                          <input
+                            type="number"
+                            placeholder="Nhß║¡p sß╗æ tiß╗ün..."
+                            value={cashReceived}
+                            onChange={(e) => setCashReceived(e.target.value)}
+                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm text-white font-mono outline-none focus:border-red-500"
+                          />
+                        </div>
+
+                        {/* Quick cash helper buttons */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {[finalPriceTotal, 100000, 200000, 500000].map(val => {
+                            if (val < finalPriceTotal) return null
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setCashReceived(val.toString())}
+                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold border border-white/5 cursor-pointer font-mono"
+                              >
+                                {formatVND(val)}
+                              </button>
+                            )
+                          })}
+                        </div>
+
+                        <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-semibold">
+                          <span className="text-gray-400">Tiß╗ün thß╗æi lß║íi:</span>
+                          <span className="text-green-500 font-extrabold font-mono">{formatVND(changeReturn)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'qr' && (
+                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col items-center justify-center gap-2.5 text-center">
+                        <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center shadow-lg">
+                          {/* Simulated QR Code placeholder */}
+                          <div className="w-full h-full border-4 border-slate-900 border-dashed flex items-center justify-center bg-slate-50 text-[10px] font-black text-slate-800 leading-none">
+                            [ SCAN QR ]
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-medium">Chß╗¥ qu├⌐t m├ú chuyß╗ân khoß║ún qua v├¡ MoMo/VNPAY/VietQR</p>
+                      </div>
+                    )}
+
+                    {paymentMethod === 'card' && (
+                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex items-center gap-3">
+                        <CreditCard size={24} className="text-slate-400" />
+                        <div className="text-left">
+                          <span className="text-[11px] font-bold text-white block">Quß║╣t thß║╗ ng├ón h├áng tß║íi POS</span>
+                          <span className="text-[10px] text-gray-500 block leading-normal">Mß╗¥i cß║»m hoß║╖c chß║ím thß║╗ ATM/Visa/MasterCard tr├¬n thiß║┐t bß╗ï POS quß║ºy.</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary Checklist */}
+                  <div className="space-y-4 bg-black/10 border border-white/5 p-4 rounded-xl text-xs font-semibold leading-relaxed">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">X├íc nhß║¡n chi tiß║┐t h├│a ─æ╞ín</label>
+
+                    <div className="space-y-2 border-b border-white/5 pb-3 text-[var(--color-text-muted)]">
+                      <div className="flex justify-between">
+                        <span>Sß╗æ l╞░ß╗úng v├⌐:</span>
+                        <span className="text-white">{selectedSeats.length} v├⌐ ({selectedSeats.join(', ')})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tiß╗ün v├⌐ gß╗æc:</span>
+                        <span className="text-white font-mono">{formatVND(ticketPriceTotal)}</span>
+                      </div>
+                      {convertCount > 0 && (
+                        <div className="flex justify-between text-green-500">
+                          <span>Giß║úm gi├í ─æiß╗âm ({convertCount} v├⌐):</span>
+                          <span className="font-mono">-{formatVND(discountTotal)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span>Tiß╗ün bß║»p n╞░ß╗¢c:</span>
+                        <span className="text-white font-mono">{formatVND(comboPriceTotal)}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-white font-bold">Tß╗öNG THANH TO├üN:</span>
+                      <span className="text-red-500 font-black text-xl font-mono">{formatVND(finalPriceTotal)}</span>
+                    </div>
+
+                    {error && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-500 text-[10px] font-bold rounded-lg leading-normal">
+                        ΓÜá∩╕Å {error}
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleCheckout}
+                      disabled={isSubmitting || !!scoreError}
+                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-xs py-3.5 rounded-xl shadow-lg shadow-red-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer border-none"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                          ─Éang thanh to├ín...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={15} />
+                          X├íc nhß║¡n &amp; In h├│a ─æ╞ín
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                </div>
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+
+        </div>
+
+        {/* RIGHT ORDER SUMMARY PANEL */}
+        <div className="lg:col-span-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-6 text-left relative overflow-hidden">
+
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-white/5 pb-3 font-mono">
+            H├│a ─æ╞ín chi tiß║┐t (Summary)
+          </h3>
+
+          {/* Movie poster info */}
+          {selectedMovie ? (
+            <div className="flex gap-3">
+              <img
+                src={selectedMovie.posterUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=150'}
+                alt={selectedMovie.titleVn}
+                className="w-14 h-20 object-cover rounded-lg border border-white/10"
+              />
+              <div className="space-y-1">
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold text-white bg-red-650 inline-block uppercase leading-none">
+                  {selectedMovie.rating || 'P'}
+                </span>
+                <h4 className="text-xs font-black text-white leading-snug line-clamp-2">
+                  {selectedMovie.titleVn || selectedMovie.title}
+                </h4>
+                <p className="text-[10px] text-[var(--color-text-muted)] font-semibold">
+                  {selectedMovie.durationMinutes || 120} ph├║t ΓÇó {selectedMovie.version || '2D'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="py-6 text-center text-slate-600 text-xs border border-dashed border-slate-800 rounded-xl flex flex-col items-center gap-1.5">
+              <span className="material-symbols-outlined text-2xl text-slate-600">movie</span>
+              <span>Ch╞░a chß╗ìn phim.</span>
+            </div>
+          )}
+
+          {/* Showtime info */}
+          <div className="space-y-2 border-t border-white/5 pt-4">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Th├┤ng tin suß║Ñt chiß║┐u</span>
+            {selectedShowtime ? (
+              <div className="bg-black/20 p-3 rounded-xl border border-white/5 text-xs font-semibold leading-relaxed space-y-1">
+                <div className="flex justify-between text-gray-300">
+                  <span>Ph├▓ng chiß║┐u:</span>
+                  <span className="text-white font-bold">{selectedShowtime.room}</span>
+                </div>
+                <div className="flex justify-between text-gray-300">
+                  <span>Ng├áy chiß║┐u:</span>
+                  <span className="text-white font-bold">{selectedShowtime.date === 'H├┤m nay' ? 'H├┤m nay' : selectedShowtime.date}</span>
+                </div>
+                <div className="flex justify-between text-gray-300">
+                  <span>Giß╗¥ chiß║┐u:</span>
+                  <span className="text-red-500 font-extrabold font-mono">{selectedShowtime.time}</span>
+                </div>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-600 italic block">Ch╞░a chß╗ìn suß║Ñt chiß║┐u.</span>
+            )}
+          </div>
+
+          {/* Seats and Ticket prices list */}
+          <div className="space-y-2 border-t border-white/5 pt-4">
+            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Ghß║┐ ─æ├ú chß╗ìn ({selectedSeats.length})</span>
+            {selectedSeats.length > 0 ? (
+              <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                {selectedSeats.map(seat => (
+                  <div key={seat} className="flex justify-between items-center text-xs font-semibold text-gray-300">
+                    <span>Ghß║┐ {seat} ({seat.charAt(0) === 'G' || seat.charAt(0) === 'H' ? 'Couple' : seat.charAt(0) === 'D' || seat.charAt(0) === 'E' || seat.charAt(0) === 'F' ? 'VIP' : 'Standard'})</span>
+                    <span className="font-mono">{formatVND(getSeatPrice(seat))}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-slate-600 italic block">Ch╞░a chß╗ìn ghß║┐ ngß╗ôi.</span>
+            )}
+          </div>
+
+          {/* Concessions combos summary */}
+          {comboPriceTotal > 0 && (
+            <div className="space-y-2 border-t border-white/5 pt-4">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Bß║»p n╞░ß╗¢c ─æ├ú th├¬m</span>
+              <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                {Object.entries(selectedCombos).map(([id, qty]) => {
+                  if (qty === 0) return null
+                  const c = combos.find(combo => String(combo.id) === String(id))
+                  if (!c) return null
+                  return (
+                    <div key={id} className="flex justify-between items-center text-xs font-semibold text-gray-300">
+                      <span>{c.name} (x{qty})</span>
+                      <span className="font-mono">{formatVND(Number(c.price) * qty)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Total Checkout Pricing */}
+          <div className="border-t border-white/5 pt-4 space-y-2.5">
+            <div className="flex justify-between items-center text-xs font-semibold text-gray-300">
+              <span>─É╞ín gi├í v├⌐:</span>
+              <span className="font-mono">{formatVND(ticketPriceTotal)}</span>
+            </div>
+            {convertCount > 0 && (
+              <div className="flex justify-between items-center text-xs font-semibold text-green-500">
+                <span>╞»u ─æ├úi ─æiß╗âm hß╗Öi vi├¬n:</span>
+                <span className="font-mono">-{formatVND(discountTotal)}</span>
+              </div>
+            )}
+            {comboPriceTotal > 0 && (
+              <div className="flex justify-between items-center text-xs font-semibold text-gray-300">
+                <span>─É╞ín gi├í bß║»p n╞░ß╗¢c:</span>
+                <span className="font-mono">{formatVND(comboPriceTotal)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-2.5 border-t border-white/5">
+              <span className="text-xs text-white font-bold">Tß╗òng thanh to├ín:</span>
+              <span className="text-lg font-black text-red-500 font-mono">{formatVND(finalPriceTotal)}</span>
+            </div>
+          </div>
+
+          {/* Stepper controls */}
+          <div className="flex gap-2.5 pt-4 border-t border-white/5">
+            {currentStep > 1 && (
+              <button
+                type="button"
+                onClick={() => setCurrentStep(prev => prev - 1)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 hover:text-white text-xs font-bold transition-all uppercase tracking-wider flex items-center justify-center gap-1 cursor-pointer bg-transparent"
+              >
+                <ChevronLeft size={13} />
+                <span>Quay lß║íi</span>
+              </button>
+            )}
+
+            {currentStep < 4 && (
+              <button
+                type="button"
+                disabled={
+                  (currentStep === 1 && (!selectedMovie || !selectedShowtime)) ||
+                  (currentStep === 2 && selectedSeats.length === 0) ||
+                  (currentStep === 3 && !!scoreError)
+                }
+                onClick={() => setCurrentStep(prev => prev + 1)}
+                className="flex-[2] py-2.5 rounded-xl bg-red-650 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white text-xs font-bold transition-all uppercase tracking-wider flex items-center justify-center gap-1 border-none cursor-pointer shadow-md"
+              >
+                <span>Tiß║┐p tß╗Ñc</span>
+                <ChevronRight size={13} />
+              </button>
+            )}
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* TICKET PRINT PREVIEW MODAL */}
+      <AnimatePresence>
+        {printedTicket && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{
+              backgroundColor: 'rgba(15, 23, 42, 0.45)',
+              backdropFilter: 'blur(4px)',
+              WebkitBackdropFilter: 'blur(4px)'
+            }}
+          >
+            <motion.div
+              className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl max-w-sm w-full text-slate-800 text-left relative overflow-hidden"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+            >
+              {/* Receipt Visual design */}
+              <div className="flex flex-col items-center border-b-2 border-dashed border-slate-200 pb-5 text-center space-y-2">
+                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-1 rounded-full uppercase tracking-wider flex items-center gap-1">
+                  <CheckCircle size={10} className="text-emerald-500" />
+                  XUß║ñT V├ë TH├ÇNH C├öNG
+                </span>
+
+                <h4 className="text-lg font-black tracking-widest text-slate-900" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+                  CINE<span className="text-red-650">MATE</span>
+                </h4>
+                <p className="text-[9px] font-medium text-slate-500">
+                  H├ôA ─É╞áN V├ë &amp; Dß╗èCH Vß╗ñ Tß║áI QUß║ªY<br />
+                  M├ú giao dß╗ïch: {printedTicket.id}
+                </p>
+              </div>
+
+              {/* Receipt details */}
+              <div className="py-5 space-y-3.5 text-[11px] font-semibold text-slate-600">
+
+                <div className="space-y-1">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 block">T├¬n Phim</span>
+                  <span className="text-xs font-black text-slate-900 leading-snug block">{printedTicket.movie}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Ph├▓ng chiß║┐u</span>
+                    <span className="text-xs font-bold text-slate-900 block">{printedTicket.screen}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Suß║Ñt chiß║┐u</span>
+                    <span className="text-xs font-black text-red-650 block font-mono">{printedTicket.time}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Ng├áy chiß║┐u</span>
+                    <span className="text-xs font-bold text-slate-900 block">{printedTicket.date}</span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Sß╗æ Ghß║┐</span>
+                    <span className="text-xs font-black text-slate-900 block font-mono">{printedTicket.seats}</span>
+                  </div>
+                </div>
+
+                {printedTicket.combosSummary && (
+                  <div className="border-t border-slate-100 pt-3">
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block">Bß║»p n╞░ß╗¢c k├¿m theo</span>
+                    <span className="text-[11px] text-slate-800 block mt-0.5 leading-snug font-medium">{printedTicket.combosSummary}</span>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-100 pt-3 space-y-1.5">
+                  <div className="flex justify-between text-slate-500">
+                    <span>H├¼nh thß╗⌐c thanh to├ín:</span>
+                    <span>{printedTicket.paymentMethod}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-500">
+                    <span>T├ái khoß║ún hß╗Öi vi├¬n:</span>
+                    <span>{printedTicket.memberId} ({printedTicket.customerName})</span>
+                  </div>
+                  {printedTicket.convertTickets > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>─Éß╗òi ─æiß╗âm t├¡ch l┼⌐y:</span>
+                      <span>-{formatVND(printedTicket.convertTickets * printedTicket.price)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-slate-900 pt-2 border-t border-slate-100 text-xs">
+                    <span className="font-bold">Tß╗öNG TIß╗ÇN THANH TO├üN:</span>
+                    <span className="font-black text-red-650 text-sm font-mono">{formatVND(printedTicket.total)}</span>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Barcode/QR visualization for ticket checking */}
+              <div className="flex flex-col items-center justify-center p-3 bg-slate-50 border border-slate-200 rounded-2xl text-center space-y-2 mt-2">
+                <div className="w-full h-10 border-2 border-slate-900 border-dashed flex items-center justify-center text-[10px] font-black tracking-[0.4em] text-slate-800 select-none">
+                  * {printedTicket.id} *
+                </div>
+                <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Qu├⌐t m├ú vß║ích n├áy tß║íi cß╗¡a so├ít v├⌐</p>
+              </div>
+
+              {/* Control buttons */}
+              <div className="flex gap-2.5 mt-6 pt-4 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    window.print()
+                  }}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none"
+                >
+                  <Printer size={14} />
+                  <span>In v├⌐ quß║ºy</span>
+                </button>
+                <button
+                  onClick={handleReset}
+                  className="flex-1 py-3 bg-red-650 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer border-none shadow-md"
+                >
+                  <RotateCcw size={14} />
+                  <span>Giao dß╗ïch tiß║┐p</span>
+                </button>
+              </div>
+
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </div>
+  )
+}

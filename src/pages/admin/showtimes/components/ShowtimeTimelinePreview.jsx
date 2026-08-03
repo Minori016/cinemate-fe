@@ -5,6 +5,7 @@ import { showtimeService } from '../../../../services/showtimeService';
 import { DndContext, closestCenter, useDroppable } from '@dnd-kit/core';
 import DraggableShowtime from './DraggableShowtime';
 import { toast } from 'sonner';
+import AIReasoningConsole from './AIReasoningConsole';
 
 const getRoomDetails = (room) => {
   const nameLower = room.name?.toLowerCase() || '';
@@ -157,6 +158,7 @@ export default function ShowtimeTimelinePreview({
   // AI optimization states
   const [aiLoading, setAiLoading] = useState(false);
   const [showAiModal, setShowAiModal] = useState(false);
+  const [showReasoningConsole, setShowReasoningConsole] = useState(false);
   const [aiEnhancedResult, setAiEnhancedResult] = useState(null);
   const [currentViewTab, setCurrentViewTab] = useState('algorithm'); // 'algorithm' | 'ai'
   const [aiContext, setAiContext] = useState({
@@ -952,6 +954,13 @@ export default function ShowtimeTimelinePreview({
               Đề xuất AI
             </button>
             <button 
+              onClick={() => setShowReasoningConsole(true)} 
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[14px]">query_stats</span>
+              Giải thích AI
+            </button>
+            <button 
               onClick={handleApplyAI} 
               className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-xs font-bold transition-all shadow"
             >
@@ -1256,6 +1265,14 @@ export default function ShowtimeTimelinePreview({
           <span className="material-symbols-outlined text-5xl text-[#565e74] mb-2">event_busy</span>
           <p className="text-[#565e74] font-semibold text-sm">Không tạo được suất chiếu nào phù hợp</p>
         </div>
+      )}
+
+      {showReasoningConsole && aiEnhancedResult && (
+        <AIReasoningConsole 
+          result={aiEnhancedResult} 
+          movies={movies} 
+          onClose={() => setShowReasoningConsole(false)} 
+        />
       )}
     </div>
   );
