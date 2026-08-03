@@ -970,7 +970,7 @@ export default function ManagerAnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl">
         <div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase text-red-500" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase text-black" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
             Báo cáo doanh thu & Thống kê
           </h2>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -1018,7 +1018,7 @@ export default function ManagerAnalyticsPage() {
               <DollarSign size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-gray-900 dark:text-white mt-3 font-mono">{formatVND(displayRevenue)}</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{formatVND(displayRevenue)}</p>
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ Vé + Đồ ăn bán ra
           </span>
@@ -1031,7 +1031,7 @@ export default function ManagerAnalyticsPage() {
               <DollarSign size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-gray-900 dark:text-white mt-3 font-mono">{formatVND(displayTicketRevenue)}</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{formatVND(displayTicketRevenue)}</p>
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +14.2% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
           </span>
@@ -1044,7 +1044,7 @@ export default function ManagerAnalyticsPage() {
               <Ticket size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-gray-900 dark:text-white mt-3 font-mono">{displayTickets} vé</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{displayTickets} vé</p>
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +8.7% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
           </span>
@@ -1057,7 +1057,7 @@ export default function ManagerAnalyticsPage() {
               <Percent size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-gray-900 dark:text-white mt-3 font-mono">{finalOccupancy}%</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{finalOccupancy}%</p>
           <span className="text-[10px] text-yellow-500 font-bold mt-1.5 flex items-center gap-1">
             ● Ổn định <span className="text-[var(--color-text-muted)] font-normal">hiệu suất phòng</span>
           </span>
@@ -1071,7 +1071,7 @@ export default function ManagerAnalyticsPage() {
         <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h3 className="text-base font-bold text-gray-900 dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-base font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat', color: 'black' }}>
                 📈 Xu Hướng Doanh Thu Phân Tích
               </h3>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Biểu đồ biểu diễn tổng doanh số bao gồm vé và dịch vụ đi kèm.</p>
@@ -1144,7 +1144,7 @@ export default function ManagerAnalyticsPage() {
         </div>
 
         <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-4">
-          <h3 className="text-base font-bold text-gray-900 dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
+          <h3 className="text-base font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat', color: 'black' }}>
             🎬 Xếp Hạng Doanh Thu Theo Phim
           </h3>
 
