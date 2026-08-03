@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { Star, Gift, Check, Loader2, AlertCircle, Sparkles } from 'lucide-react'
-import { promotionService, REDEMPTION_TYPE_LABELS } from '../../../../services/promotionService'
+import { promotionService, REDEMPTION_TYPE_LABELS, PROMOTION_STATUS } from '../../../../services/promotionService'
+
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
 
 export default function PointsRedemption({
   userId,
   orderAmount = 0,
   onApplyPoints,
-  currentDiscount = 0,
   disabled = false,
 }) {
   const [myPoints, setMyPoints] = useState(0)
@@ -16,17 +20,13 @@ export default function PointsRedemption({
   const [loadingMyPoints, setLoadingMyPoints] = useState(true)
   const [redeemingId, setRedeemingId] = useState(null)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [redeemedOption, setRedeemedOption] = useState(null)
-
-  useEffect(() => {
-    loadMyPoints()
-    loadPointsOptions()
-  }, [])
 
   const loadMyPoints = async () => {
     try {
       const data = await promotionService.getMyPoints()
-      setMyPoints(data?.loyaltyPoints || 0)
+      setMyPoints(toNumber(data?.loyaltyPoints, 0))
     } catch (err) {
       console.error('Failed to load my points:', err)
       setMyPoints(0)
@@ -37,15 +37,27 @@ export default function PointsRedemption({
 
   const loadPointsOptions = async () => {
     try {
-      const data = await promotionService.getPointsOptions()
-      setPointsOptions(Array.isArray(data) ? data : [])
+      const list = await promotionService.getPointsOptions()
+      setPointsOptions(Array.isArray(list) ? list : [])
+      setLoadError('')
     } catch (err) {
       console.error('Failed to load points options:', err)
       setPointsOptions([])
+      const status = err?.response?.status
+      setLoadError(
+        err?.response?.data?.message ||
+          (status ? `Không thể tải quà đổi điểm (${status})` : 'Không thể tải quà đổi điểm')
+      )
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadMyPoints()
+    loadPointsOptions()
+  }, [])
 
   const handleRedeem = async (promotion) => {
     if (!userId) {
@@ -58,9 +70,9 @@ export default function PointsRedemption({
 
     try {
       const result = await promotionService.redeemPoints(promotion.id)
-      if (result.success) {
+      if (result?.success) {
         setRedeemedOption(promotion.id)
-        
+
         // Calculate discount amount
         let discountAmount = 0
         if (promotion.redemptionType === 'MONEY_FIXED' && promotion.discountValue) {
@@ -72,19 +84,21 @@ export default function PointsRedemption({
             discountAmount = Number(promotion.discountValue)
           }
         }
-        
+
         // Update parent's loyalty points display
-        if (result.remainingPoints !== undefined) {
-          setMyPoints(result.remainingPoints)
+        if (result.remainingPoints !== undefined && result.remainingPoints !== null) {
+          setMyPoints(toNumber(result.remainingPoints, myPoints))
         }
-        
+
         onApplyPoints?.(promotion.id, discountAmount, {
           promotionId: promotion.id,
           promotionTitle: promotion.title,
-          pointsSpent: result.pointsSpent || promotion.minLoyaltyPoints,
+          pointsSpent: toNumber(result.pointsSpent, promotion.minLoyaltyPoints),
           redemptionType: promotion.redemptionType,
           discountAmount: discountAmount,
         })
+      } else {
+        setError(result?.message || 'Không thể đổi điểm. Vui lòng thử lại.')
       }
     } catch (err) {
       const message = err?.response?.data?.message || 'Không thể đổi điểm. Vui lòng thử lại.'
@@ -95,7 +109,11 @@ export default function PointsRedemption({
   }
 
   const canRedeem = (promotion) => {
-    return myPoints >= (promotion.minLoyaltyPoints || 0)
+    if (!promotion) return false
+    if (promotion.isValid === false) return false
+    if (promotion.status && promotion.status !== PROMOTION_STATUS.ACTIVE) return false
+    const required = toNumber(promotion.minLoyaltyPoints, 0)
+    return myPoints >= required
   }
 
   const getRedemptionLabel = (promotion) => {
@@ -175,6 +193,14 @@ export default function PointsRedemption({
         </div>
       )}
 
+      {/* Load error for options list */}
+      {loadError && !error && (
+        <div className="flex items-center gap-2 text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+          <AlertCircle size={16} />
+          <p className="text-xs font-semibold">{loadError}</p>
+        </div>
+      )}
+
       {/* Redeemed success message */}
       {redeemedOption && !disabled && (
         <div className="flex items-center gap-2 text-green-400 bg-green-500/10 border border-green-500/30 rounded-xl p-3">
@@ -200,7 +226,6 @@ export default function PointsRedemption({
             {pointsOptions.map((promotion) => {
               const isRedeemed = redeemedOption === promotion.id
               const canUse = canRedeem(promotion) && !isRedeemed && !disabled
-              const isDisabled = !canUse || disabled
 
               return (
                 <motion.div
