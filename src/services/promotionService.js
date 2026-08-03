@@ -18,9 +18,21 @@ export const promotionService = {
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
 
   // === Points Redemption ===
-  getPointsOptions: () => api.get('/api/v1/promotions/points/options'),
-  getMyPoints: () => api.get('/api/v1/promotions/points/my'),
-  redeemPoints: (promotionId) => api.post('/api/v1/promotions/points/redeem', { promotionId }),
+  // All endpoints wrap data in ApiResponse{ code, result }; expose unwrapped data to callers.
+  getPointsOptions: async () => {
+    const res = await api.get('/api/v1/promotions/points/options')
+    const list = unwrapList(res?.data)
+    return Array.isArray(list) ? list : []
+  },
+  getMyPoints: async () => {
+    const res = await api.get('/api/v1/promotions/points/my')
+    const body = unwrapObject(res?.data)
+    return body
+  },
+  redeemPoints: async (promotionId) => {
+    const res = await api.post('/api/v1/promotions/points/redeem', { promotionId })
+    return unwrapObject(res?.data)
+  },
 
   /**
    * User pages: load active promotions, mapped for UI.
@@ -89,6 +101,17 @@ export const unwrapList = (payload) => {
   if (Array.isArray(data?.content)) return data.content
   if (Array.isArray(data?.result)) return data.result
   return []
+}
+
+/**
+ * Unwrap an ApiResponse-wrapped object payload.
+ * Handles shapes: { result: {...} }, { data: {...} }, or a raw object.
+ */
+export const unwrapObject = (payload) => {
+  if (payload == null || typeof payload !== 'object') return {}
+  if (payload.result && typeof payload.result === 'object') return payload.result
+  if (payload.data && typeof payload.data === 'object') return payload.data
+  return payload
 }
 
 /** Map BE PromotionResponse → UI-friendly shape used across pages */
