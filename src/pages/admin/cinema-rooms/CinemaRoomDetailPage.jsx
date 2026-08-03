@@ -287,7 +287,7 @@ export default function CinemaRoomDetailPage() {
       <div>
         <button
           onClick={handleBackClick}
-          className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-white uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
+          className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-black uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
         >
           <ArrowLeft size={13} />
           Quay lại phòng chiếu
@@ -295,7 +295,7 @@ export default function CinemaRoomDetailPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-medium text-white">
+            <h1 className="text-2xl font-medium text-black" style={{ color: 'black' }}>
               Sơ đồ: {room ? room.name : 'Đang tải...'}
             </h1>
             <div className="flex items-center flex-wrap gap-2 mt-1.5">
@@ -361,7 +361,7 @@ export default function CinemaRoomDetailPage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <LayoutGrid size={17} className="text-gray-400" />
-              <span className="text-[15px] font-medium text-white">Trình chỉnh sơ đồ ghế</span>
+              <span className="text-[15px] font-medium text-black" style={{ color: 'black' }}>Trình chỉnh sơ đồ ghế</span>
             </div>
           </div>
 

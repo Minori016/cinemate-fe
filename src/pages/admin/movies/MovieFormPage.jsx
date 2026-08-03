@@ -317,7 +317,7 @@ export default function MovieFormPage() {
         <div>
           <button
             onClick={handleCancel}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-black uppercase font-bold tracking-wider mb-2.5 transition-colors bg-transparent border-none outline-none cursor-pointer"
           >
             <ArrowLeft size={14} />
             <span>Quay lại Quản lý Phim</span>

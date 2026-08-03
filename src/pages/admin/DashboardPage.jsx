@@ -33,7 +33,7 @@ const STAT_DEFS = [
     color: 'from-green-500/20 to-green-500/5',
     iconColor: 'text-green-400',
     borderColor: 'group-hover:border-green-500/30',
-    route: '/admin/bookings'
+    route: '/admin/tickets'
   },
   {
     key: 'promotions',
@@ -70,7 +70,6 @@ export default function DashboardPage() {
   const [stats, setStats] = useState(
     STAT_DEFS.reduce((acc, s) => ({ ...acc, [s.key]: s.fallback }), {})
   )
-  const [statsLoading, setStatsLoading] = useState(true)
   const [recentBookingsList, setRecentBookingsList] = useState(DEFAULT_RECENT_BOOKINGS)
   const [revenueData, setRevenueData] = useState(DEFAULT_REVENUE_DATA)
   const [weeklyTotal, setWeeklyTotal] = useState(49100000)
@@ -79,38 +78,32 @@ export default function DashboardPage() {
   // Fetch dashboard stats & real data from API
   useEffect(() => {
     const update = (key, value) => setStats(prev => ({ ...prev, [key]: String(value) }))
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    // Offset for local timezone
+    const offset = today.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
 
     Promise.allSettled([
       // Tổng phim
       api.get('/api/v1/movies', { params: { size: 1 } })
-        .then(r => update('movies', r.data?.result?.totalElements ?? r.data?.result?.length ?? 0)),
+        .then(r => update('movies', r.data?.result?.totalElements ?? 0))
+        .catch(() => update('movies', 0)),
 
       // Nhân viên
-      api.get('/api/v1/admin/employees', { params: { page: 0, size: 1, role: 'STAFF' } })
-        .then(r => {
-          const result = r.data?.result
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('employees', count)
-        }),
+      api.get('/api/v1/admin/employees', { params: { page: 0, size: 1 } })
+        .then(r => update('employees', r.data?.result?.totalElements ?? 0))
+        .catch(() => update('employees', 0)),
 
       // Vé bán hôm nay
-      api.get('/api/v1/admin/bookings', { params: { page: 0, size: 1 } })
-        .catch(() => api.get('/api/v1/bookings', { params: { page: 0, size: 1 } }))
-        .then(r => {
-          const result = r?.data?.result || r?.data
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('tickets', count)
-        })
+      api.get('/api/v1/admin/bookings', { params: { fromDate: localISOTime, toDate: localISOTime, size: 1 } })
+        .then(r => update('tickets', r.data?.result?.totalElements ?? 0))
         .catch(() => update('tickets', 0)),
 
-      // Khuyến mãi đang hoạt động
-      api.get('/api/v1/promotions/active')
-        .catch(() => api.get('/api/v1/admin/promotions', { params: { status: 'ACTIVE', page: 0, size: 1 } }))
-        .then(r => {
-          const result = r?.data?.result || r?.data
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('promotions', count)
-        })
+      // Khuyến mãi hoạt động
+      api.get('/api/v1/admin/promotions', { params: { status: 'ACTIVE', size: 1 } })
+        .then(r => update('promotions', r.data?.result?.totalElements ?? 0))
         .catch(() => update('promotions', 0)),
 
       // Vé đặt gần đây (Recent Bookings)
@@ -147,7 +140,7 @@ export default function DashboardPage() {
             if (sumTotal > 0) setWeeklyTotal(sumTotal)
           }
         })
-    ]).finally(() => setStatsLoading(false))
+    ])
   }, [])
 
   return (
@@ -166,12 +159,12 @@ export default function DashboardPage() {
       >
         <div>
           <h1
-            className="text-2xl sm:text-3xl lg:text-4xl text-gray-900 dark:text-white font-bold tracking-wider uppercase"
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+            className="text-2xl sm:text-3xl lg:text-4xl text-black font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, color: 'black' }}
           >
             Tổng Quan Hệ Thống
           </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-sm text-black mt-1" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }}>
             Báo cáo thống kê thời gian thực & hoạt động bán vé hôm nay.
           </p>
         </div>
@@ -205,13 +198,13 @@ export default function DashboardPage() {
               variants={{ hidden: { opacity: 0, y: 24, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } } }}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="flex flex-col mt-2">
+                <span className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {s.label}
-                </p>
-                <p className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  {statsLoading ? '...' : value}
-                </p>
+                </span>
+                <span className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif', color: '#111827', display: 'block', minHeight: '36px', marginTop: '4px' }}>
+                  {value || '0'}
+                </span>
               </div>
               <div className={`p-4 rounded-xl bg-gradient-to-br ${s.color} transition-all duration-300 group-hover:scale-110`}>
                 <Icon className={`w-6 h-6 ${s.iconColor}`} />
@@ -232,7 +225,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-red-500" />
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+              <h2 className="text-lg font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
                 Doanh thu theo chu kỳ
               </h2>
             </div>
@@ -270,7 +263,7 @@ export default function DashboardPage() {
         >
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <h2 className="text-lg font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
               Vé đặt gần đây
             </h2>
           </div>
@@ -292,7 +285,7 @@ export default function DashboardPage() {
                     {b.user.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif' }} title={b.user}>
+                    <h4 className="text-sm font-semibold text-black truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }} title={b.user}>
                       {b.user}
                     </h4>
                     <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[120px]">
@@ -302,7 +295,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs font-bold text-gray-900 dark:text-white block" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-xs font-bold text-black block" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }}>
                     {b.price}
                   </span>
                   <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${b.status === 'SUCCESS' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'}`}>
