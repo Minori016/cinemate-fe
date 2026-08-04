@@ -1,8 +1,9 @@
 import { Outlet } from 'react-router-dom'
-import { TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat } from 'lucide-react'
+import { BarChart2, TrendingUp, Film, LayoutGrid, Calendar, Users, User, Ticket, Tag, Settings, ChefHat } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const navItems = [
+  { to: '/manager/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/manager/analytics', icon: TrendingUp, label: 'Thống kê & Phân tích' },
   { to: '/manager/movies', icon: Film, label: 'Phim' },
   { to: '/manager/cinema-rooms', icon: LayoutGrid, label: 'Phòng chiếu' },

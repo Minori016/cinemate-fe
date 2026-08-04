@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Plus, Minus, Ticket, Check, ChevronDown, ChevronUp, Sparkles, Coffee } from 'lucide-react'
+import { Plus, Minus, Ticket, Check, ChevronDown, ChevronUp, Sparkles, Coffee, Star } from 'lucide-react'
 import { FALLBACK_COMBOS, groupConcessionsByBaseName, DEFAULT_COMBO_OPTIONS } from '../../../../services/concessionService'
 import { promotionService, getQuickDiscountText } from '../../../../services/promotionService'
+import PointsRedemption from './PointsRedemption'
 
 export default function ComboStep({
   combos = [],
@@ -16,12 +17,18 @@ export default function ComboStep({
   onApplyPromo,
   loading = false,
   orderAmount = 0,
+  userId = null,
+  onApplyPoints,
+  pointsDiscount = 0,
 }) {
   const [promoInput, setPromoInput] = useState(promoCode || '')
   const [promoError, setPromoError] = useState('')
   const [promoSuccess, setPromoSuccess] = useState(discount > 0 ? 'Đã áp dụng thành công!' : '')
   const [applying, setApplying] = useState(false)
   const [activePromos, setActivePromos] = useState([])
+  const [promoTab, setPromoTab] = useState('coupon') // 'coupon' or 'points'
+  const [redeemedPoints, setRedeemedPoints] = useState(null) // { promotionId, discountAmount, data }
+  const [appliedPointsDiscount, setAppliedPointsDiscount] = useState(pointsDiscount || 0)
   
   // Track selected size variant per product family: { [groupBaseId]: sizeKey }
   const [selectedSizesMap, setSelectedSizesMap] = useState({})
@@ -43,6 +50,13 @@ export default function ComboStep({
       .catch(() => { if (!cancelled) setActivePromos([]) })
     return () => { cancelled = true }
   }, [])
+
+  // Sync pointsDiscount from parent (when going back to this step)
+  useEffect(() => {
+    if (pointsDiscount && pointsDiscount > 0) {
+      setAppliedPointsDiscount(pointsDiscount)
+    }
+  }, [pointsDiscount])
 
   // Build dynamic popcorn/beverage options ONLY from active single concessions in Admin DB
   const dynamicComboOptions = useMemo(() => {
@@ -201,6 +215,12 @@ export default function ComboStep({
     setPromoInput('')
     setPromoSuccess('')
     setPromoError('')
+  }
+
+  const handleApplyPoints = (promotionId, discountAmount, data) => {
+    setRedeemedPoints({ promotionId, discountAmount, data })
+    setAppliedPointsDiscount(discountAmount)
+    onApplyPoints?.(promotionId, discountAmount, data)
   }
 
   return (
@@ -431,60 +451,127 @@ export default function ComboStep({
         <h3 className="text-lg font-black uppercase text-white tracking-wider mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>
           Mã Ưu Đãi / Khuyến Mãi
         </h3>
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <p className="text-xs text-gray-400 mb-3 font-medium">Nhập mã ưu đãi hoặc thử mã mẫu bên dưới để nhận chiết khấu trực tiếp.</p>
-          
-          <div className="flex gap-3 mb-3">
-            <div className="relative flex-grow">
-              <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="text"
-                value={promoInput}
-                onChange={(e) => setPromoInput(e.target.value)}
-                placeholder="Ví dụ: CINEMATE10, BAPNUOC20"
-                disabled={discount > 0}
-                className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white text-sm outline-none focus:border-red-500/50 transition-colors uppercase tracking-wider font-semibold"
-              />
-            </div>
-            {discount > 0 ? (
-              <button
-                onClick={handleRemovePromo}
-                className="px-6 rounded-xl border border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs font-bold uppercase tracking-wider cursor-pointer bg-transparent"
-              >
-                Hủy mã
-              </button>
-            ) : (
-              <button
-                onClick={handleApply}
-                disabled={applying}
-                className="px-6 rounded-xl bg-red-600 text-white hover:bg-red-500 hover:scale-102 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer border-none disabled:opacity-60"
-              >
-                {applying ? 'Đang kiểm tra...' : 'Áp dụng'}
-              </button>
-            )}
-          </div>
 
-          {promoError && <p className="text-xs text-red-500 font-semibold m-0">{promoError}</p>}
-          {promoSuccess && <p className="text-xs text-green-500 font-semibold m-0 flex items-center gap-1"><Check size={14} />{promoSuccess}</p>}
-
-          {/* Quick suggestions from active promotions API */}
-          <div className="flex items-center gap-2 mt-4 flex-wrap">
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black shrink-0">Mã gợi ý:</span>
-            {activePromos.length === 0 ? (
-              <span className="text-[10px] text-gray-500 italic">Chưa có mã khuyến mãi đang chạy</span>
-            ) : activePromos.map(p => (
-              <button
-                key={p.id || p.code}
-                onClick={() => { if (discount === 0 && p.code) setPromoInput(p.code) }}
-                disabled={discount > 0 || !p.code}
-                title={getQuickDiscountText(p) || p.title}
-                className="text-[10px] font-bold border border-dashed border-white/20 bg-white/5 rounded-full px-3 py-1 text-gray-300 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {p.code}{getQuickDiscountText(p) ? ` (${getQuickDiscountText(p)})` : ''}
-              </button>
-            ))}
-          </div>
+        {/* Tab Buttons */}
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setPromoTab('coupon')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+              promoTab === 'coupon'
+                ? 'bg-red-600 text-white'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+            }`}
+          >
+            <Ticket size={14} />
+            Mã Coupon
+          </button>
+          <button
+            onClick={() => setPromoTab('points')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+              promoTab === 'points'
+                ? 'bg-yellow-500 text-black'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20'
+            }`}
+          >
+            <Star size={14} className={promoTab === 'points' ? 'text-black' : 'text-yellow-400'} />
+            Đổi Điểm
+          </button>
         </div>
+
+        {/* Coupon Tab Content */}
+        {promoTab === 'coupon' && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <p className="text-xs text-gray-400 mb-3 font-medium">Nhập mã ưu đãi hoặc thử mã mẫu bên dưới để nhận chiết khấu trực tiếp.</p>
+            
+            <div className="flex gap-3 mb-3">
+              <div className="relative flex-grow">
+                <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                <input
+                  type="text"
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value)}
+                  placeholder="Ví dụ: CINEMATE10, BAPNUOC20"
+                  disabled={discount > 0}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white text-sm outline-none focus:border-red-500/50 transition-colors uppercase tracking-wider font-semibold disabled:opacity-50"
+                />
+              </div>
+              {discount > 0 ? (
+                <button
+                  onClick={handleRemovePromo}
+                  className="px-6 rounded-xl border border-red-500/50 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs font-bold uppercase tracking-wider cursor-pointer bg-transparent"
+                >
+                  Hủy mã
+                </button>
+              ) : (
+                <button
+                  onClick={handleApply}
+                  disabled={applying}
+                  className="px-6 rounded-xl bg-red-600 text-white hover:bg-red-500 hover:scale-102 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider cursor-pointer border-none disabled:opacity-60"
+                >
+                  {applying ? 'Đang kiểm tra...' : 'Áp dụng'}
+                </button>
+              )}
+            </div>
+
+            {promoError && <p className="text-xs text-red-500 font-semibold m-0">{promoError}</p>}
+            {promoSuccess && <p className="text-xs text-green-500 font-semibold m-0 flex items-center gap-1"><Check size={14} />{promoSuccess}</p>}
+
+            {/* Quick suggestions from active promotions API */}
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black shrink-0">Mã gợi ý:</span>
+              {activePromos.length === 0 ? (
+                <span className="text-[10px] text-gray-500 italic">Chưa có mã khuyến mãi đang chạy</span>
+              ) : activePromos.map(p => (
+                <button
+                  key={p.id || p.code}
+                  onClick={() => { if (discount === 0 && p.code) setPromoInput(p.code) }}
+                  disabled={discount > 0 || !p.code}
+                  title={getQuickDiscountText(p) || p.title}
+                  className="text-[10px] font-bold border border-dashed border-white/20 bg-white/5 rounded-full px-3 py-1 text-gray-300 hover:border-red-500 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {p.code}{getQuickDiscountText(p) ? ` (${getQuickDiscountText(p)})` : ''}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Points Redemption Tab Content */}
+        {promoTab === 'points' && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+            <PointsRedemption
+              userId={userId}
+              orderAmount={orderAmount}
+              onApplyPoints={handleApplyPoints}
+              currentDiscount={discount}
+              disabled={discount > 0}
+            />
+          </div>
+        )}
+
+        {/* Summary of applied discounts */}
+        {(discount > 0 || appliedPointsDiscount > 0) && (
+          <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+            <p className="text-xs font-bold text-green-400 flex items-center gap-2">
+              <Check size={14} />
+              Giảm giá đã áp dụng:
+            </p>
+            <div className="flex flex-col gap-1 mt-2">
+              {discount > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-300">Mã coupon</span>
+                  <span className="text-xs text-green-400 font-bold">-{Number(discount).toLocaleString('vi-VN')}đ</span>
+                </div>
+              )}
+              {appliedPointsDiscount > 0 && (
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-300">Đổi điểm</span>
+                  <span className="text-xs text-green-400 font-bold">-{Number(appliedPointsDiscount).toLocaleString('vi-VN')}đ</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
     </motion.div>

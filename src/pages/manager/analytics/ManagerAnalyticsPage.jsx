@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
+import api from '../../../services/api'
 import {
   Users,
   DollarSign,
@@ -795,6 +796,24 @@ export default function ManagerAnalyticsPage() {
   const [timeLeft, setTimeLeft] = useState(300)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [realtimeSales, setRealtimeSales] = useState({ tickets: 0, revenue: 0 })
+  const [backendData, setBackendData] = useState(null)
+
+  // Fetch real analytics from backend
+  const fetchRealAnalytics = () => {
+    api.get('/api/v1/admin/analytics/overview')
+      .then(res => {
+        if (res.data && res.data.result) {
+          setBackendData(res.data.result)
+        }
+      })
+      .catch(err => {
+        console.warn('Real analytics API fallback to local model:', err)
+      })
+  }
+
+  useEffect(() => {
+    fetchRealAnalytics()
+  }, [])
 
   const triggerToast = (msg, type = 'success') => {
     setToast({ text: msg, type })
@@ -803,6 +822,7 @@ export default function ManagerAnalyticsPage() {
 
   const handleForceRefresh = () => {
     setIsRefreshing(true)
+    fetchRealAnalytics()
     setTimeout(() => {
       const newTickets = Math.floor(Math.random() * 3) + 1
       const newRevenue = newTickets * 110000
@@ -820,6 +840,7 @@ export default function ManagerAnalyticsPage() {
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
+          fetchRealAnalytics()
           const newTickets = Math.floor(Math.random() * 2) + 1
           const newRevenue = newTickets * 110000
           setRealtimeSales(p => ({
@@ -857,11 +878,17 @@ export default function ManagerAnalyticsPage() {
   }
 
   const scale = getScale()
-  const displayRevenue = Math.round(75800000 * scale) + realtimeSales.revenue
-  const displayTickets = Math.round(920 * scale) + realtimeSales.tickets
-  const displayVisitors = Math.round(1480 * scale) + Math.round(realtimeSales.tickets * 1.3)
+  
+  const baseRevenue = (backendData && backendData.totalRevenue > 0) ? backendData.totalRevenue : 75800000
+  const baseTickets = (backendData && backendData.ticketsSold > 0) ? backendData.ticketsSold : 920
+  const baseVisitors = (backendData && backendData.totalVisitors > 0) ? backendData.totalVisitors : 1480
+  const baseOccupancy = (backendData && backendData.occupancyRate > 0) ? backendData.occupancyRate : 74.5
 
-  let displayOccupancy = 74.5
+  const displayRevenue = Math.round(baseRevenue * scale) + realtimeSales.revenue
+  const displayTickets = Math.round(baseTickets * scale) + realtimeSales.tickets
+  const displayVisitors = Math.round(baseVisitors * scale) + Math.round(realtimeSales.tickets * 1.3)
+
+  let displayOccupancy = baseOccupancy
   if (filterTime === 'morning') displayOccupancy = 42.8
   else if (filterTime === 'afternoon') displayOccupancy = 68.2
   else if (filterTime === 'evening') displayOccupancy = 88.5
@@ -874,7 +901,10 @@ export default function ManagerAnalyticsPage() {
   
   const finalOccupancy = Math.min(Math.max(displayOccupancy, 12.5), 98.4).toFixed(1)
 
-  const rawChartData = MOCK_TIME_DATA[timeGranularity] || MOCK_TIME_DATA.day
+  const rawChartData = (backendData && backendData.dailyRevenue && backendData.dailyRevenue.length > 0)
+    ? backendData.dailyRevenue
+    : (MOCK_TIME_DATA[timeGranularity] || MOCK_TIME_DATA.day)
+
   const chartData = rawChartData.map((item) => ({
     label: item.label,
     ticket: Math.round(item.ticket * scale),
@@ -898,6 +928,14 @@ export default function ManagerAnalyticsPage() {
     const s = secs % 60
     return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
+
+  const moviePerformanceData = (backendData && backendData.topMovies && backendData.topMovies.length > 0)
+    ? backendData.topMovies.map(m => ({ name: m.name, revenue: m.revenue, tickets: m.tickets }))
+    : MOVIE_PERFORMANCE_DATA
+
+  const displayTicketRevenue = (backendData && backendData.ticketRevenue > 0)
+    ? Math.round(backendData.ticketRevenue * scale)
+    : Math.round(displayRevenue * 0.75)
 
   return (
     <motion.div
@@ -932,7 +970,7 @@ export default function ManagerAnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 bg-white/5 p-6 rounded-2xl border border-white/10 backdrop-blur-md shadow-xl">
         <div>
-          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase text-red-500" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight uppercase text-black" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
             Báo cáo doanh thu & Thống kê
           </h2>
           <p className="text-sm text-[var(--color-text-muted)] mt-1">
@@ -947,7 +985,7 @@ export default function ManagerAnalyticsPage() {
               Đang trực tuyến (Online)
             </span>
             <span className="text-[10px] text-gray-400 mt-0.5">
-              Cập nhật tự động sau: <strong className="font-mono text-white text-xs">{formatTimeCountdown(timeLeft)}</strong>
+              Cập nhật tự động sau: <strong className="font-mono text-gray-900 dark:text-white text-xs">{formatTimeCountdown(timeLeft)}</strong>
             </span>
           </div>
 
@@ -975,12 +1013,25 @@ export default function ManagerAnalyticsPage() {
       <div className={`grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 transition-opacity duration-300 ${isRefreshing ? 'opacity-50' : 'opacity-100'}`}>
         <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md">
           <div className="flex justify-between items-start">
+            <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Doanh thu tổng</p>
+            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
+              <DollarSign size={16} />
+            </span>
+          </div>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{formatVND(displayRevenue)}</p>
+          <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
+            ▲ Vé + Đồ ăn bán ra
+          </span>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md">
+          <div className="flex justify-between items-start">
             <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Doanh thu bán vé</p>
             <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <DollarSign size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-white mt-3 font-mono">{formatVND(displayRevenue)}</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{formatVND(displayTicketRevenue)}</p>
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +14.2% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
           </span>
@@ -988,27 +1039,14 @@ export default function ManagerAnalyticsPage() {
 
         <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md">
           <div className="flex justify-between items-start">
-            <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tổng số lượng vé</p>
+            <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Số vé đã bán</p>
             <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
               <Ticket size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-white mt-3 font-mono">{displayTickets} vé</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{displayTickets} vé</p>
           <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
             ▲ +8.7% <span className="text-[var(--color-text-muted)] font-normal">so với chu kỳ trước</span>
-          </span>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-md">
-          <div className="flex justify-between items-start">
-            <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Số lượng lượt khách</p>
-            <span className="p-2 rounded-lg bg-red-600/10 text-red-400 border border-red-500/10">
-              <Users size={16} />
-            </span>
-          </div>
-          <p className="text-2xl font-black text-white mt-3 font-mono">{displayVisitors} khách</p>
-          <span className="text-[10px] text-green-500 font-bold mt-1.5 flex items-center gap-1">
-            ▲ +12.3% <span className="text-[var(--color-text-muted)] font-normal">doanh số combo</span>
           </span>
         </div>
 
@@ -1019,7 +1057,7 @@ export default function ManagerAnalyticsPage() {
               <Percent size={16} />
             </span>
           </div>
-          <p className="text-2xl font-black text-white mt-3 font-mono">{finalOccupancy}%</p>
+          <p className="text-2xl font-black text-black mt-3 font-mono" style={{ color: 'black' }}>{finalOccupancy}%</p>
           <span className="text-[10px] text-yellow-500 font-bold mt-1.5 flex items-center gap-1">
             ● Ổn định <span className="text-[var(--color-text-muted)] font-normal">hiệu suất phòng</span>
           </span>
@@ -1033,7 +1071,7 @@ export default function ManagerAnalyticsPage() {
         <div className="lg:col-span-2 p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
+              <h3 className="text-base font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat', color: 'black' }}>
                 📈 Xu Hướng Doanh Thu Phân Tích
               </h3>
               <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">Biểu đồ biểu diễn tổng doanh số bao gồm vé và dịch vụ đi kèm.</p>
@@ -1092,9 +1130,9 @@ export default function ManagerAnalyticsPage() {
                     <stop offset="95%" stopColor="#e50914" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0d" />
-                <XAxis dataKey="label" stroke="#7e8494" fontSize={11} tickLine={false} />
-                <YAxis stroke="#7e8494" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis dataKey="label" stroke="#64748b" fontSize={11} tickLine={false} />
+                <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
                 <Tooltip content={<CustomTooltipRevenue />} />
                 <Legend iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                 <Area type="monotone" dataKey="ticket" name="Doanh thu vé" stroke="#3b82f6" fill="transparent" strokeWidth={2} />
@@ -1106,16 +1144,16 @@ export default function ManagerAnalyticsPage() {
         </div>
 
         <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-xl space-y-4">
-          <h3 className="text-base font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat' }}>
+          <h3 className="text-base font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat', color: 'black' }}>
             🎬 Xếp Hạng Doanh Thu Theo Phim
           </h3>
 
           <div style={{ width: '100%', height: 320 }}>
             <ResponsiveContainer>
-              <BarChart data={MOVIE_PERFORMANCE_DATA} margin={{ top: 10, right: 5, left: 5, bottom: 0 }} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff0d" horizontal={false} />
-                <XAxis type="number" stroke="#7e8494" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
-                <YAxis dataKey="name" type="category" stroke="#7e8494" fontSize={11} width={80} tickLine={false} />
+              <BarChart data={moviePerformanceData} margin={{ top: 10, right: 5, left: 5, bottom: 0 }} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" horizontal={false} />
+                <XAxis type="number" stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000000}M`} />
+                <YAxis dataKey="name" type="category" stroke="#475569" fontSize={11} width={90} tickLine={false} tick={{ fill: '#475569' }} />
                 <Tooltip content={<CustomTooltipMovie />} />
                 <Bar dataKey="revenue" name="Doanh thu" fill="#e50914" radius={[0, 8, 8, 0]} barSize={16} />
               </BarChart>

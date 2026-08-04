@@ -64,7 +64,7 @@ export default function CinemaRoomDetailPage() {
   const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
 
   // Authorization check (AC-07)
-  const isAdmin = user && user.roles?.includes('ADMIN')
+  const isAuthorized = user && (user.roles?.includes('ADMIN') || user.roles?.includes('MANAGER'))
 
   // States
   const [room, setRoom] = useState(null)
@@ -195,14 +195,14 @@ export default function CinemaRoomDetailPage() {
       }
     }
 
-    if (isAdmin && roomId) {
+    if (isAuthorized && roomId) {
       fetchRoomAndSeats()
     }
 
     return () => {
       active = false
     }
-  }, [roomId, isAdmin])
+  }, [roomId, isAuthorized])
 
   // Handle Save Seats layout (AC-04 & AC-05)
   const handleSave = async (payload) => {
@@ -240,7 +240,7 @@ export default function CinemaRoomDetailPage() {
   }
 
   // Access Denied (AC-07)
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-[#06080F]">
         <span className="material-symbols-outlined text-red-500 text-6xl font-bold mb-4 animate-bounce">
@@ -287,7 +287,7 @@ export default function CinemaRoomDetailPage() {
       <div>
         <button
           onClick={handleBackClick}
-          className="flex items-center gap-1.5 text-[11px] text-gray-400 hover:text-white uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
+          className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-black uppercase font-semibold tracking-widest mb-3 transition-colors bg-transparent border-none cursor-pointer"
         >
           <ArrowLeft size={13} />
           Quay lại phòng chiếu
@@ -295,7 +295,7 @@ export default function CinemaRoomDetailPage() {
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-medium text-white">
+            <h1 className="text-2xl font-medium text-black" style={{ color: 'black' }}>
               Sơ đồ: {room ? room.name : 'Đang tải...'}
             </h1>
             <div className="flex items-center flex-wrap gap-2 mt-1.5">
@@ -361,7 +361,7 @@ export default function CinemaRoomDetailPage() {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2">
               <LayoutGrid size={17} className="text-gray-400" />
-              <span className="text-[15px] font-medium text-white">Trình chỉnh sơ đồ ghế</span>
+              <span className="text-[15px] font-medium text-black" style={{ color: 'black' }}>Trình chỉnh sơ đồ ghế</span>
             </div>
           </div>
 

@@ -36,8 +36,18 @@ const PUBLIC_GET_PREFIXES = [
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
   const url = config.url || ''
+  const method = (config.method || 'get').toLowerCase()
+
   const isAuthPublic = PUBLIC_URLS.some((publicUrl) => url.includes(publicUrl))
-  const isGetPublic = config.method?.toLowerCase() === 'get' && PUBLIC_GET_PREFIXES.some((prefix) => url.includes(prefix))
+  const isPointsMy = url.includes('/promotions/points/my')
+  const isPointsRedeem = url.includes('/promotions/points/redeem')
+
+  // /points/my và /points/redeem bắt buộc có token
+  const needsAuth = isPointsMy || isPointsRedeem
+  // GET các endpoint promotion còn lại là public
+  const isGetPublic = method === 'get'
+    && !needsAuth
+    && PUBLIC_GET_PREFIXES.some((prefix) => url.includes(prefix))
 
   // Gắn Guest ID duy nhất cho người dùng vãng lai chưa đăng nhập
   let guestId = localStorage.getItem('guest_id')

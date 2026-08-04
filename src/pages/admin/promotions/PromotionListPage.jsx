@@ -9,6 +9,7 @@ import {
   computePromotionStatus,
   formatDiscountValue,
   getDaysRemaining,
+  getDaysUntilStart,
   unwrapList,
 } from '../../../services/promotionService'
 import Table from '../../../components/common/Table'
@@ -157,14 +158,24 @@ export default function PromotionListPage() {
       label: 'Trạng thái',
       render: r => {
         const s = computePromotionStatus(r)
-        const days = getDaysRemaining(r.endTime)
+        const daysToEnd = getDaysRemaining(r.endTime)
+        const daysToStart = getDaysUntilStart(r.startTime)
+
+        // Sub-label theo pha thời gian
+        let subLabel = null
+        if (s === PROMOTION_STATUS.UPCOMING && daysToStart != null && daysToStart > 0) {
+          subLabel = `Bắt đầu sau ${daysToStart} ngày`
+        } else if (s === PROMOTION_STATUS.ACTIVE && daysToEnd != null && daysToEnd > 0) {
+          subLabel = `Còn ${daysToEnd} ngày`
+        }
+
         return (
           <div className="flex flex-col gap-1 items-start">
             <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wider ${PROMOTION_STATUS_COLORS[s]}`}>
               {PROMOTION_STATUS_LABELS[s]}
             </span>
-            {s === PROMOTION_STATUS.ACTIVE && days != null && (
-              <span className="text-[10px] text-[var(--color-text-muted)]">còn {days} ngày</span>
+            {subLabel && (
+              <span className="text-[10px] text-[var(--color-text-muted)]">{subLabel}</span>
             )}
           </div>
         )

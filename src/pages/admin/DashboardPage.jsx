@@ -33,7 +33,7 @@ const STAT_DEFS = [
     color: 'from-green-500/20 to-green-500/5',
     iconColor: 'text-green-400',
     borderColor: 'group-hover:border-green-500/30',
-    route: '/admin/bookings'
+    route: '/admin/tickets'
   },
   {
     key: 'promotions',
@@ -47,14 +47,14 @@ const STAT_DEFS = [
   },
 ]
 
-const recentBookings = [
+const DEFAULT_RECENT_BOOKINGS = [
   { id: '1', user: 'Nguyễn Minh', movie: 'Assassin Classroom', time: '10 phút trước', price: '95,000đ', status: 'SUCCESS' },
   { id: '2', user: 'Lê Trọng Nghĩa', movie: 'Spider-man: Brand New Day', time: '25 phút trước', price: '120,000đ', status: 'SUCCESS' },
   { id: '3', user: 'Trần Thị A', movie: 'The Backrooms', time: '1 giờ trước', price: '95,000đ', status: 'PENDING' },
   { id: '4', user: 'Phạm Văn B', movie: 'Spider Noir', time: '2 giờ trước', price: '110,000đ', status: 'SUCCESS' },
 ]
 
-const revenueData = [
+const DEFAULT_REVENUE_DATA = [
   { day: 'Thứ 2', amount: 4200000, percentage: '45%' },
   { day: 'Thứ 3', amount: 5600000, percentage: '60%' },
   { day: 'Thứ 4', amount: 3800000, percentage: '40%' },
@@ -64,51 +64,83 @@ const revenueData = [
   { day: 'Chủ nhật', amount: 9000000, percentage: '95%' },
 ]
 
+const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
+
 export default function DashboardPage() {
   const [stats, setStats] = useState(
     STAT_DEFS.reduce((acc, s) => ({ ...acc, [s.key]: s.fallback }), {})
   )
-  const [statsLoading, setStatsLoading] = useState(true)
+  const [recentBookingsList, setRecentBookingsList] = useState(DEFAULT_RECENT_BOOKINGS)
+  const [revenueData, setRevenueData] = useState(DEFAULT_REVENUE_DATA)
+  const [weeklyTotal, setWeeklyTotal] = useState(49100000)
   const navigate = useNavigate()
 
-  // Fetch dashboard stats from API
+  // Fetch dashboard stats & real data from API
   useEffect(() => {
     const update = (key, value) => setStats(prev => ({ ...prev, [key]: String(value) }))
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date();
+    // Offset for local timezone
+    const offset = today.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(today.getTime() - offset)).toISOString().split('T')[0];
 
-    // Interceptor sẽ tự gắn Bearer token từ localStorage
     Promise.allSettled([
-      // Tổng phim - endpoint public
+      // Tổng phim
       api.get('/api/v1/movies', { params: { size: 1 } })
-        .then(r => update('movies', r.data?.result?.totalElements ?? r.data?.result?.length ?? 0)),
+        .then(r => update('movies', r.data?.result?.totalElements ?? 0))
+        .catch(() => update('movies', 0)),
 
-      // Nhân viên (endpoint admin) — chỉ đếm STAFF, loại trừ MANAGER
-      api.get('/api/v1/admin/employees', { params: { page: 0, size: 1, role: 'STAFF' } })
-        .then(r => {
-          const result = r.data?.result
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('employees', count)
-        }),
+      // Nhân viên
+      api.get('/api/v1/admin/employees', { params: { page: 0, size: 1 } })
+        .then(r => update('employees', r.data?.result?.totalElements ?? 0))
+        .catch(() => update('employees', 0)),
 
-      // Vé bán hôm nay / tổng vé đặt
-      api.get('/api/v1/admin/bookings', { params: { page: 0, size: 1 } })
-        .catch(() => api.get('/api/v1/bookings', { params: { page: 0, size: 1 } }))
-        .then(r => {
-          const result = r?.data?.result || r?.data
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('tickets', count)
-        })
+      // Vé bán hôm nay
+      api.get('/api/v1/admin/bookings', { params: { fromDate: localISOTime, toDate: localISOTime, size: 1 } })
+        .then(r => update('tickets', r.data?.result?.totalElements ?? 0))
         .catch(() => update('tickets', 0)),
 
-      // Khuyến mãi đang hoạt động
-      api.get('/api/v1/promotions/active')
-        .catch(() => api.get('/api/v1/admin/promotions', { params: { status: 'ACTIVE', page: 0, size: 1 } }))
-        .then(r => {
-          const result = r?.data?.result || r?.data
-          const count = result?.totalElements ?? result?.content?.length ?? (Array.isArray(result) ? result.length : 0)
-          update('promotions', count)
-        })
+      // Khuyến mãi hoạt động
+      api.get('/api/v1/admin/promotions', { params: { status: 'ACTIVE', size: 1 } })
+        .then(r => update('promotions', r.data?.result?.totalElements ?? 0))
         .catch(() => update('promotions', 0)),
-    ]).finally(() => setStatsLoading(false))
+
+      // Vé đặt gần đây (Recent Bookings)
+      api.get('/api/v1/admin/bookings', { params: { page: 0, size: 5 } })
+        .then(r => {
+          const content = r.data?.result?.content || r.data?.result || r.data
+          if (Array.isArray(content) && content.length > 0) {
+            const mapped = content.map((b, idx) => ({
+              id: b.id || String(idx),
+              user: b.customerName || b.email || 'Khách hàng',
+              movie: b.movieName || 'Phim rạp',
+              time: b.createdAt ? new Date(b.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Vừa xong',
+              price: b.totalAmount ? formatVND(b.totalAmount) : '0đ',
+              status: (b.status === 'CONFIRMED' || b.status === 'CHECKED_IN') ? 'SUCCESS' : 'PENDING'
+            }))
+            setRecentBookingsList(mapped)
+          }
+        }),
+
+      // Analytics Overview for Revenue Chart
+      api.get('/api/v1/admin/analytics/overview')
+        .then(r => {
+          const data = r.data?.result
+          if (data && data.dailyRevenue && data.dailyRevenue.length > 0) {
+            const maxVal = Math.max(...data.dailyRevenue.map(d => d.total || 0), 1)
+            let sumTotal = 0
+            const mappedChart = data.dailyRevenue.map(d => {
+              const val = d.total || 0
+              sumTotal += val
+              const pct = Math.min(100, Math.max(15, Math.round((val / maxVal) * 100))) + '%'
+              return { day: d.label, amount: val, percentage: pct }
+            })
+            setRevenueData(mappedChart)
+            if (sumTotal > 0) setWeeklyTotal(sumTotal)
+          }
+        })
+    ])
   }, [])
 
   return (
@@ -127,12 +159,12 @@ export default function DashboardPage() {
       >
         <div>
           <h1
-            className="text-2xl sm:text-3xl lg:text-4xl text-gray-900 font-bold tracking-wider uppercase"
-            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900 }}
+            className="text-2xl sm:text-3xl lg:text-4xl text-black font-bold tracking-wider uppercase"
+            style={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 900, color: 'black' }}
           >
             Tổng Quan Hệ Thống
           </h1>
-          <p className="text-sm text-[var(--color-text-muted)] mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-sm text-black mt-1" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }}>
             Báo cáo thống kê thời gian thực & hoạt động bán vé hôm nay.
           </p>
         </div>
@@ -166,13 +198,13 @@ export default function DashboardPage() {
               variants={{ hidden: { opacity: 0, y: 24, scale: 0.95 }, visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] } } }}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider" style={{ fontFamily: 'Inter, sans-serif' }}>
+              <div className="flex flex-col mt-2">
+                <span className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {s.label}
-                </p>
-                <p className="text-3xl font-extrabold text-gray-900 tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                  {statsLoading ? '...' : value}
-                </p>
+                </span>
+                <span className="text-3xl font-extrabold tracking-tight" style={{ fontFamily: 'Montserrat, sans-serif', color: '#111827', display: 'block', minHeight: '36px', marginTop: '4px' }}>
+                  {value || '0'}
+                </span>
               </div>
               <div className={`p-4 rounded-xl bg-gradient-to-br ${s.color} transition-all duration-300 group-hover:scale-110`}>
                 <Icon className={`w-6 h-6 ${s.iconColor}`} />
@@ -193,22 +225,22 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-red-500" />
-              <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
-                Doanh thu tuần này
+              <h2 className="text-lg font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
+                Doanh thu theo chu kỳ
               </h2>
             </div>
             <div className="text-sm font-bold text-red-500 flex items-center gap-1" style={{ fontFamily: 'Inter, sans-serif' }}>
               <DollarSign className="w-4 h-4" />
-              <span>49,100,000đ</span>
+              <span>{formatVND(weeklyTotal)}</span>
             </div>
           </div>
 
           {/* Bar Chart Simulation */}
-          <div className="h-64 flex items-end justify-between gap-3 pt-6 border-b border-white/5 pb-2">
+          <div className="h-64 flex items-end justify-between gap-3 pt-6 border-b border-gray-200 dark:border-white/5 pb-2">
             {revenueData.map((d, i) => (
               <div key={d.day} className="flex-1 flex flex-col items-center gap-3 group h-full justify-end relative">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 text-[10px] text-white py-1 px-1.5 rounded border border-white/10 absolute -translate-y-16 pointer-events-none whitespace-nowrap z-30">
-                  {(d.amount / 1000000).toFixed(1)}M đ
+                  {formatVND(d.amount)}
                 </div>
                 <motion.div
                   className="w-full rounded-t-md bg-gradient-to-t from-red-600 to-rose-500 group-hover:from-red-500 group-hover:to-rose-400 group-hover:shadow-[0_0_15px_rgba(229,9,20,0.3)]"
@@ -216,7 +248,7 @@ export default function DashboardPage() {
                   animate={{ height: d.percentage }}
                   transition={{ duration: 0.7, delay: 0.3 + i * 0.07, ease: [0.25, 0.46, 0.45, 0.94] }}
                 />
-                <span className="text-[10px] md:text-xs text-[var(--color-text-muted)] group-hover:text-white transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-[10px] md:text-xs text-[var(--color-text-muted)] group-hover:text-gray-900 dark:group-hover:text-white transition-colors" style={{ fontFamily: 'Inter, sans-serif' }}>
                   {d.day}
                 </span>
               </div>
@@ -231,7 +263,7 @@ export default function DashboardPage() {
         >
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-red-500" />
-            <h2 className="text-lg font-bold text-white uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif' }}>
+            <h2 className="text-lg font-bold text-black uppercase tracking-wider" style={{ fontFamily: 'Montserrat, sans-serif', color: 'black' }}>
               Vé đặt gần đây
             </h2>
           </div>
@@ -242,10 +274,10 @@ export default function DashboardPage() {
             animate="visible"
             variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.1, delayChildren: 0.4 } } }}
           >
-            {recentBookings.map((b) => (
+            {recentBookingsList.map((b) => (
               <motion.div
                 key={b.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-2)] border border-white/5 hover:border-white/10 transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg bg-[var(--color-surface-2)] border border-gray-200 dark:border-white/5 hover:border-red-500/20 transition-colors"
                 variants={{ hidden: { opacity: 0, x: 20 }, visible: { opacity: 1, x: 0, transition: { duration: 0.4 } } }}
               >
                 <div className="flex items-center gap-3">
@@ -253,7 +285,7 @@ export default function DashboardPage() {
                     {b.user.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900 truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif' }} title={b.user}>
+                    <h4 className="text-sm font-semibold text-black truncate max-w-[120px]" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }} title={b.user}>
                       {b.user}
                     </h4>
                     <p className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[120px]">
@@ -263,10 +295,10 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="text-right">
-                  <span className="text-xs font-bold text-white block" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-xs font-bold text-black block" style={{ fontFamily: 'Inter, sans-serif', color: 'black' }}>
                     {b.price}
                   </span>
-                  <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${b.status === 'SUCCESS' ? 'bg-green-500/15 text-green-400' : 'bg-yellow-500/15 text-yellow-400'}`}>
+                  <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded-full ${b.status === 'SUCCESS' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'}`}>
                     {b.status === 'SUCCESS' ? 'THÀNH CÔNG' : 'ĐANG XỬ LÝ'}
                   </span>
                 </div>
