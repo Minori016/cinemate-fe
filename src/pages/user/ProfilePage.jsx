@@ -173,6 +173,11 @@ export default function ProfilePage() {
     const concessions = data.concessions || []
     const concessionAmount = data.concessionAmount ?? concessions.reduce((s, c) => s + (c.lineTotal || (c.unitPrice || 0) * c.quantity || 0), 0)
     const discountAmount = data.discountAmount || 0
+    const pointsRedemption = data.pointsRedemption || data.giftRedemption || (data.pointsUsed ? {
+      pointsSpent: data.pointsUsed,
+      promotionTitle: data.promotionTitle || data.pointsPromotionTitle || 'Quà đổi điểm',
+      discountAmount: data.pointsDiscount || 0
+    } : null)
     const ticketAmount = data.ticketAmount ?? Math.max(0, finalPrice + discountAmount - concessionAmount)
 
     const rawId = data.id || fallbackBooking?.fullId || fallbackBooking?.id || ''
@@ -192,6 +197,7 @@ export default function ProfilePage() {
       concessionAmount,
       discountAmount,
       promotionCode: data.promotionCode,
+      pointsRedemption,
       ticketAmount,
       finalPrice,
       status: data.status || fallbackBooking?.status || 'CONFIRMED',
@@ -2283,6 +2289,30 @@ export default function ProfilePage() {
                               )}
                             </div>
 
+                            {/* POINTS REDEMPTION / QUÀ ĐỔI ĐIỂM SECTION */}
+                            {norm.pointsRedemption && (
+                              <div className="mb-3">
+                                <p className="text-[10px] font-black uppercase text-amber-400 tracking-wider mb-1.5 flex items-center gap-1">
+                                  <Gift size={12} className="text-amber-400" /> Quà & Ưu Đãi Đổi Điểm:
+                                </p>
+                                <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/30 flex justify-between items-center text-[10px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[9px] border border-amber-500/40">
+                                      ★ {norm.pointsRedemption.pointsSpent || 0} điểm
+                                    </span>
+                                    <span className="font-bold text-white">
+                                      {norm.pointsRedemption.promotionTitle || 'Quà đổi điểm'}
+                                    </span>
+                                  </div>
+                                  <span className="font-extrabold text-amber-400">
+                                    {norm.pointsRedemption.discountAmount > 0 
+                                      ? `-${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.pointsRedemption.discountAmount)}` 
+                                      : 'Quà tặng (0đ)'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
                             {/* BILL BREAKDOWN */}
                             <div className="mb-3 bg-black/40 p-3 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
                               <p className="font-extrabold uppercase text-gray-300 tracking-wider flex items-center gap-1 border-b border-white/10 pb-1 text-[10px]">
@@ -2301,6 +2331,19 @@ export default function ProfilePage() {
                                   <span>Bắp nước & Đồ ăn:</span>
                                   <span className="font-bold text-white">
                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.concessionAmount)}
+                                  </span>
+                                </div>
+                              )}
+
+                              {norm.pointsRedemption && (
+                                <div className="flex justify-between items-center text-amber-400 font-medium">
+                                  <span className="flex items-center gap-1">
+                                    ★ Đổi điểm ({norm.pointsRedemption.pointsSpent || 0} điểm):
+                                  </span>
+                                  <span className="font-extrabold">
+                                    {norm.pointsRedemption.discountAmount > 0 
+                                      ? `-${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(norm.pointsRedemption.discountAmount)}` 
+                                      : (norm.pointsRedemption.promotionTitle || 'Đã nhận quà')}
                                   </span>
                                 </div>
                               )}

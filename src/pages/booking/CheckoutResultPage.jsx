@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { 
   CheckCircle2, XCircle, Loader2, ArrowRight, ArrowLeft, Calendar, Clock, MapPin, 
-  Tag, Film, Ticket, Share2, Printer, Coffee, Sparkles, Copy, Check, ChevronLeft 
+  Tag, Film, Ticket, Share2, Printer, Coffee, Sparkles, Copy, Check, ChevronLeft, Gift 
 } from 'lucide-react'
 import { paymentService } from '../../services/paymentService'
 import { bookingService } from '../../services/bookingService'
@@ -25,6 +25,34 @@ export default function CheckoutResultPage() {
   const [message, setMessage] = useState('')
   const [bookingDetails, setBookingDetails] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [pointsRedemption, setPointsRedemption] = useState(null)
+
+  useEffect(() => {
+    if (!bookingDetails) return
+    const id = bookingDetails.id || (orderId ? orderId.split('_')[1] : null) || (vnpTxnRef ? vnpTxnRef.split('_')[1] : null)
+    let pr = bookingDetails.pointsRedemption || bookingDetails.giftRedemption || null
+    if (!pr && bookingDetails.pointsUsed) {
+      pr = {
+        pointsSpent: bookingDetails.pointsUsed,
+        promotionTitle: bookingDetails.promotionTitle || bookingDetails.pointsPromotionTitle || 'Quà đổi điểm',
+        discountAmount: bookingDetails.pointsDiscount || 0
+      }
+    }
+    if (!pr) {
+      try {
+        const stored = (id && sessionStorage.getItem(`points_redemption_${id}`))
+          || sessionStorage.getItem('latest_points_redemption')
+          || sessionStorage.getItem('pending_booking_state')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          pr = parsed.pointsRedemption || parsed
+        }
+      } catch (e) {}
+    }
+    if (pr && (pr.pointsSpent || pr.promotionTitle)) {
+      setPointsRedemption(pr)
+    }
+  }, [bookingDetails, orderId, vnpTxnRef])
 
   useEffect(() => {
     if (!paymentId) {
@@ -131,7 +159,10 @@ export default function CheckoutResultPage() {
 
   const handleCopyTicketCode = () => {
     if (!bookingDetails?.id) return
-    const ticketInfo = `Vé xem phim CineMate\nPhim: ${bookingDetails.movieName}\nMã vé: ${bookingDetails.id}\nNgày: ${bookingDetails.date} (${bookingDetails.showtime})\nGhế: ${bookingDetails.seatNames?.join(', ')}`
+    let ticketInfo = `Vé xem phim CineMate\nPhim: ${bookingDetails.movieName}\nMã vé: ${bookingDetails.id}\nNgày: ${bookingDetails.date} (${bookingDetails.showtime})\nGhế: ${bookingDetails.seatNames?.join(', ')}`
+    if (pointsRedemption) {
+      ticketInfo += `\nQuà đổi điểm: ${pointsRedemption.promotionTitle || 'Quà đổi điểm'} (${pointsRedemption.pointsSpent || 0} điểm)`
+    }
     navigator.clipboard.writeText(ticketInfo)
     setCopied(true)
     setTimeout(() => setCopied(false), 3000)
@@ -378,6 +409,30 @@ export default function CheckoutResultPage() {
                         )}
                       </div>
 
+                      {/* POINTS REDEMPTION / QUÀ ĐỔI ĐIỂM SECTION */}
+                      {pointsRedemption && (
+                        <div className="mb-2.5">
+                          <p className="text-[10px] font-black uppercase text-amber-400 tracking-wider mb-1.5 flex items-center gap-1">
+                            <Gift size={12} className="text-amber-400" /> Quà & Ưu Đãi Đổi Điểm:
+                          </p>
+                          <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/30 flex justify-between items-center text-[10px]">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[9px] border border-amber-500/40">
+                                ★ {pointsRedemption.pointsSpent || 0} điểm
+                              </span>
+                              <span className="font-bold text-white">
+                                {pointsRedemption.promotionTitle || 'Quà đổi điểm'}
+                              </span>
+                            </div>
+                            <span className="font-extrabold text-amber-400">
+                              {pointsRedemption.discountAmount > 0 
+                                ? `-${formatPrice(pointsRedemption.discountAmount)}` 
+                                : 'Quà tặng (0đ)'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* BILL SUMMARY BREAKDOWN / HÓA ĐƠN CHI TIẾT */}
                       <div className="mb-2.5 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
                         <p className="font-extrabold uppercase text-gray-300 tracking-wider flex items-center gap-1 border-b border-white/10 pb-1 text-[10px]">
@@ -398,6 +453,20 @@ export default function CheckoutResultPage() {
                             <span>Bắp nước & Đồ ăn:</span>
                             <span className="font-bold text-white">
                               {formatPrice(concessionAmount)}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Ưu đãi đổi điểm */}
+                        {pointsRedemption && (
+                          <div className="flex justify-between items-center text-amber-400 font-medium">
+                            <span className="flex items-center gap-1">
+                              ★ Đổi điểm ({pointsRedemption.pointsSpent || 0} điểm):
+                            </span>
+                            <span className="font-extrabold">
+                              {pointsRedemption.discountAmount > 0 
+                                ? `-${formatPrice(pointsRedemption.discountAmount)}` 
+                                : (pointsRedemption.promotionTitle || 'Đã nhận quà')}
                             </span>
                           </div>
                         )}

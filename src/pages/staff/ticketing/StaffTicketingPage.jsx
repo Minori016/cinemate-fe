@@ -242,19 +242,54 @@ export default function StaffTicketingPage() {
     return () => { cancelled = true }
   }, [selectedShowtime, seatMapRefreshKey])
 
+  const demoMatrix = [
+    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    {
+      rowLabel: 'J',
+      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
+    },
+  ]
+
+  const activeSeatMatrix = useMemo(() => {
+    if (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0) {
+      return roomLayout.seatMatrix.map(row => ({
+        rowLabel: row.rowLabel || row.row || '',
+        seats: Array.isArray(row.seats) ? row.seats.map(seat => ({
+          ...seat,
+          type: String(seat.type || 'STANDARD').toUpperCase()
+        })) : []
+      }))
+    }
+    return demoMatrix
+  }, [roomLayout])
+
   // TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
   const getSeatPrice = (seatId) => {
-    const rowChar = seatId.charAt(0).toUpperCase()
-
-    // 1. Xác định loại ghế theo đúng sơ đồ
     let seatType = 'STANDARD'
-    if (checkIsVipCenterSeat(seatId)) {
-      seatType = 'VIP'
-    } else if (rowChar === 'J') {
-      seatType = 'COUPLE'
+
+    if (activeSeatMatrix && activeSeatMatrix.length > 0) {
+      for (const row of activeSeatMatrix) {
+        const foundSeat = (row.seats || []).find(s => {
+          const sLabel = `${s.rowLabel || row.rowLabel || ''}${s.number}`
+          return sLabel === seatId || s.id === seatId
+        })
+        if (foundSeat && foundSeat.type) {
+          seatType = String(foundSeat.type).toUpperCase()
+          break
+        }
+      }
     }
 
-    // 2. ƯU TIÊN LẤY GIÁ CHÍNH XÁC TỪ BACK-END (selectedShowtime.prices)
+    if (seatType === 'COUPLE_EXTENSION') seatType = 'COUPLE'
+
     if (selectedShowtime?.prices && Array.isArray(selectedShowtime.prices) && selectedShowtime.prices.length > 0) {
       const matchedPriceObj = selectedShowtime.prices.find(
         p => String(p.seatType || '').toUpperCase() === seatType
@@ -264,7 +299,6 @@ export default function StaffTicketingPage() {
       }
     }
 
-    // 3. Fallback nếu suất chiếu chỉ có giá phẳng (selectedShowtime.price / vipPrice / couplePrice)
     if (seatType === 'VIP' && selectedShowtime?.vipPrice != null) {
       return Number(selectedShowtime.vipPrice)
     }
@@ -275,10 +309,9 @@ export default function StaffTicketingPage() {
       return Number(selectedShowtime.price)
     }
 
-    // 4. Fallback mặc định theo công thức Back-End (Base = 90k)
     const basePrice = Number(selectedShowtime?.price) || 90000
-    if (seatType === 'VIP') return basePrice + 20000       // 90k + 20k = 110k (hoặc theo cấu hình)
-    if (seatType === 'COUPLE') return basePrice * 2 + 10000 // 90k * 2 + 10k = 190k
+    if (seatType === 'VIP') return basePrice + 20000
+    if (seatType === 'COUPLE') return basePrice * 2 + 10000
 
     return basePrice
   }
@@ -587,45 +620,7 @@ export default function StaffTicketingPage() {
     setSeatMapRefreshKey(prev => prev + 1)
   }
 
-  const demoMatrix = [
-    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    {
-      rowLabel: 'J',
-      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
-    },
-  ]
 
-  const activeSeatMatrix = useMemo(() => {
-    const rawMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
-      ? roomLayout.seatMatrix
-      : demoMatrix
-
-    return rawMatrix.map(row => {
-      const label = String(row.rowLabel || '').toUpperCase()
-
-      return {
-        ...row,
-        seats: row.seats.map(seat => {
-          const seatLabel = `${label}${seat.number}`
-          const isVipCenter = checkIsVipCenterSeat(seatLabel)
-          const isCouple = label === 'J'
-
-          return {
-            ...seat,
-            type: isCouple ? 'COUPLE' : isVipCenter ? 'VIP' : 'STANDARD'
-          }
-        })
-      }
-    })
-  }, [roomLayout])
 
   return (
     <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -867,111 +862,85 @@ export default function StaffTicketingPage() {
                   {/* SEAT GRID WITH RESPONSIVE SCALING & COLOR FIX */}
                   <div className="w-full overflow-x-auto py-2 custom-scrollbar">
                     <div className="space-y-2.5 min-w-max mx-auto px-4 flex flex-col items-center">
-                      {activeSeatMatrix.map((row) => {
-                        const renderedSeats = []
-                        let skipNext = false
+                      {activeSeatMatrix.map((row) => (
+                        <div key={row.rowLabel} className="flex items-center justify-center gap-2">
+                          <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
+                          <div className="flex items-center gap-2">
+                            {row.seats.map((seat) => {
+                              const seatType = String(seat.type || 'STANDARD').toUpperCase()
 
-                        row.seats.forEach((seat, idx) => {
-                          if (skipNext) {
-                            skipNext = false
-                            return
-                          }
+                              if (seatType === 'AISLE' || seatType === 'EMPTY' || seatType === 'WALKWAY') {
+                                return (
+                                  <div key={seat.id || `aisle-${row.rowLabel}-${seat.number}`} className="w-8 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">
+                                    │
+                                  </div>
+                                )
+                              }
 
-                          const seatType = String(seat.type || '').toUpperCase()
+                              if (seatType === 'COUPLE_EXTENSION') {
+                                return null
+                              }
 
-                          if (seatType === 'EMPTY' || seatType === 'WALKWAY') {
-                            renderedSeats.push({
-                              isWalkway: true,
-                              seatId: `walkway-${row.rowLabel}-${idx}`
-                            })
-                            return
-                          }
+                              const seatLabel = seat.rowLabel && seat.number ? `${seat.rowLabel}${seat.number}` : `${row.rowLabel}${seat.number}`
 
-                          const isCouple = seatType === 'COUPLE' || ['J'].includes(row.rowLabel.toUpperCase())
+                              if (seatType === 'COUPLE') {
+                                const nextSeat = row.seats.find(s => s.number === seat.number + 1)
+                                const secondNum = nextSeat ? nextSeat.number : (seat.number + 1)
+                                const pairedLabel = `${row.rowLabel}${secondNum}`
+                                const coupleDisplayLabel = `${seatLabel} | ${pairedLabel}`
 
-                          if (isCouple) {
-                            const nextSeat = row.seats[idx + 1]
-                            const secondNum = nextSeat ? nextSeat.number : seat.number + 1
-                            skipNext = true
+                                const isOccupied = occupiedSeats.includes(seatLabel) || occupiedSeats.includes(pairedLabel)
+                                const isSelected = selectedSeats.includes(seatLabel)
 
-                            renderedSeats.push({
-                              ...seat,
-                              isCouple: true,
-                              seatId: `${row.rowLabel}${seat.number}`,
-                              pairedSeatId: `${row.rowLabel}${secondNum}`,
-                              coupleLabel: `${row.rowLabel}${seat.number} | ${row.rowLabel}${secondNum}`
-                            })
-                          } else {
-                            renderedSeats.push({
-                              ...seat,
-                              isCouple: false,
-                              seatId: `${row.rowLabel}${seat.number}`
-                            })
-                          }
-                        })
-
-                        const isLargeRow = row.seats.length > 12
-
-                        return (
-                          <div key={row.rowLabel} className="flex items-center justify-center gap-2">
-                            <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
-
-                            <div className={`flex items-center ${isLargeRow ? 'gap-1.5' : 'gap-2.5'}`}>
-                              {renderedSeats.map((seat) => {
-                                if (seat.isWalkway) {
-                                  return <div key={seat.seatId} className="w-6 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">│</div>
-                                }
-
-                                const isOccupied = occupiedSeats.includes(seat.seatId) || (seat.pairedSeatId && occupiedSeats.includes(seat.pairedSeatId))
-                                const isSelected = selectedSeats.includes(seat.seatId)
-
-                                const seatType = String(seat.type || '').toUpperCase()
-                                const isVip = seatType === 'VIP'
-                                const isCouple = seat.isCouple || seatType === 'COUPLE'
-
-                                if (isCouple) {
-                                  return (
-                                    <button
-                                      key={seat.seatId}
-                                      onClick={() => handleSeatClick(seat.seatId, seat.pairedSeatId)}
-                                      disabled={isOccupied}
-                                      className={`h-7 px-2.5 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isSelected
+                                return (
+                                  <button
+                                    key={seat.id || seatLabel}
+                                    type="button"
+                                    onClick={() => handleSeatClick(seatLabel, pairedLabel)}
+                                    disabled={isOccupied}
+                                    className={`h-8 px-3 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                                      isSelected
                                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
                                         : isOccupied
                                           ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
                                           : 'border-red-600/80 text-red-500 hover:bg-red-950/30'
-                                        }`}
-                                    >
-                                      {seat.coupleLabel}
-                                    </button>
-                                  )
-                                }
-
-                                return (
-                                  <button
-                                    key={seat.seatId}
-                                    onClick={() => handleSeatClick(seat.seatId)}
-                                    disabled={isOccupied}
-                                    className={`rounded-full border font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isLargeRow ? 'w-7 h-7 text-[10px]' : 'w-8 h-8 text-[11px]'
-                                      } ${isSelected
-                                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
-                                        : isOccupied
-                                          ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
-                                          : isVip
-                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
-                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                                      }`}
+                                    }`}
+                                    title={coupleDisplayLabel}
                                   >
-                                    {seat.seatId}
+                                    {coupleDisplayLabel}
                                   </button>
                                 )
-                              })}
-                            </div>
+                              }
 
-                            <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
+                              const isOccupied = occupiedSeats.includes(seatLabel)
+                              const isSelected = selectedSeats.includes(seatLabel)
+                              const isVip = seatType === 'VIP'
+
+                              return (
+                                <button
+                                  key={seat.id || seatLabel}
+                                  type="button"
+                                  onClick={() => handleSeatClick(seatLabel)}
+                                  disabled={isOccupied}
+                                  className={`w-8 h-8 rounded-full border font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
+                                      : isOccupied
+                                        ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
+                                        : isVip
+                                          ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
+                                          : 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                                  }`}
+                                  title={seatLabel}
+                                >
+                                  {seatLabel}
+                                </button>
+                              )
+                            })}
                           </div>
-                        )
-                      })}
+                          <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
