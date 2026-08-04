@@ -13,7 +13,7 @@ import {
   Check, 
   ChevronLeft, 
   Loader2,
-  Sparkles
+  Sparkles, Gift
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'

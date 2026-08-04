@@ -201,7 +201,7 @@ export default function ComboStep({
       const code = result.promotionCode || promoInput.trim().toUpperCase()
       onApplyPromo?.(code, applyVal)
       setPromoCode?.(code)
-      setPromoSuccess(result.message || `Áp dụng thành công mã ${code}!`)
+      setPromoSuccess('Đã áp dụng mã khuyến mãi thành công!')
     } catch (err) {
       setPromoError(err?.response?.data?.message || 'Không thể xác thực mã giảm giá')
     } finally {
@@ -491,7 +491,7 @@ export default function ComboStep({
                   value={promoInput}
                   onChange={(e) => setPromoInput(e.target.value)}
                   placeholder="Ví dụ: CINEMATE10, BAPNUOC20"
-                  disabled={discount > 0}
+                  
                   className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-white text-sm outline-none focus:border-red-500/50 transition-colors uppercase tracking-wider font-semibold disabled:opacity-50"
                 />
               </div>
@@ -544,34 +544,11 @@ export default function ComboStep({
               orderAmount={orderAmount}
               onApplyPoints={handleApplyPoints}
               currentDiscount={discount}
-              disabled={discount > 0}
+              
             />
           </div>
         )}
 
-        {/* Summary of applied discounts */}
-        {(discount > 0 || appliedPointsDiscount > 0) && (
-          <div className="mt-4 bg-green-500/10 border border-green-500/30 rounded-xl p-3">
-            <p className="text-xs font-bold text-green-400 flex items-center gap-2">
-              <Check size={14} />
-              Giảm giá đã áp dụng:
-            </p>
-            <div className="flex flex-col gap-1 mt-2">
-              {discount > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-300">Mã coupon</span>
-                  <span className="text-xs text-green-400 font-bold">-{Number(discount).toLocaleString('vi-VN')}đ</span>
-                </div>
-              )}
-              {appliedPointsDiscount > 0 && (
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-300">Đổi điểm</span>
-                  <span className="text-xs text-green-400 font-bold">-{Number(appliedPointsDiscount).toLocaleString('vi-VN')}đ</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
     </motion.div>
