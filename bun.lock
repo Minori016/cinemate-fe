@@ -11,6 +11,7 @@
         "@emotion/styled": "11.14.1",
         "@mui/icons-material": "7.3.5",
         "@mui/material": "7.3.5",
+        "@phosphor-icons/react": "^2.1.10",
         "@popperjs/core": "2.11.8",
         "@radix-ui/react-accordion": "1.2.3",
         "@radix-ui/react-alert-dialog": "1.1.6",
@@ -342,6 +343,8 @@
     "@mui/types": ["@mui/types@7.4.12", "", { "dependencies": { "@babel/runtime": "^7.28.6" }, "peerDependencies": { "@types/react": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-iKNAF2u9PzSIj40CjvKJWxFXJo122jXVdrmdh0hMYd+FR+NuJMkr/L88XwWLCRiJ5P1j+uyac25+Kp6YC4hu6w=="],
 
     "@mui/utils": ["@mui/utils@7.3.11", "", { "dependencies": { "@babel/runtime": "^7.28.6", "@mui/types": "^7.4.12", "@types/prop-types": "^15.7.15", "clsx": "^2.1.1", "prop-types": "^15.8.1", "react-is": "^19.2.3" }, "peerDependencies": { "@types/react": "^17.0.0 || ^18.0.0 || ^19.0.0", "react": "^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-XTjGnifwteg71/ij+0e7Y7d+hwyntMYP5wPoA/g2drdGH+Flkvjwy0OfrVpKBbaOvofq4zU/LIyUZyKgmWu18g=="],
+
+    "@phosphor-icons/react": ["@phosphor-icons/react@2.1.10", "", { "peerDependencies": { "react": ">= 16.8", "react-dom": ">= 16.8" } }, "sha512-vt8Tvq8GLjheAZZYa+YG/pW7HDbov8El/MANW8pOAz4eGxrwhnbfrQZq0Cp4q8zBEu8NIhHdnr+r8thnfRSNYA=="],
 
     "@popperjs/core": ["@popperjs/core@2.11.8", "", {}, "sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A=="],
 

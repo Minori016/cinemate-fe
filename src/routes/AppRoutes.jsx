@@ -120,6 +120,7 @@ export default function AppRoutes() {
           <Route path="movies/edit/:id" element={<MovieFormPage />} />
           <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
           <Route path="cinema-rooms/add" element={<CinemaRoomFormPage />} />
+          <Route path="cinema-rooms/edit/:id" element={<CinemaRoomFormPage />} />
           <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
@@ -158,6 +159,7 @@ export default function AppRoutes() {
           <Route path="tickets" element={<TicketManagementPage />} />
           <Route path="cinema-rooms" element={<CinemaRoomListPage />} />
           <Route path="cinema-rooms/add" element={<CinemaRoomFormPage />} />
+          <Route path="cinema-rooms/edit/:id" element={<CinemaRoomFormPage />} />
           <Route path="cinema-rooms/:roomId" element={<CinemaRoomDetailPage />} />
           <Route path="showtimes" element={<ShowtimeListPage />} />
           <Route path="showtimes/add" element={<ShowtimeFormPage />} />
