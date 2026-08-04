@@ -195,6 +195,7 @@ export default function TicketManagementPage() {
                 <input
                   type="date"
                   value={fromDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={e => { setFromDate(e.target.value); setCurrentPage(0); }}
                   className="bg-transparent text-xs text-white outline-none cursor-pointer"
                 />
@@ -206,6 +207,7 @@ export default function TicketManagementPage() {
                 <input
                   type="date"
                   value={toDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={e => { setToDate(e.target.value); setCurrentPage(0); }}
                   className="bg-transparent text-xs text-white outline-none cursor-pointer"
                 />

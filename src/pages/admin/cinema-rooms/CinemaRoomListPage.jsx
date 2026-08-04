@@ -408,15 +408,7 @@ export default function CinemaRoomListPage() {
                   <option value="MAINTENANCE">MAINTENANCE</option>
                 </select>
 
-                {/* Edit Room Info & Formats */}
-                <button
-                  onClick={() => navigate(`${basePath}/cinema-rooms/edit/${row.id}`)}
-                  className="px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 font-bold text-xs rounded-xl transition-all border border-blue-500/20 active:scale-[0.98] cursor-pointer flex items-center gap-1"
-                  title="Sửa thông tin & định dạng phòng chiếu"
-                >
-                  <Pencil size={12} />
-                  Sửa
-                </button>
+
 
                 {/* Seat Detail Button (AC-02) */}
                 <button
