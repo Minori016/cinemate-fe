@@ -5,13 +5,14 @@ import {
   AlertCircle, X, Search, CreditCard, QrCode,
   Coins, User, Printer, RotateCcw, ChevronRight,
   ChevronLeft, Armchair, Square, Sofa, Wrench, ShieldAlert, Clock3,
-  Info, LogIn, LogOut
+  Info, LogIn, LogOut, Tag, Gift, Star, Landmark
 } from 'lucide-react'
 import { movieService } from '../../../services/movieService'
 import { showtimeService } from '../../../services/showtimeService'
-import { concessionService, FALLBACK_COMBOS } from '../../../services/concessionService'
+import { concessionService, groupConcessionsByBaseName, FALLBACK_COMBOS } from '../../../services/concessionService'
 import { bookingService } from '../../../services/bookingService'
 import { cinemaRoomService } from '../../../services/cinemaRoomService'
+import { promotionService } from '../../../services/promotionService'
 import { paymentService } from '../../../services/paymentService'
 
 const MOCK_MEMBERS = []
@@ -35,6 +36,7 @@ export default function StaffTicketingPage() {
   const [movies, setMovies] = useState([])
   const [showtimes, setShowtimes] = useState([])
   const [combos, setCombos] = useState([])
+  const [rawConcessions, setRawConcessions] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingCombos, setLoadingCombos] = useState(false)
   const [error, setError] = useState('')
@@ -44,6 +46,7 @@ export default function StaffTicketingPage() {
   const [selectedShowtime, setSelectedShowtime] = useState(null)
   const [selectedSeats, setSelectedSeats] = useState([])
   const [selectedCombos, setSelectedCombos] = useState({})
+  const [selectedSizes, setSelectedSizes] = useState({})
 
   // Member states
   const [memberQuery, setMemberQuery] = useState('')
@@ -52,8 +55,16 @@ export default function StaffTicketingPage() {
   const [convertCount, setConvertCount] = useState(0)
   const [scoreError, setScoreError] = useState('')
 
-  // Checkout states
-  const [paymentMethod, setPaymentMethod] = useState('cash')
+  // Coupon / Promotion / Points Tab State
+  const [promoTab, setPromoTab] = useState('coupon')
+  const [promoCodeInput, setPromoCodeInput] = useState('')
+  const [appliedPromoCode, setAppliedPromoCode] = useState('')
+  const [couponDiscount, setCouponDiscount] = useState(0)
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [promoError, setPromoError] = useState('')
+
+  // Checkout states (Thêm vnpay)
+  const [paymentMethod, setPaymentMethod] = useState('cash') // 'cash' | 'card' | 'momo' | 'vnpay'
   const [cashReceived, setCashReceived] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [printedTicket, setPrintedTicket] = useState(null)
@@ -102,14 +113,23 @@ export default function StaffTicketingPage() {
     concessionService.getActiveForUi({ fallback: true })
       .then(list => {
         if (cancelled) return
-        const mapped = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
-        setCombos(mapped)
+        const rawList = Array.isArray(list) && list.length > 0 ? list : FALLBACK_COMBOS
+        setRawConcessions(rawList)
+
+        const grouped = groupConcessionsByBaseName(rawList)
+        setCombos(grouped)
+
         const initQty = {}
-        mapped.forEach(c => {
-          const comboId = c.id || c.uuid
-          initQty[comboId] = 0
+        const initSizes = {}
+        grouped.forEach(item => {
+          const key = item.id || item.uuid
+          initQty[key] = 0
+          if (item.sizes && item.sizes.length > 0) {
+            initSizes[key] = item.sizes[0].key
+          }
         })
         setSelectedCombos(initQty)
+        setSelectedSizes(initSizes)
       })
       .catch(err => {
         console.error('Lỗi khi nạp danh sách bắp nước:', err)
@@ -222,20 +242,54 @@ export default function StaffTicketingPage() {
     return () => { cancelled = true }
   }, [selectedShowtime, seatMapRefreshKey])
 
-  // 🟢 TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
-  // 🟢 TÍNH GIÁ GHẾ ĐỒNG BỘ CHUẨN THEO USER & BACKEND
-  const getSeatPrice = (seatId) => {
-    const rowChar = seatId.charAt(0).toUpperCase()
+  const demoMatrix = [
+    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    {
+      rowLabel: 'J',
+      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
+    },
+  ]
 
-    // 1. Xác định loại ghế theo đúng sơ đồ
+  const activeSeatMatrix = useMemo(() => {
+    if (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0) {
+      return roomLayout.seatMatrix.map(row => ({
+        rowLabel: row.rowLabel || row.row || '',
+        seats: Array.isArray(row.seats) ? row.seats.map(seat => ({
+          ...seat,
+          type: String(seat.type || 'STANDARD').toUpperCase()
+        })) : []
+      }))
+    }
+    return demoMatrix
+  }, [roomLayout])
+
+  // TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
+  const getSeatPrice = (seatId) => {
     let seatType = 'STANDARD'
-    if (checkIsVipCenterSeat(seatId)) {
-      seatType = 'VIP'
-    } else if (rowChar === 'J') {
-      seatType = 'COUPLE'
+
+    if (activeSeatMatrix && activeSeatMatrix.length > 0) {
+      for (const row of activeSeatMatrix) {
+        const foundSeat = (row.seats || []).find(s => {
+          const sLabel = `${s.rowLabel || row.rowLabel || ''}${s.number}`
+          return sLabel === seatId || s.id === seatId
+        })
+        if (foundSeat && foundSeat.type) {
+          seatType = String(foundSeat.type).toUpperCase()
+          break
+        }
+      }
     }
 
-    // 2. ƯU TIÊN LẤY GIÁ CHÍNH XÁC TỪ BACK-END (selectedShowtime.prices)
+    if (seatType === 'COUPLE_EXTENSION') seatType = 'COUPLE'
+
     if (selectedShowtime?.prices && Array.isArray(selectedShowtime.prices) && selectedShowtime.prices.length > 0) {
       const matchedPriceObj = selectedShowtime.prices.find(
         p => String(p.seatType || '').toUpperCase() === seatType
@@ -245,7 +299,6 @@ export default function StaffTicketingPage() {
       }
     }
 
-    // 3. Fallback nếu suất chiếu chỉ có giá phẳng (selectedShowtime.price / vipPrice / couplePrice)
     if (seatType === 'VIP' && selectedShowtime?.vipPrice != null) {
       return Number(selectedShowtime.vipPrice)
     }
@@ -256,10 +309,9 @@ export default function StaffTicketingPage() {
       return Number(selectedShowtime.price)
     }
 
-    // 4. Fallback mặc định theo công thức Back-End (Base = 90k)
     const basePrice = Number(selectedShowtime?.price) || 90000
-    if (seatType === 'VIP') return basePrice + 20000       // 90k + 20k = 110k (hoặc theo cấu hình)
-    if (seatType === 'COUPLE') return basePrice * 2 + 10000 // 90k * 2 + 10k = 190k
+    if (seatType === 'VIP') return basePrice + 20000
+    if (seatType === 'COUPLE') return basePrice * 2 + 10000
 
     return basePrice
   }
@@ -281,11 +333,17 @@ export default function StaffTicketingPage() {
     })
   }
 
-  // Tăng giảm số lượng bắp nước
-  const handleComboQty = (comboId, delta) => {
+  const handleComboQty = (comboKey, delta) => {
     setSelectedCombos(prev => ({
       ...prev,
-      [comboId]: Math.max(0, (prev[comboId] || 0) + delta)
+      [comboKey]: Math.max(0, (prev[comboKey] || 0) + delta)
+    }))
+  }
+
+  const handleSelectSize = (comboKey, sizeKey) => {
+    setSelectedSizes(prev => ({
+      ...prev,
+      [comboKey]: sizeKey
     }))
   }
 
@@ -340,17 +398,63 @@ export default function StaffTicketingPage() {
     return selectedSeats.reduce((sum, seat) => sum + getSeatPrice(seat), 0)
   }, [selectedSeats, selectedShowtime])
 
-  // TÍNH TỔNG TIỀN BẮP NƯỚC THỰC TẾ
   const comboPriceTotal = useMemo(() => {
-    return Object.entries(selectedCombos).reduce((sum, [id, qty]) => {
-      const combo = combos.find(c => String(c.id || c.uuid) === String(id))
-      return sum + (combo ? (Number(combo.price) || 0) * qty : 0)
+    return Object.entries(selectedCombos).reduce((sum, [key, qty]) => {
+      if (qty <= 0) return sum
+      const item = combos.find(c => String(c.id || c.uuid) === String(key))
+      if (!item) return sum
+
+      let unitPrice = Number(item.price) || 0
+      if (item.sizes && item.sizes.length > 0) {
+        const currentSize = selectedSizes[key] || item.sizes[0].key
+        const sizeObj = item.sizes.find(s => s.key === currentSize)
+        if (sizeObj) unitPrice = Number(sizeObj.price) || unitPrice
+      }
+
+      return sum + unitPrice * qty
     }, 0)
-  }, [selectedCombos, combos])
+  }, [selectedCombos, combos, selectedSizes])
 
   const singleTicketPrice = selectedSeats.length > 0 ? (ticketPriceTotal / selectedSeats.length) : 0
-  const discountTotal = convertCount * singleTicketPrice
-  const finalPriceTotal = Math.max(0, ticketPriceTotal - discountTotal) + comboPriceTotal
+  const pointsDiscountTotal = convertCount * singleTicketPrice
+  const grossOrderTotal = ticketPriceTotal + comboPriceTotal
+
+  const handleApplyPromoCode = async (e) => {
+    if (e) e.preventDefault()
+    if (!promoCodeInput.trim()) return
+
+    const trimmedCode = promoCodeInput.trim().toUpperCase()
+    setPromoLoading(true)
+    setPromoError('')
+
+    try {
+      const result = await promotionService.validateForUi(trimmedCode, grossOrderTotal)
+      if (result.success) {
+        setAppliedPromoCode(result.promotionCode || trimmedCode)
+        setCouponDiscount(result.discountAmount || 0)
+      } else {
+        setPromoError(result.message || 'Mã ưu đãi không hợp lệ.')
+        setAppliedPromoCode('')
+        setCouponDiscount(0)
+      }
+    } catch (err) {
+      console.error('Lỗi khi kiểm tra mã khuyến mãi:', err)
+      setPromoError('Không thể kiểm tra mã ưu đãi lúc này.')
+      setAppliedPromoCode('')
+      setCouponDiscount(0)
+    } finally {
+      setPromoLoading(false)
+    }
+  }
+
+  const handleRemovePromoCode = () => {
+    setPromoCodeInput('')
+    setAppliedPromoCode('')
+    setCouponDiscount(0)
+    setPromoError('')
+  }
+
+  const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount)
 
   const changeReturn = useMemo(() => {
     if (!cashReceived || isNaN(cashReceived)) return 0
@@ -359,8 +463,7 @@ export default function StaffTicketingPage() {
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN').format(num) + ' đ'
 
-  // XỬ LÝ THANH TOÁN THẬT VỚI API
-  // 🟢 XỬ LÝ THANH TOÁN ĐỒNG BỘ CHUẨN AXIOS & BẮT LỖI 409
+  // 🟢 XỬ LÝ THANH TOÁN (HỖ TRỢ THÊM TỰ ĐỘNG VNPAY)
   const handleCheckout = async () => {
     if (paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived, 10) < finalPriceTotal)) {
       setError('Số tiền khách đưa chưa đủ để thanh toán.')
@@ -380,22 +483,34 @@ export default function StaffTicketingPage() {
     try {
       const showtimeUuid = selectedShowtime?.id || selectedShowtime?.showtimeId
 
-      // 1. Chuẩn hóa payload bắp nước
       const validConcessions = Object.entries(selectedCombos)
         .filter(([_, qty]) => qty > 0)
-        .map(([id, qty]) => ({
-          concessionId: id,
-          quantity: qty
-        }))
+        .map(([key, qty]) => {
+          const item = combos.find(c => String(c.id || c.uuid) === String(key))
+          let actualVariantId = key
+
+          if (item && item.sizes && item.sizes.length > 0) {
+            const currentSize = selectedSizes[key] || item.sizes[0].key
+            const sizeObj = item.sizes.find(s => s.key === currentSize)
+            if (sizeObj && sizeObj.variantId) {
+              actualVariantId = sizeObj.variantId
+            }
+          }
+
+          return {
+            concessionId: actualVariantId,
+            quantity: qty
+          }
+        })
 
       const holdPayload = {
         showtimeId: showtimeUuid,
         seatIds: backendSeatIds,
         customerId: foundMember ? (foundMember.customerId || foundMember.userId) : null,
-        concessions: validConcessions
+        concessions: validConcessions,
+        promotionCode: appliedPromoCode || undefined
       }
 
-      // 2. Giữ ghế (Hold seats) thông qua bookingService
       const holdRes = await bookingService.holdSeats(holdPayload)
       const bookingData = holdRes?.data?.result || holdRes?.data
       const backendBookingId = bookingData?.bookingId || bookingData?.id
@@ -404,8 +519,8 @@ export default function StaffTicketingPage() {
         throw new Error('Máy chủ không tạo được mã booking.')
       }
 
-      // 3. Xử lý thanh toán MoMo QR qua paymentService (Chuẩn Axios + Token Auth)
-      if (paymentMethod === 'qr') {
+      // 🟡 XỬ LÝ THANH TOÁN ONLINE MOMO HOẶC VNPAY
+      if (paymentMethod === 'momo') {
         const momoRes = await paymentService.createMomoPayment(backendBookingId)
         const payUrl = momoRes?.data?.result?.payUrl || momoRes?.data?.payUrl
 
@@ -415,9 +530,19 @@ export default function StaffTicketingPage() {
         } else {
           throw new Error(momoRes?.data?.message || 'Không nhận được đường dẫn thanh toán từ MoMo.')
         }
+      } else if (paymentMethod === 'vnpay') {
+        const vnpayRes = await paymentService.createVnPayPayment(backendBookingId)
+        const payUrl = vnpayRes?.data?.result?.payUrl || vnpayRes?.data?.payUrl || vnpayRes?.data
+
+        if (payUrl) {
+          window.location.href = payUrl
+          return
+        } else {
+          throw new Error(vnpayRes?.data?.message || 'Không nhận được đường dẫn thanh toán từ VNPay.')
+        }
       }
 
-      // 4. Tiền mặt / Cà thẻ -> Confirm Booking ngay
+      // TIỀN MẶT / CÀ THẺ -> CONFIRM VÉ NGAY
       await bookingService.confirm(backendBookingId)
 
       const payload = {
@@ -431,6 +556,7 @@ export default function StaffTicketingPage() {
         total: finalPriceTotal,
         convertTickets: convertCount,
         scoreUsed: convertCount * 1000,
+        promotionCode: appliedPromoCode || 'N/A',
         memberId: foundMember ? (foundMember.customerId || foundMember.memberId) : 'GUEST',
         customerName: foundMember ? foundMember.fullName : 'Khách vãng lai',
         phone: foundMember ? foundMember.phone : 'N/A',
@@ -439,11 +565,11 @@ export default function StaffTicketingPage() {
         status: 'Đã thanh toán',
         checkedIn: false,
         checkInTime: null,
-        paymentMethod: paymentMethod === 'cash' ? 'Tiền mặt' : paymentMethod === 'card' ? 'Thẻ ngân hàng' : 'MoMo QR',
+        paymentMethod: paymentMethod === 'cash' ? 'Tiền mặt' : paymentMethod === 'card' ? 'Thẻ ngân hàng' : paymentMethod === 'momo' ? 'Ví MoMo' : 'VNPay',
         combosSummary: Object.entries(selectedCombos)
           .filter(([_, qty]) => qty > 0)
-          .map(([id, qty]) => {
-            const c = combos.find(combo => String(combo.id || combo.uuid) === String(id))
+          .map(([key, qty]) => {
+            const c = combos.find(combo => String(combo.id || combo.uuid) === String(key))
             return c ? `${c.name} (x${qty})` : `(x${qty})`
           }).join(', ')
       }
@@ -455,14 +581,12 @@ export default function StaffTicketingPage() {
       setPrintedTicket(payload)
     } catch (err) {
       console.error('Lỗi khi thanh toán:', err)
-
-      // Xử lý thông báo lỗi chi tiết khi gặp lỗi 409 Conflict hoặc lỗi khác
       if (err.response?.status === 409) {
         setError('Ghế này đã có người giữ hoặc đặt trước đó! Vui lòng bấm "Tạo giao dịch mới" hoặc chọn ghế khác.')
-        setSeatMapRefreshKey(prev => prev + 1) // Refresh sơ đồ ghế ngay lập tức
+        setSeatMapRefreshKey(prev => prev + 1)
       } else {
         const serverMessage = err.response?.data?.message || err.response?.data?.result?.message || err.message
-        setError(serverMessage || 'Có lỗi xảy ra trong quá trình thanh toán.')
+        setError(serverMessage || 'Có lỗi xảy ra trong quá trình xuất vé.')
       }
     } finally {
       setIsSubmitting(false)
@@ -485,6 +609,10 @@ export default function StaffTicketingPage() {
     setFoundMember(null)
     setConvertCount(0)
     setScoreError('')
+    setPromoCodeInput('')
+    setAppliedPromoCode('')
+    setCouponDiscount(0)
+    setPromoError('')
     setPaymentMethod('cash')
     setCashReceived('')
     setPrintedTicket(null)
@@ -492,45 +620,7 @@ export default function StaffTicketingPage() {
     setSeatMapRefreshKey(prev => prev + 1)
   }
 
-  const demoMatrix = [
-    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    {
-      rowLabel: 'J',
-      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
-    },
-  ]
 
-  const activeSeatMatrix = useMemo(() => {
-    const rawMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
-      ? roomLayout.seatMatrix
-      : demoMatrix
-
-    return rawMatrix.map(row => {
-      const label = String(row.rowLabel || '').toUpperCase()
-
-      return {
-        ...row,
-        seats: row.seats.map(seat => {
-          const seatLabel = `${label}${seat.number}`
-          const isVipCenter = checkIsVipCenterSeat(seatLabel)
-          const isCouple = label === 'J'
-
-          return {
-            ...seat,
-            type: isCouple ? 'COUPLE' : isVipCenter ? 'VIP' : 'STANDARD'
-          }
-        })
-      }
-    })
-  }, [roomLayout])
 
   return (
     <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -772,111 +862,85 @@ export default function StaffTicketingPage() {
                   {/* SEAT GRID WITH RESPONSIVE SCALING & COLOR FIX */}
                   <div className="w-full overflow-x-auto py-2 custom-scrollbar">
                     <div className="space-y-2.5 min-w-max mx-auto px-4 flex flex-col items-center">
-                      {activeSeatMatrix.map((row) => {
-                        const renderedSeats = []
-                        let skipNext = false
+                      {activeSeatMatrix.map((row) => (
+                        <div key={row.rowLabel} className="flex items-center justify-center gap-2">
+                          <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
+                          <div className="flex items-center gap-2">
+                            {row.seats.map((seat) => {
+                              const seatType = String(seat.type || 'STANDARD').toUpperCase()
 
-                        row.seats.forEach((seat, idx) => {
-                          if (skipNext) {
-                            skipNext = false
-                            return
-                          }
+                              if (seatType === 'AISLE' || seatType === 'EMPTY' || seatType === 'WALKWAY') {
+                                return (
+                                  <div key={seat.id || `aisle-${row.rowLabel}-${seat.number}`} className="w-8 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">
+                                    │
+                                  </div>
+                                )
+                              }
 
-                          const seatType = String(seat.type || '').toUpperCase()
+                              if (seatType === 'COUPLE_EXTENSION') {
+                                return null
+                              }
 
-                          if (seatType === 'EMPTY' || seatType === 'WALKWAY') {
-                            renderedSeats.push({
-                              isWalkway: true,
-                              seatId: `walkway-${row.rowLabel}-${idx}`
-                            })
-                            return
-                          }
+                              const seatLabel = seat.rowLabel && seat.number ? `${seat.rowLabel}${seat.number}` : `${row.rowLabel}${seat.number}`
 
-                          const isCouple = seatType === 'COUPLE' || ['J'].includes(row.rowLabel.toUpperCase())
+                              if (seatType === 'COUPLE') {
+                                const nextSeat = row.seats.find(s => s.number === seat.number + 1)
+                                const secondNum = nextSeat ? nextSeat.number : (seat.number + 1)
+                                const pairedLabel = `${row.rowLabel}${secondNum}`
+                                const coupleDisplayLabel = `${seatLabel} | ${pairedLabel}`
 
-                          if (isCouple) {
-                            const nextSeat = row.seats[idx + 1]
-                            const secondNum = nextSeat ? nextSeat.number : seat.number + 1
-                            skipNext = true
+                                const isOccupied = occupiedSeats.includes(seatLabel) || occupiedSeats.includes(pairedLabel)
+                                const isSelected = selectedSeats.includes(seatLabel)
 
-                            renderedSeats.push({
-                              ...seat,
-                              isCouple: true,
-                              seatId: `${row.rowLabel}${seat.number}`,
-                              pairedSeatId: `${row.rowLabel}${secondNum}`,
-                              coupleLabel: `${row.rowLabel}${seat.number} | ${row.rowLabel}${secondNum}`
-                            })
-                          } else {
-                            renderedSeats.push({
-                              ...seat,
-                              isCouple: false,
-                              seatId: `${row.rowLabel}${seat.number}`
-                            })
-                          }
-                        })
-
-                        const isLargeRow = row.seats.length > 12
-
-                        return (
-                          <div key={row.rowLabel} className="flex items-center justify-center gap-2">
-                            <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
-
-                            <div className={`flex items-center ${isLargeRow ? 'gap-1.5' : 'gap-2.5'}`}>
-                              {renderedSeats.map((seat) => {
-                                if (seat.isWalkway) {
-                                  return <div key={seat.seatId} className="w-6 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">│</div>
-                                }
-
-                                const isOccupied = occupiedSeats.includes(seat.seatId) || (seat.pairedSeatId && occupiedSeats.includes(seat.pairedSeatId))
-                                const isSelected = selectedSeats.includes(seat.seatId)
-
-                                const seatType = String(seat.type || '').toUpperCase()
-                                const isVip = seatType === 'VIP'
-                                const isCouple = seat.isCouple || seatType === 'COUPLE'
-
-                                if (isCouple) {
-                                  return (
-                                    <button
-                                      key={seat.seatId}
-                                      onClick={() => handleSeatClick(seat.seatId, seat.pairedSeatId)}
-                                      disabled={isOccupied}
-                                      className={`h-7 px-2.5 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isSelected
+                                return (
+                                  <button
+                                    key={seat.id || seatLabel}
+                                    type="button"
+                                    onClick={() => handleSeatClick(seatLabel, pairedLabel)}
+                                    disabled={isOccupied}
+                                    className={`h-8 px-3 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                                      isSelected
                                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
                                         : isOccupied
                                           ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
                                           : 'border-red-600/80 text-red-500 hover:bg-red-950/30'
-                                        }`}
-                                    >
-                                      {seat.coupleLabel}
-                                    </button>
-                                  )
-                                }
-
-                                return (
-                                  <button
-                                    key={seat.seatId}
-                                    onClick={() => handleSeatClick(seat.seatId)}
-                                    disabled={isOccupied}
-                                    className={`rounded-full border font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isLargeRow ? 'w-7 h-7 text-[10px]' : 'w-8 h-8 text-[11px]'
-                                      } ${isSelected
-                                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
-                                        : isOccupied
-                                          ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
-                                          : isVip
-                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
-                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                                      }`}
+                                    }`}
+                                    title={coupleDisplayLabel}
                                   >
-                                    {seat.seatId}
+                                    {coupleDisplayLabel}
                                   </button>
                                 )
-                              })}
-                            </div>
+                              }
 
-                            <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
+                              const isOccupied = occupiedSeats.includes(seatLabel)
+                              const isSelected = selectedSeats.includes(seatLabel)
+                              const isVip = seatType === 'VIP'
+
+                              return (
+                                <button
+                                  key={seat.id || seatLabel}
+                                  type="button"
+                                  onClick={() => handleSeatClick(seatLabel)}
+                                  disabled={isOccupied}
+                                  className={`w-8 h-8 rounded-full border font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                                    isSelected
+                                      ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
+                                      : isOccupied
+                                        ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
+                                        : isVip
+                                          ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
+                                          : 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                                  }`}
+                                  title={seatLabel}
+                                >
+                                  {seatLabel}
+                                </button>
+                              )
+                            })}
                           </div>
-                        )
-                      })}
+                          <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -909,13 +973,15 @@ export default function StaffTicketingPage() {
               </div>
             )}
 
-            {/* STEP 3: CONCESSIONS & MEMBERS (DÙNG DỮ LIỆU THỰC TẾ TỪ API) */}
+            {/* STEP 3: CONCESSIONS, MEMBER & PROMOTION IN ONE UNIFIED CARD */}
             {currentStep === 3 && (
-              <div key="step3" className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-4">
-                  <h3 className="text-sm font-bold text-black uppercase tracking-wider border-b border-black/10 pb-3 flex items-center gap-2 font-mono">
-                    <ShoppingBag size={16} className="text-red-500" />
-                    Bắp nước &amp; đồ ăn
+              <div key="step3" className="bg-[#0a0b0e] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-8 text-left">
+
+                {/* 1. CHỌN BẮP & NƯỚC */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                    <ShoppingBag size={20} className="text-red-500" />
+                    CHỌN BẮP &amp; NƯỚC
                   </h3>
 
                   {loadingCombos ? (
@@ -928,33 +994,71 @@ export default function StaffTicketingPage() {
                       Không có sản phẩm bắp nước nào khả dụng.
                     </div>
                   ) : (
-                    <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
-                      {combos.map(combo => {
-                        const comboId = combo.id || combo.uuid
-                        const qty = selectedCombos[comboId] || 0
+                    <div className="space-y-4">
+                      {combos.map(item => {
+                        const key = item.id || item.uuid
+                        const qty = selectedCombos[key] || 0
+                        const currentSizeKey = selectedSizes[key] || (item.sizes && item.sizes[0]?.key)
+
+                        let displayPrice = Number(item.price) || 0
+                        if (item.sizes && item.sizes.length > 0) {
+                          const sizeObj = item.sizes.find(s => s.key === currentSizeKey)
+                          if (sizeObj) displayPrice = Number(sizeObj.price) || displayPrice
+                        }
+
                         return (
-                          <div key={comboId} className="flex justify-between items-center bg-black/20 border border-white/5 p-4 rounded-xl">
-                            <div className="space-y-0.5 text-left pr-2 flex-1 min-w-0">
-                              <span className="text-sm font-black text-black tracking-tight block truncate">{combo.name}</span>
-                              <span className="text-[10px] text-slate-600 font-medium block leading-normal line-clamp-2">{combo.desc || combo.description}</span>
-                              <span className="text-xs font-bold text-red-700 block mt-1">{formatVND(Number(combo.price))}</span>
+                          <div key={key} className="bg-[#121620] border border-white/5 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                              <div className="w-14 h-14 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 overflow-hidden text-2xl">
+                                {item.img && item.img.startsWith('http') ? (
+                                  <img src={item.img} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  item.img || '🍿'
+                                )}
+                              </div>
+                              <div className="space-y-1 text-left flex-1 min-w-0">
+                                <h4 className="text-base font-bold text-white tracking-wide truncate">{item.name}</h4>
+                                <p className="text-xs text-slate-400 line-clamp-1">{item.desc || item.description}</p>
+
+                                {item.sizes && item.sizes.length > 0 && (
+                                  <div className="flex items-center gap-2 pt-1.5 flex-wrap">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">SIZE:</span>
+                                    {item.sizes.map(sz => {
+                                      const isSelectedSize = sz.key === currentSizeKey
+                                      return (
+                                        <button
+                                          key={sz.key}
+                                          type="button"
+                                          onClick={() => handleSelectSize(key, sz.key)}
+                                          className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer border ${isSelectedSize
+                                            ? 'bg-red-600 border-red-500 text-white shadow-md'
+                                            : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+                                            }`}
+                                        >
+                                          {sz.label} ({formatVND(sz.price)})
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+
+                                <span className="text-sm font-black text-red-500 block pt-1">{formatVND(displayPrice)}</span>
+                              </div>
                             </div>
 
-                            <div className="flex items-center gap-3 shrink-0">
+                            <div className="flex items-center gap-3 bg-black/40 border border-white/10 rounded-full px-3 py-1.5 self-end sm:self-center">
                               <button
-                                onClick={() => handleComboQty(comboId, -1)}
-                                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                                type="button"
+                                onClick={() => handleComboQty(key, -1)}
+                                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center font-bold text-sm transition-all cursor-pointer border-none active:scale-95"
                               >
                                 -
                               </button>
-
-                              <span className="text-sm font-black w-6 text-center font-mono text-slate-900">
-                                {qty}
-                              </span>
-
+                              <span className="text-sm font-black w-6 text-center font-mono text-white">{qty}</span>
                               <button
-                                onClick={() => handleComboQty(comboId, 1)}
-                                className="w-8 h-8 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center font-black text-white cursor-pointer active:scale-95 transition-all"
+                                type="button"
+                                onClick={() => handleComboQty(key, 1)}
+                                className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center font-bold text-sm transition-all cursor-pointer border-none active:scale-95"
                               >
                                 +
                               </button>
@@ -966,116 +1070,221 @@ export default function StaffTicketingPage() {
                   )}
                 </div>
 
-                {/* Membership Integration */}
-                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-5 text-left">
-                  <h3 className="text-sm font-bold text-black uppercase tracking-wider border-b border-black/10 pb-3 flex items-center gap-2 font-mono">
-                    <User size={16} className="text-red-500" />
-                    Tích hợp Hội viên
+                {/* 2. MÃ ƯU ĐÃI / KHUYẾN MÃI & ĐỔI ĐIỂM HỘI VIÊN */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <h3 className="text-lg font-black text-white uppercase tracking-wider font-mono flex items-center gap-2">
+                    <Tag size={20} className="text-red-500" />
+                    MÃ ƯU ĐÃI / KHUYẾN MÃI
                   </h3>
 
-                  <form onSubmit={handleCheckMember} className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Số ĐT hoặc Member ID hội viên..."
-                      value={memberQuery}
-                      onChange={(e) => setMemberQuery(e.target.value)}
-                      className="flex-1 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2.5 text-xs text-white placeholder-gray-500 outline-none focus:border-red-500 transition-colors font-medium"
-                    />
+                  <div className="flex gap-3">
                     <button
-                      type="submit"
-                      className="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border-none shadow-md shadow-red-600/30 active:scale-95"
+                      type="button"
+                      onClick={() => setPromoTab('coupon')}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${promoTab === 'coupon'
+                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]'
+                        : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                        }`}
                     >
-                      <Search size={13} className="text-white" />
-                      <span>Tra cứu</span>
+                      <Tag size={14} />
+                      MÃ COUPON
                     </button>
-                  </form>
+                    <button
+                      type="button"
+                      onClick={() => setPromoTab('points')}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider transition-all cursor-pointer border ${promoTab === 'points'
+                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]'
+                        : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                        }`}
+                    >
+                      <Star size={14} />
+                      ĐỔI ĐIỂM HỘI VIÊN
+                    </button>
+                  </div>
 
-                  {checkedMember && (
-                    <div className="space-y-4">
-                      {foundMember ? (
-                        <div className="bg-red-950/20 border border-red-500/30 rounded-xl p-4 space-y-3 text-xs leading-normal">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Tên hội viên:</span>
-                            <span className="text-white font-bold">{foundMember.fullName || 'Hội viên'}</span>
-                          </div>
+                  {/* FORM TAB 1: MÃ COUPON (FIXED CONTRAST INPUT) */}
+                  {promoTab === 'coupon' && (
+                    <div className="bg-[#121620] border border-white/5 rounded-2xl p-5 space-y-3">
+                      <p className="text-xs text-slate-400">
+                        Nhập mã ưu đãi hoặc thử mã mẫu bên dưới để nhận chiết khấu trực tiếp.
+                      </p>
 
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Mã / SĐT hội viên:</span>
-                            <span className="text-white font-bold font-mono">
-                              {foundMember.customerId || foundMember.memberId || foundMember.phone || 'N/A'}
-                            </span>
-                          </div>
-
-                          <div className="flex justify-between items-center border-t border-red-500/10 pt-2">
-                            <span className="text-gray-400 font-bold">Điểm tích lũy:</span>
-                            <span className="text-red-500 font-black text-sm">
-                              {foundMember.loyaltyPoints ?? foundMember.score ?? 0} điểm
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col gap-1.5 border-t border-red-500/10 pt-3">
-                            <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
-                              Đổi vé miễn phí (1000 điểm = 1 vé)
-                            </label>
-                            <select
-                              value={convertCount}
-                              onChange={(e) => setConvertCount(parseInt(e.target.value, 10))}
-                              className="w-full bg-[#121620] border border-slate-700 rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+                      {!appliedPromoCode ? (
+                        <form onSubmit={handleApplyPromoCode} className="space-y-3">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              placeholder="VÍ DỤ: CINEMATE10, BAPNUOC20"
+                              value={promoCodeInput}
+                              onChange={(e) => setPromoCodeInput(e.target.value)}
+                              className="flex-1 bg-[#181c28] border-2 border-slate-600 focus:border-red-500 rounded-xl px-4 py-3 text-sm uppercase font-mono font-black tracking-wider outline-none transition-colors"
+                              style={{
+                                color: '#ffffff',
+                                WebkitTextFillColor: '#ffffff',
+                                opacity: 1,
+                                caretColor: '#e50914'
+                              }}
+                            />
+                            <button
+                              type="submit"
+                              disabled={promoLoading || !promoCodeInput.trim()}
+                              className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-md shrink-0"
                             >
-                              {Array.from({ length: selectedSeats.length + 1 }).map((_, i) => (
-                                <option key={i} value={i} className="bg-[#121620] text-white">
-                                  {i === 0 ? 'Không đổi vé' : `${i} vé (${i * 1000} điểm)`}
-                                </option>
-                              ))}
-                            </select>
-
-                            {scoreError && (
-                              <span className="text-[10px] text-red-500 font-bold block mt-1 leading-normal">
-                                ⚠️ {scoreError}
-                              </span>
-                            )}
+                              {promoLoading ? 'Đang lọc...' : 'ÁP DỤNG'}
+                            </button>
                           </div>
-                        </div>
+
+                          {promoError && (
+                            <p className="text-xs text-red-500 font-bold flex items-center gap-1.5">
+                              <AlertCircle size={14} />
+                              <span>{promoError}</span>
+                            </p>
+                          )}
+                        </form>
                       ) : (
-                        <div className="p-4 rounded-xl border bg-red-500/5 border-red-500/20 text-red-500 text-center text-xs font-bold flex items-center justify-center gap-1.5">
-                          <AlertCircle size={14} />
-                          <span>Không tìm thấy thông tin hội viên!</span>
+                        <div className="flex items-center justify-between bg-black/40 border border-emerald-500/30 p-4 rounded-xl">
+                          <div className="space-y-1">
+                            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                              <CheckCircle size={14} /> Coupon validated
+                            </span>
+                            <span className="text-sm font-black font-mono text-white block">{appliedPromoCode}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleRemovePromoCode}
+                            className="px-4 py-2 border border-red-600/60 text-red-500 hover:bg-red-950/40 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                          >
+                            HỦY MÃ
+                          </button>
                         </div>
                       )}
                     </div>
                   )}
 
-                  <div className="flex justify-end pt-4 border-t border-white/5">
-                    <button
-                      disabled={!!scoreError}
-                      onClick={() => setCurrentStep(4)}
-                      className="flex items-center gap-1.5 px-6 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs uppercase transition-all shadow-md cursor-pointer border-none active:scale-95"
-                    >
-                      <span>Tiến hành thanh toán</span>
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
+                  {/* FORM TAB 2: ĐỔI ĐIỂM / TRA CỨU HỘI VIÊN */}
+                  {promoTab === 'points' && (
+                    <div className="bg-[#121620] border border-white/5 rounded-2xl p-5 space-y-4">
+                      <p className="text-xs text-slate-400">
+                        Tra cứu SĐT hoặc Member ID để đổi điểm lấy vé xem phim miễn phí.
+                      </p>
+
+                      <form onSubmit={handleCheckMember} className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Số ĐT hoặc Member ID hội viên..."
+                          value={memberQuery}
+                          onChange={(e) => setMemberQuery(e.target.value)}
+                          className="flex-1 bg-[#181c28] border-2 border-slate-600 focus:border-red-500 rounded-xl px-4 py-3 text-xs text-white placeholder-slate-400 outline-none font-medium"
+                          style={{
+                            color: '#ffffff',
+                            WebkitTextFillColor: '#ffffff',
+                            opacity: 1
+                          }}
+                        />
+                        <button
+                          type="submit"
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider transition-all cursor-pointer border-none shadow-md shrink-0 flex items-center gap-1.5"
+                        >
+                          <Search size={14} />
+                          <span>TRA CỨU</span>
+                        </button>
+                      </form>
+
+                      {checkedMember && (
+                        <div>
+                          {foundMember ? (
+                            <div className="bg-red-950/20 border border-red-500/30 rounded-xl p-4 space-y-3 text-xs">
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400">Tên hội viên:</span>
+                                <span className="text-white font-bold">{foundMember.fullName || 'Hội viên'}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-slate-400">Điểm tích lũy:</span>
+                                <span className="text-red-500 font-black text-sm">{foundMember.score} điểm</span>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 border-t border-white/5 pt-3">
+                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                  Đổi vé miễn phí (1000 điểm = 1 vé)
+                                </label>
+                                <select
+                                  value={convertCount}
+                                  onChange={(e) => setConvertCount(parseInt(e.target.value, 10))}
+                                  className="w-full bg-[#121620] border border-slate-700 rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer font-medium"
+                                >
+                                  {Array.from({ length: selectedSeats.length + 1 }).map((_, i) => (
+                                    <option key={i} value={i} className="bg-[#121620] text-white">
+                                      {i === 0 ? 'Không đổi vé' : `${i} vé (${i * 1000} điểm)`}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                {scoreError && (
+                                  <span className="text-[10px] text-red-500 font-bold block mt-1">
+                                    ⚠️ {scoreError}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3.5 rounded-xl border bg-red-500/5 border-red-500/20 text-red-500 text-center text-xs font-bold">
+                              ⚠️ Không tìm thấy thông tin hội viên!
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* KHUNG HIỂN THỊ GIẢM GIÁ ĐÃ ÁP DỤNG */}
+                  {(couponDiscount > 0 || pointsDiscountTotal > 0) && (
+                    <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 flex items-center justify-between text-xs font-bold text-emerald-400">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle size={16} />
+                        <span>Giảm giá đã áp dụng:</span>
+                      </div>
+                      <span className="font-mono text-sm text-emerald-400">-{formatVND(couponDiscount + pointsDiscountTotal)}</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* NÚT TIẾN HÀNH THANH TOÁN */}
+                <div className="flex justify-end pt-4 border-t border-white/10">
+                  <button
+                    disabled={!!scoreError}
+                    onClick={() => setCurrentStep(4)}
+                    className="flex items-center gap-2 px-8 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-extrabold rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg cursor-pointer border-none active:scale-95"
+                  >
+                    <span>TIẾN HÀNH THANH TOÁN</span>
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
               </div>
             )}
 
-            {/* STEP 4: CHECKOUT PAYMENT */}
+            {/* STEP 4: CHECKOUT PAYMENT WITH VNPAY SUPPORT */}
             {currentStep === 4 && (
-              <div key="step4" className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 shadow-xl space-y-6 text-left">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/10 pb-3 flex items-center gap-2 font-mono">
-                  <CreditCard size={16} className="text-red-500" />
-                  Phương thức thanh toán &amp; Đơn hàng
+              <div key="step4" className="bg-[#0a0b0e] border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-8 text-left">
+                <h3 className="text-lg font-black text-white uppercase tracking-wider font-mono flex items-center gap-2 border-b border-white/10 pb-4">
+                  <CreditCard size={20} className="text-red-500" />
+                  PHƯƠNG THỨC THANH TOÁN &amp; ĐƠN HÀNG
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
 
-                  <div className="space-y-4">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Chọn hình thức thanh toán</label>
-                    <div className="grid grid-cols-3 gap-2">
+                  {/* CỘT TRÁI: CHỌN PHƯƠNG THỨC THANH TOÁN */}
+                  <div className="space-y-5">
+                    <label className="text-xs uppercase font-bold text-slate-400 tracking-wider block font-mono">
+                      1. CHỌN HÌNH THỨC THANH TOÁN
+                    </label>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                       {[
-                        { id: 'cash', label: 'Tiền mặt', icon: Coins },
-                        { id: 'card', label: 'Cà thẻ', icon: CreditCard },
-                        { id: 'qr', label: 'Quét QR', icon: QrCode },
+                        { id: 'cash', label: 'TIỀN MẶT', icon: Coins },
+                        { id: 'card', label: 'CÀ THẺ', icon: CreditCard },
+                        { id: 'momo', label: 'VÍ MOMO', icon: QrCode },
+                        { id: 'vnpay', label: 'VNPAY', icon: Landmark },
                       ].map(method => {
                         const Icon = method.icon
                         const isSelected = paymentMethod === method.id
@@ -1087,33 +1296,36 @@ export default function StaffTicketingPage() {
                               setPaymentMethod(method.id)
                               if (method.id !== 'cash') setCashReceived('')
                             }}
-                            className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all
-                              ${isSelected
-                                ? 'bg-red-650/10 border-[var(--color-primary)] text-red-400'
-                                : 'bg-black/20 border-white/5 hover:border-white/20 text-gray-400 hover:text-white'
+                            className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${isSelected
+                                ? 'bg-red-600/20 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.35)]'
+                                : 'bg-[#121620] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
                               }`}
                           >
-                            <Icon size={20} />
-                            <span className="text-[11px] font-bold">{method.label}</span>
+                            <Icon size={20} className={isSelected ? 'text-red-500' : 'text-slate-400'} />
+                            <span className="text-[11px] font-black font-mono tracking-wider">{method.label}</span>
                           </button>
                         )
                       })}
                     </div>
 
+                    {/* KHUNG TIỀN MẶT */}
                     {paymentMethod === 'cash' && (
-                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl space-y-3">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] uppercase font-bold text-slate-400">Số tiền khách đưa (VND) *</label>
+                      <div className="bg-[#121620] border border-white/5 p-5 rounded-2xl space-y-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs uppercase font-bold text-slate-400 tracking-wider">
+                            SỐ TIỀN KHÁCH ĐƯA (VND) *
+                          </label>
                           <input
                             type="number"
                             placeholder="Nhập số tiền..."
                             value={cashReceived}
                             onChange={(e) => setCashReceived(e.target.value)}
-                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl px-3 py-2 text-sm text-white font-mono outline-none focus:border-red-500"
+                            className="bg-[#181c28] border-2 border-slate-600 focus:border-red-500 rounded-xl px-4 py-3 text-sm text-white font-mono font-bold outline-none"
+                            style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', opacity: 1 }}
                           />
                         </div>
 
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2 pt-1">
                           {[finalPriceTotal, 100000, 200000, 500000].map(val => {
                             if (val < finalPriceTotal) return null
                             return (
@@ -1121,7 +1333,7 @@ export default function StaffTicketingPage() {
                                 key={val}
                                 type="button"
                                 onClick={() => setCashReceived(val.toString())}
-                                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold border border-white/5 cursor-pointer font-mono"
+                                className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-red-600/20 hover:border-red-500/50 text-white text-xs font-bold border border-white/10 transition-all cursor-pointer font-mono"
                               >
                                 {formatVND(val)}
                               </button>
@@ -1129,84 +1341,113 @@ export default function StaffTicketingPage() {
                           })}
                         </div>
 
-                        <div className="flex justify-between border-t border-white/5 pt-2 text-xs font-semibold">
-                          <span className="text-gray-400">Tiền thối lại:</span>
-                          <span className="text-green-500 font-extrabold font-mono">{formatVND(changeReturn)}</span>
+                        <div className="flex justify-between items-center border-t border-white/5 pt-3 text-xs font-bold">
+                          <span className="text-slate-400">TIỀN THỐI LẠI:</span>
+                          <span className="text-emerald-400 text-base font-extrabold font-mono">{formatVND(changeReturn)}</span>
                         </div>
                       </div>
                     )}
 
-                    {paymentMethod === 'qr' && (
-                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex flex-col items-center justify-center gap-2.5 text-center">
-                        <div className="w-32 h-32 bg-white rounded-lg p-2 flex items-center justify-center shadow-lg">
-                          <div className="w-full h-full border-4 border-slate-900 border-dashed flex items-center justify-center bg-slate-50 text-[10px] font-black text-slate-800 leading-none">
-                            [ SCAN QR ]
-                          </div>
+                    {/* KHUNG VÍ MOMO */}
+                    {paymentMethod === 'momo' && (
+                      <div className="bg-[#121620] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center gap-3 text-center">
+                        <div className="bg-white p-3 rounded-2xl shadow-xl flex items-center justify-center">
+                          <QrCode size={100} className="text-red-600" />
                         </div>
-                        <p className="text-[10px] text-gray-500 font-medium">Bấm "Xác nhận &amp; In hóa đơn" để chuyển sang cổng thanh toán MoMo</p>
+                        <p className="text-xs text-slate-400 font-medium max-w-xs mt-1">
+                          Bấm <strong className="text-white">"Xác Nhận &amp; In Hóa Đơn"</strong> để chuyển sang cổng thanh toán Ví MoMo.
+                        </p>
                       </div>
                     )}
 
+                    {/* KHUNG CỔNG VNPAY */}
+                    {paymentMethod === 'vnpay' && (
+                      <div className="bg-[#121620] border border-white/5 p-6 rounded-2xl flex flex-col items-center justify-center gap-3 text-center">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center shrink-0 text-blue-400">
+                          <Landmark size={24} />
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium max-w-xs">
+                          Bấm <strong className="text-white">"Xác Nhận &amp; In Hóa Đơn"</strong> để chuyển tới cổng thanh toán VNPay (ATM / QR Ngân Hàng).
+                        </p>
+                      </div>
+                    )}
+
+                    {/* KHUNG CÀ THẺ POS */}
                     {paymentMethod === 'card' && (
-                      <div className="bg-black/20 border border-white/5 p-4 rounded-xl flex items-center gap-3">
-                        <CreditCard size={24} className="text-slate-400" />
-                        <div className="text-left">
-                          <span className="text-[11px] font-bold text-white block">Quẹt thẻ ngân hàng tại POS</span>
-                          <span className="text-[10px] text-gray-500 block leading-normal">Mời cắm hoặc chạm thẻ ATM/Visa/MasterCard trên thiết bị POS quầy.</span>
+                      <div className="bg-[#121620] border border-white/5 p-5 rounded-2xl flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-500/20 flex items-center justify-center shrink-0 text-red-500">
+                          <CreditCard size={24} />
+                        </div>
+                        <div className="text-left space-y-0.5">
+                          <span className="text-xs font-bold text-white block uppercase tracking-wider">QUẸT THẺ TẠI MÁY POS QUẦY</span>
+                          <span className="text-xs text-slate-400 block leading-relaxed">Chạm hoặc cắm thẻ ATM/Visa/MasterCard trên thiết bị quẹt thẻ tại quầy.</span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="space-y-4 bg-black/10 border border-white/5 p-4 rounded-xl text-xs font-semibold leading-relaxed">
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Xác nhận chi tiết hóa đơn</label>
+                  {/* CỘT PHẢI: XÁC NHẬN CHI TIẾT HÓA ĐƠN */}
+                  <div className="bg-[#121620] border border-white/5 p-6 rounded-2xl space-y-5">
+                    <label className="text-xs uppercase font-bold text-slate-400 tracking-wider block font-mono">
+                      2. XÁC NHẬN CHI TIẾT HÓA ĐƠN
+                    </label>
 
-                    <div className="space-y-2 border-b border-white/5 pb-3 text-[var(--color-text-muted)]">
-                      <div className="flex justify-between">
-                        <span>Số lượng vé:</span>
-                        <span className="text-white">{selectedSeats.length} vé ({selectedSeats.join(', ')})</span>
+                    <div className="space-y-3 border-b border-white/10 pb-4 text-xs font-medium">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Số lượng vé:</span>
+                        <span className="text-white font-bold">{selectedSeats.length} vé ({selectedSeats.join(', ')})</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span>Tiền vé gốc:</span>
-                        <span className="text-white font-mono">{formatVND(ticketPriceTotal)}</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Tiền vé gốc:</span>
+                        <span className="text-white font-mono font-bold">{formatVND(ticketPriceTotal)}</span>
                       </div>
+
                       {convertCount > 0 && (
-                        <div className="flex justify-between text-green-500">
+                        <div className="flex justify-between items-center text-emerald-400 font-bold">
                           <span>Giảm giá điểm ({convertCount} vé):</span>
-                          <span className="font-mono">-{formatVND(discountTotal)}</span>
+                          <span className="font-mono">-{formatVND(pointsDiscountTotal)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span>Tiền bắp nước:</span>
-                        <span className="text-white font-mono">{formatVND(comboPriceTotal)}</span>
+
+                      {couponDiscount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-400 font-bold">
+                          <span>Giảm giá Voucher ({appliedPromoCode}):</span>
+                          <span className="font-mono">-{formatVND(couponDiscount)}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Tiền bắp nước:</span>
+                        <span className="text-white font-mono font-bold">{formatVND(comboPriceTotal)}</span>
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-white font-bold">TỔNG THANH TOÁN:</span>
-                      <span className="text-red-500 font-black text-xl font-mono">{formatVND(finalPriceTotal)}</span>
+                    <div className="flex justify-between items-center text-sm pt-1">
+                      <span className="text-white font-bold uppercase tracking-wider">TỔNG THANH TOÁN:</span>
+                      <span className="text-red-500 font-black text-2xl font-mono">{formatVND(finalPriceTotal)}</span>
                     </div>
 
                     {error && (
-                      <div className="p-3 bg-red-500/10 border border-red-500/25 text-red-500 text-xs font-bold rounded-lg leading-normal">
-                        ⚠️ {error}
+                      <div className="p-3.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold rounded-xl leading-relaxed flex items-center gap-2">
+                        <AlertCircle size={16} className="shrink-0" />
+                        <span>{error}</span>
                       </div>
                     )}
 
                     <button
                       onClick={handleCheckout}
                       disabled={isSubmitting || !!scoreError}
-                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-30 disabled:cursor-not-allowed text-white font-bold text-xs py-3.5 rounded-xl shadow-lg shadow-red-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer border-none"
+                      className="w-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white font-extrabold text-xs py-4 rounded-xl shadow-lg shadow-red-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer border-none mt-4"
                     >
                       {isSubmitting ? (
                         <>
                           <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                          Đang thanh toán...
+                          ĐANG XỬ LÝ THANH TOÁN...
                         </>
                       ) : (
                         <>
-                          <CheckCircle size={15} />
-                          Xác nhận &amp; In hóa đơn
+                          <CheckCircle size={16} />
+                          XÁC NHẬN &amp; IN HÓA ĐƠN
                         </>
                       )}
                     </button>
@@ -1270,7 +1511,6 @@ export default function StaffTicketingPage() {
               </p>
             </div>
 
-            {/* HIỂN THỊ BẮP NƯỚC TẠI SIDEBAR VÉ CỦA BẠN */}
             <div className="space-y-1 border-t border-white/5 pt-4">
               <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
                 BẮP NƯỚC (COMBO)
@@ -1280,15 +1520,22 @@ export default function StaffTicketingPage() {
                 <div className="space-y-1 mt-1">
                   {Object.entries(selectedCombos)
                     .filter(([_, qty]) => qty > 0)
-                    .map(([id, qty]) => {
-                      const combo = combos.find(c => String(c.id || c.uuid) === String(id))
+                    .map(([key, qty]) => {
+                      const combo = combos.find(c => String(c.id || c.uuid) === String(key))
+                      let unitPrice = Number(combo?.price) || 0
+                      const currentSizeKey = selectedSizes[key]
+                      if (combo?.sizes && combo.sizes.length > 0) {
+                        const sizeObj = combo.sizes.find(s => s.key === currentSizeKey)
+                        if (sizeObj) unitPrice = Number(sizeObj.price) || unitPrice
+                      }
+
                       return combo ? (
-                        <div key={id} className="flex justify-between items-center text-xs">
+                        <div key={key} className="flex justify-between items-center text-xs">
                           <span className="text-slate-200 font-medium truncate max-w-[180px]">
                             {combo.name} <span className="text-red-400 font-bold">(x{qty})</span>
                           </span>
                           <span className="text-slate-400 font-mono text-[11px] shrink-0">
-                            {formatVND((Number(combo.price) || 0) * qty)}
+                            {formatVND(unitPrice * qty)}
                           </span>
                         </div>
                       ) : null
@@ -1298,6 +1545,16 @@ export default function StaffTicketingPage() {
                 <p className="text-xs text-slate-400 italic">Chưa chọn bắp nước</p>
               )}
             </div>
+
+            {couponDiscount > 0 && (
+              <div className="space-y-1 border-t border-white/5 pt-4">
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">MÃ GIẢM GIÁ</span>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-emerald-400 font-bold">{appliedPromoCode}</span>
+                  <span className="text-emerald-400 font-mono font-bold">-{formatVND(couponDiscount)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 border-t border-white/5 pt-4">
@@ -1415,6 +1672,12 @@ export default function StaffTicketingPage() {
                   <div className="flex justify-between text-green-600 font-bold">
                     <span>Đổi điểm tích lũy:</span>
                     <span>-{formatVND(printedTicket.convertTickets * printedTicket.price)}</span>
+                  </div>
+                )}
+                {printedTicket.promotionCode && printedTicket.promotionCode !== 'N/A' && (
+                  <div className="flex justify-between text-emerald-600 font-bold">
+                    <span>Mã khuyến mãi:</span>
+                    <span>{printedTicket.promotionCode}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center text-slate-900 pt-3 border-t border-slate-100">

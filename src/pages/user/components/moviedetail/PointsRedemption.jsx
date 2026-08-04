@@ -1,3 +1,4 @@
+import { useAuth } from '../../../../contexts/AuthContext'
 import { useState, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { Star, Gift, Check, Loader2, AlertCircle, Sparkles } from 'lucide-react'
@@ -14,6 +15,9 @@ export default function PointsRedemption({
   onApplyPoints,
   disabled = false,
 }) {
+  const { user } = useAuth()
+  const effectiveUserId = userId || user?.uuid || user?.id
+
   const [myPoints, setMyPoints] = useState(0)
   const [pointsOptions, setPointsOptions] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,7 +64,7 @@ export default function PointsRedemption({
   }, [])
 
   const handleRedeem = async (promotion) => {
-    if (!userId) {
+    if (!effectiveUserId) {
       setError('Vui lòng đăng nhập để đổi điểm')
       return
     }
@@ -98,32 +102,29 @@ export default function PointsRedemption({
           discountAmount: discountAmount,
         })
       } else {
-        setError(result?.message || 'Không thể đổi điểm. Vui lòng thử lại.')
+        setError(result?.message || 'Không thể đổi quà. Vui lòng thử lại.')
       }
     } catch (err) {
-      const message = err?.response?.data?.message || 'Không thể đổi điểm. Vui lòng thử lại.'
-      setError(message)
+      console.error('Redeem points error:', err)
+      setError(err?.response?.data?.message || 'Lỗi hệ thống khi đổi điểm.')
     } finally {
       setRedeemingId(null)
     }
   }
 
   const canRedeem = (promotion) => {
-    if (!promotion) return false
-    if (promotion.isValid === false) return false
-    if (promotion.status && promotion.status !== PROMOTION_STATUS.ACTIVE) return false
-    const required = toNumber(promotion.minLoyaltyPoints, 0)
-    return myPoints >= required
+    const minPoints = toNumber(promotion.minLoyaltyPoints, 0)
+    return myPoints >= minPoints
   }
 
   const getRedemptionLabel = (promotion) => {
-    if (promotion.redemptionType === 'MONEY_FIXED') {
-      return `${Number(promotion.discountValue || 0).toLocaleString('vi-VN')}đ`
+    if (promotion.redemptionType === 'MONEY_FIXED' && promotion.discountValue) {
+      return `Giảm ${Number(promotion.discountValue).toLocaleString('vi-VN')} ₫`
     }
-    if (promotion.redemptionType === 'MONEY_PERCENT') {
+    if (promotion.redemptionType === 'MONEY_PERCENT' && promotion.discountPercent) {
       let label = `Giảm ${promotion.discountPercent}%`
       if (promotion.discountValue) {
-        label += ` (Tối đa ${Number(promotion.discountValue).toLocaleString('vi-VN')}đ)`
+        label += ` (tối đa ${Number(promotion.discountValue).toLocaleString('vi-VN')} ₫)`
       }
       return label
     }

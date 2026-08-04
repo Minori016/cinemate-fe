@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, Wallet } from 'lucide-react'
+import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, Wallet, Gift } from 'lucide-react'
 import { bookingService } from '../../services/bookingService'
 import { paymentService } from '../../services/paymentService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -18,6 +18,26 @@ export default function CheckoutPage() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('momo')
+  const [pointsRedemption, setPointsRedemption] = useState(null)
+
+  useEffect(() => {
+    if (!booking) return
+    let pr = booking.pointsRedemption || booking.giftRedemption || null
+    if (!pr && bookingId) {
+      try {
+        const stored = sessionStorage.getItem(`points_redemption_${bookingId}`)
+          || sessionStorage.getItem('latest_points_redemption')
+          || sessionStorage.getItem('pending_booking_state')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          pr = parsed.pointsRedemption || parsed
+        }
+      } catch (e) {}
+    }
+    if (pr && (pr.pointsSpent || pr.promotionTitle)) {
+      setPointsRedemption(pr)
+    }
+  }, [booking, bookingId])
 
   // Fetch Booking Details
   useEffect(() => {
@@ -203,6 +223,30 @@ export default function CheckoutPage() {
                       <span className="text-red-400 font-mono font-bold">{formatCurrency(item.lineTotal || (item.unitPrice * item.quantity))}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quà & Ưu Đãi Đổi Điểm */}
+            {pointsRedemption && (
+              <div className="pt-6 border-t border-white/10">
+                <p className="text-xs text-amber-400 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                  <Gift size={14} className="text-amber-400" /> Quà & Ưu Đãi Đổi Điểm ({pointsRedemption.pointsSpent || 0} điểm)
+                </p>
+                <div className="space-y-2 bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white font-medium flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                        ★ {pointsRedemption.pointsSpent || 0} điểm
+                      </span>
+                      {pointsRedemption.promotionTitle || 'Quà đổi điểm'}
+                    </span>
+                    <span className="text-amber-400 font-mono font-bold">
+                      {pointsRedemption.discountAmount > 0 
+                        ? `-${formatCurrency(pointsRedemption.discountAmount)}` 
+                        : 'Quà tặng (0đ)'}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}

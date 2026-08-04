@@ -688,6 +688,11 @@ export default function MovieDetailPage() {
       if (promoCode) {
         payload.promotionCode = promoCode;
       }
+      if (pointsRedemption) {
+        payload.promotionId = pointsRedemption.promotionId;
+        payload.pointsUsed = pointsRedemption.pointsSpent;
+        payload.pointsDiscount = pointsDiscount;
+      }
 
       const res = await bookingService.holdSeats(payload)
       const bookingData = res.data?.result || res.data
@@ -1068,7 +1073,7 @@ export default function MovieDetailPage() {
                     onApplyPromo={onApplyPromo}
                     setBookingStep={setBookingStep}
                     orderAmount={ticketPrice + comboPrice}
-                    userId={user?.id}
+                    userId={user?.id || user?.uuid}
                     onApplyPoints={onApplyPoints}
                     pointsDiscount={pointsDiscount}
                   />
@@ -1091,6 +1096,8 @@ export default function MovieDetailPage() {
                     submitError={submitError}
                     setSubmitError={setSubmitError}
                     handleSubmitPayment={handleSubmitPayment}
+                    pointsRedemption={pointsRedemption}
+                    pointsDiscount={pointsDiscount}
                   />
                 )}
               </AnimatePresence>
@@ -1149,7 +1156,24 @@ export default function MovieDetailPage() {
                   <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Mã Giảm Giá</span>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-green-500 font-bold">{promoCode}</span>
-                    <span className="text-green-500 font-bold">-{discountAmount.toLocaleString('vi-VN')} đ</span>
+                    <span className="text-green-500 font-bold">-{Number(discount > 1 ? discount : (ticketPrice + comboPrice) * discount).toLocaleString('vi-VN')} đ</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Points Redemption Info */}
+              {pointsRedemption && (
+                <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
+                  <span className="text-[10px] text-amber-400 uppercase tracking-wider font-extrabold leading-none flex items-center gap-1">
+                    ★ Ưu Đãi Đổi Điểm ({pointsRedemption.pointsSpent || 0} điểm)
+                  </span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-amber-300 font-bold truncate max-w-[160px]" title={pointsRedemption.promotionTitle}>
+                      {pointsRedemption.promotionTitle || 'Quà đổi điểm'}
+                    </span>
+                    <span className="text-amber-300 font-bold font-mono">
+                      {pointsDiscount > 0 ? `-${pointsDiscount.toLocaleString('vi-VN')} đ` : 'Quà tặng'}
+                    </span>
                   </div>
                 </div>
               )}

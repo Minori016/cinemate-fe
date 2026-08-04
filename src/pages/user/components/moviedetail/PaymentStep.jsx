@@ -31,7 +31,9 @@ export default function PaymentStep({
   processingStep,
   submitError,
   setSubmitError,
-  handleSubmitPayment
+  handleSubmitPayment,
+  pointsRedemption = null,
+  pointsDiscount = 0
 }) {
   const displaySeats = (Array.isArray(seatLabels) && seatLabels.length > 0)
     ? seatLabels
@@ -185,6 +187,17 @@ export default function PaymentStep({
                 <p className="text-[9px] uppercase text-gray-500 tracking-wider font-bold mb-1">Ghế ngồi</p>
                 <p className="text-[var(--color-primary)] font-black text-xs font-mono tracking-wider">{displaySeats.join(', ') || 'Chưa chọn'}</p>
               </div>
+
+              
+              {/* Points Redemption Summary */}
+              {pointsRedemption && (
+                <div className="border-t border-white/5 pt-3 flex justify-between items-center text-[10px]">
+                  <span className="text-amber-400 font-semibold">★ Đổi điểm ({pointsRedemption.pointsSpent || 0} điểm):</span>
+                  <span className="text-amber-300 font-bold font-mono">
+                    {pointsDiscount > 0 ? `-${formatCurrency(pointsDiscount)}` : 'Quà tặng'}
+                  </span>
+                </div>
+              )}
 
               <div className="border-t border-white/5 pt-3 flex justify-between items-end">
                 <div>

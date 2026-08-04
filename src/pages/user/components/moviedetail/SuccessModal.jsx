@@ -1,6 +1,7 @@
-import { motion } from 'motion/react'
-import { Download, Share2 } from 'lucide-react'
+import React from 'react'
+import { motion } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
+import { Download, Share2, CheckCircle2 } from 'lucide-react'
 
 export default function SuccessModal({
   bookingSuccess,
@@ -8,142 +9,110 @@ export default function SuccessModal({
   selectedDate,
   selectedTime,
   selectedSeats,
-  totalPrice,
   bookingId,
+  totalPrice,
+  discountAmount,
   onClose,
   onBookAnother,
   navigate,
   selectedCombos = {},
   combos = [],
   promoCode = '',
-  discountAmount = 0,
-  movieDuration,
+  pointsRedemption = null,
+  pointsDiscount = 0,
 }) {
   if (!bookingSuccess) return null
 
   const formatCurrency = (val) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val)
-  const formatDate = (dateString) => {
-    if (!dateString || dateString === 'Hôm nay') return 'Hôm nay'
-    try {
-      return new Date(dateString).toLocaleDateString('vi-VN', {
-        weekday: 'long',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      })
-    } catch {
-      return dateString
-    }
+
+  // Find movie duration in minutes
+  const durationMatch = movie?.duration ? String(movie.duration).match(/\d+/) : null
+  const durationMin = durationMatch ? parseInt(durationMatch[0], 10) : 120
+
+  // Calculate end time
+  const calculateEndTime = (startStr, durationInMinutes) => {
+    if (!startStr) return ''
+    const parts = startStr.split(':')
+    if (parts.length < 2) return ''
+    const startHour = parseInt(parts[0], 10)
+    const startMin = parseInt(parts[1], 10)
+    if (isNaN(startHour) || isNaN(startMin)) return ''
+    const totalMinutes = startHour * 60 + startMin + durationInMinutes
+    const endHour = Math.floor(totalMinutes / 60) % 24
+    const endMin = totalMinutes % 60
+    return `${String(endHour).padStart(2, '0')}:${String(endMin).padStart(2, '0')}`
   }
 
-  // Calculate end time = start time + movie duration
-  const endTime = (() => {
-    if (!selectedTime || !movieDuration) return ''
-    try {
-      const [h, m] = selectedTime.split(':').map(Number)
-      const end = new Date()
-      end.setHours(h, m + Number(movieDuration), 0, 0)
-      return `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`
-    } catch {
-      return ''
-    }
-  })()
+  const endTime = calculateEndTime(selectedTime, durationMin)
+
+  const orderedCombos = (combos || []).filter(c => (selectedCombos[c.id] || 0) > 0)
+  const hasCombos = orderedCombos.length > 0
+  const hasPromo = Boolean(promoCode && discountAmount > 0)
 
   const formatSeatsLeftText = (seats) => {
-    if (!seats || !seats.length) return ''
-    const rowMap = {}
-    seats.forEach(s => {
-      const r = s.charAt(0)
-      const n = s.substring(1)
-      if (!rowMap[r]) rowMap[r] = []
-      rowMap[r].push(n)
-    })
-    return Object.entries(rowMap)
-      .map(([row, nums]) => `Hàng ${row} · Ghế ${nums.join(', ')}`)
-      .join(' | ')
+    if (!seats || seats.length === 0) return 'Chưa chọn ghế'
+    if (seats.length <= 4) return seats.join(', ')
+    return `${seats.slice(0, 4).join(', ')} và ${seats.length - 4} ghế khác`
   }
 
   const formatSeatsRightText = (seats) => {
-    if (!seats || !seats.length) return ''
-    return seats.map(s => s.substring(1)).join(' · ')
+    if (!seats || seats.length === 0) return 'Chưa chọn ghế'
+    if (seats.length <= 3) return seats.join(', ')
+    return `${seats.slice(0, 3).join(', ')} (+${seats.length - 3})`
   }
-
-  // Combo items with qty > 0
-  const orderedCombos = (combos || []).filter(c => (selectedCombos?.[c.id] || 0) > 0)
-  const hasCombos = orderedCombos.length > 0
-  const hasPromo = Boolean(promoCode) && Number(discountAmount) > 0
 
   return (
     <motion.div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 overflow-y-auto"
-      style={{
-        background: 'radial-gradient(circle at center, rgba(229, 9, 20, 0.35) 0%, rgba(12, 12, 12, 0.99) 100%)',
-        backdropFilter: 'blur(20px)'
-      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
       <motion.div
-        className="w-full max-w-4xl p-6 md:p-10 rounded-3xl relative overflow-hidden my-auto"
-        style={{
-          background: 'rgba(20,20,20,0.92)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 24px 80px rgba(0, 0, 0, 0.7), 0 0 40px rgba(229, 9, 20, 0.15)'
-        }}
-        initial={{ scale: 0.9, y: 30 }}
-        animate={{ scale: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.34, 1.56, 0.64, 1] }}
+        className="success-ticket-modal-container max-w-4xl w-full"
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
       >
-        <div
-          className="absolute -top-16 -left-16 w-48 h-48 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(229,9,20,0.15), transparent)' }}
-        />
-        <div
-          className="absolute -bottom-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12), transparent)' }}
-        />
+        {/* Top Header */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 text-emerald-400 mb-3 border border-emerald-500/30">
+            <CheckCircle2 size={36} />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tight" style={{ fontFamily: 'Montserrat' }}>
+            Thanh Toán Thành Công!
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Thanh toán đã được hệ thống xác nhận. Cảm ơn bạn đã đặt vé xem phim tại CineMate!
+          </p>
+        </div>
 
-        <div className="success-ticket-container">
-          {/* Left Column */}
-          <div className="left-col" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div
-              onClick={onClose}
-              className="back-link"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '13px',
-                color: 'rgba(255,255,255,0.4)',
-                cursor: 'pointer'
-              }}
-            >
-              <span>&larr; Quay về trang chủ</span>
+        {/* Ticket Box Grid */}
+        <div className="success-ticket-grid">
+          {/* Left Column (Details) */}
+          <div className="success-ticket-left-col">
+            <div className="success-ticket-header">
+              <span className="success-ticket-badge">VERIFIED PASS</span>
+              <span className="success-ticket-code">#{String(bookingId || 'CM-SUCCESS').substring(0, 8)}</span>
             </div>
 
-            <div>
-              <div className="success-ticket-badge">
-                <span className="material-symbols-outlined text-sm font-black">done</span>
-                Đặt vé thành công
-              </div>
-              <h2 className="success-ticket-title">Vé Xem Phim Di Động</h2>
-              <p className="success-ticket-sub text-left">
-                Khi mua vé xem phim thành công, bạn chỉ cần xuất trình mã vạch này tại cửa rạp để soát vé. Thông tin vé cũng đã được lưu trong lịch sử giao dịch.
-              </p>
-            </div>
-
-            <div className="success-ticket-card">
-              <div className="success-ticket-sc-title">Chi tiết đặt vé</div>
+            <div className="success-ticket-details">
               <div className="success-ticket-row">
-                <span className="success-ticket-label">Phim</span>
-                <span className="success-ticket-val" title={movie?.title}>
-                  {movie?.title}
+                <span className="success-ticket-label">🎬 Phim</span>
+                <span className="success-ticket-val text-white font-bold">{movie?.title}</span>
+              </div>
+              <div className="success-ticket-row">
+                <span className="success-ticket-label">📍 Rạp & Phòng</span>
+                <span className="success-ticket-val text-gray-300">
+                  CineMate HQ — {movie?.roomName || 'Phòng chiếu 1'}
                 </span>
               </div>
               <div className="success-ticket-row">
                 <span className="success-ticket-label">📅 Ngày chiếu</span>
-                <span className="success-ticket-val">{formatDate(selectedDate)}</span>
+                <span className="success-ticket-val">
+                  {new Date(selectedDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                </span>
               </div>
               <div className="success-ticket-row">
                 <span className="success-ticket-label">⏰ Suất chiếu</span>
@@ -182,6 +151,21 @@ export default function SuccessModal({
                         </div>
                       )
                     })}
+                  </span>
+                </div>
+              )}
+
+              {/* Ưu đãi đổi điểm */}
+              {pointsRedemption && (
+                <div className="success-ticket-row">
+                  <span className="success-ticket-label">⭐ Đổi điểm</span>
+                  <span className="success-ticket-val" style={{ color: '#fbbf24', fontWeight: 700 }}>
+                    {pointsRedemption.promotionTitle || 'Quà đổi điểm'} ({pointsRedemption.pointsSpent || 0} điểm)
+                    {pointsDiscount > 0 ? (
+                      <span style={{ marginLeft: 6 }}>-{formatCurrency(pointsDiscount)}</span>
+                    ) : (
+                      <span style={{ marginLeft: 6, opacity: 0.8 }}>(Quà tặng)</span>
+                    )}
                   </span>
                 </div>
               )}
@@ -277,6 +261,7 @@ export default function SuccessModal({
                     <div className="stf-val">{selectedSeats.length}</div>
                   </div>
                 </div>
+
                 {hasCombos && (
                   <>
                     <hr className="success-ticket-physical-divider" />
@@ -290,6 +275,16 @@ export default function SuccessModal({
                     </div>
                   </>
                 )}
+
+                {pointsRedemption && (
+                  <div style={{ marginBottom: 12 }}>
+                    <div className="stf-label" style={{ marginBottom: 2 }}>⭐ Đổi điểm</div>
+                    <div className="stf-val" style={{ fontSize: 12, color: '#fbbf24', fontWeight: 700 }}>
+                      {pointsRedemption.promotionTitle} ({pointsRedemption.pointsSpent} điểm)
+                    </div>
+                  </div>
+                )}
+
                 {hasPromo && (
                   <div style={{ marginBottom: 12 }}>
                     <div className="stf-label" style={{ marginBottom: 2 }}>Khuyến mãi</div>
@@ -298,6 +293,7 @@ export default function SuccessModal({
                     </div>
                   </div>
                 )}
+                
                 <div className="success-ticket-physical-barcode-box" style={{ display: 'flex', justifyContent: 'center', padding: '10px 0' }}>
                   <QRCodeSVG 
                     value={bookingId || "cinemate-booking"} 
