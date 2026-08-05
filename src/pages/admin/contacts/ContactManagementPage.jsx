@@ -254,24 +254,39 @@ export default function ContactManagementPage() {
                   <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Nội dung tin nhắn:</div>
                   <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                     {isFlagged(selectedContact) && !selectedContact.showContent ? (
-                      <span className="italic text-gray-400 bg-gray-200 px-3 py-1.5 rounded-md select-none filter blur-[3px] transition-all">
-                        {selectedContact.message}
+                      /* Hiển thị bản đã che từ vi phạm bằng *** */
+                      <span className="text-gray-700">
+                        {selectedContact.censoredMessage || selectedContact.message}
                       </span>
                     ) : (
                       selectedContact.message
                     )}
                   </p>
-                  {isFlagged(selectedContact) && !selectedContact.showContent && (
-                     <div className="mt-4 pt-4 border-t border-gray-200">
-                       <Button 
-                        size="sm" 
-                        variant="outline"
-                        className="bg-white border-red-200 text-red-600 hover:bg-red-50"
-                        onClick={() => setSelectedContact({...selectedContact, showContent: true})}
-                       >
-                         <Eye className="w-4 h-4 mr-2" />
-                         Hiển thị nội dung
-                       </Button>
+                  {isFlagged(selectedContact) && (
+                     <div className="mt-4 pt-4 border-t border-gray-200 flex items-center gap-3">
+                       {!selectedContact.showContent ? (
+                         <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="bg-white border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => setSelectedContact({...selectedContact, showContent: true})}
+                         >
+                           <Eye className="w-4 h-4 mr-2" />
+                           Hiển thị nội dung gốc
+                         </Button>
+                       ) : (
+                         <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                          onClick={() => setSelectedContact({...selectedContact, showContent: false})}
+                         >
+                           Ẩn nội dung gốc
+                         </Button>
+                       )}
+                       <span className="text-xs text-gray-400 italic">
+                         {selectedContact.showContent ? '⚠️ Đang hiển thị nội dung gốc chưa kiểm duyệt' : '🛡️ Nội dung đã được AI kiểm duyệt, các từ vi phạm được thay bằng ***'}
+                       </span>
                      </div>
                   )}
                 </div>
