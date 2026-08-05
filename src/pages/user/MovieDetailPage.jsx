@@ -604,6 +604,7 @@ export default function MovieDetailPage() {
     return sum + (basePrice + subItemsExtra) * qty
   }, 0)
 
+  const singleTicketPrice = selectedSeats.length > 0 ? ticketPrice / selectedSeats.length : 0;
   const discountAmount = useMemo(() => {
     let couponDiscount = 0
     if (discount > 0) {
@@ -616,14 +617,14 @@ export default function MovieDetailPage() {
     let campaignDiscount = 0
     if (autoCampaign) {
       if (autoCampaign.discountPercent > 0) {
-        campaignDiscount = Math.round((ticketPrice + comboPrice) * (autoCampaign.discountPercent / 100))
+        campaignDiscount = Math.round(singleTicketPrice * (autoCampaign.discountPercent / 100))
       } else if (autoCampaign.discountValue > 0) {
-        campaignDiscount = autoCampaign.discountValue
+        campaignDiscount = Math.min(autoCampaign.discountValue, singleTicketPrice)
       }
     }
     const totalDiscount = couponDiscount + pointsDiscount + campaignDiscount
     return Math.min(totalDiscount, ticketPrice + comboPrice)
-  }, [discount, ticketPrice, comboPrice, pointsDiscount, autoCampaign])
+  }, [discount, ticketPrice, comboPrice, pointsDiscount, autoCampaign, selectedSeats.length])
 
   const finalPrice = Math.max(0, ticketPrice + comboPrice - discountAmount)
 
@@ -1199,8 +1200,8 @@ export default function MovieDetailPage() {
                     <span className="text-emerald-500 font-bold">{autoCampaign.title}</span>
                     <span className="text-emerald-500 font-bold">
                       -{autoCampaign.discountPercent > 0 
-                        ? Number(Math.round((ticketPrice + comboPrice) * (autoCampaign.discountPercent / 100))).toLocaleString('vi-VN') 
-                        : Number(autoCampaign.discountValue).toLocaleString('vi-VN')} đ
+                        ? Number(Math.round(singleTicketPrice * (autoCampaign.discountPercent / 100))).toLocaleString('vi-VN') 
+                        : Number(Math.min(autoCampaign.discountValue, singleTicketPrice)).toLocaleString('vi-VN')} đ
                     </span>
                   </div>
                 </div>

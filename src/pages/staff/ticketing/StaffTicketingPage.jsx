@@ -480,12 +480,12 @@ export default function StaffTicketingPage() {
   const campaignDiscount = React.useMemo(() => {
     if (!autoCampaign) return 0;
     if (autoCampaign.discountPercent > 0) {
-      return Math.round(grossOrderTotal * (autoCampaign.discountPercent / 100));
+      return Math.round(singleTicketPrice * (autoCampaign.discountPercent / 100));
     } else if (autoCampaign.discountValue > 0) {
-      return autoCampaign.discountValue;
+      return Math.min(autoCampaign.discountValue, singleTicketPrice);
     }
     return 0;
-  }, [autoCampaign, grossOrderTotal]);
+  }, [autoCampaign, singleTicketPrice]);
 
   const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount - campaignDiscount)
 
