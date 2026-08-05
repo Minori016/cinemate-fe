@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import {
   promotionService,
@@ -16,7 +16,7 @@ import movieService from '../../../services/movieService'
 import api from '../../../services/api'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power, Film } from 'lucide-react'
+import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power, Film, Gift, Coins, ShoppingBag, Percent, Wallet } from 'lucide-react'
 import { motion } from 'motion/react'
 
 export default function PromotionFormPage() {
@@ -57,12 +57,44 @@ export default function PromotionFormPage() {
   const [concessionOptions, setConcessionOptions] = useState([])
   const [loadingItems, setLoadingItems] = useState(false)
 
+  const isCoupon = type === PROMOTION_TYPES.COUPON
+  const isPoints = type === PROMOTION_TYPES.POINTS
+  const isCampaign = type === PROMOTION_TYPES.CAMPAIGN
+  const isTypeUnsupported = false // Now CAMPAIGN is supported
+
   // Format currency input (add dot separator every 3 digits)
   const formatCurrencyInput = (value) => {
     if (!value) return ''
     const num = value.replace(/\D/g, '')
     return num.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
   }
+
+  // Build preview text for POINTS redemption card
+  const pointsPreview = useMemo(() => {
+    if (!isPoints) return null
+    const points = Number(minLoyaltyPoints)
+    if (!points || points < 1) return null
+
+    let rewardText = ''
+    if (redemptionType === REDEMPTION_TYPES.MONEY_FIXED) {
+      const v = Number(pointsDiscountValue)
+      if (!v || v <= 0) return null
+      rewardText = `giảm ${new Intl.NumberFormat('vi-VN').format(v)}đ tiền mặt`
+    } else if (redemptionType === REDEMPTION_TYPES.MONEY_PERCENT) {
+      const p = Number(pointsDiscountPercent)
+      if (!p || p <= 0 || p > 100) return null
+      rewardText = `giảm ${p}% tổng đơn hàng`
+    } else if (redemptionType === REDEMPTION_TYPES.PRODUCT || redemptionType === REDEMPTION_TYPES.COMBO) {
+      if (!itemUuid) return null
+      const item = concessionOptions.find(c => String(c.id) === String(itemUuid))
+      const itemName = item?.name || 'sản phẩm'
+      rewardText = `đổi lấy ${itemName}${item?.size ? ` (${item.size})` : ''}`
+    } else {
+      return null
+    }
+
+    return `${new Intl.NumberFormat('vi-VN').format(points)} điểm → ${rewardText}`
+  }, [isPoints, minLoyaltyPoints, redemptionType, pointsDiscountValue, pointsDiscountPercent, itemUuid, concessionOptions])
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -76,11 +108,6 @@ export default function PromotionFormPage() {
     const dd = String(d.getDate()).padStart(2, '0')
     setTodayStart(`${yyyy}-${mm}-${dd}T00:00`)
   }, [])
-
-  const isCoupon = type === PROMOTION_TYPES.COUPON
-  const isPoints = type === PROMOTION_TYPES.POINTS
-  const isCampaign = type === PROMOTION_TYPES.CAMPAIGN
-  const isTypeUnsupported = false // Now CAMPAIGN is supported
 
   // CAMPAIGN-specific state
   const [movieIds, setMovieIds] = useState([])
@@ -205,7 +232,7 @@ export default function PromotionFormPage() {
     setLoadingMovies(true)
     movieService.getAllMovies()
       .then(res => {
-        const list = res?.data || res || []
+        const list = res?.result || res?.data || []
         setMovieOptions(Array.isArray(list) ? list : [])
       })
       .catch(err => console.error('Load movies failed:', err))
@@ -606,80 +633,91 @@ export default function PromotionFormPage() {
             </div>
 
             {isPoints && (
-              <div className="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 rounded-xl p-5 space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="text-amber-500" size={18} />
+              <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 rounded-xl p-5 space-y-5 shadow-inner">
+                <div className="flex items-center gap-2 pb-3 border-b border-amber-500/20">
+                  <Coins className="text-amber-500" size={20} />
                   <h4 className="text-sm font-bold text-amber-400 uppercase tracking-wider">
-                    Cấu hình đổi điểm
+                    Cấu hình quy đổi điểm
                   </h4>
                 </div>
 
-                {/* Số điểm cần */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-[var(--color-text-muted)]">Số điểm cần để đổi</label>
-                  <input
-                    type="number" min="1"
-                    value={minLoyaltyPoints}
-                    onChange={(e) => setMinLoyaltyPoints(e.target.value)}
-                    placeholder="VD: 100"
-                    className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.minLoyaltyPoints ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-                  />
-                  {errors.minLoyaltyPoints && <span className="text-xs text-red-400 mt-1">{errors.minLoyaltyPoints}</span>}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Số điểm cần */}
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                      <Coins size={14} className="text-amber-500" /> Số điểm cần để đổi
+                    </label>
+                    <input
+                      type="number" min="1"
+                      value={minLoyaltyPoints}
+                      onChange={(e) => setMinLoyaltyPoints(e.target.value)}
+                      placeholder="VD: 100"
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-amber-500 transition-colors w-full ${errors.minLoyaltyPoints ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                    />
+                    {errors.minLoyaltyPoints && <span className="text-xs text-red-400 mt-1">{errors.minLoyaltyPoints}</span>}
+                  </div>
+
+                  {/* Loại phần thưởng */}
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                      <Gift size={14} className="text-amber-500" /> Loại phần thưởng
+                    </label>
+                    <select
+                      value={redemptionType}
+                      onChange={(e) => { setRedemptionType(e.target.value); setItemUuid('') }}
+                      className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors w-full cursor-pointer"
+                    >
+                      {Object.entries(REDEMPTION_TYPE_LABELS).map(([k, v]) => (
+                        <option key={k} value={k}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* Loại phần thưởng */}
-                <div className="flex flex-col gap-1">
-                  <label className="text-sm font-medium text-[var(--color-text-muted)]">Loại phần thưởng</label>
-                  <select
-                    value={redemptionType}
-                    onChange={(e) => { setRedemptionType(e.target.value); setItemUuid('') }}
-                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
-                  >
-                    {Object.entries(REDEMPTION_TYPE_LABELS).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Conditional fields theo redemptionType */}
+                {/* Field điều kiện theo redemptionType */}
                 {redemptionType === REDEMPTION_TYPES.MONEY_FIXED && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-[var(--color-text-muted)]">Số tiền giảm (VNĐ)</label>
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                      <Wallet size={14} className="text-amber-500" /> Số tiền giảm (VNĐ)
+                    </label>
                     <input
                       type="number" min="1"
                       value={pointsDiscountValue}
                       onChange={(e) => setPointsDiscountValue(e.target.value)}
                       placeholder="50000"
-                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.pointsDiscountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-amber-500 transition-colors w-full ${errors.pointsDiscountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
                     />
                     {errors.pointsDiscountValue && <span className="text-xs text-red-400 mt-1">{errors.pointsDiscountValue}</span>}
                   </div>
                 )}
 
                 {redemptionType === REDEMPTION_TYPES.MONEY_PERCENT && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-[var(--color-text-muted)]">Phần trăm giảm (%)</label>
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                      <Percent size={14} className="text-amber-500" /> Phần trăm giảm (%)
+                    </label>
                     <input
                       type="number" min="1" max="100"
                       value={pointsDiscountPercent}
                       onChange={(e) => setPointsDiscountPercent(e.target.value)}
                       placeholder="10"
-                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full ${errors.pointsDiscountPercent ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-amber-500 transition-colors w-full ${errors.pointsDiscountPercent ? 'border-red-500' : 'border-[var(--color-border)]'}`}
                     />
                     {errors.pointsDiscountPercent && <span className="text-xs text-red-400 mt-1">{errors.pointsDiscountPercent}</span>}
                   </div>
                 )}
 
                 {(redemptionType === REDEMPTION_TYPES.PRODUCT || redemptionType === REDEMPTION_TYPES.COMBO) && (
-                  <div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium text-[var(--color-text-muted)]">
+                  <div className="flex flex-col gap-1 w-full text-left">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                      <ShoppingBag size={14} className="text-amber-500" />
                       Chọn {redemptionType === REDEMPTION_TYPES.PRODUCT ? 'sản phẩm' : 'combo'}
                     </label>
                     <select
                       value={itemUuid}
                       onChange={(e) => setItemUuid(e.target.value)}
                       disabled={loadingItems}
-                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer disabled:opacity-50 ${errors.itemUuid ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                      className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors w-full cursor-pointer disabled:opacity-50 ${errors.itemUuid ? 'border-red-500' : 'border-[var(--color-border)]'}`}
                     >
                       <option value="">
                         {loadingItems ? 'Đang tải...' : `-- Chọn ${redemptionType === REDEMPTION_TYPES.PRODUCT ? 'sản phẩm' : 'combo'} --`}
@@ -698,7 +736,18 @@ export default function PromotionFormPage() {
                   </div>
                 )}
 
-                {/* POINTS không giới hạn lượt đổi - user đủ điểm là đổi được */}
+                {/* Preview box */}
+                {pointsPreview && (
+                  <div className="bg-gradient-to-r from-amber-600/20 to-transparent border border-amber-500/30 rounded-xl p-4 flex items-center gap-3">
+                    <Sparkles className="text-amber-500" size={20} />
+                    <div>
+                      <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider font-bold">Preview</p>
+                      <p className="text-lg text-white font-extrabold">
+                        {pointsPreview}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -720,29 +769,32 @@ export default function PromotionFormPage() {
                     <div className="text-sm text-[var(--color-text-muted)]">Đang tải danh sách phim...</div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg">
-                      {movieOptions.map(movie => (
-                        <label
-                          key={movie.id}
-                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-sm
-                            ${movieIds.includes(movie.id)
-                              ? 'bg-red-500/20 border border-red-500/50 text-red-300'
-                              : 'hover:bg-[var(--color-surface)] border border-transparent'}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={movieIds.includes(movie.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setMovieIds([...movieIds, movie.id])
-                              } else {
-                                setMovieIds(movieIds.filter(id => id !== movie.id))
-                              }
-                            }}
-                            className="accent-red-500"
-                          />
-                          <span className="truncate">{movie.titleVn || movie.title}</span>
-                        </label>
-                      ))}
+                      {movieOptions.map(movie => {
+                        const selected = movieIds.includes(movie.id)
+                        return (
+                          <label
+                            key={movie.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-sm font-medium border
+                              ${selected
+                                ? 'bg-red-500 border-red-600 text-white'
+                                : 'bg-white border-transparent text-black hover:bg-gray-100 hover:border-[var(--color-border)]'}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setMovieIds([...movieIds, movie.id])
+                                } else {
+                                  setMovieIds(movieIds.filter(id => id !== movie.id))
+                                }
+                              }}
+                              className="accent-red-500"
+                            />
+                            <span className="truncate">{movie.titleVn || movie.title}</span>
+                          </label>
+                        )
+                      })}
                     </div>
                   )}
                   {errors.movieIds && <span className="text-xs text-red-400 mt-1">{errors.movieIds}</span>}
@@ -853,6 +905,37 @@ export default function PromotionFormPage() {
         </div>
 
         <div className="space-y-6">
+          {isPoints && (
+            <div className="bg-gradient-to-br from-amber-500/10 to-transparent border border-amber-500/30 rounded-2xl p-6 space-y-4 shadow-xl">
+              <h3
+                className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 border-b border-amber-500/20 pb-3"
+                style={{ fontFamily: 'Montserrat' }}
+              >
+                <Gift className="text-amber-500" size={18} />
+                Cách hoạt động
+              </h3>
+              <ul className="text-xs text-[var(--color-text-muted)] space-y-2.5 leading-relaxed list-disc pl-4">
+                <li>
+                  <b className="text-amber-400">Giảm tiền mặt:</b> khách đổi điểm lấy mã giảm một số tiền cố định trên đơn.
+                </li>
+                <li>
+                  <b className="text-amber-400">Giảm %:</b> khách đổi điểm lấy mã giảm phần trăm tổng đơn hàng.
+                </li>
+                <li>
+                  <b className="text-amber-400">Đổi sản phẩm:</b> khách đổi điểm để nhận một sản phẩm lẻ (bắp, nước...).
+                </li>
+                <li>
+                  <b className="text-amber-400">Đổi combo:</b> khách đổi điểm để nhận combo bắp nước đã định sẵn.
+                </li>
+              </ul>
+              <div className="pt-2 border-t border-amber-500/20">
+                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                  <b className="text-amber-400">Lưu ý:</b> số điểm cần đổi phải {'>'} 0. Mỗi user có thể đổi nhiều lần nếu đủ điểm.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-6 space-y-4 shadow-xl">
             <h3
               className="text-lg font-bold text-[var(--color-on-surface)] flex items-center gap-2 border-b border-[var(--color-border)] pb-3"
