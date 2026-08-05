@@ -60,6 +60,7 @@ export default function StaffTicketingPage() {
   const [promoCodeInput, setPromoCodeInput] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState('')
   const [couponDiscount, setCouponDiscount] = useState(0)
+  const [autoCampaign, setAutoCampaign] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
   const [promoError, setPromoError] = useState('')
 
@@ -454,7 +455,39 @@ export default function StaffTicketingPage() {
     setPromoError('')
   }
 
-  const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount)
+  
+  // Auto-fetch and apply CAMPAIGN
+  React.useEffect(() => {
+    if (!selectedMovie?.id) return;
+    let cancelled = false;
+    promotionService.getActiveForUi().then(list => {
+      if (cancelled) return;
+      if (Array.isArray(list)) {
+        const campaigns = list.filter(p => p.promotionType === 'CAMPAIGN' && p.movieIds?.includes(selectedMovie.id));
+        if (campaigns.length > 0) {
+          const bestCampaign = campaigns.reduce((prev, current) => 
+            (prev.discountPercent > current.discountPercent) ? prev : current
+          );
+          setAutoCampaign(bestCampaign);
+        } else {
+          setAutoCampaign(null);
+        }
+      }
+    });
+    return () => { cancelled = true };
+  }, [selectedMovie?.id]);
+
+  const campaignDiscount = React.useMemo(() => {
+    if (!autoCampaign) return 0;
+    if (autoCampaign.discountPercent > 0) {
+      return Math.round(grossOrderTotal * (autoCampaign.discountPercent / 100));
+    } else if (autoCampaign.discountValue > 0) {
+      return autoCampaign.discountValue;
+    }
+    return 0;
+  }, [autoCampaign, grossOrderTotal]);
+
+  const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount - campaignDiscount)
 
   const changeReturn = useMemo(() => {
     if (!cashReceived || isNaN(cashReceived)) return 0
@@ -1237,7 +1270,7 @@ export default function StaffTicketingPage() {
                   )}
 
                   {/* KHUNG HIỂN THỊ GIẢM GIÁ ĐÃ ÁP DỤNG */}
-                  {(couponDiscount > 0 || pointsDiscountTotal > 0) && (
+                  {(couponDiscount > 0 || pointsDiscountTotal > 0 || campaignDiscount > 0) && (
                     <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 flex items-center justify-between text-xs font-bold text-emerald-400">
                       <div className="flex items-center gap-2">
                         <CheckCircle size={16} />
@@ -1409,7 +1442,14 @@ export default function StaffTicketingPage() {
                         </div>
                       )}
 
-                      {couponDiscount > 0 && (
+                      {campaignDiscount > 0 && (
+                          <div className="flex justify-between items-center text-emerald-400 font-bold">
+                            <span>Khuyến Mãi Tự Động ({autoCampaign.title}):</span>
+                            <span className="font-mono">-{formatVND(campaignDiscount)}</span>
+                          </div>
+                        )}
+
+                        {couponDiscount > 0 && (
                         <div className="flex justify-between items-center text-emerald-400 font-bold">
                           <span>Giảm giá Voucher ({appliedPromoCode}):</span>
                           <span className="font-mono">-{formatVND(couponDiscount)}</span>
@@ -1555,6 +1595,16 @@ export default function StaffTicketingPage() {
                 </div>
               </div>
             )}
+
+              {campaignDiscount > 0 && (
+                <div className="space-y-1 border-t border-white/5 pt-4">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">KHUYẾN MÃI TỰ ĐỘNG</span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-emerald-400 font-bold">{autoCampaign?.title}</span>
+                    <span className="text-emerald-400 font-mono font-bold">-{formatVND(campaignDiscount)}</span>
+                  </div>
+                </div>
+              )}
           </div>
 
           <div className="space-y-4 border-t border-white/5 pt-4">
