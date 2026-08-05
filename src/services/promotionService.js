@@ -17,6 +17,20 @@ export const promotionService = {
   toggleStatus: (id) => api.patch(`/api/v1/admin/promotions/${id}/toggle`),
   delete: (id) => api.delete(`/api/v1/admin/promotions/${id}`),
 
+  // Get active campaigns for a specific movie (auto-apply feature)
+  getActiveCampaignsForMovie: async (movieId) => {
+    try {
+      const res = await api.get('/api/v1/promotions/active', {
+        params: { type: 'CAMPAIGN', movieId }
+      })
+      const list = unwrapList(res.data)
+      return Array.isArray(list) ? list : []
+    } catch (err) {
+      console.error('Failed to load active campaigns for movie:', err)
+      return []
+    }
+  },
+
   // === Points Redemption ===
   // All endpoints wrap data in ApiResponse{ code, result }; expose unwrapped data to callers.
   getPointsOptions: async () => {
