@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'motion/react'
-import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, Wallet, Gift } from 'lucide-react'
+import { ArrowLeft, Clock, Ticket, AlertCircle, Loader2, User, Wallet, Gift, Sparkles } from 'lucide-react'
 import { bookingService } from '../../services/bookingService'
 import { paymentService } from '../../services/paymentService'
+import { promotionService } from '../../services/promotionService'
 import { useAuth } from '../../contexts/AuthContext'
 
 export default function CheckoutPage() {
@@ -19,6 +20,20 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('momo')
   const [pointsRedemption, setPointsRedemption] = useState(null)
+  const [campaignDiscount, setCampaignDiscount] = useState(null)
+
+  // Fetch campaign discount for this booking
+  useEffect(() => {
+    if (!booking?.movieName || !bookingId) return
+    // The booking already has campaignDiscount from backend, just use it
+    if (booking.campaignDiscount && booking.campaignDiscount > 0) {
+      setCampaignDiscount({
+        discount: booking.campaignDiscount,
+        title: booking.campaignTitle || 'Khuyến mãi phim',
+        promotionId: booking.campaignId,
+      })
+    }
+  }, [booking, bookingId])
 
   useEffect(() => {
     if (!booking) return
@@ -276,7 +291,7 @@ export default function CheckoutPage() {
           
           <div className="mt-8 pt-6 border-t border-white/10 flex justify-between items-end">
             <div>
-              {/* Chi tiết khấu trừ & mã giảm giá */}
+              {/* Hiển thị 3 dòng discount: campaign + coupon + points */}
           <div className="mt-6 pt-5 border-t border-white/10 space-y-2 text-xs">
             <div className="flex justify-between items-center text-gray-400">
               <span>Tiền vé ({seatCount} ghế)</span>
@@ -288,10 +303,36 @@ export default function CheckoutPage() {
                 <span className="font-bold text-white">{formatCurrency(concessionAmount)}</span>
               </div>
             )}
-            {discountAmount > 0 && (
+
+            {/* Campaign discount (auto-apply) */}
+            {campaignDiscount && (
+              <div className="flex justify-between items-center text-cyan-400">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles size={12} /> Khuyến mãi phim {booking.movieName ? `(${booking.movieName})` : ''}
+                </span>
+                <span className="font-extrabold">-{formatCurrency(campaignDiscount.discount)}</span>
+              </div>
+            )}
+
+            {/* Coupon discount */}
+            {booking?.promotionCode && booking?.promotionType !== 'CAMPAIGN' && (
               <div className="flex justify-between items-center text-emerald-400">
-                <span>Mã giảm giá {booking?.promotionCode ? `(${booking.promotionCode})` : ''}</span>
+                <span>Mã giảm giá ({booking.promotionCode})</span>
                 <span className="font-extrabold">-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
+
+            {/* Points discount */}
+            {pointsRedemption && (
+              <div className="flex justify-between items-center text-amber-400">
+                <span className="flex items-center gap-1.5">
+                  <Gift size={12} /> Đổi điểm ({pointsRedemption.pointsSpent || 0} điểm)
+                </span>
+                <span className="font-extrabold">
+                  {pointsRedemption.discountAmount > 0
+                    ? `-${formatCurrency(pointsRedemption.discountAmount)}`
+                    : 'Quà tặng (0đ)'}
+                </span>
               </div>
             )}
           </div>

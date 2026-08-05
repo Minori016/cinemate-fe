@@ -4,6 +4,7 @@ import { movieService } from '../../services/movieService'
 import { bookingService } from '../../services/bookingService'
 import { showtimeService, isPublicShowtimeStatus } from '../../services/showtimeService'
 import { concessionService } from '../../services/concessionService'
+import { promotionService } from '../../services/promotionService'
 import websocketService from '../../services/websocketService'
 import { paymentService } from '../../services/paymentService'
 import { useAuth } from '../../contexts/AuthContext'
@@ -264,6 +265,7 @@ export default function MovieDetailPage() {
   const [discount, setDiscount] = useState(0)
   const [pointsDiscount, setPointsDiscount] = useState(0)
   const [pointsRedemption, setPointsRedemption] = useState(null)
+  const [autoCampaign, setAutoCampaign] = useState(null)
 
   // Sync state with query parameters — nếu khách vãng lai từ /showtimes, chặn bước ghế và yêu cầu đăng nhập
   const [handledGuestQuery, setHandledGuestQuery] = useState(false)
@@ -400,6 +402,28 @@ export default function MovieDetailPage() {
     fetchMovie()
     return () => { cancelled = true }
   }, [movieId])
+
+
+  // ── Auto-fetch and apply CAMPAIGN ──
+  useEffect(() => {
+    if (!movie?.id) return;
+    let cancelled = false;
+    promotionService.getActiveForUi().then(list => {
+      if (cancelled) return;
+      if (Array.isArray(list)) {
+        const campaigns = list.filter(p => p.promotionType === 'CAMPAIGN' && p.movieIds?.includes(movie.id));
+        if (campaigns.length > 0) {
+          const bestCampaign = campaigns.reduce((prev, current) => 
+            (prev.discountPercent > current.discountPercent) ? prev : current
+          );
+          setAutoCampaign(bestCampaign);
+        } else {
+          setAutoCampaign(null);
+        }
+      }
+    });
+    return () => { cancelled = true };
+  }, [movie?.id]);
 
   // Tải danh sách bắp nước từ server (public /concessions/active)
   useEffect(() => {
@@ -581,7 +605,6 @@ export default function MovieDetailPage() {
   }, 0)
 
   const discountAmount = useMemo(() => {
-    // Handle coupon discount (can be percentage < 1 or fixed amount >= 1)
     let couponDiscount = 0
     if (discount > 0) {
       if (discount < 1) {
@@ -590,10 +613,17 @@ export default function MovieDetailPage() {
         couponDiscount = discount
       }
     }
-    // Add points discount
-    const totalDiscount = couponDiscount + pointsDiscount
+    let campaignDiscount = 0
+    if (autoCampaign) {
+      if (autoCampaign.discountPercent > 0) {
+        campaignDiscount = Math.round((ticketPrice + comboPrice) * (autoCampaign.discountPercent / 100))
+      } else if (autoCampaign.discountValue > 0) {
+        campaignDiscount = autoCampaign.discountValue
+      }
+    }
+    const totalDiscount = couponDiscount + pointsDiscount + campaignDiscount
     return Math.min(totalDiscount, ticketPrice + comboPrice)
-  }, [discount, ticketPrice, comboPrice, pointsDiscount])
+  }, [discount, ticketPrice, comboPrice, pointsDiscount, autoCampaign])
 
   const finalPrice = Math.max(0, ticketPrice + comboPrice - discountAmount)
 
@@ -1161,6 +1191,21 @@ export default function MovieDetailPage() {
                 </div>
               )}
 
+              {/* Auto Campaign Info */}
+              {autoCampaign && (
+                <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
+                  <span className="text-[10px] text-gray-500 uppercase tracking-wider font-extrabold leading-none">Khuyến Mãi Tự Động</span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-emerald-500 font-bold">{autoCampaign.title}</span>
+                    <span className="text-emerald-500 font-bold">
+                      -{autoCampaign.discountPercent > 0 
+                        ? Number(Math.round((ticketPrice + comboPrice) * (autoCampaign.discountPercent / 100))).toLocaleString('vi-VN') 
+                        : Number(autoCampaign.discountValue).toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Points Redemption Info */}
               {pointsRedemption && (
                 <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
@@ -1269,6 +1314,8 @@ export default function MovieDetailPage() {
           setShowAuthModal(false)
           setPendingLoginFromShowtime(false)
           navigate('/login', { state: { from: location } })
+
+
         }}
         onCancel={() => {
           setShowAuthModal(false)

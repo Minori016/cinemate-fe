@@ -145,6 +145,27 @@ export default function PromotionListPage() {
       )
     },
     {
+      key: 'movies',
+      label: 'Phim áp dụng',
+      render: r => {
+        // Chỉ hiển thị cho CAMPAIGN
+        const promoType = r.promotionType || r.type
+        if (promoType !== 'CAMPAIGN') return <span className="text-gray-400 text-xs">-</span>
+        const movies = r.movieTitles || r.movies || []
+        if (movies.length === 0) return <span className="text-gray-400 text-xs">Chưa có phim</span>
+        const display = movies.slice(0, 2)
+        const remaining = movies.length - 2
+        return (
+          <div className="text-xs">
+            {display.map((m, i) => (
+              <div key={i} className="truncate max-w-[120px] text-slate-700">{m}</div>
+            ))}
+            {remaining > 0 && <div className="text-gray-500 font-semibold">+{remaining} phim khác</div>}
+          </div>
+        )
+      }
+    },
+    {
       key: 'discount',
       label: 'Mức giảm',
       render: r => {

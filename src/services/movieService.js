@@ -151,4 +151,12 @@ export const movieService = {
     })
     return res.data
   },
+
+  // GET /api/v1/movies/all - Returns all movies for admin selection
+  getAllMovies: async () => {
+    const res = await api.get('/api/v1/movies/all')
+    return res.data
+  },
 }
+
+export default movieService

@@ -12,10 +12,11 @@ import {
   REDEMPTION_TYPE_LABELS,
   formatDiscountValue,
 } from '../../../services/promotionService'
+import movieService from '../../../services/movieService'
 import api from '../../../services/api'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power } from 'lucide-react'
+import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power, Film } from 'lucide-react'
 import { motion } from 'motion/react'
 
 export default function PromotionFormPage() {
@@ -78,7 +79,13 @@ export default function PromotionFormPage() {
 
   const isCoupon = type === PROMOTION_TYPES.COUPON
   const isPoints = type === PROMOTION_TYPES.POINTS
-  const isTypeUnsupported = type === PROMOTION_TYPES.CAMPAIGN
+  const isCampaign = type === PROMOTION_TYPES.CAMPAIGN
+  const isTypeUnsupported = false // Now CAMPAIGN is supported
+
+  // CAMPAIGN-specific state
+  const [movieIds, setMovieIds] = useState([])
+  const [movieOptions, setMovieOptions] = useState([])
+  const [loadingMovies, setLoadingMovies] = useState(false)
 
   // Auto generate voucher code from promotion title
   const generateVoucherCodeFromTitle = (titleStr, dVal = discountValue, dType = discountType) => {
@@ -177,6 +184,11 @@ export default function PromotionFormPage() {
               setPointsDiscountPercent(points.discountPercent ?? '')
               setItemUuid(points.itemUuid ?? '')
             }
+
+            // Load CAMPAIGN-specific fields (movieIds)
+            if (promoType === PROMOTION_TYPES.CAMPAIGN) {
+              setMovieIds(promo.movieIds || [])
+            }
           }
         })
         .catch(err => {
@@ -185,6 +197,20 @@ export default function PromotionFormPage() {
         })
     }
   }, [id, isEdit])
+
+  // Load movies for CAMPAIGN selection
+  useEffect(() => {
+    if (type !== PROMOTION_TYPES.CAMPAIGN) return
+
+    setLoadingMovies(true)
+    movieService.getAllMovies()
+      .then(res => {
+        const list = res?.data || res || []
+        setMovieOptions(Array.isArray(list) ? list : [])
+      })
+      .catch(err => console.error('Load movies failed:', err))
+      .finally(() => setLoadingMovies(false))
+  }, [type])
 
   // Load item options for POINTS redemption (PRODUCT/COMBO)
   useEffect(() => {
@@ -282,6 +308,17 @@ export default function PromotionFormPage() {
       }
     }
 
+    if (isCampaign) {
+      if (movieIds.length === 0) {
+        newErrors.movieIds = 'Phải chọn ít nhất một phim áp dụng.'
+      }
+      if (!discountValue || isNaN(Number(discountValue)) || Number(discountValue) <= 0) {
+        newErrors.discountValue = 'Phần trăm giảm phải > 0.'
+      } else if (Number(discountValue) > 100) {
+        newErrors.discountValue = 'Phần trăm giảm không được vượt quá 100.'
+      }
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -331,15 +368,19 @@ export default function PromotionFormPage() {
       }
     }
 
+    if (isCampaign) {
+      payload.movieIds = movieIds
+      if (discountValue !== '') {
+        payload.discountPercent = Number(discountValue)
+        payload.discountValue = null
+      }
+    }
+
     return payload
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (isTypeUnsupported) {
-      showToast('Loại CAMPAIGN/POINTS hiện chưa hỗ trợ trên UI. Vui lòng chọn COUPON.', 'danger')
-      return
-    }
     if (!validate()) return
 
     setIsSubmitting(true)
@@ -444,7 +485,7 @@ export default function PromotionFormPage() {
         )}
       </div>
 
-      {isTypeUnsupported && (
+      {false && ( // Old warning removed - CAMPAIGN is now supported
         <div className="bg-yellow-500/10 border border-yellow-500/40 rounded-xl p-4 text-sm text-yellow-300 flex items-start gap-3">
           <AlertCircle size={20} className="mt-0.5 shrink-0" />
           <div>
@@ -661,6 +702,59 @@ export default function PromotionFormPage() {
               </div>
             )}
 
+            {isCampaign && (
+              <div className="bg-gradient-to-br from-red-500/10 to-transparent border border-red-500/30 rounded-xl p-5 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Film className="text-red-500" size={18} />
+                  <h4 className="text-sm font-bold text-red-400 uppercase tracking-wider">
+                    Khuyến mãi theo phim (Campaign)
+                  </h4>
+                </div>
+
+                {/* Movie multi-select */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)]">
+                    Chọn phim áp dụng <span className="text-red-400">*</span>
+                  </label>
+                  {loadingMovies ? (
+                    <div className="text-sm text-[var(--color-text-muted)]">Đang tải danh sách phim...</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto p-2 bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg">
+                      {movieOptions.map(movie => (
+                        <label
+                          key={movie.id}
+                          className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors text-sm
+                            ${movieIds.includes(movie.id)
+                              ? 'bg-red-500/20 border border-red-500/50 text-red-300'
+                              : 'hover:bg-[var(--color-surface)] border border-transparent'}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={movieIds.includes(movie.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setMovieIds([...movieIds, movie.id])
+                              } else {
+                                setMovieIds(movieIds.filter(id => id !== movie.id))
+                              }
+                            }}
+                            className="accent-red-500"
+                          />
+                          <span className="truncate">{movie.titleVn || movie.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {errors.movieIds && <span className="text-xs text-red-400 mt-1">{errors.movieIds}</span>}
+                  {movieIds.length > 0 && (
+                    <span className="text-xs text-[var(--color-text-muted)] mt-1">
+                      Đã chọn: {movieIds.length} phim
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex flex-col gap-1 w-full text-left">
                 <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Kiểu giảm</label>
@@ -686,7 +780,7 @@ export default function PromotionFormPage() {
                   value={discountValueDisplay}
                   onChange={handleDiscountValueChange}
                   placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50.000'}
-                  disabled={!isCoupon}
+                  disabled={!isCoupon && !isCampaign}
                   className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50
                     ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
                 />
@@ -779,7 +873,7 @@ export default function PromotionFormPage() {
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl p-5 space-y-3 shadow-xl">
             <Button
               type="submit"
-              disabled={isSubmitting || isTypeUnsupported}
+              disabled={isSubmitting}
               className="w-full py-3.5 uppercase tracking-wider font-extrabold disabled:opacity-50"
             >
               {isSubmitting ? (
