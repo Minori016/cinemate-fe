@@ -45,7 +45,13 @@ export default function ComboStep({
     let cancelled = false
     promotionService.getActiveForUi()
       .then(list => {
-        if (!cancelled) setActivePromos(Array.isArray(list) ? list.slice(0, 6) : [])
+        if (cancelled) return
+        const all = Array.isArray(list) ? list : []
+        const coupons = all.filter(p => {
+          const t = (p.type || p.promotionType || '').toString().toUpperCase()
+          return t === 'COUPON'
+        })
+        setActivePromos(coupons.slice(0, 6))
       })
       .catch(() => { if (!cancelled) setActivePromos([]) })
     return () => { cancelled = true }

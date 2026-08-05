@@ -1,8 +1,8 @@
-export default function Table({ columns, data, actions, emptyMessage = 'Không có dữ liệu' }) {
+export default function Table({ columns, data, actions, emptyMessage = 'Không có dữ liệu', rowClassName }) {
   return (
     <div className="rounded-2xl overflow-hidden border border-white/[0.06]">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-collapse" style={{ borderCollapse: 'collapse', borderSpacing: 0 }}>
           <thead>
             <tr
               className="border-b border-white/[0.06]"
@@ -47,7 +47,7 @@ export default function Table({ columns, data, actions, emptyMessage = 'Không c
               data.map((row, i) => (
                 <tr
                   key={row.id || i}
-                  className="group transition-colors duration-150 hover:bg-white/[0.03]"
+                  className={`group transition-colors duration-150 hover:bg-white/[0.03] ${rowClassName?.(row, i) || ''}`}
                 >
                   {columns.map((col) => (
                     <td
