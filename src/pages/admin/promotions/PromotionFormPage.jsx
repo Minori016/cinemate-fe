@@ -205,7 +205,9 @@ export default function PromotionFormPage() {
     setLoadingMovies(true)
     movieService.getAllMovies()
       .then(res => {
-        const list = res?.data || res || []
+        const list = res?.data?.result || res?.result || res?.data || res || []
+        console.log("MOVIE API RESPONSE:", res)
+        console.log("MOVIE LIST:", list)
         setMovieOptions(Array.isArray(list) ? list : [])
       })
       .catch(err => console.error('Load movies failed:', err))
