@@ -617,9 +617,9 @@ export default function MovieDetailPage() {
     let campaignDiscount = 0
     if (autoCampaign) {
       if (autoCampaign.discountPercent > 0) {
-        campaignDiscount = Math.round(singleTicketPrice * (autoCampaign.discountPercent / 100))
+        campaignDiscount = Math.round(ticketPrice * (autoCampaign.discountPercent / 100))
       } else if (autoCampaign.discountValue > 0) {
-        campaignDiscount = Math.min(autoCampaign.discountValue, singleTicketPrice)
+        campaignDiscount = Math.min(autoCampaign.discountValue, ticketPrice)
       }
     }
     const totalDiscount = couponDiscount + pointsDiscount + campaignDiscount
@@ -1200,8 +1200,8 @@ export default function MovieDetailPage() {
                     <span className="text-emerald-500 font-bold">{autoCampaign.title}</span>
                     <span className="text-emerald-500 font-bold">
                       -{autoCampaign.discountPercent > 0 
-                        ? Number(Math.round(singleTicketPrice * (autoCampaign.discountPercent / 100))).toLocaleString('vi-VN') 
-                        : Number(Math.min(autoCampaign.discountValue, singleTicketPrice)).toLocaleString('vi-VN')} đ
+                        ? Number(Math.round(ticketPrice * (autoCampaign.discountPercent / 100))).toLocaleString('vi-VN') 
+                        : Number(Math.min(autoCampaign.discountValue, ticketPrice)).toLocaleString('vi-VN')} đ
                     </span>
                   </div>
                 </div>
@@ -1604,3 +1604,5 @@ export default function MovieDetailPage() {
     </div>
   )
 }
+
+
