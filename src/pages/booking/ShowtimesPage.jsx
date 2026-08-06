@@ -83,7 +83,7 @@ export default function ShowtimesPage() {
   const [error, setError] = useState('')
   const [rooms, setRooms] = useState([])
   const [selectedCinemaName, setSelectedCinemaName] = useState('')
-  const [selectedRoomId, setSelectedRoomId] = useState('')
+  const [selectedFormat, setSelectedFormat] = useState('')
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [pendingShowtimeUrl, setPendingShowtimeUrl] = useState('')
   const { user } = useAuth()
@@ -147,9 +147,12 @@ export default function ShowtimesPage() {
           )
           filtered = filtered.filter(st => cinemaRoomIds.has(String(st.roomId)))
         }
-        // Lọc theo phòng chiếu
-        if (selectedRoomId) {
-          filtered = filtered.filter(st => String(st.roomId) === String(selectedRoomId))
+        // Lọc theo định dạng phim
+        if (selectedFormat) {
+          filtered = filtered.filter(st => {
+            const format = st.format || '2D phụ đề'
+            return format.toLowerCase().includes(selectedFormat.toLowerCase())
+          })
         }
 
         // Nhóm các lịch chiếu theo bộ phim tương ứng
@@ -209,7 +212,7 @@ export default function ShowtimesPage() {
     }
 
     fetchShowtimes()
-  }, [selectedDay, selectedCinemaName, selectedRoomId, filteredRooms])
+  }, [selectedDay, selectedCinemaName, selectedFormat, filteredRooms])
 
   return (
     <motion.div
@@ -265,7 +268,7 @@ export default function ShowtimesPage() {
               return (
                 <button
                   key={d.date}
-                  onClick={() => { setSelectedDay(d.date); setSelectedRoomId('') }}
+                  onClick={() => { setSelectedDay(d.date); setSelectedFormat('') }}
                   className="flex-shrink-0 flex flex-col items-center justify-center w-[74px] h-[82px] rounded-xl transition-all duration-300 border cursor-pointer"
                   style={{
                     fontFamily: 'Inter, sans-serif',
@@ -300,7 +303,7 @@ export default function ShowtimesPage() {
             <div className="relative">
               <select
                 value={selectedCinemaName}
-                onChange={e => { setSelectedCinemaName(e.target.value); setSelectedRoomId('') }}
+                onChange={e => { setSelectedCinemaName(e.target.value); setSelectedFormat('') }}
                 className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px]"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
@@ -317,30 +320,30 @@ export default function ShowtimesPage() {
             </div>
           </div>
 
-          {/* Room select */}
+          {/* Format select */}
           <div className="flex flex-col gap-2 relative w-full text-left">
             <span
               className="text-[10px] uppercase font-bold tracking-widest"
               style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Montserrat, sans-serif' }}
             >
-              Chọn phòng chiếu
+              Chọn định dạng phim
             </span>
             <div className="relative">
               <select
-                value={selectedRoomId}
-                onChange={e => setSelectedRoomId(e.target.value)}
-                disabled={filteredRooms.length === 0}
-                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px] disabled:opacity-40 disabled:cursor-not-allowed"
+                value={selectedFormat}
+                onChange={e => setSelectedFormat(e.target.value)}
+                className="w-full appearance-none rounded-xl py-3 px-4 outline-none text-xs text-white transition-all cursor-pointer h-[44px]"
                 style={{
                   background: 'rgba(255,255,255,0.05)',
                   border: '1px solid rgba(255,255,255,0.1)',
                   backdropFilter: 'blur(10px)',
                 }}
               >
-                <option value="" className="bg-neutral-900">Tất cả phòng</option>
-                {filteredRooms.map(r => (
-                  <option key={r.id} value={r.id} className="bg-neutral-900">{r.name} (Sức chứa: {r.capacity})</option>
-                ))}
+                <option value="" className="bg-neutral-900">Tất cả định dạng</option>
+                <option value="2D" className="bg-neutral-900">2D</option>
+                <option value="3D" className="bg-neutral-900">3D</option>
+                <option value="IMAX" className="bg-neutral-900">IMAX</option>
+                <option value="4DX" className="bg-neutral-900">4DX</option>
               </select>
               <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white/50 flex items-center">
                 <span className="material-symbols-outlined text-sm font-bold">keyboard_arrow_down</span>
