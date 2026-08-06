@@ -62,7 +62,6 @@ export default function MovieFormPage() {
   const [errors, setErrors] = useState({})
   const [isDirty, setIsDirty] = useState(false)
   const [showExitConfirm, setShowExitConfirm] = useState(false)
-  const [hasActiveShowtimes, setHasActiveShowtimes] = useState(false)
 
   const isLoadedRef = useRef(false)
 
@@ -135,7 +134,6 @@ export default function MovieFormPage() {
             if (movie.genres) setSelectedGenres(movie.genres.map(g => g.id))
             if (movie.countries) setSelectedCountries(movie.countries.map(c => c.id))
             if (movie.actors) setActors(movie.actors.map(a => ({ fullName: a.fullName, characterName: a.characterName || '' })))
-            if (movie.hasActiveShowtimes) setHasActiveShowtimes(true)
           }
         }
       } catch (err) {
@@ -336,21 +334,6 @@ export default function MovieFormPage() {
         </div>
       </div>
 
-      {hasActiveShowtimes && (
-        <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-xl p-4 flex gap-3 items-start animate-fade-in">
-          <AlertCircle className="text-yellow-500 shrink-0 mt-0.5" size={20} />
-          <div>
-            <h4 className="text-sm font-bold text-yellow-500 uppercase tracking-wider mb-1">
-              Phim đang có suất chiếu kích hoạt
-            </h4>
-            <p className="text-xs text-yellow-500/80 leading-relaxed">
-              Vì bộ phim này hiện đang có các suất chiếu được lên lịch trên hệ thống, bạn <strong>chỉ được phép sửa đổi Ngày kết thúc chiếu</strong>. 
-              Các thông tin khác như thời lượng, phiên bản, thể loại... đã bị khoá để đảm bảo tính nhất quán của lịch chiếu.
-            </p>
-          </div>
-        </div>
-      )}
-
       {loadingRefs ? (
         <div className="py-20 flex flex-col justify-center items-center gap-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl">
           <span className="material-symbols-outlined animate-spin text-4xl text-red-500">progress_activity</span>
@@ -376,7 +359,6 @@ export default function MovieFormPage() {
                   value={titleVn}
                   onChange={(e) => setTitleVn(e.target.value)}
                   error={errors.titleVn}
-                  disabled={hasActiveShowtimes}
                 />
                 
                 <Input
@@ -384,7 +366,6 @@ export default function MovieFormPage() {
                   placeholder="Ví dụ: Face Off 7: One Wish"
                   value={titleEn}
                   onChange={(e) => setTitleEn(e.target.value)}
-                  disabled={hasActiveShowtimes}
                 />
               </div>
 
@@ -397,7 +378,6 @@ export default function MovieFormPage() {
                   placeholder="Nhập nội dung tóm tắt cốt truyện của phim..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  disabled={hasActiveShowtimes}
                 />
                 {errors.description && <span className="text-xs text-red-400 mt-1">{errors.description}</span>}
               </div>
@@ -409,7 +389,6 @@ export default function MovieFormPage() {
                   value={director}
                   onChange={(e) => setDirector(e.target.value)}
                   error={errors.director}
-                  disabled={hasActiveShowtimes}
                 />
                 
                 <Input
@@ -421,7 +400,6 @@ export default function MovieFormPage() {
                   max={600}
                   step={1}
                   inputMode="numeric"
-                  disabled={hasActiveShowtimes}
                   onKeyDown={(e) => {
                     if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E' || e.key === '.') {
                       e.preventDefault()
@@ -458,7 +436,6 @@ export default function MovieFormPage() {
                   <select
                     value={rating}
                     onChange={(e) => setRating(e.target.value)}
-                    disabled={hasActiveShowtimes}
                     className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="P">P (Mọi lứa tuổi)</option>
@@ -482,7 +459,6 @@ export default function MovieFormPage() {
                         <button
                           key={v}
                           type="button"
-                          disabled={hasActiveShowtimes}
                           onClick={() => {
                             if (isChecked) {
                               if (selectedVersions.length > 1) {
@@ -512,7 +488,6 @@ export default function MovieFormPage() {
                   placeholder="Ví dụ: Tiếng Việt - Phụ đề Tiếng Anh"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  disabled={hasActiveShowtimes}
                 />
 
                 <Input
@@ -520,7 +495,6 @@ export default function MovieFormPage() {
                   placeholder="Ví dụ: https://youtube.com/watch?v=..."
                   value={trailerUrl}
                   onChange={(e) => setTrailerUrl(e.target.value)}
-                  disabled={hasActiveShowtimes}
                 />
               </div>
 
@@ -529,7 +503,6 @@ export default function MovieFormPage() {
                   label="Khởi chiếu từ ngày *"
                   type="date"
                   value={fromDate}
-                  disabled={hasActiveShowtimes}
                   min={(() => {
                     // Trong edit mode, nếu fromDate cũ thuộc quá khứ, vẫn cho giữ
                     if (isEditMode && fromDate && fromDate < todayStr()) return fromDate
@@ -602,7 +575,6 @@ export default function MovieFormPage() {
                 <button
                   type="button"
                   onClick={handleAddActor}
-                  disabled={hasActiveShowtimes}
                   className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 font-bold uppercase tracking-wider bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <PlusCircle size={14} /> Add Actor
@@ -639,7 +611,6 @@ export default function MovieFormPage() {
                           type="text"
                           placeholder="Tên diễn viên (FullName) *"
                           value={actor.fullName}
-                          disabled={hasActiveShowtimes}
                           onChange={(e) => handleActorChange(index, 'fullName', e.target.value)}
                           className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         />
@@ -652,7 +623,6 @@ export default function MovieFormPage() {
                           type="text"
                           placeholder="Vai diễn (CharacterName)"
                           value={actor.characterName}
-                          disabled={hasActiveShowtimes}
                           onChange={(e) => handleActorChange(index, 'characterName', e.target.value)}
                           className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         />
@@ -662,7 +632,6 @@ export default function MovieFormPage() {
                       <button
                         type="button"
                         onClick={() => handleRemoveActor(index)}
-                        disabled={hasActiveShowtimes}
                         className="text-gray-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 size={16} />
@@ -709,7 +678,6 @@ export default function MovieFormPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  disabled={hasActiveShowtimes}
                   className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
@@ -741,7 +709,6 @@ export default function MovieFormPage() {
                     <button
                       key={genre.id}
                       type="button"
-                      disabled={hasActiveShowtimes}
                       onClick={() => toggleGenre(genre.id)}
                       className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                         ${isChecked 
@@ -771,7 +738,6 @@ export default function MovieFormPage() {
                     <button
                       key={country.id}
                       type="button"
-                      disabled={hasActiveShowtimes}
                       onClick={() => toggleCountry(country.id)}
                       className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                         ${isChecked 
