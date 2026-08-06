@@ -167,10 +167,18 @@ export default function ConcessionListPage() {
       label: 'Kích thước & Giá',
       render: r => {
         if (r.itemType === 'combo') {
-          return <span className="text-gray-500 text-xs italic">Combo trọn gói</span>
+          return (
+            <span className="px-2 py-0.5 rounded border text-[11px] font-bold whitespace-nowrap bg-amber-100 text-amber-800 border-amber-300">
+              Combo trọn gói: {formatVND(r.price)}
+            </span>
+          )
         }
         if (!r.sizes || r.sizes.length === 0) {
-          return <span className="text-gray-400 text-xs font-bold">Tiêu chuẩn</span>
+          return (
+            <span className="px-2 py-0.5 rounded border text-[11px] font-bold whitespace-nowrap bg-gray-100 text-gray-800 border-gray-300">
+              Tiêu chuẩn: {formatVND(r.price)}
+            </span>
+          )
         }
         return (
           <div className="flex flex-wrap gap-1.5">
@@ -185,26 +193,6 @@ export default function ConcessionListPage() {
               )
             })}
           </div>
-        )
-      }
-    },
-    {
-      key: 'price',
-      label: 'Khung giá bán',
-      render: r => {
-        if (r.sizes && r.sizes.length > 1) {
-          const minP = Math.min(...r.sizes.map(s => s.price))
-          const maxP = Math.max(...r.sizes.map(s => s.price))
-          return (
-            <span className="text-red-600 font-extrabold font-mono text-sm">
-              {formatVND(minP)} - {formatVND(maxP)}
-            </span>
-          )
-        }
-        return (
-          <span className="text-red-600 font-extrabold font-mono text-sm">
-            {formatVND(r.price)}
-          </span>
         )
       }
     },
