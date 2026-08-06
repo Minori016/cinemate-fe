@@ -52,6 +52,7 @@ const mapMovieFromBackend = (data) => {
     countries: data.countries || [],
     media: data.media || [],
     status: getDerivedStatus(data),
+    hasActiveShowtimes: data.hasActiveShowtimes || false,
   }
 }
 
@@ -59,7 +60,7 @@ export const movieService = {
   // POST /api/v1/admin/movies (multipart/form-data)
   createAdmin: async (movieData, posterFile = null) => {
     const formData = new FormData()
-    formData.append('movie', JSON.stringify(movieData))
+    formData.append('movie', new Blob([JSON.stringify(movieData)], { type: 'application/json' }))
     if (posterFile) {
       formData.append('posterFile', posterFile)
     }
@@ -72,7 +73,7 @@ export const movieService = {
   // PUT /api/v1/admin/movies/{id} (multipart/form-data)
   updateAdmin: async (id, movieData, posterFile = null) => {
     const formData = new FormData()
-    formData.append('movie', JSON.stringify(movieData))
+    formData.append('movie', new Blob([JSON.stringify(movieData)], { type: 'application/json' }))
     if (posterFile) {
       formData.append('posterFile', posterFile)
     }
