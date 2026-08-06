@@ -374,7 +374,7 @@ export default function MovieFormPage() {
                   Mô tả phim *
                 </label>
                 <textarea
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full h-32 resize-none"
+                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full h-32 resize-none disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="Nhập nội dung tóm tắt cốt truyện của phim..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -436,7 +436,7 @@ export default function MovieFormPage() {
                   <select
                     value={rating}
                     onChange={(e) => setRating(e.target.value)}
-                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="P">P (Mọi lứa tuổi)</option>
                     <option value="K">K (Dưới 13 tuổi xem cùng phụ huynh)</option>
@@ -468,7 +468,7 @@ export default function MovieFormPage() {
                               setSelectedVersions([...selectedVersions, v])
                             }
                           }}
-                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer
+                          className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                             ${isChecked 
                               ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
                               : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'
@@ -575,7 +575,7 @@ export default function MovieFormPage() {
                 <button
                   type="button"
                   onClick={handleAddActor}
-                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 font-bold uppercase tracking-wider bg-transparent border-none cursor-pointer"
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-400 font-bold uppercase tracking-wider bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <PlusCircle size={14} /> Add Actor
                 </button>
@@ -612,7 +612,7 @@ export default function MovieFormPage() {
                           placeholder="Tên diễn viên (FullName) *"
                           value={actor.fullName}
                           onChange={(e) => handleActorChange(index, 'fullName', e.target.value)}
-                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
+                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
                       <div className="flex flex-col gap-1 w-full text-left">
@@ -624,7 +624,7 @@ export default function MovieFormPage() {
                           placeholder="Vai diễn (CharacterName)"
                           value={actor.characterName}
                           onChange={(e) => handleActorChange(index, 'characterName', e.target.value)}
-                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium"
+                          className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2 px-3 text-xs text-[var(--color-on-surface)] placeholder-gray-500 focus:outline-none focus:border-red-500 transition-colors w-full font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -632,7 +632,7 @@ export default function MovieFormPage() {
                       <button
                         type="button"
                         onClick={() => handleRemoveActor(index)}
-                        className="text-gray-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors bg-transparent border-none cursor-pointer"
+                        className="text-gray-500 hover:text-red-400 p-1.5 hover:bg-red-500/10 rounded-lg transition-colors bg-transparent border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -678,7 +678,7 @@ export default function MovieFormPage() {
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
               </div>
 
@@ -710,7 +710,7 @@ export default function MovieFormPage() {
                       key={genre.id}
                       type="button"
                       onClick={() => toggleGenre(genre.id)}
-                      className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer
+                      className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                         ${isChecked 
                           ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
                           : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'
@@ -739,7 +739,7 @@ export default function MovieFormPage() {
                       key={country.id}
                       type="button"
                       onClick={() => toggleCountry(country.id)}
-                      className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer
+                      className={`text-left px-3 py-2.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                         ${isChecked 
                           ? 'bg-red-500/10 border-red-500 text-red-600 dark:text-red-400 shadow-sm' 
                           : 'bg-[var(--color-surface-container)] border-[var(--color-border)] text-[var(--color-on-surface-variant)] hover:border-red-500 hover:text-[var(--color-on-surface)]'

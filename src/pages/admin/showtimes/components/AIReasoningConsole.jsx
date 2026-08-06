@@ -110,14 +110,32 @@ export default function AIReasoningConsole({ result, movies, onClose }) {
     };
   };
 
-  const groupedByRoom = useMemo(() => {
+  const groupedByRoomAndDate = useMemo(() => {
     const grouped = {};
     sessionData.forEach(item => {
       const roomName = item.origSt.roomName || 'Unknown Room';
-      if (!grouped[roomName]) grouped[roomName] = [];
-      grouped[roomName].push(item);
+      const dateObj = new Date(item.origSt.startTime);
+      const dateStr = !isNaN(dateObj.getTime()) ? dateObj.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Unknown Date';
+      const dateTimestamp = !isNaN(dateObj.getTime()) ? new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate()).getTime() : 0;
+      
+      const groupKey = `${roomName}|${dateStr}`;
+      
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = {
+          roomName,
+          dateStr,
+          dateTimestamp,
+          sessions: []
+        };
+      }
+      grouped[groupKey].sessions.push(item);
     });
-    return grouped;
+    
+    return Object.values(grouped).sort((a, b) => {
+      const roomCmp = a.roomName.localeCompare(b.roomName, undefined, { numeric: true, sensitivity: 'base' });
+      if (roomCmp !== 0) return roomCmp;
+      return a.dateTimestamp - b.dateTimestamp;
+    });
   }, [sessionData]);
 
   const safeFormatTime = (isoString) => {
@@ -186,22 +204,23 @@ export default function AIReasoningConsole({ result, movies, onClose }) {
               <Warning size={48} weight="duotone" className="mb-4 opacity-30" />
               <p className="font-semibold text-sm uppercase tracking-wider text-gray-500">No preference data found</p>
             </div>
-          ) : Object.keys(groupedByRoom).length === 0 ? (
+          ) : groupedByRoomAndDate.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-400 min-h-[300px]">
               <p className="font-semibold text-sm uppercase tracking-wider text-gray-500">Không tìm thấy kết quả</p>
             </div>
           ) : (
             <div className="flex flex-col gap-8">
-              {Object.entries(groupedByRoom)
-                .sort(([roomA], [roomB]) => roomA.localeCompare(roomB, undefined, { numeric: true, sensitivity: 'base' }))
-                .map(([roomName, sessions], roomIndex) => (
-                <div key={roomName} className="flex flex-col">
-                  {/* Room Title */}
-                  <div className="flex items-center gap-2 mb-3 sticky left-0">
+              {groupedByRoomAndDate.map((group, roomIndex) => (
+                <div key={`${group.roomName}-${group.dateStr}`} className="flex flex-col">
+                  {/* Room Title & Date */}
+                  <div className="flex items-center gap-3 mb-3 sticky left-0">
                     <div className="w-1.5 h-6 bg-[#b80035] rounded-full"></div>
-                    <h3 className="text-lg font-bold text-gray-800">{roomName}</h3>
+                    <h3 className="text-lg font-bold text-gray-800">{group.roomName}</h3>
+                    <div className="px-2.5 py-0.5 bg-slate-100 rounded text-sm font-semibold text-slate-700 border border-slate-200">
+                      {group.dateStr}
+                    </div>
                     <span className="text-xs font-semibold px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md border border-gray-200">
-                      {sessions.length} Suất
+                      {group.sessions.length} Suất
                     </span>
                   </div>
 
@@ -231,7 +250,7 @@ export default function AIReasoningConsole({ result, movies, onClose }) {
 
                       {/* Sessions */}
                       <AnimatePresence>
-                        {sessions.map((item, i) => (
+                        {group.sessions.map((item, i) => (
                           <motion.div 
                             layout
                             initial={{ opacity: 0, scale: 0.95 }}

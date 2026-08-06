@@ -16,7 +16,7 @@ import movieService from '../../../services/movieService'
 import api from '../../../services/api'
 import Button from '../../../components/common/Button'
 import Input from '../../../components/common/Input'
-import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power, Film, Gift, Coins, ShoppingBag, Percent, Wallet } from 'lucide-react'
+import { ArrowLeft, Tag, Calendar, Sparkles, CheckCircle, AlertCircle, Ticket, ImageIcon, Hash, Power, Film, Gift, Coins, ShoppingBag, Percent, Wallet, Upload, X } from 'lucide-react'
 import { motion } from 'motion/react'
 
 export default function PromotionFormPage() {
@@ -44,9 +44,34 @@ export default function PromotionFormPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
   const [toast, setToast] = useState(null)
   const [errors, setErrors] = useState({})
   const [todayStart, setTodayStart] = useState('')
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploadingImage(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post('/api/v1/admin/concessions/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      const uploadedUrl = res.data?.result || res.data
+      if (uploadedUrl) {
+        setImageUrl(uploadedUrl)
+        showToast('Tải ảnh lên thành công!')
+      }
+    } catch (err) {
+      console.error('Lỗi upload ảnh:', err)
+      showToast('Tải ảnh lên thất bại.', 'danger')
+    } finally {
+      setIsUploadingImage(false)
+      e.target.value = '' // Reset input
+    }
+  }
 
   // POINTS-specific state
   const [redemptionType, setRedemptionType] = useState(REDEMPTION_TYPES.MONEY_FIXED)
@@ -872,21 +897,48 @@ export default function PromotionFormPage() {
                 <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
                   <ImageIcon size={14} className="text-red-500" /> URL banner (tuỳ chọn)
                 </label>
-                <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full"
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id="promo-image-upload"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => document.getElementById('promo-image-upload').click()}
+                    disabled={isUploadingImage}
+                    className="shrink-0 flex items-center justify-center min-w-[44px]"
+                    title="Tải ảnh lên"
+                  >
+                    {isUploadingImage ? <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span> : <Upload size={16} />}
+                  </Button>
+                </div>
                 {imageUrl && (
-                  <div className="mt-2 rounded-lg overflow-hidden border border-[var(--color-border)] max-h-40">
+                  <div className="mt-2 rounded-lg overflow-hidden border border-[var(--color-border)] max-h-40 relative group">
                     <img
                       src={imageUrl}
                       alt="preview"
                       className="w-full object-cover"
                       onError={(e) => { e.currentTarget.style.display = 'none' }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setImageUrl('')}
+                      className="absolute top-2 right-2 bg-black/50 hover:bg-black/80 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                      title="Xóa ảnh"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
                 )}
               </div>

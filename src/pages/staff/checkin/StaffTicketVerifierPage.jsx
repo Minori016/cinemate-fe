@@ -85,7 +85,7 @@ export default function StaffTicketVerifierPage() {
         const isExpired = new Date() > new Date(showtimeDate.getTime() + 30 * 60000)
         const isInvalid = b.status !== 'CONFIRMED' && b.status !== 'CHECKED_IN'
         
-        setSelectedTicket({
+        let ticketData = {
           id: b.id,
           movie: b.movieName,
           posterUrl: b.posterUrl,
@@ -107,16 +107,31 @@ export default function StaffTicketVerifierPage() {
           checkInTime: null,
           isExpired: isExpired,
           isInvalid: isInvalid
-        })
+        }
 
         if (b.status === 'CHECKED_IN') {
+          setSelectedTicket(ticketData)
           triggerToast('Vé này đã được check-in trước đó!', 'error')
         } else if (isInvalid) {
+          setSelectedTicket(ticketData)
           triggerToast(`Vé không hợp lệ! (Trạng thái: ${b.status})`, 'error')
         } else if (isExpired) {
+          setSelectedTicket(ticketData)
           triggerToast('Vé đã quá giờ check-in (trễ hơn 30 phút)!', 'error')
         } else {
-          triggerToast('Tìm thấy vé hợp lệ!', 'success')
+          try {
+            await bookingService.checkIn(b.id)
+            const timeNow = new Date()
+            const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
+            
+            ticketData.checkedIn = true
+            ticketData.checkInTime = formattedTime
+            setSelectedTicket(ticketData)
+            triggerToast(`Thành công! Đã tự động check-in vé ${b.id}`, 'success')
+          } catch (error) {
+            setSelectedTicket(ticketData)
+            triggerToast(error.response?.data?.message || 'Có lỗi xảy ra khi tự động check-in!', 'error')
+          }
         }
       } else {
         setSelectedTicket(null)
@@ -136,27 +151,7 @@ export default function StaffTicketVerifierPage() {
     fetchTicket(query.trim())
   }
 
-  const handleCheckIn = async () => {
-    if (!selectedTicket) return
-    try {
-      setLoading(true)
-      await bookingService.checkIn(selectedTicket.id)
 
-      const timeNow = new Date()
-      const formattedTime = `${String(timeNow.getDate()).padStart(2, '0')}/${String(timeNow.getMonth() + 1).padStart(2, '0')}/${timeNow.getFullYear()} - ${String(timeNow.getHours()).padStart(2, '0')}:${String(timeNow.getMinutes()).padStart(2, '0')}`
-
-      setSelectedTicket({
-        ...selectedTicket,
-        checkedIn: true,
-        checkInTime: formattedTime
-      })
-      triggerToast(`Đã xác nhận check-in thành công cho vé ${selectedTicket.id}!`, 'success')
-    } catch (error) {
-      triggerToast(error.response?.data?.message || 'Có lỗi xảy ra khi check-in!', 'error')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num)
 
@@ -498,31 +493,21 @@ export default function StaffTicketVerifierPage() {
                     </p>
                   )}
 
-                  {/* Confirm Action Button */}
+                  {/* Status Indicator */}
                   <div className="w-full mt-auto">
                     {selectedTicket.checkedIn ? (
-                      <button
-                        disabled
-                        className="w-full py-4 px-6 bg-white/5 border border-white/10 rounded-2xl font-bold text-sm text-gray-500 cursor-not-allowed flex justify-center items-center gap-2"
-                      >
+                      <div className="w-full py-4 px-6 bg-white/5 border border-white/10 rounded-2xl font-bold text-sm text-gray-500 flex justify-center items-center gap-2">
                         Đã kiểm tra vé
-                      </button>
+                      </div>
                     ) : (selectedTicket.isInvalid || selectedTicket.isExpired) ? (
-                      <button
-                        disabled
-                        className="w-full py-4 px-6 bg-red-500/10 border border-red-500/30 rounded-2xl font-bold text-sm text-red-500/70 cursor-not-allowed flex justify-center items-center gap-2"
-                      >
+                      <div className="w-full py-4 px-6 bg-red-500/10 border border-red-500/30 rounded-2xl font-bold text-sm text-red-500/70 flex justify-center items-center gap-2">
                         Không Thể Check-in
-                      </button>
+                      </div>
                     ) : (
-                      <button
-                        onClick={handleCheckIn}
-                        disabled={loading}
-                        className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-2xl text-sm shadow-[0_0_25px_rgba(16,185,129,0.5)] border-none active:scale-[0.98] transition-all flex justify-center items-center gap-2"
-                      >
-                        {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : null}
-                        Xác nhận vào phòng
-                      </button>
+                      <div className="w-full py-4 px-6 bg-gradient-to-r from-emerald-500 to-emerald-600 border border-emerald-500/30 rounded-2xl font-bold text-sm text-white flex justify-center items-center gap-2 opacity-70">
+                        <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                        Đang tự động check-in...
+                      </div>
                     )}
                   </div>
                 </div>
