@@ -157,13 +157,9 @@ export default function ShowtimeTimelinePreview({
 
   // AI optimization states
   const [aiLoading, setAiLoading] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
   const [showReasoningConsole, setShowReasoningConsole] = useState(false);
   const [aiEnhancedResult, setAiEnhancedResult] = useState(null);
   const [currentViewTab, setCurrentViewTab] = useState('algorithm'); // 'algorithm' | 'ai'
-  const [aiContext, setAiContext] = useState({
-    autoFillMovies: []
-  });
   
   const [aiProgress, setAiProgress] = useState(0);
   const [aiStatus, setAiStatus] = useState('');
@@ -184,7 +180,6 @@ export default function ShowtimeTimelinePreview({
 
   const handleAIEnhance = async () => {
     setAiLoading(true);
-    setShowAiModal(false);
     setAiProgress(0);
     setAiStatus('Khởi tạo AI và phân tích cấu trúc phòng...');
     
@@ -201,7 +196,7 @@ export default function ShowtimeTimelinePreview({
 
     try {
       const [response] = await Promise.all([
-        showtimeService.enhanceByAI(previewList, aiContext),
+        showtimeService.enhanceByAI(previewList),
         new Promise(resolve => setTimeout(resolve, 10000))
       ]);
       
@@ -906,7 +901,7 @@ export default function ShowtimeTimelinePreview({
           )}
           {!isImportMode && !aiEnhancedResult && (
             <button 
-              onClick={() => setShowAiModal(true)} 
+              onClick={handleAIEnhance} 
               disabled={aiLoading} 
               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-650 hover:opacity-95 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
             >
@@ -976,62 +971,7 @@ export default function ShowtimeTimelinePreview({
         </div>
       )}
 
-      {/* AI Context Configuration Modal */}
-      {showAiModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-purple-100 shadow-2xl max-w-md w-full overflow-hidden flex flex-col">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-650 p-6 text-white">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined">psychology</span>
-                Bối cảnh Tối ưu hóa bằng AI
-              </h3>
-              <p className="text-xs text-purple-100 mt-1">Cung cấp bối cảnh thực tế để AI xếp lịch tối ưu doanh thu tốt nhất.</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-gray-700">Chọn Phim ưu tiên lấp chỗ trống (Auto-Fill Priority)</label>
-                <p className="text-[10px] text-gray-500 mb-1">Thuật toán sẽ tự động nhồi các phim bạn chọn vào những khoảng thời gian còn trống cuối ngày sau khi tối ưu.</p>
-                <div className="max-h-48 overflow-y-auto border border-gray-150 rounded-xl p-2.5 bg-gray-50 space-y-2 custom-scrollbar">
-                  {movies.filter(m => [...new Set(previewList.map(p => p.movie_id))].includes(m.id)).map(movie => (
-                    <label key={movie.id} className="flex items-center gap-2 text-xs text-gray-700 font-semibold cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        checked={aiContext.autoFillMovies.includes(movie.id)}
-                        onChange={(e) => {
-                          const isChecked = e.target.checked;
-                          setAiContext({
-                            ...aiContext,
-                            autoFillMovies: isChecked 
-                              ? [...aiContext.autoFillMovies, movie.id]
-                              : aiContext.autoFillMovies.filter(id => id !== movie.id)
-                          });
-                        }}
-                        className="w-4 h-4 rounded accent-purple-600"
-                      />
-                      {movie.titleVn}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-100">
-              <button 
-                onClick={() => setShowAiModal(false)}
-                className="px-4 py-2 border border-gray-250 text-gray-605 text-sm font-bold rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                Hủy bỏ
-              </button>
-              <button 
-                onClick={handleAIEnhance}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-xl shadow transition-colors flex items-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-[16px]">bolt</span>
-                Bắt đầu Tối ưu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       <div
         ref={timelineContainerRef}
