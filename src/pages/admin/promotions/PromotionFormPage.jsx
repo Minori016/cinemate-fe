@@ -479,7 +479,11 @@ export default function PromotionFormPage() {
 
   const previewDiscountText =
     discountValue && !isNaN(Number(discountValue))
-      ? formatDiscountValue({ discountType, discountValue: Number(discountValue) }).replace('đ', ' VND')
+      ? formatDiscountValue(
+          discountType === DISCOUNT_TYPES.PERCENT
+            ? { discountPercent: Number(discountValue) }
+            : { discountValue: Number(discountValue) }
+        ).replace('đ', ' VND')
       : '—'
 
   return (
@@ -562,6 +566,52 @@ export default function PromotionFormPage() {
               onChange={(e) => handleTitleChange(e.target.value)}
               error={errors.title}
             />
+
+            <div className="flex flex-col gap-1 w-full text-left">
+              <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                Mô tả / Chi tiết khuyến mãi
+              </label>
+              <textarea
+                rows={3}
+                value={detail}
+                onChange={(e) => setDetail(e.target.value)}
+                placeholder="Nhập chi tiết chương trình, điều kiện áp dụng..."
+                className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full resize-none
+                  ${errors.detail ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+              />
+              {errors.detail && <span className="text-xs text-red-400 mt-1">{errors.detail}</span>}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                  <Calendar size={14} className="text-red-500" /> Thời gian bắt đầu
+                </label>
+                <input
+                  type="datetime-local"
+                  value={startTime}
+                  min={todayStart}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
+                    ${errors.startTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                />
+                {errors.startTime && <span className="text-xs text-red-400 mt-1">{errors.startTime}</span>}
+              </div>
+              <div className="flex flex-col gap-1 w-full text-left">
+                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
+                  <Calendar size={14} className="text-red-500" /> Thời gian kết thúc
+                </label>
+                <input
+                  type="datetime-local"
+                  value={endTime}
+                  min={startTime || todayStart}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
+                    ${errors.endTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                />
+                {errors.endTime && <span className="text-xs text-red-400 mt-1">{errors.endTime}</span>}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1 w-full text-left">

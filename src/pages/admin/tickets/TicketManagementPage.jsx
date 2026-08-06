@@ -171,16 +171,16 @@ export default function TicketManagementPage() {
             </div>
 
             {/* Date Type Selector */}
-            <div className="flex items-center bg-[#1a1d2d] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
+            <div className="flex items-center bg-[var(--color-surface-2)] p-1 rounded-xl border border-[var(--color-border)] shrink-0">
               <button
                 onClick={() => { setDateType('created'); setCurrentPage(0); }}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'created' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'created' ? 'bg-emerald-500 text-white shadow-sm' : 'text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-black/5'}`}
               >
                 Thời gian đặt vé
               </button>
               <button
                 onClick={() => { setDateType('showtime'); setCurrentPage(0); }}
-                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'showtime' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-gray-400 hover:text-white'}`}
+                className={`px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${dateType === 'showtime' ? 'bg-emerald-500 text-white shadow-sm' : 'text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-black/5'}`}
               >
                 Thời gian suất chiếu
               </button>
@@ -256,11 +256,11 @@ export default function TicketManagementPage() {
                   Page <strong className="text-white">{currentPage + 1}</strong> of <strong className="text-white">{totalPages}</strong>
                 </span>
                 
-                <div className="flex gap-1 bg-[#1a1d2d] p-1.5 rounded-xl border border-[var(--color-border)] shadow-inner">
+                <div className="flex gap-1 bg-[var(--color-surface-2)] p-1.5 rounded-xl border border-[var(--color-border)] shadow-inner">
                   <button
                     onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
                     disabled={currentPage === 0}
-                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
+                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
                   >
                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                   </button>
@@ -281,8 +281,8 @@ export default function TicketManagementPage() {
                         onClick={() => setCurrentPage(pageNum)}
                         className={`min-w-[32px] h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer outline-none px-2
                           ${currentPage === pageNum 
-                            ? 'bg-emerald-500/20 text-emerald-400 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.4)]' 
-                            : 'text-[var(--color-text-muted)] hover:text-white hover:bg-white/5'
+                            ? 'bg-emerald-500 text-white shadow-sm' 
+                            : 'text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-black/5'
                           }`}
                       >
                         {pageNum + 1}
@@ -293,7 +293,7 @@ export default function TicketManagementPage() {
                   <button
                     onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
                     disabled={currentPage === totalPages - 1}
-                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-white hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
+                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:text-gray-900 hover:bg-black/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer outline-none"
                   >
                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                   </button>

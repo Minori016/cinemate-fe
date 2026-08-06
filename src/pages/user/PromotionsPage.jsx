@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Calendar, Tag, Sparkles, Copy, Check, Clock } from 'lucide-react'
 import { motion } from 'motion/react'
 import {
@@ -189,13 +190,18 @@ export default function PromotionsPage() {
                     )}
                   </div>
 
-                  {/* Days remaining */}
-                  {daysLeft != null && daysLeft > 0 && daysLeft <= 7 && (
+                  {/* Badges: Sắp diễn ra / Còn X ngày */}
+                  {new Date(promo.startTime) > new Date() ? (
+                    <div className="absolute top-3 right-3 bg-blue-600/90 text-white text-[10px] font-extrabold px-2 py-1 rounded shadow-md flex items-center gap-1">
+                      <Clock size={10} />
+                      Sắp diễn ra
+                    </div>
+                  ) : daysLeft != null && daysLeft > 0 && daysLeft <= 7 ? (
                     <div className="absolute top-3 right-3 bg-orange-600/90 text-white text-[10px] font-extrabold px-2 py-1 rounded shadow-md flex items-center gap-1">
                       <Clock size={10} />
                       Còn {daysLeft} ngày
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Content */}
@@ -308,9 +314,9 @@ export default function PromotionsPage() {
               <p className="text-sm text-[var(--color-on-surface-variant)] mb-5 leading-relaxed">
                 {combo.desc}
               </p>
-              <button className="w-full mt-auto bg-white/5 border border-white/10 text-white font-bold py-2.5 rounded-xl hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] active:scale-[0.98] transition-all text-xs uppercase tracking-wider cursor-pointer">
+              <Link to="/movies" className="w-full mt-auto block text-center bg-white/5 border border-white/10 text-white font-bold py-2.5 rounded-xl hover:bg-[var(--color-primary)] hover:border-[var(--color-primary)] active:scale-[0.98] transition-all text-xs uppercase tracking-wider cursor-pointer">
                 Mua Kèm Khi Đặt Vé
-              </button>
+              </Link>
             </div>
           </motion.div>
           )
