@@ -355,7 +355,7 @@ export default function SeatStep({
     const isVip = String(seatType).toUpperCase() === 'VIP'
     const displayLabel = resolveSeatLabel(seat)
 
-    let btnClasses = "seat-btn w-8 h-8 rounded border flex items-center justify-center text-xs font-bold relative transition-all "
+    let btnClasses = "seat-btn w-6 h-6 sm:w-7 sm:h-7 rounded border flex items-center justify-center text-[9px] sm:text-[10px] font-bold relative transition-all "
     let content = displayLabel
 
     if (isProcessing) {
@@ -405,7 +405,7 @@ export default function SeatStep({
       }
     }
 
-    let btnClasses = "seat-btn couple w-[72px] h-8 rounded border flex items-center justify-center text-[11px] font-bold relative transition-all "
+    let btnClasses = "seat-btn couple w-[52px] h-6 sm:w-[60px] sm:h-7 rounded border flex items-center justify-center text-[9px] sm:text-[10px] font-bold relative transition-all "
     let content = doubleLabel
 
     if (isProcessing) {
@@ -438,13 +438,13 @@ export default function SeatStep({
 
   function renderDynamicRow(row) {
     return (
-      <div key={row.rowLabel} className="flex items-center justify-center gap-3 w-full">
-        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{row.rowLabel}</span>
-        <div className="flex items-center gap-2">
+      <div key={row.rowLabel} className="flex items-center justify-center gap-1.5 sm:gap-2 w-full">
+        <span className="w-4 sm:w-5 text-center font-bold text-gray-500 text-[9px] sm:text-[10px] tracking-wide">{row.rowLabel}</span>
+        <div className="flex items-center gap-1 sm:gap-1.5">
           {row.seats.map(seat => {
             if (seat.type === 'AISLE') {
               return (
-                <div key={seat.id} className="w-8 h-8 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">
+                <div key={seat.id} className="w-4 sm:w-5 h-6 sm:h-7 flex items-center justify-center text-[10px] text-gray-600 font-bold select-none opacity-20">
                   │
                 </div>
               )
@@ -458,7 +458,7 @@ export default function SeatStep({
             return <SeatButton key={seat.id} seat={seat} type={seat.type} />
           })}
         </div>
-        <span className="w-6 text-center font-bold text-gray-500 text-xs tracking-wide">{row.rowLabel}</span>
+        <span className="w-4 sm:w-5 text-center font-bold text-gray-500 text-[9px] sm:text-[10px] tracking-wide">{row.rowLabel}</span>
       </div>
     )
   }
@@ -506,7 +506,7 @@ export default function SeatStep({
 
           {/* Seat grid */}
           <div className="overflow-x-auto w-full pb-6">
-            <div ref={setGridRoot} className="relative min-w-max mx-auto px-4 flex flex-col gap-3 items-center">
+            <div ref={setGridRoot} className="relative min-w-max mx-auto px-2 flex flex-col gap-1.5 sm:gap-2 items-center">
               {loadingSeats ? (
                 <div className="flex justify-center py-8">
                   <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
