@@ -29,7 +29,7 @@ const getMovieSupportedFormats = (movieVersion, formatPrices = {}) => {
       if (v.includes(fmt)) formats.push(fmt);
     });
   }
-  
+
   if (formats.length === 0) formats.push('2D');
   return formats;
 }
@@ -50,12 +50,12 @@ export default function AutoGeneratePage() {
   const navigate = useNavigate()
   const isAdmin = user && user.roles?.includes('ADMIN')
   const basePath = isAdmin ? '/admin' : '/manager'
-  
+
   const [movies, setMovies] = useState([])
   const [rooms, setRooms] = useState([])
   const [formatPrices, setFormatPrices] = useState({})
   const [systemConfigs, setSystemConfigs] = useState([])
-  
+
   const [step, setStep] = useState(1) // 1: Setup, 2: Preview
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -116,12 +116,12 @@ export default function AutoGeneratePage() {
         ])
         setMovies(mRes.data || [])
         const rList = rRes.data?.result || rRes.data || [];
-        const sortedList = (rList.length > 0 ? rList : []).sort((a, b) => 
+        const sortedList = (rList.length > 0 ? rList : []).sort((a, b) =>
           String(a.name || '').localeCompare(String(b.name || ''), 'vi', { numeric: true })
         );
         setRooms(sortedList)
         setSystemConfigs(sRes.data || sRes || [])
-        
+
         const pList = pRes || []
         const pMap = {}
         pList.forEach(p => {
@@ -217,40 +217,53 @@ export default function AutoGeneratePage() {
       if (maxDuration === 0) maxDuration = 120; // Fallback only if all selected movies have invalid duration
       if (minDuration === Infinity) minDuration = maxDuration;
 
-      let minEstimatedSlots = 0;
-      let maxEstimatedSlots = 0;
+      // 1. Calculate capacities per format
+      const formatCapacitiesMin = {};
+      const formatCapacitiesMax = {};
+
+      const allRequestedFormats = new Set();
+      selectedMovieDetails.forEach(m => {
+        (m.formats || []).forEach(f => allRequestedFormats.add(f));
+      });
+
       if (Array.isArray(rooms)) {
         rooms.forEach(room => {
           if (!room) return;
           const buffer = getRoomCleaningBuffer(room);
           const maxSlotLength = maxDuration + buffer;
           const minSlotLength = minDuration + buffer;
-          if (maxSlotLength > 0 && !isNaN(maxSlotLength)) {
-            minEstimatedSlots += Math.floor(operatingMins / maxSlotLength);
-          }
-          if (minSlotLength > 0 && !isNaN(minSlotLength)) {
-            maxEstimatedSlots += Math.floor(operatingMins / minSlotLength);
-          }
-        });
-      }
-      
-      if (isNaN(minEstimatedSlots) || minEstimatedSlots < 0) minEstimatedSlots = 0;
-      if (isNaN(maxEstimatedSlots) || maxEstimatedSlots < 0) maxEstimatedSlots = 0;
 
-      // LRM Movie allocation
-      const normalizedMovieRatios = {};
-      const movieCount = selectedMovieDetails.length;
-      if (movieCount > 0) {
-        selectedMovieDetails.forEach(m => {
-          normalizedMovieRatios[m.movieId] = 1.0 / movieCount;
+          let roomFormats = [];
+          if (Array.isArray(room.supportedFormats)) {
+            roomFormats = room.supportedFormats.map(f => String(f?.name || f?.value || f || '').replace(/_/g, '').toUpperCase());
+          } else if (typeof room.supportedFormats === 'string') {
+            roomFormats = room.supportedFormats.split(',').map(s => String(s || '').trim().replace(/_/g, '').toUpperCase());
+          }
+
+          const requestedFormatsForRoom = roomFormats.filter(f => allRequestedFormats.has(f));
+          if (requestedFormatsForRoom.length > 0) {
+            const minCap = (maxSlotLength > 0 && !isNaN(maxSlotLength)) ? Math.floor(operatingMins / maxSlotLength) : 0;
+            const maxCap = (minSlotLength > 0 && !isNaN(minSlotLength)) ? Math.floor(operatingMins / minSlotLength) : 0;
+
+            const minCapPerFormat = Math.floor(minCap / requestedFormatsForRoom.length);
+            const maxCapPerFormat = Math.floor(maxCap / requestedFormatsForRoom.length);
+
+            requestedFormatsForRoom.forEach(f => {
+              formatCapacitiesMin[f] = (formatCapacitiesMin[f] || 0) + minCapPerFormat;
+              formatCapacitiesMax[f] = (formatCapacitiesMax[f] || 0) + maxCapPerFormat;
+            });
+          }
         });
       }
+
+      let minEstimatedSlots = Object.values(formatCapacitiesMin).reduce((a, b) => a + b, 0);
+      let maxEstimatedSlots = Object.values(formatCapacitiesMax).reduce((a, b) => a + b, 0);
 
       const largestRemainderMethod = (total, normalizedMap) => {
         const result = {};
         const remainders = {};
         let allocated = 0;
-        
+
         Object.entries(normalizedMap).forEach(([key, ratio]) => {
           const exact = (total || 0) * (ratio || 0);
           const floor = Math.floor(exact);
@@ -267,74 +280,127 @@ export default function AutoGeneratePage() {
         return result;
       };
 
-      const minMovieSlots = largestRemainderMethod(minEstimatedSlots, normalizedMovieRatios);
-      const maxMovieSlots = largestRemainderMethod(maxEstimatedSlots, normalizedMovieRatios);
-
-      const allocationResult = [];
+      const allocationsByMovie = {};
       selectedMovieDetails.forEach(m => {
-        const slotsForMovieMin = minMovieSlots[m.movieId] || 0;
-        const slotsForMovieMax = maxMovieSlots[m.movieId] || 0;
-        const formats = Array.isArray(m.formats) ? m.formats : [];
-        
-        let formatAllocations = [];
-        if (formats.length === 1) {
-          formatAllocations.push({
-            format: formats[0] || '2D',
-            slotsMin: slotsForMovieMin,
-            slotsMax: slotsForMovieMax,
-            weight: m.ratios?.[formats[0]] ?? 1
-          });
-        } else if (formats.length > 1) {
-          const formatWeights = {};
-          let totalWeight = 0;
-          formats.forEach(f => {
-            if (!f) return;
-            const w = Number(m.ratios?.[f] ?? 1);
-            const safeW = isNaN(w) ? 1 : w;
-            formatWeights[f] = safeW;
-            totalWeight += safeW;
-          });
+        allocationsByMovie[m.movieId] = { minTotal: 0, maxTotal: 0, formats: [] };
+      });
 
-          const normalizedFormatRatios = {};
-          if (totalWeight > 0) {
-            formats.forEach(f => {
-              if (f) normalizedFormatRatios[f] = formatWeights[f] / totalWeight;
-            });
-          } else {
-            formats.forEach(f => {
-              if (f) normalizedFormatRatios[f] = 1.0 / formats.length;
-            });
-          }
+      allRequestedFormats.forEach(fmt => {
+        const moviesRequestingFormat = selectedMovieDetails.filter(m => (m.formats || []).includes(fmt));
+        if (moviesRequestingFormat.length === 0) return;
 
-          const formatSlotsMin = largestRemainderMethod(slotsForMovieMin, normalizedFormatRatios);
-          const formatSlotsMax = largestRemainderMethod(slotsForMovieMax, normalizedFormatRatios);
-          formats.forEach(f => {
-            if (!f) return;
-            formatAllocations.push({
-              format: f || '2D',
-              slotsMin: formatSlotsMin[f] || 0,
-              slotsMax: formatSlotsMax[f] || 0,
-              weight: formatWeights[f]
-            });
+        let totalWeight = 0;
+        const formatWeights = {};
+        moviesRequestingFormat.forEach(m => {
+          const w = Number(m.ratios?.[fmt] ?? 1);
+          const safeW = isNaN(w) ? 1 : w;
+          formatWeights[m.movieId] = safeW;
+          totalWeight += safeW;
+        });
+
+        const normalizedFormatRatios = {};
+        if (totalWeight > 0) {
+          moviesRequestingFormat.forEach(m => {
+            normalizedFormatRatios[m.movieId] = formatWeights[m.movieId] / totalWeight;
+          });
+        } else {
+          moviesRequestingFormat.forEach(m => {
+            normalizedFormatRatios[m.movieId] = 1.0 / moviesRequestingFormat.length;
           });
         }
 
-        allocationResult.push({
-          movieId: m.movieId,
-          titleVn: m.titleVn,
-          totalSlotsMin: slotsForMovieMin,
-          totalSlotsMax: slotsForMovieMax,
-          formats: formatAllocations
+        const capMin = formatCapacitiesMin[fmt] || 0;
+        const capMax = formatCapacitiesMax[fmt] || 0;
+
+        const allocatedMin = largestRemainderMethod(capMin, normalizedFormatRatios);
+        const allocatedMax = largestRemainderMethod(capMax, normalizedFormatRatios);
+
+        moviesRequestingFormat.forEach(m => {
+          let sMin = allocatedMin[m.movieId] || 0;
+          let sMax = allocatedMax[m.movieId] || 0;
+
+          if (m.maxShowtimes) {
+            const maxAllowed = parseInt(m.maxShowtimes);
+            if (!isNaN(maxAllowed) && maxAllowed > 0) {
+              if (sMin > maxAllowed) sMin = maxAllowed;
+              if (sMax > maxAllowed) sMax = maxAllowed;
+            }
+          }
+
+          allocationsByMovie[m.movieId].minTotal += sMin;
+          allocationsByMovie[m.movieId].maxTotal += sMax;
+          allocationsByMovie[m.movieId].formats.push({
+            format: fmt,
+            slotsMin: sMin,
+            slotsMax: sMax,
+            weight: formatWeights[m.movieId]
+          });
         });
       });
 
+      const allocationResult = selectedMovieDetails.map(m => {
+        const alloc = allocationsByMovie[m.movieId];
+        return {
+          movieId: m.movieId,
+          titleVn: m.titleVn,
+          totalSlotsMin: alloc.minTotal,
+          totalSlotsMax: alloc.maxTotal,
+          formats: alloc.formats
+        };
+      });
+
+      const formatGroups = [];
+      allRequestedFormats.forEach(fmt => {
+        const moviesInFormat = [];
+        selectedMovieDetails.forEach(m => {
+          const fAlloc = allocationsByMovie[m.movieId].formats.find(f => f.format === fmt);
+          if (fAlloc) {
+            moviesInFormat.push({
+              movieId: m.movieId,
+              titleVn: m.titleVn,
+              slotsMin: fAlloc.slotsMin,
+              slotsMax: fAlloc.slotsMax,
+              weight: fAlloc.weight
+            });
+          }
+        });
+
+        if (moviesInFormat.length > 0) {
+          const ratioStr = moviesInFormat.map(m => m.weight).join(':');
+          formatGroups.push({
+            format: fmt,
+            totalMin: formatCapacitiesMin[fmt] || 0,
+            totalMax: formatCapacitiesMax[fmt] || 0,
+            movies: moviesInFormat,
+            ratioDisplay: ratioStr
+          });
+        }
+      });
+
+      let actualMinEstimatedSlots = 0;
+      let actualMaxEstimatedSlots = 0;
+
+      formatGroups.forEach(group => {
+        let gMin = 0;
+        let gMax = 0;
+        group.movies.forEach(m => {
+          gMin += m.slotsMin;
+          gMax += m.slotsMax;
+        });
+        group.totalMin = gMin;
+        group.totalMax = gMax;
+        actualMinEstimatedSlots += gMin;
+        actualMaxEstimatedSlots += gMax;
+      });
+
       return {
-        minEstimatedSlots,
-        maxEstimatedSlots,
+        minEstimatedSlots: actualMinEstimatedSlots,
+        maxEstimatedSlots: actualMaxEstimatedSlots,
         operatingMins,
         maxDuration,
         minDuration,
-        allocationResult
+        allocationResult,
+        formatGroups
       };
     } catch (err) {
       console.error('Error in getExpectedSlotsAllocation:', err);
@@ -349,7 +415,7 @@ export default function AutoGeneratePage() {
         toast.error('Chỉ được tạo tự động tối đa 5 phim 1 lần!', { id: 'max-movies-error' });
         return prev;
       }
-      
+
       const movie = movies.find(m => m.id === id);
       const defaultFormat = getMovieSupportedFormats(movie?.version, formatPrices)[0]; // Use the first available format as default
       const defaultLanguage = getMovieSupportedLanguages(movie?.language)[0];
@@ -359,16 +425,16 @@ export default function AutoGeneratePage() {
 
       return {
         ...prev,
-        movies: isSelected 
-          ? prev.movies.filter(m => m.movieId !== id) 
-          : [...prev.movies, { 
-              movieId: id, 
-              formats: [defaultFormat], 
-              languages: [defaultLanguage], 
-              maxShowtimes: '', 
-              isPriority: false,
-              ratios: { [defaultFormat]: 1 }
-            }]
+        movies: isSelected
+          ? prev.movies.filter(m => m.movieId !== id)
+          : [...prev.movies, {
+            movieId: id,
+            formats: [defaultFormat],
+            languages: [defaultLanguage],
+            maxShowtimes: '',
+            isPriority: false,
+            ratios: { [defaultFormat]: 1 }
+          }]
       };
     });
   }
@@ -398,10 +464,12 @@ export default function AutoGeneratePage() {
           } else {
             nextRatios[format] = 1;
           }
+          const nextFormats = hasFormat ? formats.filter(f => f !== format) : [...formats, format];
           return {
             ...m,
-            formats: hasFormat ? formats.filter(f => f !== format) : [...formats, format],
-            ratios: nextRatios
+            formats: nextFormats,
+            ratios: nextRatios,
+            maxShowtimes: nextFormats.length !== 1 ? '' : m.maxShowtimes
           };
         })
       };
@@ -455,21 +523,21 @@ export default function AutoGeneratePage() {
       setError('Chỉ được tạo tự động tối đa 5 phim 1 lần!')
       return
     }
-    
+
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     const start = new Date(form.startDate)
     start.setHours(0, 0, 0, 0)
-    
+
     const end = new Date(form.endDate)
     end.setHours(0, 0, 0, 0)
-    
+
     if (start <= today) {
       setError('Ngày bắt đầu phải từ ngày mai trở đi!')
       return
     }
-    
+
     if (start > end) {
       setError('Ngày bắt đầu không được sau ngày kết thúc!')
       return
@@ -481,12 +549,12 @@ export default function AutoGeneratePage() {
       setError('Chỉ cho phép tạo tự động tối đa 3 ngày cùng lúc để tránh quá tải hệ thống!')
       return
     }
-    
+
     if (form.openTime >= form.closeTime) {
       setError('Giờ mở cửa phải trước giờ đóng cửa!')
       return
     }
-    
+
     setLoading(true)
     setError(null)
 
@@ -494,7 +562,7 @@ export default function AutoGeneratePage() {
       // Find the first room that has a valid cinema ID
       const validRoom = rooms.find(r => r.cinemaId || r.cinema?.id);
       const cinemaId = validRoom?.cinemaId || validRoom?.cinema?.id;
-      
+
       if (!cinemaId) {
         setError('Không tìm thấy thông tin rạp (Cinema ID)!')
         setLoading(false)
@@ -517,9 +585,9 @@ export default function AutoGeneratePage() {
             const formatRatio = m.ratios?.[fmt] !== undefined ? parseInt(m.ratios[fmt]) : 50;
             if (m.languages && m.languages.length > 0) {
               for (const lang of m.languages) {
-                res.push({ 
-                  movieId: m.movieId, 
-                  format: mapFormatToEnum(fmt), 
+                res.push({
+                  movieId: m.movieId,
+                  format: mapFormatToEnum(fmt),
                   language: lang,
                   maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
                   isPriority: m.isPriority || false,
@@ -527,8 +595,8 @@ export default function AutoGeneratePage() {
                 });
               }
             } else {
-              res.push({ 
-                movieId: m.movieId, 
+              res.push({
+                movieId: m.movieId,
                 format: mapFormatToEnum(fmt),
                 maxShowtimes: m.maxShowtimes ? parseInt(m.maxShowtimes) : null,
                 isPriority: m.isPriority || false,
@@ -546,15 +614,15 @@ export default function AutoGeneratePage() {
       }
 
       const res = await showtimeService.autoGenerate(requestPayload)
-      
+
       const scheduledList = res.scheduled || res || [];
       const unscheduledList = res.unscheduled || [];
       const optimizationScore = res.optimizationScore || 0;
-      
+
       const listWithIds = (scheduledList).map(st => ({ ...st, tempId: st.tempId || crypto.randomUUID() }));
       setPreviewList(listWithIds);
       setOriginalPreviewList(JSON.parse(JSON.stringify(listWithIds)));
-      
+
       // Show warnings for unscheduled requests
       if (unscheduledList.length > 0) {
         const movieNames = [...new Set(unscheduledList.map(u => `${u.movieTitle} (${u.version})`))];
@@ -563,30 +631,30 @@ export default function AutoGeneratePage() {
           { duration: 12000 }
         );
       }
-      
+
       if (optimizationScore > 0) {
         toast.success(`Tối ưu hóa: ${optimizationScore.toFixed(1)}% — ${listWithIds.length} suất chiếu đã xếp`, { duration: 5000 });
       }
-      
+
       try {
         const existingData = await showtimeService.getAll();
         const filteredExisting = existingData.filter(st => {
-            if (!st.startTime) return false;
-            const stDate = st.startTime.split('T')[0];
-            return stDate >= form.startDate && stDate <= form.endDate;
+          if (!st.startTime) return false;
+          const stDate = st.startTime.split('T')[0];
+          return stDate >= form.startDate && stDate <= form.endDate;
         });
         setExistingShowtimes(filteredExisting.map(st => ({
-            ...st,
-            isManual: true,
-            tempId: 'manual-' + st.id,
-            room_id: st.roomId,
-            movieTitle: st.movie,
-            durationMinutes: st.endTime ? (new Date(st.endTime) - new Date(st.startTime)) / 60000 : 120
+          ...st,
+          isManual: true,
+          tempId: 'manual-' + st.id,
+          room_id: st.roomId,
+          movieTitle: st.movie,
+          durationMinutes: st.endTime ? (new Date(st.endTime) - new Date(st.startTime)) / 60000 : 120
         })));
       } catch (e) {
-          console.error("Failed to fetch existing showtimes for preview", e);
+        console.error("Failed to fetch existing showtimes for preview", e);
       }
-      
+
       setStep(2)
     } catch (err) {
       setError('Lỗi khi chạy thuật toán: ' + (err.response?.data?.message || err.message))
@@ -597,7 +665,7 @@ export default function AutoGeneratePage() {
 
   return (
     <div className="flex-1 flex flex-col bg-[#f7f9fb] text-[#191c1e] font-sans -m-6 p-6 min-h-[calc(100vh-80px)] overflow-y-auto">
-      
+
       {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-[#f7f9fb]/80 z-[1000] flex items-center justify-center backdrop-blur-md">
@@ -627,7 +695,7 @@ export default function AutoGeneratePage() {
             {step === 1 ? 'Thuật toán tạo lịch chiếu' : (isImportMode ? 'Xem trước Lịch chiếu nhập từ Excel' : 'Xem trước Lịch chiếu (Preview)')}
           </h2>
         </div>
-        
+
         {step === 1 && (
           <button onClick={handleGenerate} disabled={loading} className="px-6 py-3 bg-[#b80035] hover:opacity-90 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 disabled:opacity-50">
             {loading ? <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span> : <Play size={18} />}
@@ -661,7 +729,7 @@ export default function AutoGeneratePage() {
                           </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 z-[200] bg-white border border-[#e0e3e5] rounded-xl shadow-xl" align="start">
-                          <Calendar mode="single" selected={form.startDate ? parseISO(form.startDate) : undefined} onSelect={(date) => date && setForm({...form, startDate: format(date, 'yyyy-MM-dd')})} initialFocus locale={vi} />
+                          <Calendar mode="single" selected={form.startDate ? parseISO(form.startDate) : undefined} onSelect={(date) => date && setForm({ ...form, startDate: format(date, 'yyyy-MM-dd') })} initialFocus locale={vi} disabled={(date) => { const t = new Date(); t.setHours(0, 0, 0, 0); return date <= t; }} />
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -675,7 +743,7 @@ export default function AutoGeneratePage() {
                           </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0 z-[200] bg-white border border-[#e0e3e5] rounded-xl shadow-xl" align="start">
-                          <Calendar mode="single" selected={form.endDate ? parseISO(form.endDate) : undefined} onSelect={(date) => date && setForm({...form, endDate: format(date, 'yyyy-MM-dd')})} initialFocus locale={vi} />
+                          <Calendar mode="single" selected={form.endDate ? parseISO(form.endDate) : undefined} onSelect={(date) => date && setForm({ ...form, endDate: format(date, 'yyyy-MM-dd') })} initialFocus locale={vi} disabled={(date) => { const t = new Date(); t.setHours(0, 0, 0, 0); return date <= t; }} />
                         </PopoverContent>
                       </Popover>
                     </div>
@@ -687,11 +755,11 @@ export default function AutoGeneratePage() {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div className="flex flex-col gap-2">
                       <label className="text-xs text-[#5c647a] font-semibold">Mở cửa</label>
-                      <input type="time" value={form.openTime} onChange={e => setForm({...form, openTime: e.target.value})} className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none" />
+                      <input type="time" value={form.openTime} onChange={e => setForm({ ...form, openTime: e.target.value })} className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none" />
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-xs text-[#5c647a] font-semibold">Đóng cửa</label>
-                      <input type="time" value={form.closeTime} onChange={e => setForm({...form, closeTime: e.target.value})} className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none" />
+                      <input type="time" value={form.closeTime} onChange={e => setForm({ ...form, closeTime: e.target.value })} className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -702,7 +770,7 @@ export default function AutoGeneratePage() {
                       </label>
                       <select
                         value={form.staggerDelay}
-                        onChange={e => setForm({...form, staggerDelay: parseInt(e.target.value)})}
+                        onChange={e => setForm({ ...form, staggerDelay: parseInt(e.target.value) })}
                         className="bg-[#f7f9fb] border border-[#e0e3e5] rounded-xl py-2.5 px-4 text-sm text-[#191c1e] focus:border-[#b80035] outline-none cursor-pointer"
                       >
                         {[0, 5, 10, 15, 20, 25, 30].map(v => (
@@ -727,36 +795,40 @@ export default function AutoGeneratePage() {
                         <div className="flex justify-between items-center text-xs border-b border-[#e0e3e5] pb-2 text-[#5c647a]">
                           <span>Tổng suất dự kiến toàn rạp:</span>
                           <span className="font-extrabold text-[#191c1e] text-sm bg-white px-2 py-0.5 border border-[#e0e3e5] rounded-md">
-                            {expectedAllocation.minEstimatedSlots === expectedAllocation.maxEstimatedSlots 
-                              ? `${expectedAllocation.minEstimatedSlots}` 
+                            {expectedAllocation.minEstimatedSlots === expectedAllocation.maxEstimatedSlots
+                              ? `${expectedAllocation.minEstimatedSlots}`
                               : `${expectedAllocation.minEstimatedSlots} ~ ${expectedAllocation.maxEstimatedSlots}`}
                             {" suất/ngày"}
                           </span>
                         </div>
 
                         <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1 custom-scrollbar">
-                          {expectedAllocation.allocationResult.map(res => (
-                            <div key={res.movieId} className="bg-white border border-[#e0e3e5] rounded-lg p-2.5 space-y-1">
+                          {expectedAllocation.formatGroups.map(group => (
+                            <div key={group.format} className="bg-white border border-[#e0e3e5] rounded-lg p-2.5 space-y-1">
                               <div className="flex justify-between items-center text-[11px] font-bold text-[#191c1e] border-b border-dashed border-[#e0e3e5] pb-1">
-                                <span className="truncate max-w-[180px]">{res.titleVn}</span>
+                                <span className="flex items-center gap-1 uppercase">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#b80035]" />
+                                  TỔNG SUẤT {group.format}
+                                  {group.movies.length > 1 && <span className="text-[#5c647a] font-normal ml-1">({group.ratioDisplay})</span>}
+                                </span>
                                 <span className="text-[#b80035]">
-                                  {res.totalSlotsMin === res.totalSlotsMax 
-                                    ? res.totalSlotsMin 
-                                    : `${res.totalSlotsMin} ~ ${res.totalSlotsMax}`}
+                                  {group.totalMin === group.totalMax
+                                    ? group.totalMin
+                                    : `${group.totalMin} ~ ${group.totalMax}`}
                                   {" suất"}
                                 </span>
                               </div>
                               <div className="space-y-1 pt-1">
-                                {res.formats.map(f => (
-                                  <div key={f.format} className="flex justify-between items-center text-[10px] text-[#5c647a]">
-                                    <span className="flex items-center gap-1">
+                                {group.movies.map(m => (
+                                  <div key={m.movieId} className="flex justify-between items-center text-[10px] text-[#5c647a]">
+                                    <span className="truncate max-w-[170px] flex items-center gap-1">
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#00836c]" />
-                                      {f.format} {"(Trọng số "}{f.weight}{")"}
+                                      {m.titleVn} {"(Trọng số "}{m.weight}{")"}
                                     </span>
-                                    <span className="font-semibold text-[#191c1e]">
-                                      {f.slotsMin === f.slotsMax 
-                                        ? f.slotsMin 
-                                        : `${f.slotsMin}~${f.slotsMax}`}
+                                    <span className="font-semibold text-[#191c1e] shrink-0">
+                                      {m.slotsMin === m.slotsMax
+                                        ? m.slotsMin
+                                        : `${m.slotsMin}~${m.slotsMax}`}
                                       {" suất"}
                                     </span>
                                   </div>
@@ -781,7 +853,7 @@ export default function AutoGeneratePage() {
                   <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {movies.map(m => {
                       const isSelected = form.movies.some(mv => mv.movieId === m.id);
-                      
+
                       return (
                         <div key={m.id} className="flex flex-col gap-2 p-3 bg-[#f7f9fb] hover:bg-[#eceef0] transition-colors rounded-xl border border-[#e0e3e5]">
                           <label className="flex items-center gap-3 cursor-pointer">
@@ -799,11 +871,11 @@ export default function AutoGeneratePage() {
                                   return (
                                     <div key={fmt} className="flex items-center gap-2">
                                       <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-[#5c647a]">
-                                        <input 
-                                          type="checkbox" 
-                                          checked={isFmtSelected || false} 
+                                        <input
+                                          type="checkbox"
+                                          checked={isFmtSelected || false}
                                           onChange={() => handleFormatToggle(m.id, fmt)}
-                                          className="w-3.5 h-3.5 rounded accent-[#00836c]" 
+                                          className="w-3.5 h-3.5 rounded accent-[#00836c]"
                                         />
                                         {fmt}
                                       </label>
@@ -850,11 +922,11 @@ export default function AutoGeneratePage() {
                                 const isLangSelected = selectedMovie?.languages?.includes(lang);
                                 return (
                                   <label key={lang} className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#5c647a]">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={isLangSelected || false} 
+                                    <input
+                                      type="checkbox"
+                                      checked={isLangSelected || false}
                                       onChange={() => handleLanguageToggle(m.id, lang)}
-                                      className="w-3.5 h-3.5 rounded accent-[#b80035]" 
+                                      className="w-3.5 h-3.5 rounded accent-[#b80035]"
                                     />
                                     {lang}
                                   </label>
@@ -865,28 +937,39 @@ export default function AutoGeneratePage() {
                           {isSelected && (
                             <div className="pl-7 flex flex-wrap gap-4 mt-1 border-t border-[#e0e3e5] pt-3 pb-1 items-center">
                               <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-amber-500 hover:text-amber-600 transition-colors" title="Ưu tiên xếp Giờ Vàng (18:00 - 21:00)">
-                                <input 
-                                  type="checkbox" 
-                                  checked={form.movies.find(mv => mv.movieId === m.id)?.isPriority || false} 
+                                <input
+                                  type="checkbox"
+                                  checked={form.movies.find(mv => mv.movieId === m.id)?.isPriority || false}
                                   onChange={(e) => handleUpdateMovieOption(m.id, 'isPriority', e.target.checked)}
-                                  className="w-3.5 h-3.5 rounded accent-amber-500" 
+                                  className="w-3.5 h-3.5 rounded accent-amber-500"
                                 />
                                 <Star size={14} className="fill-amber-500 text-amber-500 shrink-0" />
                                 Giờ Vàng
                               </label>
 
                               <div className="flex items-center gap-2">
-                                <span className="text-xs text-[#5c647a] font-semibold">Max suất/ngày:</span>
-                                <select 
-                                  value={form.movies.find(mv => mv.movieId === m.id)?.maxShowtimes || ''}
-                                  onChange={(e) => handleUpdateMovieOption(m.id, 'maxShowtimes', e.target.value)}
-                                  className="w-32 bg-white border border-[#e0e3e5] rounded py-1.5 px-2 text-xs text-[#191c1e] outline-none focus:border-[#b80035] cursor-pointer font-medium"
+                                <span
+                                  className="text-xs text-[#5c647a] font-semibold cursor-help border-b border-dashed border-[#5c647a]"
+                                  title="Giới hạn số suất chiếu tối đa. Chỉ khả dụng khi phim được chọn ĐÚNG 1 định dạng."
                                 >
-                                  <option value="">Không giới hạn</option>
-                                  {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
-                                    <option key={num} value={num}>{num} suất</option>
-                                  ))}
-                                </select>
+                                  Max suất/ngày:
+                                </span>
+                                <div 
+                                  className={form.movies.find(mv => mv.movieId === m.id)?.formats?.length !== 1 ? "cursor-not-allowed" : ""}
+                                  title={form.movies.find(mv => mv.movieId === m.id)?.formats?.length !== 1 ? "Tính năng chỉ kích hoạt khi chọn đúng 1 định dạng" : "Giới hạn số suất chiếu tối đa cho định dạng này"}
+                                >
+                                  <select
+                                    value={form.movies.find(mv => mv.movieId === m.id)?.maxShowtimes || ''}
+                                    onChange={(e) => handleUpdateMovieOption(m.id, 'maxShowtimes', e.target.value)}
+                                    disabled={form.movies.find(mv => mv.movieId === m.id)?.formats?.length !== 1}
+                                    className={`w-32 bg-white border border-[#e0e3e5] rounded py-1.5 px-2 text-xs text-[#191c1e] outline-none focus:border-[#b80035] font-medium ${form.movies.find(mv => mv.movieId === m.id)?.formats?.length === 1 ? 'cursor-pointer' : 'opacity-60 bg-gray-100 pointer-events-none'}`}
+                                  >
+                                    <option value="">Không giới hạn</option>
+                                    {Array.from({ length: 10 }, (_, i) => i + 1).map(num => (
+                                      <option key={num} value={num}>{num} suất</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
                             </div>
                           )}

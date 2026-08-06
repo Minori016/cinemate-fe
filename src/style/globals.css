@@ -354,3 +354,32 @@ input[type='number'] {
 .material-symbols-outlined.filled {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
+
+/* ── DISABLED / EXPIRED promotion row — continuous strikethrough + dim ── */
+.promotion-row-disabled {
+  opacity: 0.55;
+  position: relative;
+}
+.promotion-row-disabled:hover {
+  background-color: transparent !important;
+}
+/* Đảm bảo cell dính sát để gạch nối liền giữa các cột */
+.promotion-row-disabled td,
+.promotion-row-disabled th {
+  border-color: transparent !important;
+}
+/* Vẽ 1 đường line-through liền xuyên suốt dòng trên từng <td>,
+   dựa vào border-collapse: collapse nên các cell dính sát, gạch nhìn liền. */
+.promotion-row-disabled td {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 50%;
+  background-size: 100% 2px;
+  background-repeat: no-repeat;
+  color: var(--color-text-muted);
+}
+/* Cột thao tác (cuối cùng) — vẫn rõ, không gạch */
+.promotion-row-disabled td:last-child {
+  background-image: none;
+  opacity: 1;
+  color: inherit;
+}

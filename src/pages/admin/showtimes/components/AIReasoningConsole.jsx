@@ -269,7 +269,7 @@ export default function AIReasoningConsole({ result, movies, onClose }) {
                               {item.fillRate != null && (
                                 <div className="flex flex-col items-end bg-green-50 px-2 py-1 rounded-md border border-green-100" title="Fill Rate Dự đoán">
                                   <span className="text-[10px] uppercase font-bold text-green-700">Predict</span>
-                                  <span className="text-sm font-bold text-green-600">{item.fillRate}%</span>
+                                  <span className="text-sm font-bold text-green-600">~{item.fillRate}%</span>
                                 </div>
                               )}
                             </div>

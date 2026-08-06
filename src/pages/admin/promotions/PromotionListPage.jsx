@@ -16,8 +16,36 @@ import Table from '../../../components/common/Table'
 import Button from '../../../components/common/Button'
 import Modal from '../../../components/common/Modal'
 import Input from '../../../components/common/Input'
-import { Plus, Pencil, Trash2, Search, Tag, Calendar, AlertCircle, Filter, X } from 'lucide-react'
+import { Plus, Pencil, Search, Tag, Calendar, AlertCircle, Filter, X } from 'lucide-react'
 import { motion } from 'motion/react'
+
+function ToggleSwitch({ checked, onChange, disabled = false }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={(e) => { e.stopPropagation(); onChange?.() }}
+      className={[
+        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full',
+        'transition-colors duration-200 ease-out border border-white/10',
+        checked ? 'bg-emerald-500' : 'bg-zinc-600',
+        disabled ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110',
+      ].join(' ')}
+      title={checked ? 'Đang bật — bấm để vô hiệu hóa' : 'Đang tắt — bấm để kích hoạt lại'}
+    >
+      <span
+        aria-hidden="true"
+        className={[
+          'inline-block h-4 w-4 transform rounded-full bg-white shadow-md',
+          'transition-transform duration-200 ease-out',
+          checked ? 'translate-x-6' : 'translate-x-1',
+        ].join(' ')}
+      />
+    </button>
+  )
+}
 
 export default function PromotionListPage() {
   const [promotions, setPromotions] = useState([])
@@ -26,7 +54,7 @@ export default function PromotionListPage() {
   const basePath = location.pathname.startsWith('/manager') ? '/manager' : '/admin'
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [toggleTarget, setToggleTarget] = useState(null)
 
   // ===== Bộ lọc client-side (không phụ thuộc backend) =====
   const [typeFilter, setTypeFilter] = useState('ALL')
@@ -58,17 +86,39 @@ export default function PromotionListPage() {
     return () => clearTimeout(delayDebounce)
   }, [searchQuery])
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return
+  const applyToggle = async (row) => {
+    if (!row?.id) return
+    const previous = promotions
+    setPromotions(prev =>
+      prev.map(p =>
+        p.id === row.id
+          ? {
+              ...p,
+              status:
+                p.status === PROMOTION_STATUS.DISABLED
+                  ? PROMOTION_STATUS.ACTIVE
+                  : PROMOTION_STATUS.DISABLED,
+            }
+          : p
+      )
+    )
     try {
-      await promotionService.delete(deleteTarget.id)
-      setPromotions(prev => prev.filter(p => p.id !== deleteTarget.id))
+      const res = await promotionService.toggleStatus(row.id)
+      const updated = res?.data?.result || res?.result || res?.data || {}
+      setPromotions(prev =>
+        prev.map(p => (p.id === row.id ? { ...p, ...updated, status: updated.status } : p))
+      )
     } catch (err) {
-      console.error('Lỗi khi xóa khuyến mãi:', err)
-      alert(err.response?.data?.message || 'Có lỗi xảy ra khi xóa khuyến mãi.')
-    } finally {
-      setDeleteTarget(null)
+      console.error('Lỗi khi đổi trạng thái khuyến mãi:', err)
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi đổi trạng thái khuyến mãi.')
+      setPromotions(previous)
     }
+  }
+
+  const handleToggleStatus = async () => {
+    if (!toggleTarget) return
+    await applyToggle(toggleTarget)
+    setToggleTarget(null)
   }
 
   const formatDate = (dateStr) => {
@@ -99,12 +149,12 @@ export default function PromotionListPage() {
 
   // Thống kê nhanh cho dashboard mini phía trên
   const stats = useMemo(() => {
-    const now = new Date()
-    let active = 0, expired = 0, draft = 0
+    let active = 0, expired = 0, draft = 0, disabled = 0
     promotions.forEach(p => {
       const s = computePromotionStatus(p)
       if (s === PROMOTION_STATUS.ACTIVE) active++
       else if (s === PROMOTION_STATUS.EXPIRED) expired++
+      else if (s === PROMOTION_STATUS.DISABLED) disabled++
       else draft++
     })
     return {
@@ -112,6 +162,7 @@ export default function PromotionListPage() {
       active,
       expired,
       draft,
+      disabled,
     }
   }, [promotions])
 
@@ -244,7 +295,7 @@ export default function PromotionListPage() {
 
       {/* Stats mini-cards */}
       <motion.div
-        className="grid grid-cols-2 md:grid-cols-4 gap-3"
+        className="grid grid-cols-2 md:grid-cols-5 gap-3"
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.12 }}
@@ -254,6 +305,7 @@ export default function PromotionListPage() {
           { label: 'Đang chạy', value: stats.active, color: 'text-green-500' },
           { label: 'Bản nháp / sắp', value: stats.draft, color: 'text-yellow-500' },
           { label: 'Đã hết hạn', value: stats.expired, color: 'text-red-500' },
+          { label: 'Đã vô hiệu', value: stats.disabled, color: 'text-amber-500' },
         ].map(s => (
           <div key={s.label} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl p-3.5">
             <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">{s.label}</p>
@@ -344,43 +396,81 @@ export default function PromotionListPage() {
             <p className="text-xs text-gray-500 mt-1">Thử thay đổi từ khóa hoặc bộ lọc.</p>
           </div>
         ) : (
-          <Table columns={columns} data={filtered} actions={row => (
-            <div className="flex gap-2 justify-end">
-              <Button size="sm" variant="info" onClick={() => navigate(`${basePath}/promotions/edit/${row.id}`)}>
-                <Pencil size={12} />
-              </Button>
-              <Button size="sm" variant="danger" onClick={() => setDeleteTarget(row)}>
-                <Trash2 size={12} />
-              </Button>
-            </div>
-          )} />
+          <Table
+            columns={columns}
+            data={filtered}
+            rowClassName={(row) => {
+              const s = computePromotionStatus(row)
+              return s === PROMOTION_STATUS.DISABLED || s === PROMOTION_STATUS.EXPIRED
+                ? 'promotion-row-disabled'
+                : ''
+            }}
+            actions={row => {
+              const currentStatus = computePromotionStatus(row)
+              const isActive = currentStatus === PROMOTION_STATUS.ACTIVE
+              return (
+                <div className="flex items-center gap-2 justify-end">
+                  <Button size="sm" variant="info" onClick={() => navigate(`${basePath}/promotions/edit/${row.id}`)}>
+                    <Pencil size={12} />
+                  </Button>
+                  <ToggleSwitch
+                    checked={isActive}
+                    onChange={() => {
+                      if (isActive) {
+                        // Đang bật → bấm để tắt → mở modal xác nhận
+                        setToggleTarget(row)
+                      } else {
+                        // Đang tắt → bật lại → gọi thẳng
+                        applyToggle(row)
+                      }
+                    }}
+                  />
+                </div>
+              )
+            }}
+          />
         )}
       </motion.div>
 
-      {/* Delete Confirmation Modal */}
-      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Xác nhận xóa khuyến mãi">
-        <div className="space-y-4">
-          <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
-            Bạn có chắc chắn muốn xóa chiến dịch khuyến mãi: <br />
-            <span className="text-[var(--color-on-surface)] font-bold text-base block mt-2 p-3 bg-red-600/10 border border-red-500/20 rounded-xl">
-              "{deleteTarget?.title}"
-            </span>
-          </p>
-          {deleteTarget?.code && (
-            <div className="flex items-center gap-2 text-xs bg-yellow-500/5 p-3 rounded-lg border border-yellow-500/10 text-yellow-300">
-              <Tag size={14} />
-              <span>Mã voucher: <b className="font-mono">{deleteTarget.code}</b> (sẽ bị xóa vĩnh viễn)</span>
+      {/* Toggle Status Confirmation Modal */}
+      <Modal open={!!toggleTarget} onClose={() => setToggleTarget(null)} title="Xác nhận thay đổi trạng thái khuyến mãi">
+        {(() => {
+          const currentStatus = toggleTarget ? computePromotionStatus(toggleTarget) : null
+          const isActive = currentStatus === PROMOTION_STATUS.ACTIVE
+          const actionLabel = isActive ? 'Vô hiệu hóa' : 'Kích hoạt lại'
+          const confirmText = isActive ? 'Xác nhận vô hiệu hóa' : 'Kích hoạt lại'
+          const variant = isActive ? 'warning' : 'success'
+          return (
+            <div className="space-y-4">
+              <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
+                Bạn có chắc chắn muốn <b className="text-[var(--color-on-surface)]">{actionLabel.toLowerCase()}</b> chiến dịch khuyến mãi: <br />
+                <span className="text-[var(--color-on-surface)] font-bold text-base block mt-2 p-3 bg-red-600/10 border border-red-500/20 rounded-xl">
+                  "{toggleTarget?.title}"
+                </span>
+              </p>
+              {toggleTarget?.code && (
+                <div className="flex items-center gap-2 text-xs bg-yellow-500/5 p-3 rounded-lg border border-yellow-500/10 text-yellow-300">
+                  <Tag size={14} />
+                  <span>Mã voucher: <b className="font-mono">{toggleTarget.code}</b> {!isActive && '(sẽ hoạt động trở lại)'}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-2)] p-3 rounded-lg border border-[var(--color-border)]">
+                <Calendar size={14} />
+                <span>Thời hạn chiến dịch: {formatDate(toggleTarget?.startTime)} - {formatDate(toggleTarget?.endTime)}</span>
+              </div>
+              {isActive && (
+                <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/5 p-3 rounded-lg border border-amber-500/10">
+                  <AlertCircle size={14} />
+                  <span>Khuyến mãi sẽ bị ẩn khỏi trang người dùng nhưng không bị xóa khỏi hệ thống.</span>
+                </div>
+              )}
+              <div className="flex gap-3 justify-end pt-2">
+                <Button variant="secondary" onClick={() => setToggleTarget(null)}>Hủy bỏ</Button>
+                <Button variant={variant} onClick={handleToggleStatus}>{confirmText}</Button>
+              </div>
             </div>
-          )}
-          <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/5 p-3 rounded-lg border border-red-500/10">
-            <Calendar size={14} />
-            <span>Thời hạn chiến dịch: {formatDate(deleteTarget?.startTime)} - {formatDate(deleteTarget?.endTime)}</span>
-          </div>
-          <div className="flex gap-3 justify-end pt-2">
-            <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Hủy bỏ</Button>
-            <Button variant="danger" onClick={handleDelete}>Đồng ý xóa</Button>
-          </div>
-        </div>
+          )
+        })()}
       </Modal>
     </motion.div>
   )

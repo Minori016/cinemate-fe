@@ -64,12 +64,27 @@ export default function StaffTicketVerifierPage() {
     }
   }, [isScanning])
 
+  const parseShowtime = (dateStr, timeStr) => {
+    try {
+      const [day, month, year] = dateStr.split('/')
+      const [hour, min] = timeStr.split(':')
+      return new Date(year, month - 1, day, hour, min)
+    } catch {
+      return new Date() // fallback
+    }
+  }
+
   const fetchTicket = async (ticketId) => {
     try {
       setLoading(true)
       const res = await bookingService.getById(ticketId)
       if (res.data.result) {
         const b = res.data.result
+        
+        const showtimeDate = parseShowtime(b.date, b.showtime)
+        const isExpired = new Date() > new Date(showtimeDate.getTime() + 30 * 60000)
+        const isInvalid = b.status !== 'CONFIRMED' && b.status !== 'CHECKED_IN'
+        
         setSelectedTicket({
           id: b.id,
           movie: b.movieName,
@@ -89,10 +104,17 @@ export default function StaffTicketVerifierPage() {
           scoreUsed: 0,
           status: b.status,
           checkedIn: b.status === 'CHECKED_IN',
-          checkInTime: null
+          checkInTime: null,
+          isExpired: isExpired,
+          isInvalid: isInvalid
         })
+
         if (b.status === 'CHECKED_IN') {
           triggerToast('Vé này đã được check-in trước đó!', 'error')
+        } else if (isInvalid) {
+          triggerToast(`Vé không hợp lệ! (Trạng thái: ${b.status})`, 'error')
+        } else if (isExpired) {
+          triggerToast('Vé đã quá giờ check-in (trễ hơn 30 phút)!', 'error')
         } else {
           triggerToast('Tìm thấy vé hợp lệ!', 'success')
         }
@@ -433,10 +455,17 @@ export default function StaffTicketVerifierPage() {
                   </div>
 
                   <div className="relative mb-6">
-                    <div className={`absolute inset-0 blur-2xl ${selectedTicket.checkedIn ? 'bg-emerald-600/40' : 'bg-yellow-500/40'} rounded-full`} />
+                    <div className={`absolute inset-0 blur-2xl ${
+                      selectedTicket.checkedIn ? 'bg-emerald-600/40' 
+                      : (selectedTicket.isInvalid || selectedTicket.isExpired) ? 'bg-red-600/40'
+                      : 'bg-yellow-500/40'} rounded-full`} />
                     {selectedTicket.checkedIn ? (
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white shadow-[0_0_40px_rgba(16,185,129,0.6)] relative z-10 border-2 border-emerald-400/40">
                         <CheckCircle2 size={50} strokeWidth={2.2} />
+                      </div>
+                    ) : (selectedTicket.isInvalid || selectedTicket.isExpired) ? (
+                      <div className="w-24 h-24 rounded-full bg-gradient-to-br from-red-600 to-red-900 flex items-center justify-center text-white shadow-[0_0_40px_rgba(220,38,38,0.6)] relative z-10 border-2 border-red-500/40">
+                        <X size={50} strokeWidth={2.5} />
                       </div>
                     ) : (
                       <div className="w-24 h-24 rounded-full bg-gradient-to-br from-gray-800 to-yellow-900 flex items-center justify-center text-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.4)] relative z-10 border-2 border-yellow-500/30">
@@ -446,11 +475,22 @@ export default function StaffTicketVerifierPage() {
                   </div>
 
                   <h4 className="text-xl font-bold text-white mb-1">
-                    {selectedTicket.checkedIn ? "Đã Check-in" : "Chờ Check-in"}
+                    {selectedTicket.checkedIn ? "Đã Check-in" 
+                    : selectedTicket.isInvalid ? "Vé Không Hợp Lệ"
+                    : selectedTicket.isExpired ? "Vé Đã Hết Hạn"
+                    : "Chờ Check-in"}
                   </h4>
                   {selectedTicket.checkedIn && selectedTicket.checkInTime ? (
                     <p className="text-xs text-gray-400 font-mono mb-8">
                       {selectedTicket.checkInTime}
+                    </p>
+                  ) : selectedTicket.isInvalid ? (
+                    <p className="text-xs text-red-400 font-medium mb-8">
+                      Vé chưa được thanh toán hoặc đã bị hủy (Status: {selectedTicket.status})
+                    </p>
+                  ) : selectedTicket.isExpired ? (
+                    <p className="text-xs text-red-400 font-medium mb-8">
+                      Đã quá 30 phút kể từ giờ chiếu, không thể check-in
                     </p>
                   ) : (
                     <p className="text-xs text-gray-400 mb-8">
@@ -466,6 +506,13 @@ export default function StaffTicketVerifierPage() {
                         className="w-full py-4 px-6 bg-white/5 border border-white/10 rounded-2xl font-bold text-sm text-gray-500 cursor-not-allowed flex justify-center items-center gap-2"
                       >
                         Đã kiểm tra vé
+                      </button>
+                    ) : (selectedTicket.isInvalid || selectedTicket.isExpired) ? (
+                      <button
+                        disabled
+                        className="w-full py-4 px-6 bg-red-500/10 border border-red-500/30 rounded-2xl font-bold text-sm text-red-500/70 cursor-not-allowed flex justify-center items-center gap-2"
+                      >
+                        Không Thể Check-in
                       </button>
                     ) : (
                       <button
