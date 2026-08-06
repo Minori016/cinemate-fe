@@ -1,13 +1,13 @@
 import { Outlet, useLocation } from 'react-router-dom'
-import { LayoutGrid, Armchair, Ticket, ShoppingBag, FileText } from 'lucide-react'
+import {  Armchair, Ticket, ShoppingBag } from 'lucide-react'
 import Sidebar from './Sidebar'
 
 const NAV_ITEMS = [
-  { to: '/staff/overview', icon: LayoutGrid, label: 'Tổng quan & Lịch chiếu' },
+ 
   { to: '/staff/ticketing', icon: Armchair, label: 'Bán vé tại quầy' },
   { to: '/staff/checkin', icon: Ticket, label: 'Soát vé nhanh' },
   { to: '/staff/concessions', icon: ShoppingBag, label: 'Quầy bắp nước' },
-  { to: '/staff/tickets', icon: FileText, label: 'Quản lý đặt vé' },
+  
 ]
 
 export default function StaffLayout() {

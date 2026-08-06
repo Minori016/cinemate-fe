@@ -409,29 +409,7 @@ export default function CheckoutResultPage() {
                         )}
                       </div>
 
-                      {/* POINTS REDEMPTION / QUÀ ĐỔI ĐIỂM SECTION */}
-                      {pointsRedemption && (
-                        <div className="mb-2.5">
-                          <p className="text-[10px] font-black uppercase text-amber-400 tracking-wider mb-1.5 flex items-center gap-1">
-                            <Gift size={12} className="text-amber-400" /> Quà & Ưu Đãi Đổi Điểm:
-                          </p>
-                          <div className="bg-amber-500/10 p-2 rounded-lg border border-amber-500/30 flex justify-between items-center text-[10px]">
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[9px] border border-amber-500/40">
-                                ★ {pointsRedemption.pointsSpent || 0} điểm
-                              </span>
-                              <span className="font-bold text-white">
-                                {pointsRedemption.promotionTitle || 'Quà đổi điểm'}
-                              </span>
-                            </div>
-                            <span className="font-extrabold text-amber-400">
-                              {pointsRedemption.discountAmount > 0 
-                                ? `-${formatPrice(pointsRedemption.discountAmount)}` 
-                                : 'Quà tặng (0đ)'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                      
 
                       {/* BILL SUMMARY BREAKDOWN / HÓA ĐƠN CHI TIẾT */}
                       <div className="mb-2.5 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1.5 text-[10px]">
@@ -472,11 +450,20 @@ export default function CheckoutResultPage() {
                         )}
 
                         {/* Số tiền đã giảm */}
-                        {discountAmount > 0 && (
+                        {bookingDetails.campaignDiscount > 0 && (
                           <div className="flex justify-between items-center text-emerald-400 font-medium">
-                            <span>Mã giảm giá {bookingDetails.promotionCode ? `(${bookingDetails.promotionCode})` : ""}:</span>
+                            <span>Khuyến Mãi Tự Động {bookingDetails.campaignTitle ? `(${bookingDetails.campaignTitle})` : ""}:</span>
                             <span className="font-extrabold">
-                              -{formatPrice(discountAmount)}
+                              -{formatPrice(bookingDetails.campaignDiscount)}
+                            </span>
+                          </div>
+                        )}
+
+                        {discountAmount - (bookingDetails.campaignDiscount || 0) > 0 && (
+                          <div className="flex justify-between items-center text-emerald-400 font-medium">
+                            <span>Mã giảm giá {bookingDetails.promotionCode && bookingDetails.promotionCode !== bookingDetails.campaignTitle ? `(${bookingDetails.promotionCode})` : ""}:</span>
+                            <span className="font-extrabold">
+                              -{formatPrice(discountAmount - (bookingDetails.campaignDiscount || 0))}
                             </span>
                           </div>
                         )}
@@ -489,25 +476,14 @@ export default function CheckoutResultPage() {
                       </div>
                     </div>
 
-                    {/* QR & Barcode Section */}
-                    <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-2.5 items-center justify-between bg-black/20 p-2 rounded-lg">
-                      <div className="flex-1 text-left">
-                        <p className="text-[10px] font-bold text-white mb-0.5">Quy định soát vé:</p>
-                        <p className="text-[9px] text-gray-400 leading-tight">
-                          Vui lòng đến rạp trước 15 phút và xuất trình mã QR này trên điện thoại để quét mã vào phòng chiếu.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col items-center shrink-0 bg-white p-1 rounded-md border border-red-600 shadow-xs">
-                        <img 
-                          src={`https://api.qrserver.com/v1/create-qr-code/?size=65x65&data=${bookingDetails.id}&bgcolor=ffffff&color=000000`} 
-                          alt="Mã QR Soát Vé" 
-                          className="w-14 h-14 block" 
-                        />
-                        <span className="text-[7.5px] text-gray-800 font-mono font-bold mt-0.5 tracking-tighter">
-                          {bookingDetails.id?.substring(0, 12).toUpperCase()}
-                        </span>
-                      </div>
+                    {/* Rules Section */}
+                    <div className="pt-2 border-t border-white/10 flex flex-col gap-1 items-start bg-black/20 p-2 rounded-lg">
+                      <p className="text-[10px] font-bold text-white mb-0.5 flex items-center gap-1">
+                        Quy định soát vé:
+                      </p>
+                      <p className="text-[9px] text-gray-400 leading-tight">
+                        Vui lòng đến rạp trước 15 phút và xuất trình mã QR trên vé để quét mã vào phòng chiếu.
+                      </p>
                     </div>
                   </div>
 
@@ -551,6 +527,18 @@ export default function CheckoutResultPage() {
                           <span className="text-gray-400">Suất:</span>
                           <span className="font-bold text-white">{bookingDetails.showtime} - {bookingDetails.date}</span>
                         </div>
+                      </div>
+
+                      {/* QR Code inside Right Pane */}
+                      <div className="flex flex-col items-center bg-white p-1.5 rounded-md border border-red-600 shadow-xs mb-3">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${bookingDetails.id}&bgcolor=ffffff&color=000000`} 
+                          alt="Mã QR Soát Vé" 
+                          className="w-24 h-24 block" 
+                        />
+                        <span className="text-[8.5px] text-gray-800 font-mono font-bold mt-0.5 tracking-tighter">
+                          {bookingDetails.id?.substring(0, 12).toUpperCase()}
+                        </span>
                       </div>
                     </div>
 

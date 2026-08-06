@@ -257,7 +257,9 @@ export default function PromotionFormPage() {
     setLoadingMovies(true)
     movieService.getAllMovies()
       .then(res => {
-        const list = res?.result || res?.data || []
+        const list = res?.data?.result || res?.result || res?.data || res || []
+        console.log("MOVIE API RESPONSE:", res)
+        console.log("MOVIE LIST:", list)
         setMovieOptions(Array.isArray(list) ? list : [])
       })
       .catch(err => console.error('Load movies failed:', err))
@@ -564,51 +566,6 @@ export default function PromotionFormPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex flex-col gap-1 w-full text-left">
                 <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
-                  <Calendar size={14} className="text-red-500" /> Ngày bắt đầu
-                </label>
-                <input
-                  type="datetime-local"
-                  value={startTime}
-                  min={todayStart || undefined}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
-                    ${errors.startTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-                />
-                {errors.startTime && <span className="text-xs text-red-400 mt-1">{errors.startTime}</span>}
-              </div>
-
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
-                  <Calendar size={14} className="text-red-500" /> Ngày kết thúc
-                </label>
-                <input
-                  type="datetime-local"
-                  value={endTime}
-                  min={todayStart || undefined}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full
-                    ${errors.endTime ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-                />
-                {errors.endTime && <span className="text-xs text-red-400 mt-1">{errors.endTime}</span>}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-1 w-full text-left">
-              <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Chi tiết khuyến mãi</label>
-              <textarea
-                placeholder="Nhập chi tiết điều khoản chương trình..."
-                value={detail}
-                onChange={(e) => setDetail(e.target.value)}
-                rows={6}
-                className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full resize-none
-                  ${errors.detail ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-              />
-              {errors.detail && <span className="text-xs text-red-400 mt-1">{errors.detail}</span>}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">
                   <Tag size={14} className="text-red-500" /> Loại khuyến mãi
                 </label>
                 <select
@@ -622,39 +579,40 @@ export default function PromotionFormPage() {
                 </select>
               </div>
 
-              <div className="flex flex-col gap-1 w-full text-left">
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
-                    <Hash size={14} className="text-red-500" /> Mã voucher
-                  </label>
-                  {isCoupon && title && (
-                    <button
-                      type="button"
-                      onClick={handleAutoGenerateCode}
-                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
-                      title="Tự động sinh mã từ tên chương trình"
-                    >
-                      <Sparkles size={12} /> Tự động tạo mã
-                    </button>
-                  )}
+              {isCoupon && (
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-sm font-medium text-[var(--color-text-muted)] flex items-center gap-1.5">
+                      <Hash size={14} className="text-red-500" /> Mã voucher
+                    </label>
+                    {title && (
+                      <button
+                        type="button"
+                        onClick={handleAutoGenerateCode}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 font-semibold transition-colors cursor-pointer"
+                        title="Tự động sinh mã từ tên chương trình"
+                      >
+                        <Sparkles size={12} /> Tự động tạo mã
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={code}
+                    onChange={(e) => {
+                      setCode(e.target.value.toUpperCase())
+                      setIsCodeManuallyEdited(true)
+                    }}
+                    placeholder="VD: SUMMER2026"
+                    className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full uppercase tracking-wider font-mono
+                      ${errors.code ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                  />
+                  {errors.code
+                    ? <span className="text-xs text-red-400 mt-1">{errors.code}</span>
+                    : <span className="text-xs text-[var(--color-text-muted)] mt-1">3-32 ký tự: chữ hoa, số, gạch ngang, gạch dưới.</span>
+                  }
                 </div>
-                <input
-                  type="text"
-                  value={code}
-                  onChange={(e) => {
-                    setCode(e.target.value.toUpperCase())
-                    setIsCodeManuallyEdited(true)
-                  }}
-                  placeholder="VD: SUMMER2026"
-                  disabled={!isCoupon}
-                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full uppercase tracking-wider font-mono disabled:opacity-50
-                    ${errors.code ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-                />
-                {errors.code
-                  ? <span className="text-xs text-red-400 mt-1">{errors.code}</span>
-                  : <span className="text-xs text-[var(--color-text-muted)] mt-1">3-32 ký tự: chữ hoa, số, gạch ngang, gạch dưới.</span>
-                }
-              </div>
+              )}
             </div>
 
             {isPoints && (
@@ -829,67 +787,83 @@ export default function PromotionFormPage() {
                     </span>
                   )}
                 </div>
+
+                <div className="flex flex-col gap-1 w-full text-left mt-2">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                    Giá trị giảm (%)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={discountValueDisplay}
+                    onChange={handleDiscountValueChange}
+                    placeholder="20"
+                    className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full
+                      ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                  />
+                  {errors.discountValue && <span className="text-xs text-red-400 mt-1">{errors.discountValue}</span>}
+                </div>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Kiểu giảm</label>
-                <select
-                  value={discountType}
-                  onChange={(e) => setDiscountType(e.target.value)}
-                  disabled={!isCoupon}
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer disabled:opacity-50"
-                >
-                  {Object.entries(DISCOUNT_TYPE_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
+            {isCoupon && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Kiểu giảm</label>
+                  <select
+                    value={discountType}
+                    onChange={(e) => setDiscountType(e.target.value)}
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white focus:outline-none focus:border-red-500 transition-colors w-full cursor-pointer"
+                  >
+                    {Object.entries(DISCOUNT_TYPE_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">
-                  Giá trị giảm {discountType === DISCOUNT_TYPES.PERCENT ? '(%)' : '(VNĐ)'}
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={discountValueDisplay}
-                  onChange={handleDiscountValueChange}
-                  placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50.000'}
-                  disabled={!isCoupon && !isCampaign}
-                  className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50
-                    ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
-                />
-                {errors.discountValue && <span className="text-xs text-red-400 mt-1">{errors.discountValue}</span>}
-              </div>
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">
+                    Giá trị giảm {discountType === DISCOUNT_TYPES.PERCENT ? '(%)' : '(VNĐ)'}
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={discountValueDisplay}
+                    onChange={handleDiscountValueChange}
+                    placeholder={discountType === DISCOUNT_TYPES.PERCENT ? '20' : '50.000'}
+                    className={`bg-[var(--color-surface-2)] border rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full
+                      ${errors.discountValue ? 'border-red-500' : 'border-[var(--color-border)]'}`}
+                  />
+                  {errors.discountValue && <span className="text-xs text-red-400 mt-1">{errors.discountValue}</span>}
+                </div>
 
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Tổng lượt dùng</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={maxTotalUsage}
-                  onChange={(e) => setMaxTotalUsage(e.target.value)}
-                  placeholder="100"
-                  disabled={!isCoupon}
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50"
-                />
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Tổng lượt dùng</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxTotalUsage}
+                    onChange={(e) => setMaxTotalUsage(e.target.value)}
+                    placeholder="100"
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex flex-col gap-1 w-full text-left">
-                <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Lượt / 1 user</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={maxPerUser}
-                  onChange={(e) => setMaxPerUser(e.target.value)}
-                  disabled={!isCoupon}
-                  className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full disabled:opacity-50"
-                />
-              </div>
+              {isCoupon && (
+                <div className="flex flex-col gap-1 w-full text-left">
+                  <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1">Lượt / 1 user</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxPerUser}
+                    onChange={(e) => setMaxPerUser(e.target.value)}
+                    className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-lg py-2.5 px-3 text-sm text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-red-500 transition-colors w-full"
+                  />
+                </div>
+              )}
 
               <div className="flex flex-col gap-1 w-full text-left">
                 <label className="text-sm font-medium text-[var(--color-text-muted)] mb-1 flex items-center gap-1.5">

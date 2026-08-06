@@ -38,6 +38,13 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!booking) return
     let pr = booking.pointsRedemption || booking.giftRedemption || null
+    if (!pr && booking.pointsUsed) {
+      pr = {
+        pointsSpent: booking.pointsUsed,
+        promotionTitle: booking.pointsPromotionTitle || booking.promotionTitle || 'Quà ð?i ði?m',
+        discountAmount: booking.pointsDiscount || 0
+      }
+    }
     if (!pr && bookingId) {
       try {
         const stored = sessionStorage.getItem(`points_redemption_${bookingId}`)
@@ -404,3 +411,4 @@ export default function CheckoutPage() {
     </div>
   )
 }
+

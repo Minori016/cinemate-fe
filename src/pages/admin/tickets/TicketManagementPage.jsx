@@ -69,7 +69,6 @@ export default function TicketManagementPage() {
     try {
       await bookingService.confirm(selectedBooking.id)
       setSuccessBanner(`Đã xác nhận booking ${selectedBooking.id} thành công!`)
-      setSelectedBooking(null)
       loadBookings()
     } catch (err) {
       alert(err.response?.data?.message || 'Không thể xác nhận booking. Vui lòng thử lại.')
@@ -374,7 +373,50 @@ export default function TicketManagementPage() {
                     <span className="text-xs font-extrabold text-white mt-1 block">{formatVND(selectedBooking.totalAmount / (selectedBooking.seatNames?.length || 1))}</span>
                   </div>
 
-                  <div className="col-span-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                  {/* Bắp nước / Concessions */}
+                  {selectedBooking.concessions && selectedBooking.concessions.length > 0 && (
+                    <div className="col-span-2 md:col-span-4 bg-white/5 border border-white/10 rounded-xl p-3">
+                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block mb-1">Đồ ăn & Bắp nước (Concessions)</span>
+                      <div className="space-y-1 mt-1">
+                        {selectedBooking.concessions.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-xs text-white">
+                            <span>{item.quantity}x {item.name} {item.size ? `(Size ${item.size})` : ''}</span>
+                            <span className="font-bold text-red-400">{formatVND(item.lineTotal || ((item.unitPrice || 0) * item.quantity))}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Giảm giá (Discount Breakdown) */}
+                  {((selectedBooking.campaignDiscount > 0) || (selectedBooking.discountAmount - (selectedBooking.campaignDiscount || 0) > 0) || (selectedBooking.pointsDiscount > 0) || (selectedBooking.pointsPromotionTitle)) && (
+                    <div className="col-span-2 md:col-span-4 bg-white/5 border border-white/10 rounded-xl p-3 space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] block mb-1">Ưu đãi / Giảm giá (Discounts)</span>
+                      
+                      {(selectedBooking.pointsDiscount > 0 || selectedBooking.pointsPromotionTitle) ? (
+                        <div className="flex justify-between items-center text-xs text-amber-400">
+                          <span>★ Đổi điểm ({selectedBooking.pointsUsed || 0} điểm)</span>
+                          <span className="font-bold">{selectedBooking.pointsDiscount > 0 ? `-${formatVND(selectedBooking.pointsDiscount)}` : selectedBooking.pointsPromotionTitle}</span>
+                        </div>
+                      ) : null}
+
+                      {selectedBooking.campaignDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs text-emerald-400">
+                          <span>Khuyến Mãi Tự Động {selectedBooking.campaignTitle ? `(${selectedBooking.campaignTitle})` : ""}</span>
+                          <span className="font-bold">-${formatVND(selectedBooking.campaignDiscount)}</span>
+                        </div>
+                      )}
+
+                      {selectedBooking.discountAmount - (selectedBooking.campaignDiscount || 0) > 0 && (
+                        <div className="flex justify-between items-center text-xs text-emerald-400">
+                          <span>Mã giảm giá {selectedBooking.promotionCode && selectedBooking.promotionCode !== selectedBooking.campaignTitle ? `(${selectedBooking.promotionCode})` : ""}</span>
+                          <span className="font-bold">-${formatVND(selectedBooking.discountAmount - (selectedBooking.campaignDiscount || 0))}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="col-span-2 md:col-span-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
                     <span className="text-[10px] uppercase font-bold text-emerald-400 block">Tổng tiền (Total)</span>
                     <span className="text-sm font-black text-emerald-400 mt-1 block">
                       {selectedBooking.status !== 'CONFIRMED' && convertOption === 'yes'
@@ -435,74 +477,7 @@ export default function TicketManagementPage() {
                 </div>
               </div>
 
-              {/* Score Conversion Option (AC-02, AC-03) */}
-              {selectedBooking.status !== 'CONFIRMED' && (
-                <div className="space-y-4 pt-4 border-t border-white/5">
-                  <h5 className="text-xs font-bold uppercase tracking-wider text-yellow-400 flex items-center gap-1.5" style={{ fontFamily: 'Montserrat' }}>
-                    <span>🪙</span> Quy đổi điểm thành viên (Member Score Conversion)
-                  </h5>
-
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <span className="text-xs font-medium text-gray-300">Quy đổi điểm thành viên sang vé?</span>
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                          <input
-                            type="radio"
-                            name="convertOption"
-                            value="no"
-                            checked={convertOption === 'no'}
-                            onChange={() => {
-                              setConvertOption('no')
-                              setConvertTicketsCount(0)
-                            }}
-                            className="accent-red-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span>Không quy đổi</span>
-                        </label>
-                        <label className="flex items-center gap-2 text-xs text-white cursor-pointer">
-                          <input
-                            type="radio"
-                            name="convertOption"
-                            value="yes"
-                            checked={convertOption === 'yes'}
-                            onChange={() => {
-                              setConvertOption('yes')
-                              setConvertTicketsCount(1)
-                            }}
-                            className="accent-red-500 w-4 h-4 cursor-pointer"
-                          />
-                          <span>Quy đổi sang vé</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {convertOption === 'yes' && (
-                      <div className="space-y-3 pt-2 border-t border-white/5 animate-fade-in">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <label className="text-[10px] uppercase font-bold text-gray-400">Chọn số vé muốn đổi (1000 điểm / vé)</label>
-                          <select
-                            value={convertTicketsCount}
-                            onChange={(e) => setConvertTicketsCount(parseInt(e.target.value, 10))}
-                            className="bg-[var(--color-surface-2)] border border-[var(--color-border)] rounded-xl py-2 px-3 outline-none text-xs text-white focus:border-red-500 cursor-pointer min-w-[100px]"
-                          >
-                            {Array.from({ length: getSeatCount(selectedBooking.seatNames) }).map((_, i) => (
-                              <option key={i + 1} value={i + 1}>{i + 1} vé</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {selectedBooking.memberScore < convertTicketsCount * 1000 && (
-                          <div className="text-xs text-red-500 font-bold flex items-center gap-1.5 bg-red-500/10 border border-red-500/20 rounded-lg p-2.5">
-                            <span>⚠️</span>
-                            <span>Not enough score to convert into ticket</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              
             </div>
 
             {/* Modal Actions */}
@@ -513,22 +488,7 @@ export default function TicketManagementPage() {
               >
                 Đóng
               </button>
-              {selectedBooking.status !== 'CONFIRMED' ? (
-                <button
-                  onClick={handleFinalizeBooking}
-                  disabled={convertOption === 'yes' && (selectedBooking.memberScore || 0) < convertTicketsCount * 1000}
-                  className="px-5 py-3 text-xs bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all cursor-pointer"
-                >
-                  Confirm Booking
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="px-5 py-3 text-xs bg-gray-700 text-gray-400 font-bold rounded-xl border border-white/5"
-                >
-                  Đã xác nhận thành công
-                </button>
-              )}
+              
             </div>
           </div>
         </div>

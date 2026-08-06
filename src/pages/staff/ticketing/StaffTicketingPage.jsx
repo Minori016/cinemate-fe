@@ -60,7 +60,6 @@ export default function StaffTicketingPage() {
   const [promoCodeInput, setPromoCodeInput] = useState('')
   const [appliedPromoCode, setAppliedPromoCode] = useState('')
   const [couponDiscount, setCouponDiscount] = useState(0)
-  const [autoCampaign, setAutoCampaign] = useState(null)
   const [promoLoading, setPromoLoading] = useState(false)
   const [promoError, setPromoError] = useState('')
 
@@ -72,6 +71,20 @@ export default function StaffTicketingPage() {
   const [holdSeconds, setHoldSeconds] = useState(300)
 
   const [seatMapRefreshKey, setSeatMapRefreshKey] = useState(0)
+
+  // 🟢 TỰ ĐỘNG BẬT POPUP HÓA ĐƠN KHI THANH TOÁN MOMO/VNPAY THÀNH CÔNG VỀ QUẦY STAFF
+  useEffect(() => {
+    const pendingStaffTicketStr = sessionStorage.getItem('pending_staff_ticket')
+    if (pendingStaffTicketStr) {
+      try {
+        const pendingTicket = JSON.parse(pendingStaffTicketStr)
+        setPrintedTicket(pendingTicket)
+        sessionStorage.removeItem('pending_staff_ticket')
+      } catch (e) {
+        console.warn('Lỗi đọc hóa đơn chờ từ SessionStorage:', e)
+      }
+    }
+  }, [])
 
   // 1. Fetch movies and showtimes on load
   useEffect(() => {
@@ -243,54 +256,19 @@ export default function StaffTicketingPage() {
     return () => { cancelled = true }
   }, [selectedShowtime, seatMapRefreshKey])
 
-  const demoMatrix = [
-    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
-    {
-      rowLabel: 'J',
-      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
-    },
-  ]
-
-  const activeSeatMatrix = useMemo(() => {
-    if (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0) {
-      return roomLayout.seatMatrix.map(row => ({
-        rowLabel: row.rowLabel || row.row || '',
-        seats: Array.isArray(row.seats) ? row.seats.map(seat => ({
-          ...seat,
-          type: String(seat.type || 'STANDARD').toUpperCase()
-        })) : []
-      }))
-    }
-    return demoMatrix
-  }, [roomLayout])
-
   // TÍNH GIÁ TIỀN GHẾ DỰA TRÊN THÔNG TIN TỪ BACK-END
   const getSeatPrice = (seatId) => {
-    let seatType = 'STANDARD'
+    const rowChar = seatId.charAt(0).toUpperCase()
 
-    if (activeSeatMatrix && activeSeatMatrix.length > 0) {
-      for (const row of activeSeatMatrix) {
-        const foundSeat = (row.seats || []).find(s => {
-          const sLabel = `${s.rowLabel || row.rowLabel || ''}${s.number}`
-          return sLabel === seatId || s.id === seatId
-        })
-        if (foundSeat && foundSeat.type) {
-          seatType = String(foundSeat.type).toUpperCase()
-          break
-        }
-      }
+    // 1. Xác định loại ghế theo đúng sơ đồ
+    let seatType = 'STANDARD'
+    if (checkIsVipCenterSeat(seatId)) {
+      seatType = 'VIP'
+    } else if (rowChar === 'J') {
+      seatType = 'COUPLE'
     }
 
-    if (seatType === 'COUPLE_EXTENSION') seatType = 'COUPLE'
-
+    // 2. ƯU TIÊN LẤY GIÁ CHÍNH XÁC TỪ BACK-END (selectedShowtime.prices)
     if (selectedShowtime?.prices && Array.isArray(selectedShowtime.prices) && selectedShowtime.prices.length > 0) {
       const matchedPriceObj = selectedShowtime.prices.find(
         p => String(p.seatType || '').toUpperCase() === seatType
@@ -300,6 +278,7 @@ export default function StaffTicketingPage() {
       }
     }
 
+    // 3. Fallback nếu suất chiếu chỉ có giá phẳng (selectedShowtime.price / vipPrice / couplePrice)
     if (seatType === 'VIP' && selectedShowtime?.vipPrice != null) {
       return Number(selectedShowtime.vipPrice)
     }
@@ -310,9 +289,10 @@ export default function StaffTicketingPage() {
       return Number(selectedShowtime.price)
     }
 
+    // 4. Fallback mặc định theo công thức Back-End (Base = 90k)
     const basePrice = Number(selectedShowtime?.price) || 90000
-    if (seatType === 'VIP') return basePrice + 20000
-    if (seatType === 'COUPLE') return basePrice * 2 + 10000
+    if (seatType === 'VIP') return basePrice + 20000       // 90k + 20k = 110k (hoặc theo cấu hình)
+    if (seatType === 'COUPLE') return basePrice * 2 + 10000 // 90k * 2 + 10k = 190k
 
     return basePrice
   }
@@ -455,39 +435,7 @@ export default function StaffTicketingPage() {
     setPromoError('')
   }
 
-  
-  // Auto-fetch and apply CAMPAIGN
-  React.useEffect(() => {
-    if (!selectedMovie?.id) return;
-    let cancelled = false;
-    promotionService.getActiveForUi().then(list => {
-      if (cancelled) return;
-      if (Array.isArray(list)) {
-        const campaigns = list.filter(p => p.promotionType === 'CAMPAIGN' && p.movieIds?.includes(selectedMovie.id));
-        if (campaigns.length > 0) {
-          const bestCampaign = campaigns.reduce((prev, current) => 
-            (prev.discountPercent > current.discountPercent) ? prev : current
-          );
-          setAutoCampaign(bestCampaign);
-        } else {
-          setAutoCampaign(null);
-        }
-      }
-    });
-    return () => { cancelled = true };
-  }, [selectedMovie?.id]);
-
-  const campaignDiscount = React.useMemo(() => {
-    if (!autoCampaign) return 0;
-    if (autoCampaign.discountPercent > 0) {
-      return Math.round(grossOrderTotal * (autoCampaign.discountPercent / 100));
-    } else if (autoCampaign.discountValue > 0) {
-      return autoCampaign.discountValue;
-    }
-    return 0;
-  }, [autoCampaign, grossOrderTotal]);
-
-  const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount - campaignDiscount)
+  const finalPriceTotal = Math.max(0, grossOrderTotal - pointsDiscountTotal - couponDiscount)
 
   const changeReturn = useMemo(() => {
     if (!cashReceived || isNaN(cashReceived)) return 0
@@ -496,7 +444,7 @@ export default function StaffTicketingPage() {
 
   const formatVND = (num) => new Intl.NumberFormat('vi-VN').format(num) + ' đ'
 
-  // 🟢 XỬ LÝ THANH TOÁN (HỖ TRỢ THÊM TỰ ĐỘNG VNPAY)
+  // 🟢 XỬ LÝ THANH TOÁN & ĐƯỜNG DẪN QUẦY POS
   const handleCheckout = async () => {
     if (paymentMethod === 'cash' && (!cashReceived || parseInt(cashReceived, 10) < finalPriceTotal)) {
       setError('Số tiền khách đưa chưa đủ để thanh toán.')
@@ -552,32 +500,6 @@ export default function StaffTicketingPage() {
         throw new Error('Máy chủ không tạo được mã booking.')
       }
 
-      // 🟡 XỬ LÝ THANH TOÁN ONLINE MOMO HOẶC VNPAY
-      if (paymentMethod === 'momo') {
-        const momoRes = await paymentService.createMomoPayment(backendBookingId)
-        const payUrl = momoRes?.data?.result?.payUrl || momoRes?.data?.payUrl
-
-        if (payUrl) {
-          window.location.href = payUrl
-          return
-        } else {
-          throw new Error(momoRes?.data?.message || 'Không nhận được đường dẫn thanh toán từ MoMo.')
-        }
-      } else if (paymentMethod === 'vnpay') {
-        const vnpayRes = await paymentService.createVnPayPayment(backendBookingId)
-        const payUrl = vnpayRes?.data?.result?.payUrl || vnpayRes?.data?.payUrl || vnpayRes?.data
-
-        if (payUrl) {
-          window.location.href = payUrl
-          return
-        } else {
-          throw new Error(vnpayRes?.data?.message || 'Không nhận được đường dẫn thanh toán từ VNPay.')
-        }
-      }
-
-      // TIỀN MẶT / CÀ THẺ -> CONFIRM VÉ NGAY
-      await bookingService.confirm(backendBookingId)
-
       const payload = {
         id: backendBookingId,
         movie: selectedMovie.titleVn || selectedMovie.title,
@@ -606,6 +528,31 @@ export default function StaffTicketingPage() {
             return c ? `${c.name} (x${qty})` : `(x${qty})`
           }).join(', ')
       }
+
+      // 🟢 LƯU VÉ VÀO SESSION STORAGE KHI THANH TOÁN MOMO / VNPAY TẠI QUẦY STAFF
+      if (paymentMethod === 'momo' || paymentMethod === 'vnpay') {
+        sessionStorage.setItem('pending_staff_ticket', JSON.stringify(payload))
+
+        let payRes
+        if (paymentMethod === 'momo') {
+          payRes = await paymentService.createMomoPayment(backendBookingId)
+        } else {
+          payRes = await paymentService.createVnPayPayment(backendBookingId)
+        }
+
+        const payUrl = payRes?.data?.result?.payUrl || payRes?.data?.payUrl || payRes?.data
+
+        if (payUrl) {
+          window.location.href = payUrl
+          return
+        } else {
+          sessionStorage.removeItem('pending_staff_ticket')
+          throw new Error('Không nhận được đường dẫn thanh toán từ máy chủ.')
+        }
+      }
+
+      // TIỀN MẶT / CÀ THẺ -> CONFIRM VÉ NGAY
+      await bookingService.confirm(backendBookingId)
 
       const localBookings = JSON.parse(localStorage.getItem('staff_bookings_db') || '[]')
       localStorage.setItem('staff_bookings_db', JSON.stringify([payload, ...localBookings]))
@@ -653,7 +600,45 @@ export default function StaffTicketingPage() {
     setSeatMapRefreshKey(prev => prev + 1)
   }
 
+  const demoMatrix = [
+    { rowLabel: 'A', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'B', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'C', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'D', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'E', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'F', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'G', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'H', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    { rowLabel: 'I', seats: Array.from({ length: 10 }, (_, i) => ({ number: i + 1, type: 'STANDARD' })) },
+    {
+      rowLabel: 'J',
+      seats: Array.from({ length: 5 }, (_, i) => ({ number: i * 2 + 1, type: 'COUPLE' }))
+    },
+  ]
 
+  const activeSeatMatrix = useMemo(() => {
+    const rawMatrix = (roomLayout && roomLayout.seatMatrix && roomLayout.seatMatrix.length > 0)
+      ? roomLayout.seatMatrix
+      : demoMatrix
+
+    return rawMatrix.map(row => {
+      const label = String(row.rowLabel || '').toUpperCase()
+
+      return {
+        ...row,
+        seats: row.seats.map(seat => {
+          const seatLabel = `${label}${seat.number}`
+          const isVipCenter = checkIsVipCenterSeat(seatLabel)
+          const isCouple = label === 'J'
+
+          return {
+            ...seat,
+            type: isCouple ? 'COUPLE' : isVipCenter ? 'VIP' : 'STANDARD'
+          }
+        })
+      }
+    })
+  }, [roomLayout])
 
   return (
     <div className="space-y-6 text-left min-h-screen text-[var(--color-on-surface)]" style={{ fontFamily: 'Inter, sans-serif' }}>
@@ -784,12 +769,12 @@ export default function StaffTicketingPage() {
                 {/* Showtimes Selection panel */}
                 {selectedMovie && (
                   <div className="p-6 rounded-2xl bg-[var(--color-surface)] border border-[var(--color-border)] shadow-2xl text-left space-y-4">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
+                    <h3 className="text-sm font-bold text-[var(--color-on-surface)] uppercase tracking-wider font-mono">
                       Suất chiếu khả dụng cho: {selectedMovie.titleVn || selectedMovie.title}
                     </h3>
 
                     {availableShowtimes.length === 0 ? (
-                      <div className="py-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
+                      <div className="py-8 text-center text-[var(--color-text-muted)] text-xs border border-dashed border-[var(--color-border)] rounded-xl">
                         Không có suất chiếu nào được lên lịch cho phim này trong ngày hôm nay.
                       </div>
                     ) : (
@@ -895,85 +880,111 @@ export default function StaffTicketingPage() {
                   {/* SEAT GRID WITH RESPONSIVE SCALING & COLOR FIX */}
                   <div className="w-full overflow-x-auto py-2 custom-scrollbar">
                     <div className="space-y-2.5 min-w-max mx-auto px-4 flex flex-col items-center">
-                      {activeSeatMatrix.map((row) => (
-                        <div key={row.rowLabel} className="flex items-center justify-center gap-2">
-                          <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
-                          <div className="flex items-center gap-2">
-                            {row.seats.map((seat) => {
-                              const seatType = String(seat.type || 'STANDARD').toUpperCase()
+                      {activeSeatMatrix.map((row) => {
+                        const renderedSeats = []
+                        let skipNext = false
 
-                              if (seatType === 'AISLE' || seatType === 'EMPTY' || seatType === 'WALKWAY') {
-                                return (
-                                  <div key={seat.id || `aisle-${row.rowLabel}-${seat.number}`} className="w-8 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">
-                                    │
-                                  </div>
-                                )
-                              }
+                        row.seats.forEach((seat, idx) => {
+                          if (skipNext) {
+                            skipNext = false
+                            return
+                          }
 
-                              if (seatType === 'COUPLE_EXTENSION') {
-                                return null
-                              }
+                          const seatType = String(seat.type || '').toUpperCase()
 
-                              const seatLabel = seat.rowLabel && seat.number ? `${seat.rowLabel}${seat.number}` : `${row.rowLabel}${seat.number}`
+                          if (seatType === 'EMPTY' || seatType === 'WALKWAY') {
+                            renderedSeats.push({
+                              isWalkway: true,
+                              seatId: `walkway-${row.rowLabel}-${idx}`
+                            })
+                            return
+                          }
 
-                              if (seatType === 'COUPLE') {
-                                const nextSeat = row.seats.find(s => s.number === seat.number + 1)
-                                const secondNum = nextSeat ? nextSeat.number : (seat.number + 1)
-                                const pairedLabel = `${row.rowLabel}${secondNum}`
-                                const coupleDisplayLabel = `${seatLabel} | ${pairedLabel}`
+                          const isCouple = seatType === 'COUPLE' || ['J'].includes(row.rowLabel.toUpperCase())
 
-                                const isOccupied = occupiedSeats.includes(seatLabel) || occupiedSeats.includes(pairedLabel)
-                                const isSelected = selectedSeats.includes(seatLabel)
+                          if (isCouple) {
+                            const nextSeat = row.seats[idx + 1]
+                            const secondNum = nextSeat ? nextSeat.number : seat.number + 1
+                            skipNext = true
 
-                                return (
-                                  <button
-                                    key={seat.id || seatLabel}
-                                    type="button"
-                                    onClick={() => handleSeatClick(seatLabel, pairedLabel)}
-                                    disabled={isOccupied}
-                                    className={`h-8 px-3 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                                      isSelected
+                            renderedSeats.push({
+                              ...seat,
+                              isCouple: true,
+                              seatId: `${row.rowLabel}${seat.number}`,
+                              pairedSeatId: `${row.rowLabel}${secondNum}`,
+                              coupleLabel: `${row.rowLabel}${seat.number} | ${row.rowLabel}${secondNum}`
+                            })
+                          } else {
+                            renderedSeats.push({
+                              ...seat,
+                              isCouple: false,
+                              seatId: `${row.rowLabel}${seat.number}`
+                            })
+                          }
+                        })
+
+                        const isLargeRow = row.seats.length > 12
+
+                        return (
+                          <div key={row.rowLabel} className="flex items-center justify-center gap-2">
+                            <span className="w-6 text-xs font-bold text-slate-500 text-right shrink-0">{row.rowLabel}</span>
+
+                            <div className={`flex items-center ${isLargeRow ? 'gap-1.5' : 'gap-2.5'}`}>
+                              {renderedSeats.map((seat) => {
+                                if (seat.isWalkway) {
+                                  return <div key={seat.seatId} className="w-6 h-8 flex items-center justify-center text-[10px] text-slate-700 font-bold opacity-30 select-none">│</div>
+                                }
+
+                                const isOccupied = occupiedSeats.includes(seat.seatId) || (seat.pairedSeatId && occupiedSeats.includes(seat.pairedSeatId))
+                                const isSelected = selectedSeats.includes(seat.seatId)
+
+                                const seatType = String(seat.type || '').toUpperCase()
+                                const isVip = seatType === 'VIP'
+                                const isCouple = seat.isCouple || seatType === 'COUPLE'
+
+                                if (isCouple) {
+                                  return (
+                                    <button
+                                      key={seat.seatId}
+                                      onClick={() => handleSeatClick(seat.seatId, seat.pairedSeatId)}
+                                      disabled={isOccupied}
+                                      className={`h-7 px-2.5 rounded-full border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isSelected
                                         ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
                                         : isOccupied
                                           ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
                                           : 'border-red-600/80 text-red-500 hover:bg-red-950/30'
-                                    }`}
-                                    title={coupleDisplayLabel}
+                                        }`}
+                                    >
+                                      {seat.coupleLabel}
+                                    </button>
+                                  )
+                                }
+
+                                return (
+                                  <button
+                                    key={seat.seatId}
+                                    onClick={() => handleSeatClick(seat.seatId)}
+                                    disabled={isOccupied}
+                                    className={`rounded-full border font-bold transition-all cursor-pointer flex items-center justify-center shrink-0 ${isLargeRow ? 'w-7 h-7 text-[10px]' : 'w-8 h-8 text-[11px]'
+                                      } ${isSelected
+                                        ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
+                                        : isOccupied
+                                          ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
+                                          : isVip
+                                            ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
+                                            : 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                                      }`}
                                   >
-                                    {coupleDisplayLabel}
+                                    {seat.seatId}
                                   </button>
                                 )
-                              }
+                              })}
+                            </div>
 
-                              const isOccupied = occupiedSeats.includes(seatLabel)
-                              const isSelected = selectedSeats.includes(seatLabel)
-                              const isVip = seatType === 'VIP'
-
-                              return (
-                                <button
-                                  key={seat.id || seatLabel}
-                                  type="button"
-                                  onClick={() => handleSeatClick(seatLabel)}
-                                  disabled={isOccupied}
-                                  className={`w-8 h-8 rounded-full border font-bold text-[11px] transition-all cursor-pointer flex items-center justify-center shrink-0 ${
-                                    isSelected
-                                      ? 'bg-red-600 border-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
-                                      : isOccupied
-                                        ? 'bg-slate-800 border-slate-700 text-slate-600 cursor-not-allowed'
-                                        : isVip
-                                          ? 'border-amber-500/80 text-amber-500 hover:bg-amber-950/20'
-                                          : 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                                  }`}
-                                  title={seatLabel}
-                                >
-                                  {seatLabel}
-                                </button>
-                              )
-                            })}
+                            <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
                           </div>
-                          <span className="w-6 text-xs font-bold text-slate-500 text-left shrink-0">{row.rowLabel}</span>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
 
@@ -1135,7 +1146,7 @@ export default function StaffTicketingPage() {
                     </button>
                   </div>
 
-                  {/* FORM TAB 1: MÃ COUPON (FIXED CONTRAST INPUT) */}
+                  {/* FORM TAB 1: MÃ COUPON */}
                   {promoTab === 'coupon' && (
                     <div className="bg-[#121620] border border-white/5 rounded-2xl p-5 space-y-3">
                       <p className="text-xs text-slate-400">
@@ -1270,7 +1281,7 @@ export default function StaffTicketingPage() {
                   )}
 
                   {/* KHUNG HIỂN THỊ GIẢM GIÁ ĐÃ ÁP DỤNG */}
-                  {(couponDiscount > 0 || pointsDiscountTotal > 0 || campaignDiscount > 0) && (
+                  {(couponDiscount > 0 || pointsDiscountTotal > 0) && (
                     <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-xl p-4 flex items-center justify-between text-xs font-bold text-emerald-400">
                       <div className="flex items-center gap-2">
                         <CheckCircle size={16} />
@@ -1330,8 +1341,8 @@ export default function StaffTicketingPage() {
                               if (method.id !== 'cash') setCashReceived('')
                             }}
                             className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${isSelected
-                                ? 'bg-red-600/20 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.35)]'
-                                : 'bg-[#121620] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
+                              ? 'bg-red-600/20 border-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.35)]'
+                              : 'bg-[#121620] border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
                               }`}
                           >
                             <Icon size={20} className={isSelected ? 'text-red-500' : 'text-slate-400'} />
@@ -1442,14 +1453,7 @@ export default function StaffTicketingPage() {
                         </div>
                       )}
 
-                      {campaignDiscount > 0 && (
-                          <div className="flex justify-between items-center text-emerald-400 font-bold">
-                            <span>Khuyến Mãi Tự Động ({autoCampaign.title}):</span>
-                            <span className="font-mono">-{formatVND(campaignDiscount)}</span>
-                          </div>
-                        )}
-
-                        {couponDiscount > 0 && (
+                      {couponDiscount > 0 && (
                         <div className="flex justify-between items-center text-emerald-400 font-bold">
                           <span>Giảm giá Voucher ({appliedPromoCode}):</span>
                           <span className="font-mono">-{formatVND(couponDiscount)}</span>
@@ -1529,7 +1533,7 @@ export default function StaffTicketingPage() {
                 </div>
               </div>
             ) : (
-              <div className="py-4 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl italic">
+              <div className="py-4 text-center text-[var(--color-text-muted)] text-xs border border-dashed border-[var(--color-border)] rounded-xl italic">
                 Chưa chọn phim
               </div>
             )}
@@ -1595,16 +1599,6 @@ export default function StaffTicketingPage() {
                 </div>
               </div>
             )}
-
-              {campaignDiscount > 0 && (
-                <div className="space-y-1 border-t border-white/5 pt-4">
-                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">KHUYẾN MÃI TỰ ĐỘNG</span>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-emerald-400 font-bold">{autoCampaign?.title}</span>
-                    <span className="text-emerald-400 font-mono font-bold">-{formatVND(campaignDiscount)}</span>
-                  </div>
-                </div>
-              )}
           </div>
 
           <div className="space-y-4 border-t border-white/5 pt-4">
@@ -1716,7 +1710,7 @@ export default function StaffTicketingPage() {
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>Tài khoản hội viên:</span>
-                  <span className="font-bold text-slate-800">{printedTicket.memberId} ({printedTicket.customerName})</span>
+                  <span className="font-bold text-slate-800">{printedTicket.customerName}</span>
                 </div>
                 {printedTicket.convertTickets > 0 && (
                   <div className="flex justify-between text-green-600 font-bold">
